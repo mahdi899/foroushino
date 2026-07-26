@@ -8,17 +8,15 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
-use TelegramHost\Http\LiveClient;
-use TelegramHost\Http\SyncClient;
 use TelegramHost\Telegram\BotApiClient;
 use TelegramHost\Support\TelegramCustomEmoji;
 
+/** Serves users from local MySQL; Iran is called on demand with typing + outage reporting. */
 final class UpdateRouter
 {
     public function __construct(
         private readonly DelegationDetector $delegation,
-        private readonly LiveClient $live,
-        private readonly SyncClient $sync,
+        private readonly IranSyncRelay $iranSync,
         private readonly AccountCache $accounts,
         private readonly SyncCache $cache,
         private readonly BotApiClient $api,
@@ -29,10 +27,21 @@ final class UpdateRouter
     /** @param array<string, mixed> $update */
     public function handle(array $update): void
     {
-        if ($this->delegation->shouldDelegate($update)) {
-            $this->live->processUpdate($update);
-            $this->refreshAccountCache($this->extractTelegramUserId($update));
+        if ($this->delegation->shouldRelayToIran($update)) {
+            if ($this->delegation->isPrivateUserFacing($update)) {
+                $telegramUserId = $this->extractTelegramUserId($update);
+                $chatId = $this->extractChatId($update);
+                $this->iranSync->relayOrNotify($chatId, $telegramUserId, $update);
 
+                return;
+            }
+
+            $this->iranSync->enqueueOnly($update);
+
+            return;
+        }
+
+        if (! $this->delegation->isPrivateUserFacing($update)) {
             return;
         }
 
@@ -54,18 +63,6 @@ final class UpdateRouter
 
         if (isset($update['callback_query'])) {
             $this->callbacks->handle($update['callback_query']);
-        }
-    }
-
-    private function refreshAccountCache(int $telegramUserId): void
-    {
-        if ($telegramUserId <= 0) {
-            return;
-        }
-
-        $fresh = $this->sync->call('account/fetch', ['telegram_user_id' => $telegramUserId]);
-        if (! empty($fresh['found']) && is_array($fresh['account'] ?? null)) {
-            $this->accounts->store($telegramUserId, $fresh['account']);
         }
     }
 

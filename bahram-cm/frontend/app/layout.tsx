@@ -29,7 +29,10 @@ import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonL
 import { SiteBootScripts } from "@/components/bootstrap/SiteBootScripts";
 import { SilenceBrowserConsole } from "@/components/bootstrap/SilenceBrowserConsole";
 import { DevServiceWorkerCleanup } from "@/components/pwa/DevServiceWorkerCleanup";
-import { DEV_SERVICE_WORKER_CLEANUP_SCRIPT } from "@/lib/pwa/unregisterBahramServiceWorkers";
+import {
+  DEV_SERVICE_WORKER_CLEANUP_SCRIPT,
+  FAMILY_HOST_SITE_SW_CLEANUP_SCRIPT,
+} from "@/lib/pwa/unregisterBahramServiceWorkers";
 import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
@@ -95,6 +98,11 @@ export default async function RootLayout({
       <head>
         <SiteBootScripts
           themeHtml={siteThemeBootScript()}
+          familyHostCleanupHtml={
+            onFamilyHost && process.env.NODE_ENV === "production"
+              ? FAMILY_HOST_SITE_SW_CLEANUP_SCRIPT
+              : null
+          }
           devCleanupHtml={
             process.env.NODE_ENV === "development" ? DEV_SERVICE_WORKER_CLEANUP_SCRIPT : null
           }

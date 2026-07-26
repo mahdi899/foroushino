@@ -12,6 +12,8 @@ use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
+use App\Modules\TelegramBot\Models\TelegramAccount;
+use App\Services\TelegramHostAccountSync;
 use App\Services\AdminTelegramLogService;
 use App\Services\DiscountService;
 use App\Services\Exceptions\SpotPlayerException;
@@ -19,6 +21,7 @@ use App\Services\InAppNotificationService;
 use App\Services\ReferralService;
 use App\Services\SmsService;
 use App\Services\SpotPlayerService;
+use App\Services\TelegramInfrastructureService;
 use App\Support\Mobile;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -169,24 +172,50 @@ class FulfillOrderJob implements ShouldQueue
 
         $adminTelegram->notifyOrderFulfilled($order);
 
+        $orderPaidText = '✅ پرداخت شما با موفقیت تأیید شد.'."\n"
+            .'سفارش: '.($order->order_number ?? $order->id)."\n"
+            .'محصول: '.($order->product?->title ?? '—');
+
+        $usesHost = app(TelegramInfrastructureService::class)->usesHostBridge();
+
         if ($userId) {
-            try {
-                app(\App\Modules\TelegramBot\Services\NotificationOutboxWriter::class)->write(
-                    eventType: 'order_paid',
-                    userId: $userId,
-                    payload: [
-                        'text' => '✅ پرداخت شما با موفقیت تأیید شد.'."\n"
-                            .'سفارش: '.($order->order_number ?? $order->id)."\n"
-                            .'محصول: '.($order->product?->title ?? '—'),
-                    ],
-                    channels: ['telegram'],
-                    idempotencyKey: 'order_paid:'.$order->id,
-                );
-            } catch (\Throwable $e) {
-                Log::channel('telegram')->warning('Failed to enqueue telegram order_paid outbox.', [
-                    'order_id' => $order->id,
-                    'message' => $e->getMessage(),
-                ]);
+            $telegramAccounts = TelegramAccount::query()
+                ->where('user_id', $userId)
+                ->whereHas('bot', fn ($q) => $q->where('key', 'production'))
+                ->get();
+
+            $hostSync = app(TelegramHostAccountSync::class);
+            $hostNotified = false;
+
+            if ($usesHost) {
+                foreach ($telegramAccounts as $account) {
+                    if ($hostSync->pushPaidOrderNotification($account, $orderPaidText)) {
+                        $hostNotified = true;
+                    }
+                }
+            }
+
+            if (! $usesHost || ! $hostNotified) {
+                try {
+                    app(\App\Modules\TelegramBot\Services\NotificationOutboxWriter::class)->write(
+                        eventType: 'order_paid',
+                        userId: $userId,
+                        payload: ['text' => $orderPaidText],
+                        channels: ['telegram'],
+                        idempotencyKey: 'order_paid:'.$order->id,
+                    );
+                } catch (\Throwable $e) {
+                    Log::channel('telegram')->warning('Failed to enqueue telegram order_paid outbox.', [
+                        'order_id' => $order->id,
+                        'message' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            if (! $usesHost) {
+                foreach ($telegramAccounts as $account) {
+                    $hostSync->queuePush($account);
+                }
             }
         }
     }

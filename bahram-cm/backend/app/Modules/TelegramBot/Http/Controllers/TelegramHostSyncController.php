@@ -18,6 +18,9 @@ use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Modules\TelegramBot\Services\TelegramUserSyncService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
+use App\Services\TelegramHostAccountSnapshotService;
+use App\Services\TelegramHostCatalogRevision;
+use App\Services\TelegramInfrastructureService;
 use App\Support\AesGcmCipher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,6 +50,9 @@ class TelegramHostSyncController
         private readonly AccountLinkService $accountLinks,
         private readonly TelegramCheckoutService $checkout,
         private readonly TelegramCatalogMediaService $catalogMedia,
+        private readonly TelegramInfrastructureService $infrastructure,
+        private readonly TelegramHostCatalogRevision $catalogRevision,
+        private readonly TelegramHostAccountSnapshotService $accountSnapshots,
     ) {}
 
     public function bootstrap(Request $request): JsonResponse
@@ -64,12 +70,13 @@ class TelegramHostSyncController
             ->get(['id', 'chat_id', 'title', 'invite_link', 'is_required'])
             ->toArray();
 
-        return $this->encryptedResponse($request, [
+        return $this->encryptedResponse($request, array_merge([
             'bot' => [
                 'id' => $bot->id,
                 'key' => $bot->key,
                 'features' => $bot->settings['features'] ?? [],
                 'is_active' => (bool) $bot->is_active,
+                'reports_group_chat_id' => $bot->reportsGroupChatId(),
             ],
             'messages' => $messages,
             'required_chats' => $requiredChats,
@@ -84,7 +91,27 @@ class TelegramHostSyncController
                 'referral_panel' => TelegramSiteUrl::page('panel/referrals'),
             ],
             'synced_at' => now()->toIso8601String(),
+            'catalog_revision' => $this->catalogRevision->current(),
+        ], $this->infrastructure->pendingHostWebhookBootstrapExtra()));
+    }
+
+    public function syncMeta(Request $request): JsonResponse
+    {
+        $this->productionBot();
+
+        return $this->encryptedResponse($request, [
+            'catalog_revision' => $this->catalogRevision->current(),
+            'synced_at' => now()->toIso8601String(),
         ]);
+    }
+
+    public function webhookRegisterAck(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $nonce = trim((string) ($payload['nonce'] ?? ''));
+        $cleared = $this->infrastructure->clearHostWebhookRegistration($nonce !== '' ? $nonce : null);
+
+        return $this->encryptedResponse($request, ['ok' => $cleared]);
     }
 
     public function catalog(Request $request): JsonResponse
@@ -233,8 +260,8 @@ class TelegramHostSyncController
 
     public function accountFetch(Request $request): JsonResponse
     {
-        $payload = $this->hostPayload($request);
-        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $hostPayload = $this->hostPayload($request);
+        $telegramUserId = (int) ($hostPayload['telegram_user_id'] ?? 0);
 
         $bot = $this->productionBot();
         $account = $bot->accounts()->where('telegram_user_id', $telegramUserId)->first();
@@ -243,17 +270,24 @@ class TelegramHostSyncController
             return $this->encryptedResponse($request, ['ok' => true, 'found' => false]);
         }
 
+        $accountPayload = [
+            'telegram_user_id' => $telegramUserId,
+            'user_id' => $account->user_id,
+            'mobile' => $account->mobile,
+            'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
+            'display_name' => $account->display_name,
+            'is_bot_admin' => (bool) $account->is_bot_admin,
+        ];
+
+        $includeSnapshot = filter_var($hostPayload['include_snapshot'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($includeSnapshot && $account->mobile_verified_at !== null) {
+            $accountPayload['snapshot'] = $this->accountSnapshots->buildSnapshot($account);
+        }
+
         return $this->encryptedResponse($request, [
             'ok' => true,
             'found' => true,
-            'account' => [
-                'telegram_user_id' => $telegramUserId,
-                'user_id' => $account->user_id,
-                'mobile' => $account->mobile,
-                'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
-                'display_name' => $account->display_name,
-                'is_bot_admin' => (bool) $account->is_bot_admin,
-            ],
+            'account' => $accountPayload,
         ]);
     }
 

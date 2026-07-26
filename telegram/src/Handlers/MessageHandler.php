@@ -7,7 +7,7 @@ namespace TelegramHost\Handlers;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
-use TelegramHost\Http\LiveClient;
+use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -21,7 +21,7 @@ final class MessageHandler
     public function __construct(
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
-        private readonly LiveClient $live,
+        private readonly ResilientLiveClient $live,
         private readonly ConversationRepository $conversations,
         private readonly AccountCache $accounts,
         private readonly MainMenu $mainMenu,
@@ -41,14 +41,39 @@ final class MessageHandler
             return;
         }
 
+        if (isset($message['contact'])) {
+            // Unverified users: UpdateRouter relays to Iran synchronously.
+            return;
+        }
+
         if (isset($message['reply_to_message'])) {
-            $reply = $this->live->supportTryReply($telegramUserId, $message);
+            $reply = $this->live->supportTryReply($chatId, $telegramUserId, $message);
             if (! empty($reply['handled'])) {
+                return;
+            }
+            if (! empty($reply['offline'])) {
+                $this->api->sendMessage($chatId, (string) ($reply['message'] ?? ''));
+
                 return;
             }
         }
 
         $conversation = $this->conversations->get($telegramUserId);
+
+        if ($text === '/start' || str_starts_with($text, '/start ')) {
+            $this->handleStart($chatId, $telegramUserId);
+
+            return;
+        }
+
+        if ($conversation['state'] === 'waiting_for_support_message') {
+            // Relayed to Iran in UpdateRouter when this state is active.
+            return;
+        }
+
+        if ($conversation['state'] === 'waiting_for_card_to_card_receipt') {
+            return;
+        }
 
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
             $this->handleMenuButton($chatId, $telegramUserId, $text);
@@ -64,6 +89,27 @@ final class MessageHandler
 
         $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'از دکمه‌های منو استفاده کنید.'), [
             'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+        ]);
+    }
+
+    private function handleStart(int $chatId, int $telegramUserId): void
+    {
+        if ($this->accounts->isVerified($telegramUserId)) {
+            $this->sendMainMenu($chatId, $telegramUserId);
+
+            return;
+        }
+
+        $text = $this->cache->message(
+            'registration_ask_mobile',
+            "به ربات آکادمی بهرام خوش آمدید.\n\nبرای ادامه، شماره موبایل را از دکمه اشتراک‌گذاری بفرستید یا از سایت ثبت‌نام کنید.",
+        );
+        $this->api->sendMessage($chatId, $text, [
+            'reply_markup' => [
+                'keyboard' => [[['text' => '📱 اشتراک شماره موبایل', 'request_contact' => true]]],
+                'resize_keyboard' => true,
+                'one_time_keyboard' => true,
+            ],
         ]);
     }
 
@@ -113,25 +159,23 @@ final class MessageHandler
             return;
         }
 
-        foreach (array_slice($courses, 0, 10) as $course) {
+        $lines = [TelegramCustomEmoji::tag('graduation').' <b>دوره‌های فعال</b>', ''];
+        $keyboard = [];
+        foreach (array_slice($courses, 0, 12) as $course) {
             $productId = (int) $course['id'];
-            $present = $this->live->productPresent($telegramUserId, $productId);
-            if (! empty($present['ok']) && ! empty($present['owns'])) {
-                $this->sendProductView($chatId, $present);
-
-                continue;
-            }
-
-            $caption = CatalogPresenter::courseCaption($course);
-            $keyboard = ['reply_markup' => ['inline_keyboard' => [[InlineButtons::buy($productId)]]]];
-
-            $photo = (string) ($course['photo_url'] ?? $present['photo'] ?? '');
-            if ($photo !== '') {
-                $this->api->sendPhoto($chatId, $photo, $caption, $keyboard);
-            } else {
-                $this->api->sendMessage($chatId, $caption, $keyboard);
-            }
+            $title = trim((string) ($course['title'] ?? 'دوره'));
+            $price = isset($course['sale_price']) && (int) $course['sale_price'] > 0
+                ? (int) $course['sale_price']
+                : (int) ($course['price'] ?? 0);
+            $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8')
+                .($price > 0 ? ' — '.number_format($price).' تومان' : '');
+            $keyboard[] = [InlineButtons::buy($productId, mb_substr($title, 0, 28))];
         }
+
+        $this->api->sendMessage($chatId, implode("\n", $lines), [
+            'parse_mode' => 'HTML',
+            'reply_markup' => ['inline_keyboard' => $keyboard],
+        ]);
     }
 
     private function sendSeminarList(int $chatId, int $telegramUserId): void
@@ -143,31 +187,29 @@ final class MessageHandler
             return;
         }
 
-        foreach (array_slice($seminars, 0, 10) as $seminar) {
+        $lines = [TelegramCustomEmoji::tag('mic').' <b>سمینارها</b>', ''];
+        $keyboard = [];
+        foreach (array_slice($seminars, 0, 8) as $seminar) {
             $productId = (int) ($seminar['product_id'] ?? 0);
+            $seminarId = (int) ($seminar['id'] ?? 0);
+            $title = trim((string) ($seminar['title'] ?? 'سمینار'));
+            $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $row = [];
             if ($productId > 0) {
-                $present = $this->live->productPresent($telegramUserId, $productId);
-                if (! empty($present['ok']) && ! empty($present['owns'])) {
-                    $this->sendProductView($chatId, $present);
-
-                    continue;
-                }
+                $row[] = InlineButtons::buy($productId, 'ثبت‌نام / '.mb_substr($title, 0, 18));
             }
-
-            $caption = CatalogPresenter::seminarCaption($seminar);
-
-            $buttons = $productId > 0
-                ? [[InlineButtons::buy($productId, 'ثبت‌نام / پرداخت')], [InlineButtons::capacityCheck((int) $seminar['id'])]]
-                : [[InlineButtons::capacityCheck((int) $seminar['id'])]];
-            $keyboard = ['reply_markup' => ['inline_keyboard' => $buttons]];
-
-            $photo = (string) ($seminar['photo_url'] ?? '');
-            if ($photo !== '') {
-                $this->api->sendPhoto($chatId, $photo, $caption, $keyboard);
-            } else {
-                $this->api->sendMessage($chatId, $caption, $keyboard);
+            if ($seminarId > 0) {
+                $row[] = InlineButtons::capacityCheck($seminarId);
+            }
+            if ($row !== []) {
+                $keyboard[] = $row;
             }
         }
+
+        $this->api->sendMessage($chatId, implode("\n", $lines), [
+            'parse_mode' => 'HTML',
+            'reply_markup' => ['inline_keyboard' => $keyboard],
+        ]);
     }
 
     /** @param array<string, mixed> $present */
@@ -189,7 +231,7 @@ final class MessageHandler
 
     private function openSat(int $chatId, int $telegramUserId): void
     {
-        $result = $this->live->satOpen($telegramUserId, $chatId);
+        $result = $this->live->satOpen($chatId, $telegramUserId);
         if (! empty($result['state'])) {
             $this->conversations->set($telegramUserId, (string) $result['state'], (array) ($result['context'] ?? []));
         }
@@ -220,7 +262,15 @@ final class MessageHandler
 
     private function sendFamily(int $chatId, int $telegramUserId): void
     {
-        $result = $this->live->familySummary($telegramUserId);
+        $result = $this->accounts->familyResponse($telegramUserId);
+        if ($result === null || empty($result['text'])) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'account_snapshot_pending',
+                'اطلاعات خانواده هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+            ));
+
+            return;
+        }
         if (empty($result['ok']) && isset($result['message'])) {
             $this->api->sendMessage($chatId, (string) $result['message']);
 
@@ -240,7 +290,15 @@ final class MessageHandler
             return;
         }
 
-        $result = $this->live->referralSummary($telegramUserId);
+        $result = $this->accounts->referralResponse($telegramUserId);
+        if ($result === null) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'account_snapshot_pending',
+                'اطلاعات معرفی هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+            ));
+
+            return;
+        }
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'لینک معرفی در دسترس نیست.'));
 
@@ -268,15 +326,31 @@ final class MessageHandler
 
     private function sendAccount(int $chatId, int $telegramUserId): void
     {
-        $result = $this->live->userProfile($telegramUserId);
-        if (empty($result['ok'])) {
-            $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'حساب یافت نشد.'));
+        $result = $this->accounts->profileResponse($telegramUserId);
+        if ($result !== null && ! empty($result['ok'])) {
+            $this->api->sendMessage($chatId, (string) $result['text'], (array) ($result['options'] ?? [
+                'parse_mode' => 'HTML',
+            ]));
 
             return;
         }
 
-        $this->api->sendMessage($chatId, (string) $result['text'], (array) ($result['options'] ?? [
-            'parse_mode' => 'HTML',
-        ]));
+        $row = $this->accounts->get($telegramUserId);
+        if ($row !== null && ! empty($row['display_name'])) {
+            $lines = [
+                TelegramCustomEmoji::tag('user').' <b>'.htmlspecialchars((string) $row['display_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</b>',
+            ];
+            if (! empty($row['mobile'])) {
+                $lines[] = 'موبایل: <code>'.htmlspecialchars((string) $row['mobile'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</code>';
+            }
+            $this->api->sendMessage($chatId, implode("\n", $lines), ['parse_mode' => 'HTML']);
+
+            return;
+        }
+
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'account_snapshot_pending',
+            'اطلاعات حساب هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+        ));
     }
 }

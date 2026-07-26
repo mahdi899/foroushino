@@ -40,12 +40,23 @@ export async function loadTelegramHealth(): Promise<TelegramHealthSnapshot | nul
   }
 }
 
-export async function loadTelegramInfrastructure(): Promise<TelegramInfrastructureView | null> {
+export async function loadTelegramInfrastructure(): Promise<{
+  data: TelegramInfrastructureView | null;
+  error: string | null;
+}> {
   try {
-    const res = await adminFetch<{ data: TelegramInfrastructureView }>('/panel/telegram/infrastructure');
-    return res.data ?? null;
-  } catch {
-    return null;
+    const res = await adminFetch<{ data: TelegramInfrastructureView }>('/panel/telegram/infrastructure', {
+      timeoutMs: 30_000,
+    });
+    return { data: res.data ?? null, error: null };
+  } catch (e) {
+    const err = e as Error & { status?: number };
+    const detail = err.message || 'خطای ناشناخته';
+    const status = err.status ? ` (HTTP ${err.status})` : '';
+    return {
+      data: null,
+      error: `بارگذاری تنظیمات زیرساخت ناموفق${status}: ${detail}`,
+    };
   }
 }
 

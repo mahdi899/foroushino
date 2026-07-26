@@ -52,6 +52,13 @@ CREATE TABLE IF NOT EXISTS telegram_accounts_cache (
     mobile_verified_at DATETIME NULL,
     display_name VARCHAR(191) NULL,
     is_bot_admin TINYINT(1) NOT NULL DEFAULT 0,
+    snapshot_revision VARCHAR(64) NULL,
+    owned_product_ids TEXT NULL,
+    profile_json MEDIUMTEXT NULL,
+    referral_json MEDIUMTEXT NULL,
+    family_json MEDIUMTEXT NULL,
+    owned_presents_json MEDIUMTEXT NULL,
+    snapshot_synced_at DATETIME NULL,
     updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -72,4 +79,22 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     telegram_user_id BIGINT NOT NULL PRIMARY KEY,
     window_start INT NOT NULL,
     hits INT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS membership_cache (
+    telegram_user_id BIGINT NOT NULL,
+    chat_id VARCHAR(64) NOT NULL,
+    is_member TINYINT(1) NOT NULL DEFAULT 0,
+    checked_at DATETIME NOT NULL,
+    PRIMARY KEY (telegram_user_id, chat_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pending_iran_updates (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    update_json MEDIUMTEXT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_pending_iran_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

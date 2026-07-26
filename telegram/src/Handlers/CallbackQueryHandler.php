@@ -7,7 +7,7 @@ namespace TelegramHost\Handlers;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
-use TelegramHost\Http\LiveClient;
+use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -19,7 +19,7 @@ final class CallbackQueryHandler
     public function __construct(
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
-        private readonly LiveClient $live,
+        private readonly ResilientLiveClient $live,
         private readonly ConversationRepository $conversations,
         private readonly AccountCache $accounts,
         private readonly MainMenu $mainMenu,
@@ -109,6 +109,7 @@ final class CallbackQueryHandler
         }
 
         if ($data === 'membership:recheck') {
+            $this->membership->clearCacheForUser($telegramUserId);
             if ($this->membership->isSatisfied($telegramUserId)) {
                 $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('check').' عضویت تأیید شد.', [
                     'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
@@ -124,7 +125,7 @@ final class CallbackQueryHandler
 
         if (str_starts_with($data, 'seminar:check:')) {
             $seminarId = (int) substr($data, strlen('seminar:check:'));
-            $this->checkSeminarCapacity($chatId, $seminarId);
+            $this->checkSeminarCapacity($chatId, $telegramUserId, $seminarId);
         }
     }
 
@@ -134,7 +135,7 @@ final class CallbackQueryHandler
             return;
         }
 
-        $result = $this->live->supportPrepare($telegramUserId, $category);
+        $result = $this->live->supportPrepare($chatId, $telegramUserId, $category);
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'امکان شروع پشتیبانی نیست.'));
 
@@ -160,10 +161,9 @@ final class CallbackQueryHandler
             return;
         }
 
-        $owns = $this->live->accessOwns($telegramUserId, $productId);
-        if (! empty($owns['owns'])) {
-            $present = $this->live->productPresent($telegramUserId, $productId);
-            if (! empty($present['ok'])) {
+        if ($this->accounts->ownsProduct($telegramUserId, $productId)) {
+            $present = $this->accounts->ownedPresent($telegramUserId, $productId);
+            if ($present !== null && isset($present['text'])) {
                 $text = (string) $present['text'];
                 $options = (array) ($present['options'] ?? []);
                 $photo = (string) ($present['photo'] ?? '');
@@ -172,7 +172,14 @@ final class CallbackQueryHandler
                 } else {
                     $this->api->sendMessage($chatId, $text, $options);
                 }
+
+                return;
             }
+
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'account_snapshot_pending',
+                'جزئیات دسترسی دوره در حال همگام‌سازی است. چند دقیقه بعد دوباره «خرید» را بزنید.',
+            ));
 
             return;
         }
@@ -191,26 +198,63 @@ final class CallbackQueryHandler
         $this->purchaseFlow->promptDiscountCode($chatId, $telegramUserId, $productId, $title, $base, $sale);
     }
 
-    private function checkSeminarCapacity(int $chatId, int $seminarId): void
+    private function checkSeminarCapacity(int $chatId, int $telegramUserId, int $seminarId): void
     {
-        $result = $this->live->capacityCheck($seminarId);
-
-        if (empty($result['ok'])) {
-            $this->api->sendMessage($chatId, 'بررسی ظرفیت ناموفق بود — دوباره تلاش کنید.');
-
-            return;
-        }
-
-        if (! empty($result['is_full'])) {
-            $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
+        $result = $this->live->capacityCheck($chatId, $telegramUserId, $seminarId);
+        if (! empty($result['offline'])) {
+            $this->api->sendMessage($chatId, (string) ($result['message'] ?? ''));
 
             return;
         }
 
-        $remaining = $result['remaining_seats'] ?? null;
+        if (! empty($result['ok'])) {
+            if (! empty($result['is_full'])) {
+                $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
+
+                return;
+            }
+
+            $remaining = (int) ($result['remaining_seats'] ?? 0);
+            if ($remaining > 0) {
+                $this->api->sendMessage(
+                    $chatId,
+                    TelegramCustomEmoji::tag('check').' ظرفیت باز است ('.number_format($remaining).' صندلی باقی‌مانده).',
+                );
+
+                return;
+            }
+        }
+
+        $seminar = null;
+        foreach ($this->cache->seminars() as $row) {
+            if ((int) ($row['id'] ?? 0) === $seminarId) {
+                $seminar = $row;
+                break;
+            }
+        }
+
+        if ($seminar !== null) {
+            $hint = $seminar['capacity_hint'] ?? null;
+            if ($hint !== null && $hint !== '') {
+                $remaining = (int) $hint;
+                if ($remaining <= 0) {
+                    $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
+
+                    return;
+                }
+
+                $this->api->sendMessage(
+                    $chatId,
+                    TelegramCustomEmoji::tag('check').' ظرفیت باز است (حدود '.number_format($remaining).' صندلی — آخرین وضعیت هنگام پرداخت بررسی می‌شود).',
+                );
+
+                return;
+            }
+        }
+
         $this->api->sendMessage(
             $chatId,
-            TelegramCustomEmoji::tag('check').' ظرفیت باز است'.($remaining !== null ? " ({$remaining} صندلی باقی‌مانده)" : '').'.',
+            TelegramCustomEmoji::tag('notes').' برای ثبت‌نام از دکمه پرداخت استفاده کنید. ظرفیت دقیق هنگام پرداخت بررسی می‌شود.',
         );
     }
 }

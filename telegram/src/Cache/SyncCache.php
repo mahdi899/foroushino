@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Cache;
 
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Services\WebhookRegisterFromPull;
 
 /**
  * Reads/writes the long-lived cache tables (messages, feature flags,
@@ -13,11 +14,19 @@ use TelegramHost\Http\SyncClient;
  */
 final class SyncCache
 {
-    public function __construct(private readonly \PDO $pdo, private readonly SyncClient $sync) {}
+    /** @param array<string, mixed>|null $hostConfig */
+    public function __construct(
+        private readonly \PDO $pdo,
+        private readonly SyncClient $sync,
+        private readonly ?array $hostConfig = null,
+    ) {}
 
     public function refreshAll(): void
     {
         $bootstrap = $this->sync->call('bootstrap');
+        if ($this->hostConfig !== null) {
+            (new WebhookRegisterFromPull($this->hostConfig))->processIfRequested($bootstrap, $this->sync);
+        }
         $this->storeBootstrapOnly($bootstrap);
 
         $catalog = $this->sync->call('catalog');
@@ -44,6 +53,16 @@ final class SyncCache
 
         $this->storeFeatureFlags($flags);
         $this->storeRequiredChats((array) ($bootstrap['required_chats'] ?? []));
+        $revision = trim((string) ($bootstrap['catalog_revision'] ?? ''));
+        if ($revision !== '') {
+            $this->storeMessages(['__catalog_revision' => $revision]);
+        }
+
+        $reportsChat = trim((string) ($bootstrap['bot']['reports_group_chat_id'] ?? ''));
+        if ($reportsChat !== '') {
+            $this->storeMessages(['__reports_group_chat_id' => $reportsChat]);
+        }
+
         $this->touchSyncMeta('bootstrap');
     }
 
@@ -99,6 +118,33 @@ final class SyncCache
         return is_string($value) ? $value : null;
     }
 
+    public function catalogRevision(): string
+    {
+        return $this->message('__catalog_revision', '');
+    }
+
+    public function secondsSinceRevisionCheck(): int
+    {
+        $stmt = $this->pdo->prepare('SELECT synced_at FROM sync_meta WHERE sync_key = :key');
+        $stmt->execute(['key' => 'revision_check']);
+        $value = $stmt->fetchColumn();
+        if (! is_string($value) || $value === '') {
+            return PHP_INT_MAX;
+        }
+
+        return max(0, time() - strtotime($value));
+    }
+
+    public function markRevisionChecked(): void
+    {
+        $this->touchSyncMeta('revision_check');
+    }
+
+    public function touchSyncMetaPublic(string $key): void
+    {
+        $this->touchSyncMeta($key);
+    }
+
     public function checkoutZarinpalEnabled(): bool
     {
         return $this->featureEnabled('checkout_zarinpal');
@@ -112,6 +158,13 @@ final class SyncCache
     public function siteUrl(string $key, string $fallback = ''): string
     {
         return $this->message('site_url_'.$key, $fallback);
+    }
+
+    public function reportsGroupChatId(): ?string
+    {
+        $value = trim($this->message('__reports_group_chat_id', ''));
+
+        return $value !== '' ? $value : null;
     }
 
     public function botIsActive(): bool

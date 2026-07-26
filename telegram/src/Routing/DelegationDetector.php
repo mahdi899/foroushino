@@ -8,8 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Conversation\ConversationRepository;
 
 /**
- * Decides whether an update must run on the Iran server (registration,
- * admin panel, groups, C2C receipt, SAT, support with server state).
+ * Decides which updates should be relayed to Iran in the background (never blocks the user).
  */
 final class DelegationDetector
 {
@@ -33,18 +32,13 @@ final class DelegationDetector
     ) {}
 
     /** @param array<string, mixed> $update */
-    public function shouldDelegate(array $update): bool
+    public function shouldRelayToIran(array $update): bool
     {
         if (isset($update['my_chat_member']) || isset($update['chat_member']) || isset($update['chat_join_request'])) {
             return true;
         }
 
         if (isset($update['edited_message'])) {
-            return true;
-        }
-
-        $chatType = $this->chatType($update);
-        if ($chatType !== null && $chatType !== 'private') {
             return true;
         }
 
@@ -79,16 +73,19 @@ final class DelegationDetector
     }
 
     /** @param array<string, mixed> $update */
-    private function chatType(array $update): ?string
+    public function isPrivateUserFacing(array $update): bool
     {
-        foreach (['message', 'callback_query', 'edited_message'] as $key) {
-            $type = $update[$key]['message']['chat']['type'] ?? $update[$key]['chat']['type'] ?? null;
-            if (is_string($type) && $type !== '') {
-                return $type;
-            }
+        if (isset($update['callback_query'])) {
+            return true;
         }
 
-        return null;
+        if (isset($update['message'])) {
+            $type = (string) ($update['message']['chat']['type'] ?? 'private');
+
+            return $type === 'private';
+        }
+
+        return false;
     }
 
     /** @param array<string, mixed> $update */

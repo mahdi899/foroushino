@@ -2,12 +2,11 @@
 
 namespace App\Modules\TelegramBot\Services;
 
-use App\Jobs\PushTelegramHostSyncJob;
+use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Enums\OtpPurpose;
 use App\Models\User;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Enums\ConversationState;
-use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramConversation;
 use App\Modules\TelegramBot\Models\TelegramLegalDocument;
@@ -15,6 +14,7 @@ use App\Modules\TelegramBot\Models\TelegramTermsAcceptance;
 use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
+use App\Services\TelegramHostAccountSync;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -398,14 +398,7 @@ class RegistrationFlowService
 
         $account->refresh();
         if ($bot->key === 'production') {
-            PushTelegramHostSyncJob::account([
-                'telegram_user_id' => $account->telegram_user_id,
-                'user_id' => $account->user_id,
-                'mobile' => $account->mobile,
-                'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
-                'display_name' => $account->display_name,
-                'is_bot_admin' => (bool) $account->is_bot_admin,
-            ]);
+            app(TelegramHostAccountSync::class)->queuePush($account);
         }
 
         $this->sendMainMenu($bot, $account->fresh());

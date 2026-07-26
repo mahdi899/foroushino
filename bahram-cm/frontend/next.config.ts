@@ -125,8 +125,15 @@ const config: NextConfig = {
       { key: "Cache-Control", value: CDN_STATIC_IMMUTABLE },
       { key: "CDN-Cache-Control", value: CDN_STATIC_IMMUTABLE },
     ];
+    const swNoStore = [
+      { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+      { key: "CDN-Cache-Control", value: "no-store" },
+    ];
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
+      { source: "/sw-family.js", headers: swNoStore },
+      { source: "/sw-site.js", headers: swNoStore },
+      { source: "/sw-panel.js", headers: swNoStore },
       { source: "/_next/static/:path*", headers: immutable },
       { source: "/fonts/:path*", headers: immutable },
       { source: "/icons/:path*", headers: immutable },

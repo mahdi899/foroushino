@@ -182,9 +182,18 @@ class TelegramInfrastructureService
         }
 
         if ($this->usesHostBridge()) {
+            $workerRelay = trim((string) config('telegram_bot.api_base_url', ''));
+            if (
+                $workerRelay !== ''
+                && $workerRelay !== self::DEFAULT_BASE_URL
+                && $this->proxySharedToken() !== null
+            ) {
+                return rtrim($workerRelay, '/');
+            }
+
             $relay = trim((string) config('telegram_bot.host_api_proxy_url', ''));
             if ($relay !== '' && $this->proxySharedToken() !== null) {
-                return $relay;
+                return rtrim($relay, '/');
             }
         }
 
@@ -637,18 +646,28 @@ class TelegramInfrastructureService
 
         try {
             if ($this->usesHostBridge()) {
+                $this->queueHostWebhookRegistration($url, $secret);
                 $hostResult = app(TelegramHostPushService::class)->registerWebhook($url, $secret);
                 if (! ($hostResult['ok'] ?? false)) {
-                    $error = (string) ($hostResult['error'] ?? 'host_error');
-
-                    return [
-                        'ok' => false,
-                        'message' => 'ثبت وب‌هوک ناموفق: '.$error
-                            .' — هاست: '.$this->hostWebhookUrl()
-                            .' (سرور ایران به api.telegram.org دسترسی ندارد؛ از هاست خارج ثبت می‌شود)',
-                    ];
+                    try {
+                        $clients->forBot($bot)->setWebhook($url, $secret);
+                        $this->clearHostWebhookRegistration();
+                    } catch (\Throwable $relayError) {
+                        return [
+                            'ok' => true,
+                            'message' => 'سرور ایران به هاست خارج (`host-sync.php`) وصل نمی‌شود؛ ثبت مستقیم از طریق Worker هم ناموفق بود: '
+                                .$relayError->getMessage()
+                                .' — درخواست در صف است تا cron هاست (`pull-sync.php`) وب‌هوک را ثبت کند.'
+                                .' یا یک‌بار `register-webhook.php?token=…` را روی هاست خارج باز کنید.'
+                                .' — هاست: '.$this->hostWebhookUrl(),
+                            'url' => $url,
+                            'queued' => true,
+                        ];
+                    }
+                } else {
+                    $this->clearHostWebhookRegistration();
+                    $url = (string) ($hostResult['url'] ?? $url);
                 }
-                $url = (string) ($hostResult['url'] ?? $url);
             } else {
                 $clients->forBot($bot)->setWebhook($url, $secret);
             }
@@ -686,6 +705,78 @@ class TelegramInfrastructureService
         }
 
         TelegramBot::query()->where('key', 'production')->update(['webhook_secret' => $secret]);
+    }
+
+    public function queueHostWebhookRegistration(string $url, ?string $secret): void
+    {
+        $next = $this->stored();
+        $next['host_pending_webhook'] = [
+            'nonce' => Str::random(32),
+            'url' => $url,
+            'secret' => $secret ?? '',
+            'requested_at' => now()->toIso8601String(),
+        ];
+
+        $this->settings->updateGroup(self::GROUP, [self::KEY => $next]);
+        self::forgetCachedConfig();
+    }
+
+    /** @return array<string, mixed> */
+    public function pendingHostWebhookBootstrapExtra(): array
+    {
+        $pending = $this->pendingHostWebhookForSync();
+        if ($pending === null) {
+            return [];
+        }
+
+        return [
+            'webhook_register' => [
+                'nonce' => $pending['nonce'],
+                'url' => $pending['url'],
+                'secret' => $pending['secret'],
+            ],
+        ];
+    }
+
+    /** @return array{nonce: string, url: string, secret: string, requested_at: string}|null */
+    public function pendingHostWebhookForSync(): ?array
+    {
+        $raw = $this->stored()['host_pending_webhook'] ?? null;
+        if (! is_array($raw)) {
+            return null;
+        }
+
+        $nonce = trim((string) ($raw['nonce'] ?? ''));
+        $url = trim((string) ($raw['url'] ?? ''));
+        if ($nonce === '' || $url === '') {
+            return null;
+        }
+
+        return [
+            'nonce' => $nonce,
+            'url' => $url,
+            'secret' => (string) ($raw['secret'] ?? ''),
+            'requested_at' => (string) ($raw['requested_at'] ?? ''),
+        ];
+    }
+
+    public function clearHostWebhookRegistration(?string $nonce = null): bool
+    {
+        $pending = $this->pendingHostWebhookForSync();
+        if ($pending === null) {
+            return false;
+        }
+
+        if ($nonce !== null && ! hash_equals($pending['nonce'], $nonce)) {
+            return false;
+        }
+
+        $next = $this->stored();
+        unset($next['host_pending_webhook']);
+        $this->settings->updateGroup(self::GROUP, [self::KEY => $next]);
+        self::forgetCachedConfig();
+
+        return true;
     }
 
     private function maskSecret(string $value): string
@@ -746,5 +837,26 @@ class TelegramInfrastructureService
             || str_contains($message, 'could not resolve')
             || str_contains($message, 'ssl')
             || str_contains($message, 'curl error');
+    }
+
+    private function formatHostWebhookPushError(string $error): string
+    {
+        $hostWebhook = $this->hostWebhookUrl();
+        $pushUrl = $this->hostPushUrl();
+        $base = 'ثبت وب‌هوک ناموفق: '.$error.' — هاست: '.$hostWebhook;
+
+        $lower = strtolower($error);
+        $hostUnreachable = str_contains($lower, 'timed out')
+            || str_contains($lower, 'timeout')
+            || str_contains($lower, 'could not resolve')
+            || $error === 'host_unreachable';
+
+        if ($hostUnreachable) {
+            return $base
+                .' — سرور اصلی به '.$pushUrl.' نرسید (فایروال/فیلتر یا MySQL هاست گیر کرده).'
+                .' روی هاست: diagnose.php و register-webhook.php?token=… را بزنید؛ MySQL و cron/pull-sync را چک کنید.';
+        }
+
+        return $base.' (ثبت setWebhook روی هاست خارج انجام می‌شود، نه از سرور ایران).';
     }
 }

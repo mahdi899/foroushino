@@ -49,6 +49,17 @@ return [
         'charset' => 'utf8mb4',
     ],
 
-    // Cron pull interval hint (seconds). Server push invalidates cache immediately.
+    // Event-driven only — Iran pushes to host-sync.php; no cPanel cron required.
+    // After each webhook, drain a few queued Iran updates (registration/support relay).
+    'iran_relay_per_webhook' => 5,
+
+    'pull_sync_enabled' => false,
+    'pull_sync_min_interval_seconds' => 3600,
+    'membership_cache_ttl_seconds' => 900,
+
+    // Optional override — normally synced from Iran bootstrap (گروه گزارشات پشتیبانی).
+    // 'reports_group_chat_id' => '-100xxxxxxxxxx',
+
+    // Legacy hint (unused when pull_sync_enabled is false).
     'cache_ttl_seconds' => 300,
 ];

@@ -9,10 +9,14 @@ use App\Listeners\NotifySatTelegramGroupAccessListener;
 use App\Listeners\PushSatApplicationToExternalListener;
 use App\Listeners\TryActivateSatMembershipListener;
 use App\Models\FamilyMedia;
+use App\Models\Product;
 use App\Models\PersonalAccessToken;
 use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Observers\FamilyMediaObserver;
+use App\Observers\ProductTelegramCatalogObserver;
+use App\Modules\TelegramBot\Models\TelegramAccount;
+use App\Observers\TelegramAccountHostSyncObserver;
 use App\Observers\SeminarAttendeeObserver;
 use App\Observers\SeminarObserver;
 use App\Support\MediaFtpConnection;
@@ -37,6 +41,8 @@ class AppServiceProvider extends ServiceProvider
         Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
         FamilyMedia::observe(FamilyMediaObserver::class);
+        Product::observe(ProductTelegramCatalogObserver::class);
+        TelegramAccount::observe(TelegramAccountHostSyncObserver::class);
         Seminar::observe(SeminarObserver::class);
         SeminarAttendee::observe(SeminarAttendeeObserver::class);
 

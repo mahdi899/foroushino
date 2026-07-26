@@ -5,6 +5,8 @@ namespace App\Modules\TelegramBot\Jobs;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Models\NotificationOutbox;
 use App\Modules\TelegramBot\Models\TelegramAccount;
+use App\Services\TelegramHostPushService;
+use App\Services\TelegramInfrastructureService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,7 +25,7 @@ class ProcessNotificationOutboxJob implements ShouldQueue
         public readonly string $outboxId,
     ) {}
 
-    public function handle(TelegramBotClientFactory $factory): void
+    public function handle(TelegramBotClientFactory $factory, TelegramHostPushService $hostPush, TelegramInfrastructureService $infra): void
     {
         $row = NotificationOutbox::query()->find($this->outboxId);
 
@@ -45,12 +47,17 @@ class ProcessNotificationOutboxJob implements ShouldQueue
 
                 if ($account?->bot) {
                     $text = (string) ($row->payload['text'] ?? '');
+                    $options = (array) ($row->payload['options'] ?? []);
                     if ($text !== '') {
-                        $factory->forBot($account->bot)->sendMessage(
-                            $account->telegram_user_id,
-                            $text,
-                            (array) ($row->payload['options'] ?? []),
-                        );
+                        if ($infra->usesHostBridge()) {
+                            $hostPush->notifyUser((int) $account->telegram_user_id, $text, $options);
+                        } else {
+                            $factory->forBot($account->bot)->sendMessage(
+                                $account->telegram_user_id,
+                                $text,
+                                $options,
+                            );
+                        }
                     }
                 }
             }

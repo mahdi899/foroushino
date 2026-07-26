@@ -1,6 +1,7 @@
 'use client';
 
 import { useLayoutEffect } from 'react';
+import { unregisterSiteServiceWorker } from '@/lib/pwa/unregisterBahramServiceWorkers';
 
 async function unregisterFamilyServiceWorkers() {
   if (!('serviceWorker' in navigator)) return;
@@ -49,11 +50,17 @@ export function FamilyServiceWorkerRegistrar() {
 
     if (!('serviceWorker' in navigator)) return;
 
-    void navigator.serviceWorker
-      .register('/sw-family.js', { scope: familyServiceWorkerScope() })
-      .catch((error) => {
+    const scope = familyServiceWorkerScope();
+
+    void (async () => {
+      if (scope === '/') {
+        await unregisterSiteServiceWorker();
+      }
+
+      await navigator.serviceWorker.register('/sw-family.js', { scope }).catch((error) => {
         console.warn('[family-pwa] service worker registration failed', error);
       });
+    })();
   }, []);
 
   return null;

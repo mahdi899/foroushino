@@ -13,6 +13,13 @@ class PushTelegramHostSyncJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 6;
+
+    /** @var list<int> */
+    public array $backoff = [20, 60, 120, 300, 600, 900];
+
+    public int $timeout = 120;
+
     /** @param  array<string, mixed>  $extra */
     public function __construct(
         public readonly string $action,
@@ -21,13 +28,25 @@ class PushTelegramHostSyncJob implements ShouldQueue
 
     public function handle(TelegramHostPushService $push): void
     {
-        match ($this->action) {
-            'refresh_bootstrap' => $push->refreshBootstrap(),
-            'refresh_catalog' => $push->refreshCatalog(),
-            'refresh_all' => $push->refreshAll(),
-            'push_account' => $push->pushAccount((array) ($this->extra['account'] ?? [])),
-            default => $push->refreshAll(),
+        $ok = match ($this->action) {
+            'refresh_bootstrap' => $push->runAction('refresh_bootstrap'),
+            'refresh_catalog' => $push->runAction('refresh_catalog'),
+            'refresh_all' => $push->runAction('refresh_all'),
+            'notify_user' => $push->runAction('notify_user', [
+                'telegram_user_id' => (int) ($this->extra['telegram_user_id'] ?? 0),
+                'text' => (string) ($this->extra['text'] ?? ''),
+                'options' => (array) ($this->extra['options'] ?? []),
+            ]),
+            'push_account' => $push->runAction('push_account', [
+                'account' => (array) ($this->extra['account'] ?? []),
+                'notification' => (array) ($this->extra['notification'] ?? []),
+            ]),
+            default => $push->runAction('refresh_all'),
         };
+
+        if (! $ok) {
+            throw new \RuntimeException('Telegram host push failed: '.$this->action);
+        }
     }
 
     public static function bootstrap(): void
@@ -49,5 +68,14 @@ class PushTelegramHostSyncJob implements ShouldQueue
     public static function account(array $account): void
     {
         self::dispatch('push_account', ['account' => $account]);
+    }
+
+    public static function notifyUser(int $telegramUserId, string $text, array $options = []): void
+    {
+        self::dispatch('notify_user', [
+            'telegram_user_id' => $telegramUserId,
+            'text' => $text,
+            'options' => $options,
+        ]);
     }
 }

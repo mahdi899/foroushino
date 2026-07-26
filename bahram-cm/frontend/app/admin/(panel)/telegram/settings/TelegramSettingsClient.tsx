@@ -18,11 +18,13 @@ export function TelegramSettingsClient({
   bots,
   profiles: initialProfiles,
   infrastructure,
+  infrastructureError,
   workerSample,
 }: {
   bots: TelegramBotView[];
   profiles: Record<number, TelegramBotProfileView>;
   infrastructure: TelegramInfrastructureView | null;
+  infrastructureError?: string | null;
   workerSample: string | null;
 }) {
   const router = useRouter();
@@ -52,7 +54,11 @@ export function TelegramSettingsClient({
 
   return (
     <div className="admin-telegram-subpage__stack">
-      <TelegramBridgeSettingsSection initial={infrastructure} workerSample={workerSample} />
+      <TelegramBridgeSettingsSection
+        initial={infrastructure}
+        workerSample={workerSample}
+        loadError={infrastructureError}
+      />
 
       <AdminContentPanel title="پرداخت زرین‌پال (مشترک با سایت)">
         <p className="text-small text-text-muted leading-relaxed">

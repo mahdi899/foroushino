@@ -20,8 +20,75 @@ final class InboundSyncHandler
     /** @param array<string, mixed> $config */
     public function __construct(private readonly array $config) {}
 
-    /** @return array{ok: bool, action?: string, error?: string} */
+    /**
+     * @return array{ok: bool, action?: string, error?: string, defer?: bool, payload?: array<string, mixed>}
+     */
     public function handle(string $encryptedBody, string $timestamp, string $nonce, string $signature, string $origin, string $bearer): array
+    {
+        $payload = $this->decodePayload($encryptedBody, $timestamp, $nonce, $signature, $origin, $bearer);
+        if (! ($payload['ok'] ?? false)) {
+            return $payload;
+        }
+
+        /** @var array<string, mixed> $body */
+        $body = $payload['payload'];
+        $action = (string) ($body['action'] ?? 'refresh_all');
+
+        if ($action === 'register_webhook') {
+            return array_merge($this->registerWebhook($body), ['defer' => false]);
+        }
+
+        if ($action === 'notify_user') {
+            return array_merge($this->deliverNotification($body), ['defer' => false]);
+        }
+
+        if ($action === 'push_account') {
+            $account = (array) ($body['account'] ?? []);
+            $telegramUserId = (int) ($account['telegram_user_id'] ?? 0);
+            $notification = (array) ($body['notification'] ?? []);
+            $notifyText = trim((string) ($notification['text'] ?? ''));
+            if ($telegramUserId > 0 && $notifyText !== '') {
+                $this->deliverNotification([
+                    'telegram_user_id' => $telegramUserId,
+                    'text' => $notifyText,
+                    'options' => (array) ($notification['options'] ?? []),
+                ]);
+            }
+        }
+
+        return [
+            'ok' => true,
+            'action' => $action,
+            'defer' => true,
+            'payload' => $body,
+        ];
+    }
+
+    /** Run heavy sync after HTTP response was flushed to Iran. */
+    public function runDeferred(string $action, array $body): void
+    {
+        $pdo = Connection::get($this->config);
+        $sync = new SyncClient($this->config);
+        $cache = new SyncCache($pdo, $sync, $this->config);
+
+        if ($action === 'push_account') {
+            $this->pushAccount($pdo, $body);
+
+            return;
+        }
+
+        match ($action) {
+            'refresh_bootstrap' => $this->refreshBootstrap($cache),
+            'refresh_catalog' => $this->refreshCatalog($cache),
+            'refresh_all' => $this->refreshAll($cache),
+            default => $this->refreshAll($cache),
+        };
+    }
+
+    /**
+     * @return array{ok: bool, error?: string, payload?: array<string, mixed>}
+     */
+    private function decodePayload(string $encryptedBody, string $timestamp, string $nonce, string $signature, string $origin, string $bearer): array
     {
         $expectedOrigin = (string) ($this->config['server_push_origin'] ?? 'Main-Server');
         if (! hash_equals($expectedOrigin, $origin)) {
@@ -43,23 +110,10 @@ final class InboundSyncHandler
         }
 
         $payload = json_decode($plaintext, true);
-        if (! is_array($payload)) {
-            return ['ok' => false, 'error' => 'invalid_payload'];
-        }
 
-        $action = (string) ($payload['action'] ?? 'refresh_all');
-        $pdo = Connection::get($this->config);
-        $sync = new SyncClient($this->config);
-        $cache = new SyncCache($pdo, $sync);
-
-        return match ($action) {
-            'refresh_bootstrap' => $this->refreshBootstrap($cache),
-            'refresh_catalog' => $this->refreshCatalog($cache),
-            'refresh_all' => $this->refreshAll($cache),
-            'push_account' => $this->pushAccount($pdo, $payload),
-            'register_webhook' => $this->registerWebhook($payload),
-            default => $this->refreshAll($cache),
-        };
+        return is_array($payload)
+            ? ['ok' => true, 'payload' => $payload]
+            : ['ok' => false, 'error' => 'invalid_payload'];
     }
 
     /** @return array{ok: bool, action: string} */
@@ -107,36 +161,41 @@ final class InboundSyncHandler
 
     /**
      * @param  array<string, mixed>  $payload
+     * @return array{ok: bool, action: string, error?: string}
+     */
+    private function deliverNotification(array $payload): array
+    {
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $text = trim((string) ($payload['text'] ?? ''));
+        if ($telegramUserId <= 0 || $text === '') {
+            return ['ok' => false, 'action' => 'notify_user', 'error' => 'invalid_payload'];
+        }
+
+        $api = new BotApiClient((string) $this->config['bot_token']);
+        $options = (array) ($payload['options'] ?? []);
+        if (! isset($options['parse_mode'])) {
+            $options['parse_mode'] = 'HTML';
+        }
+        $api->sendMessage($telegramUserId, $text, $options);
+
+        return ['ok' => true, 'action' => 'notify_user'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
      * @return array{ok: bool, action: string, url?: string, error?: string}
      */
     private function registerWebhook(array $payload): array
     {
         $url = trim((string) ($payload['url'] ?? ''));
         if ($url === '') {
-            $base = rtrim((string) ($this->config['host_public_url'] ?? ''), '/');
-            $url = $base !== '' ? $base.'/public/webhook.php' : '';
+            return ['ok' => false, 'action' => 'register_webhook', 'error' => 'url_missing'];
         }
 
-        if ($url === '') {
-            return ['ok' => false, 'action' => 'register_webhook', 'error' => 'missing_webhook_url'];
-        }
+        $secret = (string) ($payload['secret'] ?? '');
+        $api = new BotApiClient((string) $this->config['bot_token']);
+        $api->setWebhook($url, $secret !== '' ? $secret : null);
 
-        $token = trim((string) ($this->config['bot_token'] ?? ''));
-        if ($token === '') {
-            return ['ok' => false, 'action' => 'register_webhook', 'error' => 'missing_bot_token'];
-        }
-
-        $secret = trim((string) ($payload['secret'] ?? ''));
-        if ($secret === '') {
-            $secret = trim((string) ($this->config['webhook_secret'] ?? ''));
-        }
-
-        try {
-            (new BotApiClient($token))->setWebhook($url, $secret !== '' ? $secret : null);
-
-            return ['ok' => true, 'action' => 'register_webhook', 'url' => $url];
-        } catch (\Throwable $e) {
-            return ['ok' => false, 'action' => 'register_webhook', 'error' => $e->getMessage()];
-        }
+        return ['ok' => true, 'action' => 'register_webhook', 'url' => $url];
     }
 }

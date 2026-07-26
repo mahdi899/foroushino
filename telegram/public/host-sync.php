@@ -20,7 +20,33 @@ $signature = (string) ($_SERVER['HTTP_X_SIGNATURE'] ?? '');
 try {
     $handler = new InboundSyncHandler($config);
     $result = $handler->handle($raw, $timestamp, $nonce, $signature, $origin, $bearer);
-    http_response_code($result['ok'] ? 200 : 403);
+
+    if (! ($result['ok'] ?? false)) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
+
+        return;
+    }
+
+    if (! empty($result['defer'])) {
+        http_response_code(200);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => true, 'action' => $result['action'] ?? 'sync'], JSON_UNESCAPED_UNICODE);
+
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+
+        $action = (string) ($result['action'] ?? 'refresh_all');
+        /** @var array<string, mixed> $body */
+        $body = is_array($result['payload'] ?? null) ? $result['payload'] : [];
+        $handler->runDeferred($action, $body);
+
+        return;
+    }
+
+    http_response_code(200);
     header('Content-Type: application/json');
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
 } catch (\Throwable $e) {

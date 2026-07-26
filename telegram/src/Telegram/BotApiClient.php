@@ -70,6 +70,18 @@ final class BotApiClient
         }
     }
 
+    public function sendChatAction(int|string $chatId, string $action = 'typing'): void
+    {
+        try {
+            $this->call('sendChatAction', [
+                'chat_id' => $chatId,
+                'action' => $action,
+            ]);
+        } catch (\Throwable) {
+            // Non-critical — never block Iran calls if typing fails.
+        }
+    }
+
     public function answerCallbackQuery(string $callbackQueryId, string $text = '', bool $showAlert = false): void
     {
         $this->call('answerCallbackQuery', [
@@ -125,8 +137,8 @@ final class BotApiClient
             CURLOPT_POSTFIELDS => json_encode($params, JSON_UNESCAPED_UNICODE),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 12,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 8,
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_FORBID_REUSE => false,

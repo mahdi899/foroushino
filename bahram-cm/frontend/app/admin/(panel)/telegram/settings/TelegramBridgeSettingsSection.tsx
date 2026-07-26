@@ -7,9 +7,11 @@ import { TelegramBridgePanel } from '@/components/admin/telegram/TelegramBridgeP
 export function TelegramBridgeSettingsSection({
   initial,
   workerSample,
+  loadError,
 }: {
   initial: TelegramInfrastructureView | null;
   workerSample: string | null;
+  loadError?: string | null;
 }) {
   const [status, setStatus] = useState('');
   const [, startTransition] = useTransition();
@@ -17,7 +19,17 @@ export function TelegramBridgeSettingsSection({
   if (!initial) {
     return (
       <div className="card p-4 text-caption text-text-muted">
-        سرور Laravel روشن نیست — <code dir="ltr">php artisan serve --port=8010</code>
+        {loadError ? (
+          <p className="whitespace-pre-wrap text-danger" dir="auto">
+            {loadError}
+          </p>
+        ) : (
+          <p>
+            تنظیمات زیرساخت بارگذاری نشد. در production بک‌اند از nginx روی{' '}
+            <code dir="ltr">127.0.0.1:8010</code> است (نه <code dir="ltr">artisan serve</code>). صفحه را رفرش
+            کنید.
+          </p>
+        )}
       </div>
     );
   }

@@ -10,7 +10,10 @@ use TelegramHost\Db\Connection;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
 use TelegramHost\Http\LiveClient;
+use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Queue\BackgroundIranRelay;
+use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Routing\DelegationDetector;
 use TelegramHost\Routing\UpdateRouter;
 use TelegramHost\Security\RateLimiter;
@@ -75,15 +78,28 @@ try {
     }
 
     $sync = new SyncClient($config);
-    $live = new LiveClient($sync);
-    $cache = new SyncCache($pdo, $sync);
+    $liveClient = new LiveClient($sync);
+    $iranQueue = new IranUpdateQueue($pdo);
+    $cache = new SyncCache($pdo, $sync, $config);
     $accounts = new AccountCache($pdo);
     $conversations = new ConversationRepository($pdo);
     $api = new BotApiClient((string) $config['bot_token']);
+
+    $reporter = new \TelegramHost\Services\IranFailureReporter($api, $cache, $accounts, $config);
+    $offlineUserMessage = new \TelegramHost\Services\IranOfflineUserMessage($cache);
+    $live = new ResilientLiveClient($liveClient, $api, $reporter, $offlineUserMessage);
+    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter, $offlineUserMessage);
+
+    $maxRelay = max(0, (int) ($config['iran_relay_per_webhook'] ?? 2));
+    $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
+    $membershipCache = new \TelegramHost\Services\MembershipCheckCache(
+        $pdo,
+        max(300, (int) ($config['membership_cache_ttl_seconds'] ?? 900)),
+    );
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
     $mainMenu = new MainMenu($cache, $accounts);
-    $membership = new MembershipGate($cache, $api);
+    $membership = new MembershipGate($cache, $api, $membershipCache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
 
     $messageHandler = new MessageHandler(
@@ -112,8 +128,7 @@ try {
 
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
-        $live,
-        $sync,
+        $iranSync,
         $accounts,
         $cache,
         $api,
@@ -122,6 +137,12 @@ try {
     );
 
     (new Bot($router))->handle($update);
+
+    try {
+        $iranRelay->drain();
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] iran relay: '.$e->getMessage());
+    }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());
 }
