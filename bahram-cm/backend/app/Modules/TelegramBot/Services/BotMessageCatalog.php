@@ -245,7 +245,7 @@ class BotMessageCatalog
         Cache::forget($this->cacheKey((int) $bot->id, $key));
 
         if ($bot->key === 'production') {
-            app(TelegramHostCatalogRevision::class)->bump();
+            app(TelegramHostCatalogRevision::class)->bump(scope: 'bootstrap');
         }
 
         return $row;
@@ -261,7 +261,7 @@ class BotMessageCatalog
         Cache::forget($this->cacheKey((int) $bot->id, $key));
 
         if ($bot->key === 'production') {
-            app(TelegramHostCatalogRevision::class)->bump();
+            app(TelegramHostCatalogRevision::class)->bump(scope: 'bootstrap');
         }
     }
 

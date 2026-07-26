@@ -14,6 +14,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('telegram:cleanup')->hourly()->onOneServer();
 Schedule::command('telegram:reconcile-webhook')->everyMinute()->onOneServer();
+Schedule::command('telegram:host-push-retry')->everyThreeMinutes()->onOneServer();
 Schedule::command('telegram:health-check')->hourly()->onOneServer();
 Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServer();
 

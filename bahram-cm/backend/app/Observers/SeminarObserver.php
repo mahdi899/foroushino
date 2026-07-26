@@ -27,12 +27,12 @@ class SeminarObserver
         unset(self::$previousSlugs[$seminar->getKey()]);
 
         $this->publish->revalidateSeminars($seminar->slug, $previousSlug);
-        app(TelegramHostCatalogRevision::class)->bump();
+        app(TelegramHostCatalogRevision::class)->bump(scope: 'catalog');
     }
 
     public function deleted(Seminar $seminar): void
     {
         $this->publish->revalidateSeminars($seminar->slug);
-        app(TelegramHostCatalogRevision::class)->bump();
+        app(TelegramHostCatalogRevision::class)->bump(scope: 'catalog');
     }
 }

@@ -49,6 +49,10 @@ return [
         'charset' => 'utf8mb4',
     ],
 
-    // Cron pull interval hint (seconds). Server push invalidates cache immediately.
+    // Cron pull from Iran is OFF by default — the main server pushes to host-sync.php.
+    'pull_sync_enabled' => false,
+    'pull_sync_min_interval_seconds' => 3600,
+
+    // Legacy hint (unused when pull_sync_enabled is false).
     'cache_ttl_seconds' => 300,
 ];

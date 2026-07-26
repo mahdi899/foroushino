@@ -10,33 +10,56 @@ use Illuminate\Support\Facades\Log;
 /**
  * Pushes cache-invalidation / account-sync commands from the main Laravel
  * server to the external Telegram "host" app (telegram/ on cPanel).
- *
- * Uses the same HMAC + AES-256-GCM wire format as host→server sync, but in
- * the opposite direction. The host verifies these at public/host-sync.php.
  */
 class TelegramHostPushService
 {
     public const PUSH_ORIGIN = 'Main-Server';
 
-    public function refreshBootstrap(): void
+    public function __construct(private readonly TelegramHostPushState $pushState) {}
+
+    public function refreshBootstrap(): bool
     {
-        $this->push('refresh_bootstrap');
+        return $this->runAction('refresh_bootstrap');
     }
 
-    public function refreshCatalog(): void
+    public function refreshCatalog(): bool
     {
-        $this->push('refresh_catalog');
+        return $this->runAction('refresh_catalog');
     }
 
-    public function refreshAll(): void
+    public function refreshAll(): bool
     {
-        $this->push('refresh_all');
+        return $this->runAction('refresh_all');
     }
 
     /** @param  array<string, mixed>  $account */
-    public function pushAccount(array $account): void
+    public function pushAccount(array $account): bool
     {
-        $this->push('push_account', ['account' => $account]);
+        return $this->runAction('push_account', ['account' => $account]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    public function runAction(string $action, array $extra = []): bool
+    {
+        if ($action === 'push_account') {
+            $result = $this->request('push_account', $extra);
+        } else {
+            $result = $this->request($action);
+        }
+
+        if ($result !== null && ($result['ok'] ?? false)) {
+            $this->pushState->clear();
+
+            return true;
+        }
+
+        if ($action !== 'push_account') {
+            $this->pushState->markPending($action);
+        }
+
+        return false;
     }
 
     /**
@@ -68,12 +91,6 @@ class TelegramHostPushService
         ];
     }
 
-    /** @param  array<string, mixed>  $extra */
-    private function push(string $action, array $extra = []): void
-    {
-        $this->request($action, $extra);
-    }
-
     /**
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>|null
@@ -103,9 +120,15 @@ class TelegramHostPushService
             $encrypted = AesGcmCipher::encrypt($json, $aesKey);
             $headers = HmacSigner::headersFor(['body' => $encrypted], $hmacSecret);
 
-            $timeout = $action === 'register_webhook' ? 45 : 12;
+            $timeout = match ($action) {
+                'register_webhook' => 45,
+                'push_account' => 25,
+                'refresh_catalog', 'refresh_bootstrap' => 20,
+                default => 30,
+            };
 
             $response = Http::timeout($timeout)
+                ->connectTimeout(8)
                 ->withHeaders(array_merge($headers, [
                     'Authorization' => 'Bearer '.$hmacSecret,
                     'X-Proxy-Origin' => self::PUSH_ORIGIN,

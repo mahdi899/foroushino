@@ -30,7 +30,7 @@ class TelegramHostCatalogRevision
         return $this->bump(push: false);
     }
 
-    public function bump(bool $push = true): string
+    public function bump(bool $push = true, string $scope = 'all'): string
     {
         $revision = now()->format('YmdHis').'-'.Str::lower(Str::random(8));
         $group = $this->settings->group(self::GROUP);
@@ -38,7 +38,11 @@ class TelegramHostCatalogRevision
         $this->settings->updateGroup(self::GROUP, $group);
 
         if ($push) {
-            PushTelegramHostSyncJob::all();
+            match ($scope) {
+                'catalog' => PushTelegramHostSyncJob::catalog(),
+                'bootstrap' => PushTelegramHostSyncJob::bootstrap(),
+                default => PushTelegramHostSyncJob::all(),
+            };
         }
 
         return $revision;

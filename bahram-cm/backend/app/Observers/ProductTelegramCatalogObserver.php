@@ -14,12 +14,12 @@ class ProductTelegramCatalogObserver
             return;
         }
 
-        app(TelegramHostCatalogRevision::class)->bump();
+        app(TelegramHostCatalogRevision::class)->bump(scope: 'catalog');
     }
 
     public function deleted(Product $product): void
     {
-        app(TelegramHostCatalogRevision::class)->bump();
+        app(TelegramHostCatalogRevision::class)->bump(scope: 'catalog');
     }
 
     private function affectsTelegramCatalog(Product $product): bool
