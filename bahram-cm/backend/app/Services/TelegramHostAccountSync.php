@@ -19,4 +19,33 @@ class TelegramHostAccountSync
 
         PushTelegramHostSyncJob::account($this->snapshots->accountPayload($account->fresh(['user', 'bot'])));
     }
+
+    /**
+     * Push snapshot + send Telegram message from the host immediately (event-driven, no cron).
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function pushPaidOrderNotification(TelegramAccount $account, string $text, array $options = []): bool
+    {
+        $account->loadMissing('bot');
+        if ($account->bot?->key !== 'production' || trim($text) === '') {
+            return false;
+        }
+
+        $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
+        $push = app(TelegramHostPushService::class);
+        $ok = $push->pushAccountWithNotification($payload, [
+            'text' => $text,
+            'options' => $options,
+        ]);
+
+        if (! $ok) {
+            PushTelegramHostSyncJob::dispatch('push_account', [
+                'account' => $payload,
+                'notification' => ['text' => $text, 'options' => $options],
+            ]);
+        }
+
+        return $ok;
+    }
 }

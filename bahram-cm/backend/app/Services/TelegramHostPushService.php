@@ -39,12 +39,42 @@ class TelegramHostPushService
     }
 
     /**
+     * Instant user message on the external host (Bot API from host — no cron).
+     *
+     * @param  array<string, mixed>  $options  Telegram sendMessage options
+     */
+    public function notifyUser(int $telegramUserId, string $text, array $options = []): bool
+    {
+        if ($telegramUserId <= 0 || trim($text) === '') {
+            return false;
+        }
+
+        return $this->runAction('notify_user', [
+            'telegram_user_id' => $telegramUserId,
+            'text' => $text,
+            'options' => $options,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $account
+     * @param  array{text: string, options?: array<string, mixed>}  $notification
+     */
+    public function pushAccountWithNotification(array $account, array $notification): bool
+    {
+        return $this->runAction('push_account', [
+            'account' => $account,
+            'notification' => $notification,
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $extra
      */
     public function runAction(string $action, array $extra = []): bool
     {
-        if ($action === 'push_account') {
-            $result = $this->request('push_account', $extra);
+        if ($action === 'push_account' || $action === 'notify_user') {
+            $result = $this->request($action, $extra);
         } else {
             $result = $this->request($action);
         }
@@ -122,6 +152,7 @@ class TelegramHostPushService
 
             $timeout = match ($action) {
                 'register_webhook' => 45,
+                'notify_user' => 15,
                 'push_account' => 25,
                 'refresh_catalog', 'refresh_bootstrap' => 20,
                 default => 30,

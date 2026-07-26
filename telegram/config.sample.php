@@ -49,9 +49,9 @@ return [
         'charset' => 'utf8mb4',
     ],
 
-    // Cron pull from Iran is OFF by default — the main server pushes to host-sync.php.
-    // Background Iran relay (after each webhook); 0 = only cron/iran-relay.php
-    'iran_relay_per_webhook' => 2,
+    // Event-driven only — Iran pushes to host-sync.php; no cPanel cron required.
+    // After each webhook, drain a few queued Iran updates (registration/support relay).
+    'iran_relay_per_webhook' => 5,
 
     'pull_sync_enabled' => false,
     'pull_sync_min_interval_seconds' => 3600,

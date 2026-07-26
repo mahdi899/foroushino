@@ -38,6 +38,24 @@ final class InboundSyncHandler
             return array_merge($this->registerWebhook($body), ['defer' => false]);
         }
 
+        if ($action === 'notify_user') {
+            return array_merge($this->deliverNotification($body), ['defer' => false]);
+        }
+
+        if ($action === 'push_account') {
+            $account = (array) ($body['account'] ?? []);
+            $telegramUserId = (int) ($account['telegram_user_id'] ?? 0);
+            $notification = (array) ($body['notification'] ?? []);
+            $notifyText = trim((string) ($notification['text'] ?? ''));
+            if ($telegramUserId > 0 && $notifyText !== '') {
+                $this->deliverNotification([
+                    'telegram_user_id' => $telegramUserId,
+                    'text' => $notifyText,
+                    'options' => (array) ($notification['options'] ?? []),
+                ]);
+            }
+        }
+
         return [
             'ok' => true,
             'action' => $action,
@@ -53,10 +71,15 @@ final class InboundSyncHandler
         $sync = new SyncClient($this->config);
         $cache = new SyncCache($pdo, $sync, $this->config);
 
+        if ($action === 'push_account') {
+            $this->pushAccount($pdo, $body);
+
+            return;
+        }
+
         match ($action) {
             'refresh_bootstrap' => $this->refreshBootstrap($cache),
             'refresh_catalog' => $this->refreshCatalog($cache),
-            'push_account' => $this->pushAccount($pdo, $body),
             'refresh_all' => $this->refreshAll($cache),
             default => $this->refreshAll($cache),
         };
@@ -134,6 +157,28 @@ final class InboundSyncHandler
         (new AccountCache($pdo))->store($telegramUserId, $account);
 
         return ['ok' => true, 'action' => 'push_account'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{ok: bool, action: string, error?: string}
+     */
+    private function deliverNotification(array $payload): array
+    {
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $text = trim((string) ($payload['text'] ?? ''));
+        if ($telegramUserId <= 0 || $text === '') {
+            return ['ok' => false, 'action' => 'notify_user', 'error' => 'invalid_payload'];
+        }
+
+        $api = new BotApiClient((string) $this->config['bot_token']);
+        $options = (array) ($payload['options'] ?? []);
+        if (! isset($options['parse_mode'])) {
+            $options['parse_mode'] = 'HTML';
+        }
+        $api->sendMessage($telegramUserId, $text, $options);
+
+        return ['ok' => true, 'action' => 'notify_user'];
     }
 
     /**

@@ -32,7 +32,15 @@ class PushTelegramHostSyncJob implements ShouldQueue
             'refresh_bootstrap' => $push->runAction('refresh_bootstrap'),
             'refresh_catalog' => $push->runAction('refresh_catalog'),
             'refresh_all' => $push->runAction('refresh_all'),
-            'push_account' => $push->runAction('push_account', ['account' => (array) ($this->extra['account'] ?? [])]),
+            'notify_user' => $push->runAction('notify_user', [
+                'telegram_user_id' => (int) ($this->extra['telegram_user_id'] ?? 0),
+                'text' => (string) ($this->extra['text'] ?? ''),
+                'options' => (array) ($this->extra['options'] ?? []),
+            ]),
+            'push_account' => $push->runAction('push_account', [
+                'account' => (array) ($this->extra['account'] ?? []),
+                'notification' => (array) ($this->extra['notification'] ?? []),
+            ]),
             default => $push->runAction('refresh_all'),
         };
 
@@ -60,5 +68,14 @@ class PushTelegramHostSyncJob implements ShouldQueue
     public static function account(array $account): void
     {
         self::dispatch('push_account', ['account' => $account]);
+    }
+
+    public static function notifyUser(int $telegramUserId, string $text, array $options = []): void
+    {
+        self::dispatch('notify_user', [
+            'telegram_user_id' => $telegramUserId,
+            'text' => $text,
+            'options' => $options,
+        ]);
     }
 }

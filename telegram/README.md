@@ -1,6 +1,6 @@
 # Telegram Host App (external cPanel host — PHP 8.3)
 
-اپ مستقل PHP برای دریافت مستقیم وب‌هوک تلگرام روی هاست خارج. **منو و کاتالوگ فقط از MySQL محلی** خوانده می‌شوند؛ وب‌هوک به ایران وصل نمی‌شود (جز ثبت‌نام/پرداخت/پشتیبانی). همگام‌سازی دیتا: `cron/pull-sync.php` + push از ایران.
+اپ مستقل PHP برای دریافت مستقیم وب‌هوک تلگرام روی هاست خارج. **منو و کاتالوگ از MySQL محلی**؛ **هیچ کرون جابی لازم نیست** — سرور ایران هنگام تغییر (پرداخت، حساب، کاتالوگ) به `host-sync.php` push می‌زند.
 
 ## معماری
 
@@ -16,8 +16,8 @@ Telegram → public/webhook.php → UpdateRouter
 2. اسکیمای `db/schema.sql` را import کنید (اگر قبلاً ساخته‌اید: `db/migrate-catalog-photos.sql`).
 3. `config.sample.php` → `config.php` (از پنل ادمین سایت).
 4. Document Root → `telegram/public`
-5. **کرون `pull-sync` را کاملاً حذف کنید** (حتی هر ۵ دقیقه). با `pull_sync_enabled=false` اسکریپت فوراً exit می‌کند ولی اجرای مکرر PHP روی shared hosting باز هم ربات را کند می‌کند.
-6. یک‌بار دستی (فقط نصب اول): `php cron/pull-sync.php --force` — فقط اگر `pull_sync_enabled=true` در `config.php`
+5. **هیچ Cron Job در cPanel نگذارید** (نه pull-sync، نه iran-relay). همه‌چیز event-driven است.
+6. نصب اول (اختیاری): یک‌بار `php cron/pull-sync.php --force` فقط اگر کش خالی است و موقتاً `pull_sync_enabled=true` گذاشته‌اید؛ بعد دوباره `false`.
 7. در پنل ادمین: حالت «هاست خارج» + ثبت webhook
 
 اگر پنل با timeout به `host-sync.php` خورد: روی هاست یک‌بار  
@@ -29,7 +29,8 @@ Telegram → public/webhook.php → UpdateRouter
 |-----|------|
 | ثبت‌نام (قوانین، OTP، نام) | سرور ایران (delegate) |
 | منوی ۹ دکمه‌ای | هاست محلی |
-| خرید + تخفیف + زرین‌پال | هاست + API زنده |
+| پرداخت موفق → پیام «تأیید پرداخت» | فوری: ایران `push_account` + `notification` → هاست `sendMessage` |
+| خرید + تخفیف + زرین‌پال | هاست + API زنده ایران |
 | کارت‌به‌کارت + رسید | سرور ایران (state مشترک) |
 | پشتیبانی (متن + رسانه + reply) | سرور ایران |
 | سات / خانواده / معرفی | API زنده |
