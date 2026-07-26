@@ -20,6 +20,18 @@ type CommentsPanelProps = {
 };
 
 const TEXTAREA_MAX_PX = 120;
+/** Ignore tiny visualViewport jitter (browser chrome, address bar). */
+const KEYBOARD_INSET_THRESHOLD_PX = 48;
+
+/** Keyboard overlap under the family shell (works with 100dvh + overlays-content). */
+function readKeyboardInset(): number {
+  const vv = window.visualViewport;
+  if (!vv) return 0;
+  const root = document.getElementById('family-root');
+  const rootBottom = root?.getBoundingClientRect().bottom ?? window.innerHeight;
+  const visibleBottom = vv.offsetTop + vv.height;
+  return Math.max(0, Math.round(rootBottom - visibleBottom));
+}
 
 function CommentRow({
   comment,
@@ -74,6 +86,7 @@ export function CommentsPanel({
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
+  const listClientHeightRef = useRef(0);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
 
@@ -83,6 +96,24 @@ export function CommentsPanel({
     const root = listRef.current;
     if (!root) return;
     root.scrollTo({ top: root.scrollHeight, behavior });
+  }, []);
+
+  /**
+   * When the list viewport shrinks (keyboard), only scroll if comments that were
+   * visible would now sit under the composer/keyboard. Short threads stay put.
+   */
+  const revealCoveredComments = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const prevH = listClientHeightRef.current;
+    const nextH = list.clientHeight;
+    listClientHeightRef.current = nextH;
+    if (prevH <= 0) return;
+    const shrink = prevH - nextH;
+    if (shrink <= 1) return;
+    const canScroll = Math.max(0, list.scrollHeight - list.scrollTop - nextH);
+    const covered = Math.min(canScroll, shrink);
+    if (covered > 1) list.scrollTop += covered;
   }, []);
 
   const resizeTextarea = useCallback(() => {
@@ -115,27 +146,33 @@ export function CommentsPanel({
     scrollToLatest('smooth');
   }, [justSent, orderedComments.length, scrollToLatest]);
 
-  /** Keep composer tight above the mobile keyboard (Telegram-like). */
+  /** Lift composer above the keyboard; do not pin the whole thread to the bottom. */
   useEffect(() => {
     if (!isPage || typeof window === 'undefined' || !window.visualViewport) return;
 
     const vv = window.visualViewport;
     const sync = () => {
-      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKeyboardInset(inset > 48 ? inset : 0);
-      if (inset > 48) {
-        requestAnimationFrame(() => scrollToLatest('auto'));
-      }
+      const list = listRef.current;
+      if (list) listClientHeightRef.current = list.clientHeight;
+      const inset = readKeyboardInset();
+      setKeyboardInset(inset > KEYBOARD_INSET_THRESHOLD_PX ? inset : 0);
     };
 
     sync();
     vv.addEventListener('resize', sync);
     vv.addEventListener('scroll', sync);
+    window.addEventListener('resize', sync);
     return () => {
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
     };
-  }, [isPage, scrollToLatest]);
+  }, [isPage]);
+
+  useLayoutEffect(() => {
+    if (!isPage) return;
+    revealCoveredComments();
+  }, [isPage, keyboardInset, revealCoveredComments]);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -249,7 +286,13 @@ export function CommentsPanel({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onFocus={() => {
-              window.setTimeout(() => scrollToLatest('smooth'), 80);
+              // Remeasure after the keyboard animates; only nudge covered comments.
+              window.setTimeout(() => {
+                const list = listRef.current;
+                if (list) listClientHeightRef.current = list.clientHeight;
+                const inset = readKeyboardInset();
+                setKeyboardInset(inset > KEYBOARD_INSET_THRESHOLD_PX ? inset : 0);
+              }, 80);
             }}
             maxLength={500}
             rows={1}

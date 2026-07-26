@@ -635,9 +635,16 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
+/* Keyboard inset sits under the composer (overlaid by the OS keyboard) — lifts the
+   compose bar without inventing empty space inside the comment list. */
 .family-comments-panel--keyboard {
   padding-bottom: var(--family-keyboard-inset, 0px);
   transition: padding-bottom 120ms ease-out;
+}
+
+.family-comments-panel--keyboard .family-comment-composer--page {
+  /* Home-indicator inset is already covered by the keyboard overlap. */
+  padding-bottom: 0.75rem;
 }
 
 .family-voice-wave {
