@@ -3305,16 +3305,8 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
   .family-btn-glass__shimmer::after,
   .family-skeleton,
   .family-reaction-btn--active,
-  .family-reaction-btn--slam,
-  .family-reaction-btn--slam-land,
-  .family-reaction-btn--launching,
-  .family-reaction-btn-wrap--slam::before,
-  .family-reaction-btn-wrap--slam-land::before,
+  .family-reaction-btn--pop,
   .family-reaction-picker--burst,
-  .family-reaction-fly__glow,
-  .family-reaction-fly__trail,
-  .family-post-bubble--impact,
-  .family-post-bubble--impact::after,
   .family-post--highlight .family-post-bubble {
     animation: none !important;
   }
@@ -3723,64 +3715,6 @@ html[data-theme='dark'] .family-app .family-reaction-picker--portal {
   }
 }
 
-.family-reaction-btn--launching {
-  animation: family-reaction-launch 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
-  z-index: 4;
-}
-
-@keyframes family-reaction-launch {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.55);
-    opacity: 0;
-  }
-}
-
-.family-reaction-btn--incoming {
-  opacity: 0 !important;
-  transform: scale(0.35) !important;
-  pointer-events: none;
-}
-
-.family-reaction-btn--slam-land {
-  position: relative;
-  animation: family-reaction-slam-land 0.58s cubic-bezier(0.34, 1.65, 0.64, 1) both !important;
-  z-index: 6;
-}
-
-@keyframes family-reaction-slam-land {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  32% {
-    transform: scale(1.48);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(0.9);
-  }
-  68% {
-    transform: scale(1.16);
-  }
-  84% {
-    transform: scale(0.97);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.family-reaction-btn--slam {
-  position: relative;
-  animation: family-reaction-slam 0.76s cubic-bezier(0.34, 1.75, 0.64, 1) both !important;
-  z-index: 6;
-}
-
 .family-reaction-btn-wrap {
   position: relative;
   display: inline-flex;
@@ -3789,129 +3723,24 @@ html[data-theme='dark'] .family-app .family-reaction-picker--portal {
   overflow: visible;
 }
 
-.family-reaction-btn-wrap--slam::before,
-.family-reaction-btn-wrap--slam-land::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: 0;
-  box-shadow:
-    0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 42%, transparent),
-    0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 18%, transparent);
-  animation: family-reaction-slam-ring 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* Simple, single scale-in when a new reaction chip appears in the bar —
+   no flight from the picker, no wave/impact on the post bubble. */
+.family-reaction-btn--pop {
+  animation: family-reaction-pop-in 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-.family-reaction-btn-wrap--slam-land::before {
-  animation-duration: 0.5s;
-}
-
-.family-reaction-btn-wrap--slam .family-reaction-btn,
-.family-reaction-btn-wrap--slam-land .family-reaction-btn {
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes family-reaction-slam {
+@keyframes family-reaction-pop-in {
   0% {
-    transform: scale(0.45);
+    transform: scale(0.5);
     opacity: 0;
-  }
-  38% {
-    transform: scale(1.55);
-    opacity: 1;
-  }
-  54% {
-    transform: scale(0.84);
   }
   70% {
-    transform: scale(1.2);
-  }
-  86% {
-    transform: scale(0.96);
+    transform: scale(1.08);
+    opacity: 1;
   }
   100% {
     transform: scale(1);
     opacity: 1;
-  }
-}
-
-@keyframes family-reaction-slam-ring {
-  0% {
-    opacity: 0.7;
-    transform: scale(1);
-    box-shadow:
-      0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 42%, transparent),
-      0 0 8px 0 color-mix(in oklab, var(--family-tg-pinned-accent) 18%, transparent);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.55);
-    box-shadow:
-      0 0 0 1.5px color-mix(in oklab, var(--family-tg-pinned-accent) 28%, transparent),
-      0 0 14px 4px color-mix(in oklab, var(--family-tg-pinned-accent) 0%, transparent);
-  }
-}
-
-.family-post-bubble--impact {
-  z-index: 3;
-  transition: none !important;
-  animation: family-post-bubble-impact 0.82s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.family-post-bubble--impact::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(
-    ellipse 90% 55% at 50% 100%,
-    color-mix(in oklab, var(--family-tg-pinned-accent) 22%, transparent) 0%,
-    transparent 72%
-  );
-  animation: family-post-impact-flash 0.82s ease-out both;
-}
-
-@keyframes family-post-bubble-impact {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  }
-  14% {
-    transform: translate3d(-1px, -5px, 0) rotate(-0.55deg) scale(1.014);
-  }
-  30% {
-    transform: translate3d(2px, 4px, 0) rotate(0.42deg) scale(0.992);
-  }
-  46% {
-    transform: translate3d(-1px, -2px, 0) rotate(-0.24deg) scale(1.008);
-  }
-  62% {
-    transform: translate3d(1px, 2px, 0) rotate(0.16deg) scale(0.996);
-  }
-  78% {
-    transform: translate3d(-0.5px, -1px, 0) rotate(-0.08deg) scale(1.003);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  }
-}
-
-@keyframes family-post-impact-flash {
-  0% {
-    opacity: 0;
-    transform: scaleY(0.25);
-    transform-origin: bottom center;
-  }
-  22% {
-    opacity: 0.9;
-    transform: scaleY(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scaleY(1.2);
   }
 }
 
@@ -3921,66 +3750,6 @@ html[data-theme='dark'] .family-app .family-reaction-picker--portal {
   z-index: 10000;
   pointer-events: none;
   overflow: visible;
-}
-
-.family-reaction-fly {
-  position: fixed;
-  z-index: 10002;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 8px 24px color-mix(in oklab, var(--family-tg-pinned-accent) 55%, transparent));
-  will-change: transform, left, top, opacity;
-  overflow: visible;
-}
-
-.family-reaction-fly .family-reaction-icon,
-.family-reaction-fly .family-reaction-icon > div {
-  overflow: visible !important;
-}
-
-.family-reaction-fly__glow {
-  position: absolute;
-  inset: -18px;
-  border-radius: 9999px;
-  background: radial-gradient(
-    circle,
-    color-mix(in oklab, var(--family-tg-pinned-accent) 42%, transparent) 0%,
-    transparent 72%
-  );
-  animation: family-reaction-fly-glow 0.78s ease-out infinite alternate;
-}
-
-.family-reaction-fly__trail {
-  position: absolute;
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 9999px;
-  border: 2px solid color-mix(in oklab, var(--family-tg-pinned-accent) 35%, transparent);
-  animation: family-reaction-fly-trail 0.78s ease-out infinite;
-}
-
-@keyframes family-reaction-fly-glow {
-  from {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  to {
-    transform: scale(1.25);
-    opacity: 1;
-  }
-}
-
-@keyframes family-reaction-fly-trail {
-  0% {
-    transform: scale(0.7);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
-  }
 }
 
 .family-btn-primary {

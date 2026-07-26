@@ -8,8 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Handles the student's first entry into /panel: recording first_login_at,
- * sending a one-time welcome (SMS + in-app notification), and computing the
- * onboarding checklist shown on the dashboard.
+ * sending a one-time welcome SMS, and computing the onboarding checklist
+ * shown on the dashboard. The in-app "welcome" notification is intentionally
+ * not sent — disabled per product decision.
  */
 class StudentOnboardingService
 {
@@ -17,7 +18,6 @@ class StudentOnboardingService
 
     public function __construct(
         private readonly SmsService $sms,
-        private readonly InAppNotificationService $notifications,
         private readonly AdminTelegramLogService $adminTelegram,
     ) {}
 
@@ -37,8 +37,6 @@ class StudentOnboardingService
             $user->update(['first_login_at' => now()]);
 
             app(\App\Actions\Identity\EnsureIdentityProfile::class)($user);
-
-            $this->notifications->welcome($user);
         });
 
         $this->adminTelegram->notifyStudentFirstLogin($user->fresh());

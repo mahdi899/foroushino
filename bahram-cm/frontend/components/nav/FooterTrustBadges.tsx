@@ -35,17 +35,22 @@ function useTrustBadgesReady() {
 }
 
 /** کد رسمی enamad — بدون دستکاری (همان snippet پنل). */
-function EnamadOfficialEmbed() {
+function EnamadOfficialEmbed({ className }: { className?: string }) {
   return (
-    <a referrerPolicy="origin" target="_blank" href={ENAMAD_TRUST_URL}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        referrerPolicy="origin"
-        src={ENAMAD_LOGO_URL}
-        alt=""
-        style={{ cursor: "pointer" }}
-        {...({ code: ENAMAD_CODE } as ImgHTMLAttributes<HTMLImageElement>)}
-      />
+    <a referrerPolicy="origin" target="_blank" href={ENAMAD_TRUST_URL} className="footer-trust-badge group">
+      <span className="footer-trust-badge__surface">
+        <span className="footer-trust-badge__inner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            referrerPolicy="origin"
+            src={ENAMAD_LOGO_URL}
+            alt="نماد اعتماد الکترونیکی"
+            className={className ?? "footer-trust-badge__img"}
+            style={{ cursor: "pointer" }}
+            {...({ code: ENAMAD_CODE } as ImgHTMLAttributes<HTMLImageElement>)}
+          />
+        </span>
+      </span>
     </a>
   );
 }
@@ -54,23 +59,9 @@ type FooterTrustBadgesProps = {
   layout: "desktop" | "mobile";
 };
 
-export function FooterTrustBadges({ layout }: FooterTrustBadgesProps) {
-  const ready = useTrustBadgesReady();
-  if (!ready) return null;
-
-  if (layout === "mobile") {
-    return (
-      <div className="mt-6 flex justify-center md:hidden">
-        <EnamadOfficialEmbed />
-      </div>
-    );
-  }
-
+function TrustBadgesRow() {
   return (
-    <div
-      className="footer-trust-badges mt-8 hidden border-t border-bone/10 pt-8 md:flex"
-      aria-label="نشان‌های اعتماد"
-    >
+    <>
       {site.footer.trustBadges.map((badge) => {
         if (badge.id === "enamad") {
           return <EnamadOfficialEmbed key={badge.id} />;
@@ -98,6 +89,31 @@ export function FooterTrustBadges({ layout }: FooterTrustBadgesProps) {
           </a>
         );
       })}
+    </>
+  );
+}
+
+export function FooterTrustBadges({ layout }: FooterTrustBadgesProps) {
+  const ready = useTrustBadgesReady();
+  if (!ready) return null;
+
+  if (layout === "mobile") {
+    return (
+      <div
+        className="footer-trust-badges footer-trust-badges--compact mt-6 flex justify-center border-t border-bone/10 pt-5 md:hidden"
+        aria-label="نشان‌های اعتماد"
+      >
+        <TrustBadgesRow />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="footer-trust-badges mt-8 hidden border-t border-bone/10 pt-8 md:flex"
+      aria-label="نشان‌های اعتماد"
+    >
+      <TrustBadgesRow />
     </div>
   );
 }

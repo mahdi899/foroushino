@@ -34,13 +34,6 @@ vi.mock("@/components/family/FamilyBodyPortal", () => ({
   FamilyBodyPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@/components/family/ReactionFlyBurst", () => ({
-  ReactionFlyBurst: ({ onComplete }: { onComplete: () => void }) => {
-    onComplete();
-    return null;
-  },
-}));
-
 const baseStats: FamilyPostStats = {
   fire: 2,
   heart: 0,
