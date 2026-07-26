@@ -182,9 +182,18 @@ class TelegramInfrastructureService
         }
 
         if ($this->usesHostBridge()) {
+            $workerRelay = trim((string) config('telegram_bot.api_base_url', ''));
+            if (
+                $workerRelay !== ''
+                && $workerRelay !== self::DEFAULT_BASE_URL
+                && $this->proxySharedToken() !== null
+            ) {
+                return rtrim($workerRelay, '/');
+            }
+
             $relay = trim((string) config('telegram_bot.host_api_proxy_url', ''));
             if ($relay !== '' && $this->proxySharedToken() !== null) {
-                return $relay;
+                return rtrim($relay, '/');
             }
         }
 
@@ -640,17 +649,25 @@ class TelegramInfrastructureService
                 $this->queueHostWebhookRegistration($url, $secret);
                 $hostResult = app(TelegramHostPushService::class)->registerWebhook($url, $secret);
                 if (! ($hostResult['ok'] ?? false)) {
-                    return [
-                        'ok' => true,
-                        'message' => 'سرور ایران به هاست خارج (`host-sync.php`) وصل نمی‌شود؛ درخواست ثبت وب‌هوک در صف است.'
-                            .' تا حداکثر ۵ دقیقه cron هاست (`pull-sync.php`) وب‌هوک را در تلگرام ثبت می‌کند.'
-                            .' — هاست: '.$this->hostWebhookUrl(),
-                        'url' => $url,
-                        'queued' => true,
-                    ];
+                    try {
+                        $clients->forBot($bot)->setWebhook($url, $secret);
+                        $this->clearHostWebhookRegistration();
+                    } catch (\Throwable $relayError) {
+                        return [
+                            'ok' => true,
+                            'message' => 'سرور ایران به هاست خارج (`host-sync.php`) وصل نمی‌شود؛ ثبت مستقیم از طریق Worker هم ناموفق بود: '
+                                .$relayError->getMessage()
+                                .' — درخواست در صف است تا cron هاست (`pull-sync.php`) وب‌هوک را ثبت کند.'
+                                .' یا یک‌بار `register-webhook.php?token=…` را روی هاست خارج باز کنید.'
+                                .' — هاست: '.$this->hostWebhookUrl(),
+                            'url' => $url,
+                            'queued' => true,
+                        ];
+                    }
+                } else {
+                    $this->clearHostWebhookRegistration();
+                    $url = (string) ($hostResult['url'] ?? $url);
                 }
-                $this->clearHostWebhookRegistration();
-                $url = (string) ($hostResult['url'] ?? $url);
             } else {
                 $clients->forBot($bot)->setWebhook($url, $secret);
             }
