@@ -308,6 +308,12 @@ export function StudentLoginForm({
                   value={phone}
                   onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
                   onBlur={() => setPhoneTouched(true)}
+                  onFocus={(e) => {
+                    if (!isFamily) return;
+                    window.setTimeout(() => {
+                      e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }, 120);
+                  }}
                   placeholder="09123456789"
                   maxLength={11}
                   className={cn(inputClass, showPhoneError && (isFamilyPage ? 'border-red-400/60' : 'border-gold/50'))}

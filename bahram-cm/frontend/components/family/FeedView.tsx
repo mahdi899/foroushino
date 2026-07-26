@@ -1716,14 +1716,12 @@ export function FeedView({
           ) : null}
 
           {commentsTarget ? (
-            <div className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[var(--family-bg)]">
-              <FeedCommentsPanel
-                postId={commentsTarget.postId}
-                onClose={closeComments}
-                onCommentAdded={commentsTarget.onCommentAdded}
-                className="flex min-h-0 flex-1 flex-col"
-              />
-            </div>
+            <FeedCommentsPanel
+              postId={commentsTarget.postId}
+              onClose={closeComments}
+              onCommentAdded={commentsTarget.onCommentAdded}
+              className="flex min-h-0 flex-1 flex-col"
+            />
           ) : null}
 
           <div

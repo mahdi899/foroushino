@@ -36,7 +36,7 @@ export function StudentLoginModal() {
           className={cn(
             'fixed z-[100]',
             isFamilyLogin
-              ? 'inset-x-0 flex flex-col overflow-y-auto overscroll-contain p-4'
+              ? 'inset-x-0 flex flex-col overflow-y-auto overscroll-contain'
               : 'inset-0 flex items-center justify-center p-4 sm:p-5',
           )}
           style={
@@ -76,8 +76,11 @@ export function StudentLoginModal() {
             exit={{ opacity: 0, scale: 0.98, y: 8 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              'relative z-10 w-full max-w-[20rem]',
-              isFamilyLogin && 'mx-auto my-auto min-h-0 shrink-0',
+              'relative z-10 w-full max-w-[20rem] p-4',
+              isFamilyLogin &&
+                (viewport.keyboardInset > 48
+                  ? 'mx-auto shrink-0'
+                  : 'mx-auto my-auto min-h-0 shrink-0'),
             )}
           >
             <StudentLoginForm

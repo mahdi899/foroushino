@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
@@ -22,8 +23,6 @@ type CommentsPanelProps = {
 };
 
 const TEXTAREA_MAX_PX = 120;
-/** Ignore tiny visualViewport jitter (browser chrome, address bar). */
-const KEYBOARD_INSET_THRESHOLD_PX = 24;
 
 function CommentRow({
   comment,
@@ -73,18 +72,22 @@ export function CommentsPanel({
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
-  const [composerHeight, setComposerHeight] = useState(76);
   const [mobilePage, setMobilePage] = useState(false);
+  const [composerMounted, setComposerMounted] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
-  const viewport = useVisualViewportBox(isPage);
-  const keyboardInset =
-    isPage && viewport.keyboardInset > KEYBOARD_INSET_THRESHOLD_PX ? viewport.keyboardInset : 0;
-  const fixedComposer = isPage && mobilePage;
+  const portalComposer = isPage && mobilePage;
+  const viewport = useVisualViewportBox(portalComposer);
+  const composerBottom =
+    viewport.keyboardInset > 0 ? viewport.keyboardInset : 'env(safe-area-inset-bottom, 0px)';
+
+  useEffect(() => {
+    setComposerMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isPage || typeof window === 'undefined') return;
@@ -95,25 +98,8 @@ export function CommentsPanel({
     return () => mq.removeEventListener('change', sync);
   }, [isPage]);
 
-  useEffect(() => {
-    if (!fixedComposer) return;
-    const el = composerRef.current;
-    if (!el) return;
-    const measure = () => setComposerHeight(el.offsetHeight);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [fixedComposer, error, justSent, value]);
-
-  const listBottomPad =
-    fixedComposer && composerHeight > 0
-      ? composerHeight + keyboardInset
-      : undefined;
-
   const orderedComments = useMemo(() => [...comments].reverse(), [comments]);
 
-  /** Pin the thread tail just above the composer (Telegram-style when keyboard opens). */
   const pinLatestComment = useCallback((behavior: ScrollBehavior = 'auto') => {
     const list = listRef.current;
     if (!list) return;
@@ -163,17 +149,15 @@ export function CommentsPanel({
   }, [justSent, orderedComments.length, scrollToLatest]);
 
   useLayoutEffect(() => {
-    if (!fixedComposer || keyboardInset <= 0) return;
+    if (!portalComposer || viewport.keyboardInset <= 0) return;
     pinLatestComment('auto');
     const frame = requestAnimationFrame(() => pinLatestComment('auto'));
-    const t = window.setTimeout(() => pinLatestComment('auto'), 160);
-    const t2 = window.setTimeout(() => pinLatestComment('auto'), 320);
+    const t = window.setTimeout(() => pinLatestComment('auto'), 200);
     return () => {
       cancelAnimationFrame(frame);
       window.clearTimeout(t);
-      window.clearTimeout(t2);
     };
-  }, [fixedComposer, keyboardInset, pinLatestComment]);
+  }, [portalComposer, viewport.keyboardInset, pinLatestComment]);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -203,21 +187,75 @@ export function CommentsPanel({
     }
   };
 
+  const composerBody = (
+    <>
+      {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
+      {justSent && !error && <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد.</p>}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+        className="flex items-end gap-2"
+      >
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onFocus={() => {
+            pinLatestComment('auto');
+            requestAnimationFrame(() => {
+              pinLatestComment('auto');
+              requestAnimationFrame(() => pinLatestComment('auto'));
+            });
+            window.setTimeout(() => pinLatestComment('auto'), 80);
+            window.setTimeout(() => pinLatestComment('auto'), 320);
+          }}
+          maxLength={500}
+          rows={1}
+          placeholder="نظرت رو بنویس…"
+          className="family-input family-comment-input min-h-10 flex-1 resize-none rounded-[1.25rem] px-4 py-2.5 text-sm leading-5"
+        />
+        <button
+          type="submit"
+          disabled={!value.trim() || submitting}
+          className="family-btn-primary family-comment-submit h-10 shrink-0 rounded-full px-4 text-sm disabled:opacity-50"
+        >
+          ارسال
+        </button>
+      </form>
+    </>
+  );
+
+  const composerNode = (
+    <div
+      ref={composerRef}
+      className={cn(
+        'family-glass-bar family-comment-composer shrink-0 p-3 sm:p-4',
+        isPage && 'family-comment-composer--page',
+        portalComposer && 'family-comment-composer--viewport-fixed',
+      )}
+      style={
+        portalComposer
+          ? {
+              bottom:
+                typeof composerBottom === 'number' ? `${composerBottom}px` : composerBottom,
+            }
+          : undefined
+      }
+    >
+      {composerBody}
+    </div>
+  );
+
   return (
     <section
       className={cn(
         'family-comments-panel flex min-h-0 min-w-0 flex-col overflow-x-hidden',
         variant === 'inline' && 'border-t border-[var(--family-border-subtle)]',
+        portalComposer && 'family-comments-panel--portaled-composer',
         className,
       )}
-      style={
-        fixedComposer
-          ? ({
-              ['--family-keyboard-inset' as string]: `${keyboardInset}px`,
-              ['--family-composer-height' as string]: `${composerHeight}px`,
-            } as CSSProperties)
-          : undefined
-      }
     >
       {!hideTitle && (
         <div className="shrink-0 px-4 py-3 sm:px-5">
@@ -229,19 +267,8 @@ export function CommentsPanel({
         ref={listRef}
         className={cn(
           'family-feed-scroll family-comments-list min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain',
-          isPage ? 'flex-1 px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
-          fixedComposer && 'family-comments-list--fixed-composer',
+          isPage ? 'flex flex-1 flex-col px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
         )}
-        style={
-          listBottomPad != null
-            ? {
-                paddingBottom:
-                  keyboardInset > 0
-                    ? `${listBottomPad}px`
-                    : `calc(${listBottomPad}px + env(safe-area-inset-bottom, 0px))`,
-              }
-            : undefined
-        }
       >
         {isLoading ? (
           <div className={cn('flex items-center justify-center', isPage ? 'min-h-full' : 'py-16')} aria-busy>
@@ -282,66 +309,15 @@ export function CommentsPanel({
               ref={bottomRef}
               aria-hidden
               className="h-px shrink-0 scroll-mt-2"
-              style={{ scrollMarginBottom: '0.5rem' }}
+              style={{ scrollMarginBottom: portalComposer ? '5.5rem' : '0.5rem' }}
             />
           </ul>
         )}
       </div>
 
-      <div
-        ref={composerRef}
-        className={cn(
-          'family-glass-bar family-comment-composer shrink-0 p-3 sm:p-4',
-          isPage && 'family-comment-composer--page',
-          fixedComposer && 'family-comment-composer--fixed',
-        )}
-        style={
-          fixedComposer
-            ? ({
-                bottom:
-                  keyboardInset > 0
-                    ? `${keyboardInset}px`
-                    : 'env(safe-area-inset-bottom, 0px)',
-              } as CSSProperties)
-            : undefined
-        }
-      >
-        {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
-        {justSent && !error && <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد.</p>}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSubmit();
-          }}
-          className="flex items-end gap-2"
-        >
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onFocus={() => {
-              pinLatestComment('auto');
-              requestAnimationFrame(() => {
-                pinLatestComment('auto');
-                requestAnimationFrame(() => pinLatestComment('auto'));
-              });
-              window.setTimeout(() => pinLatestComment('auto'), 80);
-              window.setTimeout(() => pinLatestComment('auto'), 320);
-            }}
-            maxLength={500}
-            rows={1}
-            placeholder="نظرت رو بنویس…"
-            className="family-input family-comment-input min-h-10 flex-1 resize-none rounded-[1.25rem] px-4 py-2.5 text-sm leading-5"
-          />
-          <button
-            type="submit"
-            disabled={!value.trim() || submitting}
-            className="family-btn-primary family-comment-submit h-10 shrink-0 rounded-full px-4 text-sm disabled:opacity-50"
-          >
-            ارسال
-          </button>
-        </form>
-      </div>
+      {portalComposer && composerMounted
+        ? createPortal(composerNode, document.body)
+        : composerNode}
     </section>
   );
 }

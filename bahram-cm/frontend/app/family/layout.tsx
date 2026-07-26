@@ -9,6 +9,7 @@ import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
 import { FamilyMediaPreconnect } from '@/components/family/FamilyMediaPreconnect';
 import { FamilyServiceWorkerRegistrar } from '@/components/family/FamilyServiceWorkerRegistrar';
 import { FamilyReactScan } from '@/components/family/FamilyReactScan';
+import { FamilyKeyboardViewportBoot } from '@/components/family/FamilyKeyboardViewportBoot';
 import { FamilyPwaInstallBoot } from '@/components/family/FamilyPwaInstallBoot';
 import { BahramUpdateBanner } from '@/components/pwa/BahramUpdateBanner';
 import {
@@ -37,7 +38,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  interactiveWidget: 'overlays-content',
+  interactiveWidget: 'resizes-content',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#d9e4ec' },
     { media: '(prefers-color-scheme: dark)', color: '#0b1419' },
@@ -61,6 +62,7 @@ export default async function FamilyLayout({ children }: { children: React.React
     >
       <FamilyMediaPreconnect />
       <FamilyThemeBoot />
+      <FamilyKeyboardViewportBoot />
       <FamilyServiceWorkerRegistrar />
       <FamilyReactScan />
       <FamilyMediaPlayerProvider>

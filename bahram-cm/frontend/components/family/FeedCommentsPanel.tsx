@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ChevronRight, MessageCircle } from 'lucide-react';
 import { CommentsPanel } from '@/components/family/CommentsPanel';
 import { cn } from '@/lib/cn';
+import { useVisualViewportBox } from '@/lib/hooks/useVisualViewportBox';
 import type { FamilyComment } from '@/lib/family/types';
 
 /** Inline comments panel inside the feed column (desktop + mobile). */
@@ -17,8 +19,34 @@ export function FeedCommentsPanel({
   onCommentAdded?: (comment: FamilyComment) => void;
   className?: string;
 }) {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const viewport = useVisualViewportBox(mobile);
+
   return (
-    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden', className)}>
+    <div
+      className={cn(
+        'z-50 flex min-h-0 flex-col overflow-hidden bg-[var(--family-bg)]',
+        mobile ? 'fixed inset-x-0' : 'absolute inset-0',
+        className,
+      )}
+      style={
+        mobile
+          ? {
+              top: viewport.offsetTop,
+              height: viewport.height > 0 ? viewport.height : '100dvh',
+            }
+          : undefined
+      }
+    >
       <header className="family-panel-header shrink-0 gap-2">
         <button
           type="button"

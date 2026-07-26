@@ -640,32 +640,22 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
-/* Mobile page comments: composer pinned above keyboard (Telegram-style). */
-.family-comment-composer--fixed {
+/* Composer portaled to document.body — true viewport-fixed above keyboard. */
+.family-comment-composer--viewport-fixed {
   position: fixed;
   left: 0;
   right: 0;
-  z-index: 30;
+  z-index: 60;
+  padding-bottom: 0.75rem;
   transition: bottom 120ms ease-out;
 }
 
-.family-comments-list--fixed-composer {
-  display: flex;
-  flex-direction: column;
+.family-comments-panel--portaled-composer .family-comments-list {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
-.family-comments-list--fixed-composer .family-comments-thread {
+.family-comments-list .family-comments-thread {
   margin-top: auto;
-}
-
-.family-comments-panel--keyboard {
-  padding-bottom: var(--family-keyboard-inset, 0px);
-  transition: padding-bottom 120ms ease-out;
-}
-
-.family-comments-panel--keyboard .family-comment-composer--page {
-  /* Home-indicator inset is already covered by the keyboard overlap. */
-  padding-bottom: 0.75rem;
 }
 
 .family-voice-wave {
