@@ -67,7 +67,7 @@ import {
 import {
   estimatePostIndexFromScroll,
   warmupFamilyPostsMedia,
-  warmupFamilyPostsWindow,
+  warmupFamilyPostsWindowDirectional,
 } from '@/lib/family/feedMediaWarmup';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
@@ -910,20 +910,24 @@ export function FeedView({
     return estimateFeedItemSize(0, { kind: 'post', key: `estimate-${post.id}`, post });
   }, []);
 
-  const scheduleFeedMediaWarmup = useCallback(() => {
-    if (!feedReadyRef.current || isPreview) return;
-    const { root } = getScrollCtx();
-    const list = postsRef.current;
-    if (!root || list.length === 0) return;
+  const scheduleFeedMediaWarmup = useCallback(
+    (scrollingUp = false) => {
+      if (!feedReadyRef.current || isPreview) return;
+      const { root } = getScrollCtx();
+      const list = postsRef.current;
+      if (!root || list.length === 0) return;
 
-    const anchor = estimatePostIndexFromScroll(list, root.scrollTop, estimatePostHeight);
-    warmupFamilyPostsWindow(
-      list,
-      anchor,
-      FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE,
-      FAMILY_FEED_MEDIA_WARM_POSTS_AFTER,
-    );
-  }, [estimatePostHeight, getScrollCtx, isPreview]);
+      const anchor = estimatePostIndexFromScroll(list, root.scrollTop, estimatePostHeight);
+      warmupFamilyPostsWindowDirectional(
+        list,
+        anchor,
+        FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE,
+        FAMILY_FEED_MEDIA_WARM_POSTS_AFTER,
+        scrollingUp,
+      );
+    },
+    [estimatePostHeight, getScrollCtx, isPreview],
+  );
 
   const tryProactiveHistoryLoad = useCallback(() => {
     if (isPreview || !feedReadyRef.current || !historyReadyRef.current) return;
@@ -971,7 +975,7 @@ export function FeedView({
           const scrollTop = root.scrollTop;
           const scrollingUp = scrollTop < lastScrollTopRef.current - 6;
           lastScrollTopRef.current = scrollTop;
-          scheduleFeedMediaWarmup();
+          scheduleFeedMediaWarmup(scrollingUp);
           if (scrollingUp) tryProactiveHistoryLoad();
         }
       });

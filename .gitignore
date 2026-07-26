@@ -54,6 +54,8 @@ bahram-cm/deploy/scripts/saat_probe.txt
 /reload_*.py
 /run_*.py
 /tail_*.py
+/test_*.php
+/dump_*.php
 /*.zip
 
 # Laravel compiled bootstrap cache

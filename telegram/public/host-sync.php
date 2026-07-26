@@ -52,5 +52,12 @@ try {
 } catch (\Throwable $e) {
     error_log('[telegram-host] host-sync: '.$e->getMessage());
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'server_error']);
+    // Temporary debug: expose the real error only to whoever holds the
+    // webhook secret, so it can be diagnosed without host file access.
+    $debugToken = (string) ($_GET['debug'] ?? '');
+    $payload = ['ok' => false, 'error' => 'server_error'];
+    if ($debugToken !== '' && hash_equals((string) $config['webhook_secret'], $debugToken)) {
+        $payload['debug'] = $e::class.': '.$e->getMessage().' @ '.$e->getFile().':'.$e->getLine();
+    }
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
 }

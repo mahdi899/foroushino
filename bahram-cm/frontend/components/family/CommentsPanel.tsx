@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
@@ -12,7 +11,6 @@ import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import { cn } from '@/lib/cn';
-import { useVisualViewportBox } from '@/lib/hooks/useVisualViewportBox';
 
 type CommentsPanelProps = {
   postId: number;
@@ -72,31 +70,13 @@ export function CommentsPanel({
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
-  const [mobilePage, setMobilePage] = useState(false);
-  const [composerMounted, setComposerMounted] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
+  const composerFocusedRef = useRef(false);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
-  const portalComposer = isPage && mobilePage;
-  const viewport = useVisualViewportBox(portalComposer);
-  const composerBottom =
-    viewport.keyboardInset > 0 ? viewport.keyboardInset : 'env(safe-area-inset-bottom, 0px)';
-
-  useEffect(() => {
-    setComposerMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isPage || typeof window === 'undefined') return;
-    const mq = window.matchMedia('(max-width: 639px)');
-    const sync = () => setMobilePage(mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, [isPage]);
 
   const orderedComments = useMemo(() => [...comments].reverse(), [comments]);
 
@@ -148,16 +128,20 @@ export function CommentsPanel({
     scrollToLatest('smooth');
   }, [justSent, orderedComments.length, scrollToLatest]);
 
-  useLayoutEffect(() => {
-    if (!portalComposer || viewport.keyboardInset <= 0) return;
-    pinLatestComment('auto');
-    const frame = requestAnimationFrame(() => pinLatestComment('auto'));
-    const t = window.setTimeout(() => pinLatestComment('auto'), 200);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.clearTimeout(t);
-    };
-  }, [portalComposer, viewport.keyboardInset, pinLatestComment]);
+  // Keep the last comment glued to the composer while the keyboard opens/closes.
+  // Driven by the list's own ResizeObserver instead of guessed timers — it moves
+  // in the exact same frames as the real layout change, so there's no visible
+  // "catch-up" jump after the keyboard is already open.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      if (!composerFocusedRef.current) return;
+      pinLatestComment('auto');
+    });
+    ro.observe(list);
+    return () => ro.disconnect();
+  }, [pinLatestComment]);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -203,13 +187,11 @@ export function CommentsPanel({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => {
+            composerFocusedRef.current = true;
             pinLatestComment('auto');
-            requestAnimationFrame(() => {
-              pinLatestComment('auto');
-              requestAnimationFrame(() => pinLatestComment('auto'));
-            });
-            window.setTimeout(() => pinLatestComment('auto'), 80);
-            window.setTimeout(() => pinLatestComment('auto'), 320);
+          }}
+          onBlur={() => {
+            composerFocusedRef.current = false;
           }}
           maxLength={500}
           rows={1}
@@ -233,33 +215,18 @@ export function CommentsPanel({
       className={cn(
         'family-glass-bar family-comment-composer shrink-0 p-3 sm:p-4',
         isPage && 'family-comment-composer--page',
-        portalComposer && 'family-comment-composer--viewport-fixed',
       )}
       dir="rtl"
-      style={
-        portalComposer
-          ? {
-              bottom:
-                typeof composerBottom === 'number' ? `${composerBottom}px` : composerBottom,
-            }
-          : undefined
-      }
     >
       {composerBody}
     </div>
   );
-
-  const portalTarget =
-    typeof document !== 'undefined'
-      ? (document.getElementById('family-root') ?? document.body)
-      : null;
 
   return (
     <section
       className={cn(
         'family-comments-panel flex min-h-0 min-w-0 flex-col overflow-x-hidden',
         variant === 'inline' && 'border-t border-[var(--family-border-subtle)]',
-        portalComposer && 'family-comments-panel--portaled-composer',
         className,
       )}
     >
@@ -311,19 +278,12 @@ export function CommentsPanel({
             {orderedComments.map((comment) => (
               <CommentRow key={comment.id} comment={comment} avatarSize={avatarSize} />
             ))}
-            <div
-              ref={bottomRef}
-              aria-hidden
-              className="h-px shrink-0 scroll-mt-2"
-              style={{ scrollMarginBottom: portalComposer ? '5.5rem' : '0.5rem' }}
-            />
+            <div ref={bottomRef} aria-hidden className="h-px shrink-0 scroll-mt-2" style={{ scrollMarginBottom: '0.5rem' }} />
           </ul>
         )}
       </div>
 
-      {portalComposer && composerMounted && portalTarget
-        ? createPortal(composerNode, portalTarget)
-        : composerNode}
+      {composerNode}
     </section>
   );
 }

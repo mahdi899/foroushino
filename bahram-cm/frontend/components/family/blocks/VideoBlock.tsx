@@ -18,6 +18,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [posterError, setPosterError] = useState(false);
+  const [posterLoaded, setPosterLoaded] = useState(false);
 
   const streamUrl = resolveFamilyMediaPlaybackUrl(media.url);
   const downloadUrl = streamUrl ?? media.url;
@@ -100,8 +101,11 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             alt=""
             decoding="async"
             fetchPriority="high"
-            className="pointer-events-none h-full w-full object-cover"
-            onLoad={() => {}}
+            className={cn(
+              'pointer-events-none h-full w-full object-cover transition-opacity duration-150 ease-out',
+              posterLoaded ? 'opacity-100' : 'opacity-0',
+            )}
+            onLoad={() => setPosterLoaded(true)}
             onError={() => setPosterError(true)}
             aria-hidden
           />
@@ -119,9 +123,12 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
                 /* seek unsupported — first frame is fine */
               }
             }}
-            onLoadedData={() => {}}
+            onLoadedData={() => setPosterLoaded(true)}
             onError={() => setPosterError(true)}
-            className="pointer-events-none h-full w-full object-cover"
+            className={cn(
+              'pointer-events-none h-full w-full object-cover transition-opacity duration-150 ease-out',
+              posterLoaded ? 'opacity-100' : 'opacity-0',
+            )}
             aria-hidden
           />
         ) : null}

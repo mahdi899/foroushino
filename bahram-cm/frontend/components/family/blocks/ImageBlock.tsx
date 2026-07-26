@@ -128,7 +128,8 @@ export function ImageBlock({
             onLoad={() => setLoaded(true)}
             onError={() => setError(true)}
             className={cn(
-              'absolute inset-0 h-full w-full',
+              'absolute inset-0 h-full w-full transition-opacity duration-150 ease-out',
+              loaded || fromCache ? 'opacity-100' : 'opacity-0',
               fillCell ? 'object-cover' : 'object-contain',
             )}
           />

@@ -85,6 +85,21 @@ export function warmupFamilyPostsWindow(
   warmupFamilyPostsMedia(posts, from, count);
 }
 
+/** Extra warmup boost while flinging — widens the window in the scroll direction. */
+export function warmupFamilyPostsWindowDirectional(
+  posts: FamilyPost[],
+  anchorIndex: number,
+  before: number,
+  after: number,
+  scrollingUp: boolean,
+): void {
+  if (scrollingUp) {
+    warmupFamilyPostsWindow(posts, anchorIndex, before * 2, after);
+    return;
+  }
+  warmupFamilyPostsWindow(posts, anchorIndex, before, after * 2);
+}
+
 /** Rough post index from scroll offset (oldest post = index 0). */
 export function estimatePostIndexFromScroll(
   posts: FamilyPost[],

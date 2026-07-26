@@ -43,4 +43,41 @@ class AesGcmCipherTest extends TestCase
 
         $this->assertSame(32, strlen(base64_decode($key, true)));
     }
+
+    public function test_decrypt_legacy_wire_format_when_iv_starts_with_flag_byte(): void
+    {
+        $key = AesGcmCipher::generateKey();
+        $plaintext = 'legacy host sync payload';
+        $rawKey = base64_decode($key, true);
+
+        foreach (["\x00", "\x01"] as $firstIvByte) {
+            $iv = $firstIvByte.random_bytes(11);
+            $tag = '';
+            $ciphertext = openssl_encrypt(
+                $plaintext,
+                'aes-256-gcm',
+                $rawKey,
+                OPENSSL_RAW_DATA,
+                $iv,
+                $tag,
+                '',
+                16,
+            );
+            $legacy = base64_encode($iv.$tag.$ciphertext);
+
+            $this->assertSame($plaintext, AesGcmCipher::decrypt($legacy, $key));
+        }
+    }
+
+    public function test_encrypt_deflates_large_payloads(): void
+    {
+        $key = AesGcmCipher::generateKey();
+        $plaintext = str_repeat('{"k":"v"}', 200);
+
+        $encrypted = AesGcmCipher::encrypt($plaintext, $key);
+        $raw = base64_decode($encrypted, true);
+
+        $this->assertSame("\x01", $raw[0]);
+        $this->assertSame($plaintext, AesGcmCipher::decrypt($encrypted, $key));
+    }
 }

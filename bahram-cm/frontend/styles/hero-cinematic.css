@@ -380,15 +380,24 @@ html[data-theme="light"] .hero-light-section .hero-light-grid-scrim {
   }
 }
 
-/* Mobile */
+/* Mobile — hero fills the full screen below the header (no next-section peek) */
 @media (max-width: 639px) {
   .hero-light-section {
     --hero-headline-size: clamp(1.25rem, 5.2vw, 1.65rem);
-    --hero-light-image-max-h: min(66svh, 480px);
+    --hero-light-image-max-h: calc(
+      100dvh - var(--site-header-height) - var(--site-bottom-nav-offset)
+    );
+  }
+
+  .hero-light-section {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
   }
 
   .hero-light-section .hero-light-panel {
-    min-height: min(66svh, 480px);
+    min-height: calc(
+      100dvh - var(--site-header-height) - var(--site-bottom-nav-offset)
+    );
   }
 
   .hero-light-section .hero-light-content {

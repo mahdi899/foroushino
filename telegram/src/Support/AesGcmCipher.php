@@ -12,7 +12,7 @@ namespace TelegramHost\Support;
  * (used for large payloads like account snapshots, which otherwise hit a
  * hard ~8KB request-size wall on this host's web server/WAF) and 0x00
  * otherwise. Decrypt stays backward compatible with the old (unflagged,
- * always-plain) wire format.
+ * always-plain) wire format; ambiguous leading bytes fall back to legacy layout.
  */
 final class AesGcmCipher
 {
@@ -62,16 +62,26 @@ final class AesGcmCipher
             return null;
         }
 
-        $hasFlag = strlen($raw) >= 1 + self::IV_LENGTH + self::TAG_LENGTH
-            && ($raw[0] === self::FLAG_PLAIN || $raw[0] === self::FLAG_DEFLATED);
-
-        $flag = self::FLAG_PLAIN;
-        $offset = 0;
-        if ($hasFlag) {
-            $flag = $raw[0];
-            $offset = 1;
+        $minLegacyLength = self::IV_LENGTH + self::TAG_LENGTH;
+        if (strlen($raw) < $minLegacyLength) {
+            return null;
         }
 
+        $looksFlagged = strlen($raw) >= 1 + $minLegacyLength
+            && ($raw[0] === self::FLAG_PLAIN || $raw[0] === self::FLAG_DEFLATED);
+
+        if ($looksFlagged) {
+            $decoded = self::decryptRaw($key, $raw, 1, $raw[0]);
+            if ($decoded !== null) {
+                return $decoded;
+            }
+        }
+
+        return self::decryptRaw($key, $raw, 0, self::FLAG_PLAIN);
+    }
+
+    private static function decryptRaw(string $key, string $raw, int $offset, string $flag): ?string
+    {
         if (strlen($raw) < $offset + self::IV_LENGTH + self::TAG_LENGTH) {
             return null;
         }

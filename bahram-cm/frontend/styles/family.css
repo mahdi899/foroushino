@@ -640,31 +640,6 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
-/* Composer portaled to #family-root — true viewport-fixed above keyboard. */
-.family-comment-composer--viewport-fixed {
-  position: fixed;
-  left: 0;
-  right: 0;
-  z-index: 60;
-  padding-bottom: 0.75rem;
-  transition: bottom 120ms ease-out;
-  border-top: 0.5px solid var(--family-tg-header-border);
-  background: var(--family-tg-compose-bg);
-  backdrop-filter: var(--family-tg-glass-blur);
-  -webkit-backdrop-filter: var(--family-tg-glass-blur);
-  box-shadow:
-    inset 0 0.5px 0 var(--family-tg-header-highlight),
-    0 -4px 24px rgba(0, 0, 0, 0.12);
-}
-
-.family-comment-composer--viewport-fixed::before {
-  display: none;
-}
-
-.family-comments-panel--portaled-composer .family-comments-list {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
-}
-
 .family-comments-list .family-comments-thread {
   margin-top: auto;
 }

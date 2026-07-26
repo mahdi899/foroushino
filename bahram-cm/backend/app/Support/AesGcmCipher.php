@@ -16,7 +16,9 @@ namespace App\Support;
  * ~8KB request-size wall on the external host's web server/WAF that
  * silently blackholes the connection instead of returning an error;
  * deflating first keeps the wire payload comfortably under that limit.
- * Decrypt stays backward compatible with the old (unflagged) wire format.
+ * Decrypt stays backward compatible with the old (unflagged) wire format; when
+ * the first byte looks like a flag but parsing as flagged fails, decrypt retries
+ * as legacy (IV at offset 0).
  */
 final class AesGcmCipher
 {
@@ -76,17 +78,28 @@ final class AesGcmCipher
             return null;
         }
 
-        // Backward compatible: old wire format had no leading flag byte.
-        $hasFlag = strlen($raw) >= 1 + self::IV_LENGTH + self::TAG_LENGTH
-            && ($raw[0] === self::FLAG_PLAIN || $raw[0] === self::FLAG_DEFLATED);
-
-        $flag = self::FLAG_PLAIN;
-        $offset = 0;
-        if ($hasFlag) {
-            $flag = $raw[0];
-            $offset = 1;
+        $minLegacyLength = self::IV_LENGTH + self::TAG_LENGTH;
+        if (strlen($raw) < $minLegacyLength) {
+            return null;
         }
 
+        // New format leads with 0x00/0x01, which collides with IV[0] on ~2/256 legacy
+        // payloads — try flagged layout first, then fall back to legacy (no flag byte).
+        $looksFlagged = strlen($raw) >= 1 + $minLegacyLength
+            && ($raw[0] === self::FLAG_PLAIN || $raw[0] === self::FLAG_DEFLATED);
+
+        if ($looksFlagged) {
+            $decoded = self::decryptRaw($key, $raw, 1, $raw[0]);
+            if ($decoded !== null) {
+                return $decoded;
+            }
+        }
+
+        return self::decryptRaw($key, $raw, 0, self::FLAG_PLAIN);
+    }
+
+    private static function decryptRaw(string $key, string $raw, int $offset, string $flag): ?string
+    {
         if (strlen($raw) < $offset + self::IV_LENGTH + self::TAG_LENGTH) {
             return null;
         }

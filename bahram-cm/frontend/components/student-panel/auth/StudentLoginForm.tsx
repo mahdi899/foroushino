@@ -4,12 +4,10 @@ import { useActionState, useCallback, useEffect, useRef, useState, useTransition
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, KeyRound, Loader2, ShieldCheck, X } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
-import { BaleIcon } from '@/components/icons/BaleIcon';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
 import {
   loginPasswordAction,
   sendOtpAction,
-  sendOtpViaBaleAction,
   verifyOtpAction,
   type OtpAuthState,
 } from '@/lib/student/actions';
@@ -27,55 +25,6 @@ const fieldClass =
 
 const btnPrimaryClass =
   'neon-btn-primary flex h-11 w-full items-center justify-center rounded-pill bg-emerald text-sm font-semibold text-bone transition hover:bg-emerald-glow disabled:cursor-not-allowed disabled:opacity-55';
-
-function BaleSafirButton({
-  mobile,
-  disabled,
-  onInfo,
-  onError,
-}: {
-  mobile: string;
-  disabled?: boolean;
-  onInfo: (message: string) => void;
-  onError: (message: string) => void;
-}) {
-  const [pending, setPending] = useState(false);
-
-  async function handleSendViaBale() {
-    if (pending || disabled || !mobile) return;
-    setPending(true);
-    onError('');
-
-    const result = await sendOtpViaBaleAction(mobile);
-    setPending(false);
-
-    if (!result.ok) {
-      onError(result.error);
-      return;
-    }
-
-    onInfo(result.message);
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => void handleSendViaBale()}
-      disabled={disabled || pending}
-      className={cn(
-        'flex w-full items-center justify-center gap-3 rounded-pill border border-[#2BBAE8]/25 bg-[#2BBAE8]/10 px-3 py-2.5 panel-text-meta font-medium text-bone transition',
-        'hover:border-[#2BBAE8]/45 hover:bg-[#2BBAE8]/15 disabled:cursor-not-allowed disabled:opacity-55',
-      )}
-    >
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white shadow-sm ring-1 ring-[#2BBAE8]/15">
-        {pending ? <Loader2 className="h-4 w-4 animate-spin text-[#2BBAE8]" /> : <BaleIcon className="h-5 w-5" />}
-      </span>
-      <span className="text-start leading-relaxed">
-        {pending ? 'در حال ارسال از طریق سفیر بله…' : 'دریافت کد در پیام‌رسان بله'}
-      </span>
-    </button>
-  );
-}
 
 export type StudentLoginFormProps = {
   redirectTo: string;
@@ -98,12 +47,12 @@ export function StudentLoginForm({
   const [otpCode, setOtpCode] = useState('');
   const [resendIn, setResendIn] = useState(0);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [baleError, setBaleError] = useState<string | null>(null);
   const [otpInfo, setOtpInfo] = useState<string | null>(null);
   const [passwordPending, startPasswordTransition] = useTransition();
   const verifyFormRef = useRef<HTMLFormElement>(null);
   const resendFormRef = useRef<HTMLFormElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
   const [otpState, sendOtp, sendPending] = useActionState(sendOtpAction, OTP_INITIAL);
   const [verifyState, verifyOtp, verifyPending] = useActionState(verifyOtpAction, OTP_INITIAL);
   const passwordSecurity = useFormSecurity('admin_login', { captchaStacked: true });
@@ -138,7 +87,6 @@ export function StudentLoginForm({
     setOtpCode('');
     setResendIn(0);
     setPasswordError(null);
-    setBaleError(null);
     setOtpInfo(null);
   }, []);
 
@@ -147,6 +95,19 @@ export function StudentLoginForm({
     const timer = window.setTimeout(() => reset(), 280);
     return () => window.clearTimeout(timer);
   }, [active, reset]);
+
+  // Focus the mobile input after the modal's entrance animation settles
+  // instead of using a native `autoFocus`. Focusing immediately on mount
+  // fights the opening animation for control of the viewport — the keyboard
+  // slides up mid-transition, which is what caused the laggy jump/scroll.
+  useEffect(() => {
+    if (!active || step !== 'mobile') return;
+    const delay = isPage ? 0 : 320;
+    const timer = window.setTimeout(() => {
+      phoneInputRef.current?.focus({ preventScroll: true });
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [active, step, isPage]);
 
   useEffect(() => {
     if (otpState.step === 'otp' && otpState.mobile) {
@@ -183,7 +144,6 @@ export function StudentLoginForm({
 
   function handleResend() {
     if (resendIn > 0 || sendPending) return;
-    setBaleError(null);
     setOtpInfo(null);
     resendFormRef.current?.requestSubmit();
     setResendIn(RESEND_SECONDS);
@@ -262,7 +222,7 @@ export function StudentLoginForm({
 
         {isFamilyPage ? (
           <p id={titleId} className="text-center text-sm text-bone/55">
-            ورود با پیامک یا بله
+            ورود با پیامک
           </p>
         ) : (
           <div className="text-center">
@@ -272,7 +232,7 @@ export function StudentLoginForm({
             </h2>
             <p className="mt-0.5 flex items-center justify-center gap-1 panel-text-meta text-mist">
               <ShieldCheck className="h-3 w-3 text-emerald-glow/80" strokeWidth={1.5} aria-hidden />
-              ورود امن با پیامک یا بله
+              ورود امن با پیامک
             </p>
           </div>
         )}
@@ -299,12 +259,12 @@ export function StudentLoginForm({
                   شماره موبایل
                 </span>
                 <input
+                  ref={phoneInputRef}
                   name="mobile"
                   type="tel"
                   inputMode="numeric"
                   autoComplete="tel"
                   dir="ltr"
-                  autoFocus
                   value={phone}
                   onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
                   onBlur={() => setPhoneTouched(true)}
@@ -419,23 +379,7 @@ export function StudentLoginForm({
                 </button>
               </form>
 
-              <BaleSafirButton
-                mobile={mobile}
-                disabled={verifyPending || sendPending}
-                onInfo={(message) => {
-                  setBaleError(null);
-                  setOtpInfo(message);
-                }}
-                onError={(message) => setBaleError(message || null)}
-              />
-
               {otpInfo ? <p className="text-center panel-text-meta text-mist">{otpInfo}</p> : null}
-
-              {baleError ? (
-                <p className="text-center panel-text-meta text-gold" role="alert">
-                  {baleError}
-                </p>
-              ) : null}
 
               <p className="text-center panel-text-meta text-mist">
                 {resendIn > 0 ? (
