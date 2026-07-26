@@ -15,7 +15,7 @@ export default async function TelegramSettingsPage() {
   }
 
   const bots = await loadTelegramBots();
-  const infrastructure = await loadTelegramInfrastructure();
+  const { data: infrastructure, error: infrastructureError } = await loadTelegramInfrastructure();
   const workerSample = await loadTelegramWorkerSample();
   const profilesEntries = await Promise.all(
     bots.map(async (bot) => {
@@ -39,7 +39,13 @@ export default async function TelegramSettingsPage() {
       description="مدیریت ربات‌ها، وب‌هوک، پروفایل تلگرام و گروه گزارشات از پنل"
       icon="Settings"
     >
-      <TelegramSettingsClient bots={bots} profiles={profiles} infrastructure={infrastructure} workerSample={infrastructure?.worker_sample_template ?? workerSample} />
+      <TelegramSettingsClient
+        bots={bots}
+        profiles={profiles}
+        infrastructure={infrastructure}
+        infrastructureError={infrastructureError}
+        workerSample={infrastructure?.worker_sample_template ?? workerSample}
+      />
     </TelegramSubPage>
   );
 }

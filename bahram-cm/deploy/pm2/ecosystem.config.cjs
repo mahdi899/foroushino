@@ -19,6 +19,9 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000,
         NODE_OPTIONS: '--max-old-space-size=768',
+        // SSR adminFetch must hit loopback Laravel (nginx :8010), not the public domain.
+        API_INTERNAL_URL: 'http://127.0.0.1:8010/api/v1',
+        BACKEND_PROXY_URL: 'http://127.0.0.1:8010',
       },
       error_file: '/var/log/pm2/bahram-frontend-error.log',
       out_file: '/var/log/pm2/bahram-frontend-out.log',
