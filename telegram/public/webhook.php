@@ -78,12 +78,16 @@ try {
     $live = new LiveClient($sync);
     $cache = new SyncCache($pdo, $sync, $config);
     $accounts = new AccountCache($pdo);
+    $membershipCache = new \TelegramHost\Services\MembershipCheckCache(
+        $pdo,
+        max(300, (int) ($config['membership_cache_ttl_seconds'] ?? 900)),
+    );
     $conversations = new ConversationRepository($pdo);
     $api = new BotApiClient((string) $config['bot_token']);
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
     $mainMenu = new MainMenu($cache, $accounts);
-    $membership = new MembershipGate($cache, $api);
+    $membership = new MembershipGate($cache, $api, $membershipCache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
 
     $messageHandler = new MessageHandler(
@@ -113,7 +117,6 @@ try {
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
         $live,
-        $sync,
         $accounts,
         $cache,
         $api,

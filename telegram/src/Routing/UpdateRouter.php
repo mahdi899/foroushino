@@ -9,7 +9,6 @@ use TelegramHost\Cache\SyncCache;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
 use TelegramHost\Http\LiveClient;
-use TelegramHost\Http\SyncClient;
 use TelegramHost\Telegram\BotApiClient;
 use TelegramHost\Support\TelegramCustomEmoji;
 
@@ -18,7 +17,6 @@ final class UpdateRouter
     public function __construct(
         private readonly DelegationDetector $delegation,
         private readonly LiveClient $live,
-        private readonly SyncClient $sync,
         private readonly AccountCache $accounts,
         private readonly SyncCache $cache,
         private readonly BotApiClient $api,
@@ -31,7 +29,6 @@ final class UpdateRouter
     {
         if ($this->delegation->shouldDelegate($update)) {
             $this->live->processUpdate($update);
-            $this->refreshBasicAccountAfterDelegate($this->extractTelegramUserId($update));
 
             return;
         }
@@ -54,25 +51,6 @@ final class UpdateRouter
 
         if (isset($update['callback_query'])) {
             $this->callbacks->handle($update['callback_query']);
-        }
-    }
-
-    private function refreshBasicAccountAfterDelegate(int $telegramUserId): void
-    {
-        if ($telegramUserId <= 0) {
-            return;
-        }
-
-        try {
-            $fresh = $this->sync->call('account/fetch', [
-                'telegram_user_id' => $telegramUserId,
-                'include_snapshot' => false,
-            ]);
-            if (! empty($fresh['found']) && is_array($fresh['account'] ?? null)) {
-                $this->accounts->store($telegramUserId, $fresh['account']);
-            }
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] basic account cache: '.$e->getMessage());
         }
     }
 

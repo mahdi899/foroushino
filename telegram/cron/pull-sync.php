@@ -16,6 +16,11 @@ use TelegramHost\Http\SyncClient;
 $config = require __DIR__.'/../bootstrap.php';
 
 $enabled = (bool) ($config['pull_sync_enabled'] ?? false);
+if (! $enabled) {
+    echo '['.date('c')."] pull-sync disabled — use Iran server push to host-sync.php\n";
+    exit(0);
+}
+
 $minInterval = max(300, (int) ($config['pull_sync_min_interval_seconds'] ?? 3600));
 
 $lockFile = sys_get_temp_dir().'/telegram-pull-sync.lock';
@@ -26,11 +31,6 @@ if ($lock === false) {
 }
 if (! flock($lock, LOCK_EX | LOCK_NB)) {
     echo '['.date('c')."] skip: another pull-sync is running\n";
-    exit(0);
-}
-
-if (! $enabled) {
-    echo '['.date('c')."] pull-sync disabled (use server push). Set pull_sync_enabled=true only for emergency.\n";
     exit(0);
 }
 

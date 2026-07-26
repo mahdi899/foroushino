@@ -16,6 +16,7 @@ final class MembershipGate
     public function __construct(
         private readonly \TelegramHost\Cache\SyncCache $cache,
         private readonly BotApiClient $api,
+        private readonly MembershipCheckCache $membershipCache,
     ) {}
 
     public function isSatisfied(int $telegramUserId): bool
@@ -25,12 +26,18 @@ final class MembershipGate
                 continue;
             }
 
-            if (! $this->isMember($telegramUserId, (string) $chat['chat_id'])) {
+            $chatId = (string) $chat['chat_id'];
+            if (! $this->isMember($telegramUserId, $chatId)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    public function clearCacheForUser(int $telegramUserId): void
+    {
+        $this->membershipCache->forgetUser($telegramUserId);
     }
 
     /** @return array<string, mixed> */
@@ -52,11 +59,18 @@ final class MembershipGate
 
     private function isMember(int $telegramUserId, string $chatId): bool
     {
+        $cached = $this->membershipCache->get($telegramUserId, $chatId);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         try {
             $result = $this->api->getChatMember($chatId, $telegramUserId);
             $status = (string) ($result['status'] ?? '');
+            $isMember = in_array($status, self::MEMBER_STATUSES, true);
+            $this->membershipCache->remember($telegramUserId, $chatId, $isMember);
 
-            return in_array($status, self::MEMBER_STATUSES, true);
+            return $isMember;
         } catch (\Throwable) {
             return false;
         }

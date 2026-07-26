@@ -113,18 +113,23 @@ final class MessageHandler
             return;
         }
 
-        foreach (array_slice($courses, 0, 10) as $course) {
+        $lines = [TelegramCustomEmoji::tag('graduation').' <b>دوره‌های فعال</b>', ''];
+        $keyboard = [];
+        foreach (array_slice($courses, 0, 12) as $course) {
             $productId = (int) $course['id'];
-            $caption = CatalogPresenter::courseCaption($course);
-            $keyboard = ['reply_markup' => ['inline_keyboard' => [[InlineButtons::buy($productId)]]]];
-
-            $photo = (string) ($course['photo_url'] ?? '');
-            if ($photo !== '') {
-                $this->api->sendPhoto($chatId, $photo, $caption, $keyboard);
-            } else {
-                $this->api->sendMessage($chatId, $caption, $keyboard);
-            }
+            $title = trim((string) ($course['title'] ?? 'دوره'));
+            $price = isset($course['sale_price']) && (int) $course['sale_price'] > 0
+                ? (int) $course['sale_price']
+                : (int) ($course['price'] ?? 0);
+            $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8')
+                .($price > 0 ? ' — '.number_format($price).' تومان' : '');
+            $keyboard[] = [InlineButtons::buy($productId, mb_substr($title, 0, 28))];
         }
+
+        $this->api->sendMessage($chatId, implode("\n", $lines), [
+            'parse_mode' => 'HTML',
+            'reply_markup' => ['inline_keyboard' => $keyboard],
+        ]);
     }
 
     private function sendSeminarList(int $chatId, int $telegramUserId): void
@@ -136,23 +141,29 @@ final class MessageHandler
             return;
         }
 
-        foreach (array_slice($seminars, 0, 10) as $seminar) {
+        $lines = [TelegramCustomEmoji::tag('mic').' <b>سمینارها</b>', ''];
+        $keyboard = [];
+        foreach (array_slice($seminars, 0, 8) as $seminar) {
             $productId = (int) ($seminar['product_id'] ?? 0);
-
-            $caption = CatalogPresenter::seminarCaption($seminar);
-
-            $buttons = $productId > 0
-                ? [[InlineButtons::buy($productId, 'ثبت‌نام / پرداخت')], [InlineButtons::capacityCheck((int) $seminar['id'])]]
-                : [[InlineButtons::capacityCheck((int) $seminar['id'])]];
-            $keyboard = ['reply_markup' => ['inline_keyboard' => $buttons]];
-
-            $photo = (string) ($seminar['photo_url'] ?? '');
-            if ($photo !== '') {
-                $this->api->sendPhoto($chatId, $photo, $caption, $keyboard);
-            } else {
-                $this->api->sendMessage($chatId, $caption, $keyboard);
+            $seminarId = (int) ($seminar['id'] ?? 0);
+            $title = trim((string) ($seminar['title'] ?? 'سمینار'));
+            $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $row = [];
+            if ($productId > 0) {
+                $row[] = InlineButtons::buy($productId, 'ثبت‌نام / '.mb_substr($title, 0, 18));
+            }
+            if ($seminarId > 0) {
+                $row[] = InlineButtons::capacityCheck($seminarId);
+            }
+            if ($row !== []) {
+                $keyboard[] = $row;
             }
         }
+
+        $this->api->sendMessage($chatId, implode("\n", $lines), [
+            'parse_mode' => 'HTML',
+            'reply_markup' => ['inline_keyboard' => $keyboard],
+        ]);
     }
 
     /** @param array<string, mixed> $present */
