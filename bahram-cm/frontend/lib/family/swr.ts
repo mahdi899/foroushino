@@ -5,11 +5,11 @@ export const familySwrDefaults = {
   dedupingInterval: 5_000,
 } as const;
 
-/** Feed: restore from SSR/IndexedDB; avoid refetch on every tab focus. */
+/** Feed: restore from SSR/IndexedDB; avoid refetch fighting first paint. */
 export const familyFeedSwr = {
   ...familySwrDefaults,
   revalidateOnFocus: false,
-  revalidateOnMount: true,
+  revalidateOnMount: false,
   revalidateFirstPage: true,
   revalidateAll: false,
   dedupingInterval: 15_000,
@@ -24,7 +24,7 @@ export const familyPinnedSwr = {
 export const familyBrandingSwr = {
   ...familySwrDefaults,
   revalidateOnFocus: true,
-  revalidateOnMount: true,
+  revalidateOnMount: false,
   dedupingInterval: 30_000,
   keepPreviousData: true,
 } as const;

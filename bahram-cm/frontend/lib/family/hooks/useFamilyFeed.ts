@@ -65,8 +65,22 @@ export function useFamilyFeed(
       ];
     },
     async ([, , , , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
-    { fallbackData, ...familyFeedSwr },
+    {
+      fallbackData,
+      ...familyFeedSwr,
+      // Without SSR/cache seed, fetch immediately; otherwise wait for deferred soft sync.
+      revalidateOnMount: !fallbackData,
+    },
   );
+
+  // Soft tip refresh after paint — keeps SSR/IDB first paint free of a competing /feed call.
+  useEffect(() => {
+    if (!initialPage) return;
+    const timer = window.setTimeout(() => {
+      void mutate(undefined, { revalidate: true });
+    }, 2800);
+    return () => window.clearTimeout(timer);
+  }, [initialPage, mutate, scope, viewerKey]);
 
   useEffect(() => {
     if (hydratedFromDiskRef.current) return;

@@ -55,7 +55,7 @@ function CommentRow({
         <EmojiRichText
           text={comment.body}
           emojiSize={20}
-          emojiMode="loop"
+          emojiMode="static"
           className="family-comment-body mt-1 text-[15px] leading-[1.35] text-[var(--family-text)]"
         />
         {comment.created_at ? (

@@ -26,8 +26,17 @@ export function useFamilyBranding(
     {
       fallbackData: initial,
       ...familyBrandingSwr,
+      revalidateOnMount: !initial,
     },
   );
+
+  useEffect(() => {
+    if (!initial) return;
+    const timer = window.setTimeout(() => {
+      void mutate(undefined, { revalidate: true });
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [initial, mutate]);
 
   useEffect(() => {
     if (data || initial) return;

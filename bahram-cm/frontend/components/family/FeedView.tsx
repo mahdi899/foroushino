@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
 import { FeedJumpToLatest, type FeedJumpToLatestHandle } from '@/components/family/FeedJumpToLatest';
 import { FeedPreviewGate, FeedPreviewIntro } from '@/components/family/FeedPreviewIntro';
@@ -8,8 +9,6 @@ import { FeedUnreadDivider } from '@/components/family/FeedUnreadDivider';
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import { GUEST_BLURRED_POST_COUNT, type FamilyGuestAction } from '@/lib/family/guest-access';
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
-import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
-import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
 import { VirtualFeedList, type VirtualFeedListHandle } from '@/components/family/VirtualFeedList';
@@ -53,7 +52,7 @@ import {
   revalidateFamilyFeedCaches,
   useFamilyRealtime,
 } from '@/lib/family/hooks/useFamilyRealtime';
-import { isRealtimeConfigured } from '@/lib/realtime/echo';
+import { isRealtimeConfigured } from '@/lib/realtime/config';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import { estimateFeedItemSize, type FeedListItem } from '@/lib/family/feedItemEstimate';
@@ -72,6 +71,21 @@ import {
   warmupFamilyPostsWindow,
 } from '@/lib/family/feedMediaWarmup';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
+
+const FamilyNotificationsPanel = dynamic(
+  () =>
+    import('@/components/family/FamilyNotificationsPanel').then((m) => ({
+      default: m.FamilyNotificationsPanel,
+    })),
+  { ssr: false },
+);
+const FeedCommentsPanel = dynamic(
+  () =>
+    import('@/components/family/FeedCommentsPanel').then((m) => ({
+      default: m.FeedCommentsPanel,
+    })),
+  { ssr: false },
+);
 
 type CommentsTarget = {
   postId: number;

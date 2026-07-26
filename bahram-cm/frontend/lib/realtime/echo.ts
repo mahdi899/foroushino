@@ -3,6 +3,7 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
+import { isRealtimeConfigured } from '@/lib/realtime/config';
 
 export type FamilyEcho = Echo<'reverb'>;
 
@@ -39,10 +40,7 @@ if (typeof window !== 'undefined') {
   }));
 }
 
-/** True when NEXT_PUBLIC_REVERB_APP_KEY is set (client can attempt WebSocket). */
-export function isRealtimeConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_REVERB_APP_KEY);
-}
+export { isRealtimeConfigured } from '@/lib/realtime/config';
 
 /**
  * Singleton Laravel Echo client for Reverb.

@@ -17,6 +17,11 @@ export function GET(request: NextRequest) {
   const startUrl = isClubApex ? '/' : '/family';
   const scope = isClubApex ? '/' : '/family';
 
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const protocol = forwardedProto || request.nextUrl.protocol.replace(':', '') || 'https';
+  const hostHeader = request.headers.get('host') || hostname;
+  const manifestUrl = `${protocol}://${hostHeader}/family-manifest.webmanifest`;
+
   const manifest = {
     name: 'خانواده',
     short_name: 'خانواده',
@@ -31,6 +36,14 @@ export function GET(request: NextRequest) {
     theme_color: '#0b1419',
     categories: ['social', 'education'],
     icons: [...PWA_MANIFEST_ICONS],
+    // Lets Chromium `getInstalledRelatedApps()` detect this PWA when already installed.
+    prefer_related_applications: false,
+    related_applications: [
+      {
+        platform: 'webapp',
+        url: manifestUrl,
+      },
+    ],
   };
 
   return NextResponse.json(manifest, {

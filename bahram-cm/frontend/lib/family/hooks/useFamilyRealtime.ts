@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
 import { getPost } from '@/lib/family/api';
 import { feedPagesContainPost, prependPostToFeedPages, removePostFromFeedPages, replacePostInFeedPages, repositionPostToFeedTip } from '@/lib/family/feedMerge';
-import { getEcho, isRealtimeConfigured } from '@/lib/realtime/echo';
+import { isRealtimeConfigured } from '@/lib/realtime/config';
+import type { FamilyEcho } from '@/lib/realtime/echo';
 
 export type FamilyFeedUpdatedPayload = {
   post_id: number;
@@ -167,11 +168,9 @@ export function useFamilyRealtime({
   useEffect(() => {
     if (!enabled || !isRealtimeConfigured()) return;
 
-    const echo = getEcho();
-    if (!echo) return;
-
-    const channel = echo.channel('family.feed');
-    familyFeedChannelRefCount += 1;
+    let cancelled = false;
+    let echo: FamilyEcho | null = null;
+    let channel: ReturnType<FamilyEcho['channel']> | null = null;
 
     const handler = (payload: FamilyFeedUpdatedPayload) => {
       void (async () => {
@@ -194,9 +193,26 @@ export function useFamilyRealtime({
       })();
     };
 
-    channel.listen('.family.feed.updated', handler);
+    const connect = async () => {
+      const { getEcho } = await import('@/lib/realtime/echo');
+      if (cancelled) return;
+      echo = getEcho();
+      if (!echo) return;
+
+      channel = echo.channel('family.feed');
+      familyFeedChannelRefCount += 1;
+      channel.listen('.family.feed.updated', handler);
+    };
+
+    // Defer WS until after first paint so boot JS/media aren't competing with Pusher.
+    const timer = window.setTimeout(() => {
+      void connect();
+    }, 1800);
 
     return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (!channel || !echo) return;
       channel.stopListening('.family.feed.updated', handler);
       familyFeedChannelRefCount = Math.max(0, familyFeedChannelRefCount - 1);
       if (familyFeedChannelRefCount === 0) {

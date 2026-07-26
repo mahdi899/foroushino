@@ -3,6 +3,9 @@
 /**
  * Family PWA install state — captures `beforeinstallprompt` at module load
  * so the event is not lost before React mounts.
+ *
+ * Once the app is installed (or opened as an installed PWA), we persist that
+ * so browser tabs never keep nagging with install promos.
  */
 
 import { useSyncExternalStore } from 'react';
@@ -18,7 +21,16 @@ type Listener = () => void;
 
 const TOP_BANNER_DISMISS_KEY = 'family-pwa-install-dismissed';
 const MID_FEED_DISMISS_KEY = 'family-pwa-mid-install-dismissed';
+/** Durable flag: this browser profile already installed / launched the Family PWA. */
+const INSTALLED_KEY = 'family-pwa-installed';
 const TOP_BANNER_COOLDOWN_MS = 4 * 24 * 60 * 60_000;
+
+const INSTALLED_DISPLAY_MODES = [
+  'standalone',
+  'fullscreen',
+  'minimal-ui',
+  'window-controls-overlay',
+] as const;
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let installed = false;
@@ -29,12 +41,38 @@ function notify() {
   listeners.forEach((listener) => listener());
 }
 
+function readPersistedInstalled(): boolean {
+  try {
+    return window.localStorage.getItem(INSTALLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function persistInstalled(): void {
+  try {
+    window.localStorage.setItem(INSTALLED_KEY, '1');
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function markInstalled(): void {
+  const changed = !installed || deferredPrompt !== null;
+  installed = true;
+  deferredPrompt = null;
+  persistInstalled();
+  if (changed) notify();
+}
+
 function readStandalone(): boolean {
   if (typeof window === 'undefined') return false;
-  const mq = window.matchMedia('(display-mode: standalone)').matches;
-  const iosStandalone =
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return mq || iosStandalone;
+  if (
+    INSTALLED_DISPLAY_MODES.some((mode) => window.matchMedia(`(display-mode: ${mode})`).matches)
+  ) {
+    return true;
+  }
+  return (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
 function isIosDevice(): boolean {
@@ -71,35 +109,58 @@ function isDismissed(key: string, cooldownMs: number): boolean {
   return at !== null && Date.now() - at < cooldownMs;
 }
 
+/** Chrome: detect same-origin PWA via manifest `related_applications`. */
+async function detectInstalledRelatedApps(): Promise<void> {
+  const nav = navigator as Navigator & {
+    getInstalledRelatedApps?: () => Promise<Array<{ platform?: string }>>;
+  };
+  if (typeof nav.getInstalledRelatedApps !== 'function') return;
+  try {
+    const apps = await nav.getInstalledRelatedApps();
+    if (apps.length > 0) markInstalled();
+  } catch {
+    /* unsupported / permission */
+  }
+}
+
 export function bootstrapFamilyPwaInstall(): void {
   if (typeof window === 'undefined' || bootstrapped) return;
   bootstrapped = true;
 
-  installed = readStandalone();
+  const standalone = readStandalone();
+  installed = standalone || readPersistedInstalled();
+  if (standalone) persistInstalled();
 
   const onBeforeInstall = (event: Event) => {
     event.preventDefault();
+    // Already installed on this profile — never surface install UI again.
+    if (installed || readPersistedInstalled()) {
+      markInstalled();
+      return;
+    }
     deferredPrompt = event as BeforeInstallPromptEvent;
     notify();
   };
 
   const onInstalled = () => {
-    deferredPrompt = null;
-    installed = true;
-    notify();
+    markInstalled();
   };
 
   const onDisplayMode = () => {
-    if (readStandalone()) {
-      installed = true;
-      deferredPrompt = null;
-      notify();
-    }
+    if (readStandalone()) markInstalled();
   };
 
   window.addEventListener('beforeinstallprompt', onBeforeInstall);
   window.addEventListener('appinstalled', onInstalled);
-  window.matchMedia('(display-mode: standalone)').addEventListener('change', onDisplayMode);
+  for (const mode of INSTALLED_DISPLAY_MODES) {
+    try {
+      window.matchMedia(`(display-mode: ${mode})`).addEventListener('change', onDisplayMode);
+    } catch {
+      /* older browsers */
+    }
+  }
+
+  void detectInstalledRelatedApps();
 }
 
 export function subscribeFamilyPwaInstall(listener: Listener): () => void {
@@ -147,6 +208,10 @@ function snapshotsEqual(a: FamilyPwaInstallSnapshot, b: FamilyPwaInstallSnapshot
 
 export function getFamilyPwaInstallSnapshot(): FamilyPwaInstallSnapshot {
   bootstrapFamilyPwaInstall();
+  if (!installed && readPersistedInstalled()) {
+    installed = true;
+    deferredPrompt = null;
+  }
   const canPrompt = Boolean(deferredPrompt) && !installed;
   const ios = isIosDevice();
   const inApp = isInAppBrowser();
@@ -177,7 +242,10 @@ export function getFamilyPwaInstallSnapshot(): FamilyPwaInstallSnapshot {
 
 export async function promptFamilyPwaInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
   bootstrapFamilyPwaInstall();
-  if (installed) return 'accepted';
+  if (installed || readPersistedInstalled()) {
+    markInstalled();
+    return 'accepted';
+  }
   if (!deferredPrompt) return 'unavailable';
 
   const event = deferredPrompt;
@@ -186,9 +254,10 @@ export async function promptFamilyPwaInstall(): Promise<'accepted' | 'dismissed'
     await event.prompt();
     const { outcome } = await event.userChoice;
     if (outcome === 'accepted') {
-      installed = true;
+      markInstalled();
+    } else {
+      notify();
     }
-    notify();
     return outcome;
   } catch {
     notify();

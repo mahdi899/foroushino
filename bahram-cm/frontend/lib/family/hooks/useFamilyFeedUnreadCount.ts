@@ -9,7 +9,7 @@ import {
 } from '@/lib/family/feedReadCursor';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { familySwrDefaults } from '@/lib/family/swr';
-import { isRealtimeConfigured } from '@/lib/realtime/echo';
+import { isRealtimeConfigured } from '@/lib/realtime/config';
 
 /** Unread family posts for the site "خانواده" nav badge (local cursor + API). */
 export function useFamilyFeedUnreadCount(enabled = true) {

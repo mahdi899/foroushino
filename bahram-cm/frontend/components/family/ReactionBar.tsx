@@ -18,7 +18,7 @@ import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { FamilyReactionLottie } from '@/components/family/FamilyReactionLottie';
-import { FAMILY_ALL_REACTIONS } from '@/lib/family/reactions';
+import { FAMILY_ALL_REACTIONS, FAMILY_REACTION_EMOJI } from '@/lib/family/reactions';
 import { removeReaction, setReaction } from '@/lib/family/api';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
@@ -93,7 +93,13 @@ function ReactionButton({
               onComplete={onBurstComplete}
             />
           ) : (
-            <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="reaction" playKey={0} />
+            <span
+              className="family-reaction-icon select-none"
+              style={{ fontSize: compact ? 20 : 15, lineHeight: 1 }}
+              aria-hidden
+            >
+              {FAMILY_REACTION_EMOJI[type]}
+            </span>
           )}
         </span>
         {count > 0 && (

@@ -5349,7 +5349,7 @@ html[data-theme='light'] .family-app .family-action-number-bar {
 /* Story viewer: hold-to-pause without browser “Save image” / share sheet on long-press */
 .family-story-frame,
 .family-story-frame__media,
-.family-story-frame__media-bg,
+.family-story-frame__media-canvas,
 .family-story-touch-shield {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -5358,24 +5358,22 @@ html[data-theme='light'] .family-app .family-action-number-bar {
 }
 
 .family-story-frame__media,
-.family-story-frame__media-bg {
+.family-story-frame__media-canvas {
   -webkit-user-drag: none;
   user-drag: none;
   pointer-events: none;
 }
 
-.family-story-frame__media-bg {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+.family-story-frame__media-canvas {
   transition: opacity 120ms ease;
 }
 
 .family-story-touch-shield {
   position: absolute;
   inset: 0;
-  z-index: 8;
+  z-index: 16;
   pointer-events: auto;
+  -webkit-touch-callout: none;
 }
 
 .family-author-avatar__shell {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type SyntheticEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
@@ -60,6 +60,8 @@ export function StoryViewer({
   const playAttemptRef = useRef(0);
   const imageTimerRef = useRef<{ startedAt: number; durationMs: number; pausedAt: number | null; accumulatedPauseMs: number } | null>(null);
   const recordedViewsRef = useRef<Set<number>>(new Set());
+  const storyCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -418,7 +420,13 @@ export function StoryViewer({
       e.preventDefault();
     };
     document.addEventListener('contextmenu', preventNativeMenu, { capture: true });
-    return () => document.removeEventListener('contextmenu', preventNativeMenu, { capture: true });
+    document.addEventListener('dragstart', preventNativeMenu, { capture: true });
+    document.addEventListener('selectstart', preventNativeMenu, { capture: true });
+    return () => {
+      document.removeEventListener('contextmenu', preventNativeMenu, { capture: true });
+      document.removeEventListener('dragstart', preventNativeMenu, { capture: true });
+      document.removeEventListener('selectstart', preventNativeMenu, { capture: true });
+    };
   }, [open]);
 
   useEffect(() => {
@@ -429,10 +437,55 @@ export function StoryViewer({
 
     setImageReady(false);
     let cancelled = false;
+    let ro: ResizeObserver | null = null;
     const probe = new Image();
     probe.decoding = 'async';
+
+    const paint = () => {
+      if (cancelled || !probe.naturalWidth) return false;
+      const canvas = storyCanvasRef.current;
+      const host = canvas?.parentElement;
+      if (!canvas || !host) return false;
+      const w = Math.max(1, host.clientWidth);
+      const h = Math.max(1, host.clientHeight);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        setImageReady(false);
+        return true;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      // object-cover — paint pixels only (no <img>/CSS url for Chrome “Download image”)
+      const scale = Math.max(w / probe.naturalWidth, h / probe.naturalHeight);
+      const dw = probe.naturalWidth * scale;
+      const dh = probe.naturalHeight * scale;
+      ctx.drawImage(probe, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      setImageReady(true);
+      return true;
+    };
+
+    const paintWhenReady = () => {
+      if (paint()) {
+        const host = storyCanvasRef.current?.parentElement;
+        if (host && typeof ResizeObserver !== 'undefined') {
+          ro?.disconnect();
+          ro = new ResizeObserver(() => {
+            paint();
+          });
+          ro.observe(host);
+        }
+        return;
+      }
+      if (!cancelled) requestAnimationFrame(paintWhenReady);
+    };
+
     probe.onload = () => {
-      if (!cancelled) setImageReady(true);
+      if (!cancelled) paintWhenReady();
     };
     probe.onerror = () => {
       if (!cancelled) setImageReady(false);
@@ -441,6 +494,7 @@ export function StoryViewer({
 
     return () => {
       cancelled = true;
+      ro?.disconnect();
       probe.onload = null;
       probe.onerror = null;
     };
@@ -449,6 +503,46 @@ export function StoryViewer({
   const blockStoryContextMenu = useCallback((e: SyntheticEvent) => {
     e.preventDefault();
   }, []);
+
+  const onStoryPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      pointerStartRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      pauseSlide();
+    },
+    [pauseSlide],
+  );
+
+  const onStoryPointerEnd = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const start = pointerStartRef.current;
+      pointerStartRef.current = null;
+      try {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        /* ignore */
+      }
+      resumeSlide();
+      if (!start) return;
+      const dt = Date.now() - start.t;
+      const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      // Hold-to-pause: don't navigate on release
+      if (dt >= 280 || moved > 14) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const ratio = (e.clientX - rect.left) / rect.width;
+      if (ratio <= 1 / 3) goNext();
+      else if (ratio >= 2 / 3) goPrev();
+    },
+    [goNext, goPrev, resumeSlide],
+  );
 
   if (!mounted) return null;
 
@@ -541,12 +635,12 @@ export function StoryViewer({
                           onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
                         />
                         {videoSlideState === 'loading' && (
-                          <div className="absolute inset-0 z-[15] flex items-center justify-center bg-black/40">
+                          <div className="absolute inset-0 z-[18] flex items-center justify-center bg-black/40">
                             <Loader2 className="h-9 w-9 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />
                           </div>
                         )}
                         {videoSlideState === 'error' && (
-                          <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center text-white/90">
+                          <div className="absolute inset-0 z-[18] flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center text-white/90">
                             <p className="text-sm">پخش ویدیو ممکن نشد.</p>
                             <div className="flex flex-wrap items-center justify-center gap-2">
                               <button
@@ -568,27 +662,24 @@ export function StoryViewer({
                         )}
                       </>
                     ) : (
-                      <div
+                      <canvas
+                        ref={storyCanvasRef}
                         key={current.id}
-                        role="img"
                         aria-label={current.caption?.trim() || 'استوری تصویری'}
+                        role="img"
                         className={cn(
-                          'family-story-frame__media-bg pointer-events-none absolute inset-0',
+                          'family-story-frame__media-canvas pointer-events-none absolute inset-0 h-full w-full',
                           !imageReady && 'opacity-0',
                         )}
-                        style={
-                          currentSrc ? { backgroundImage: `url(${JSON.stringify(currentSrc)})` } : undefined
-                        }
                       />
                     )}
                     <div
                       className="family-story-touch-shield"
                       aria-hidden
                       onContextMenu={blockStoryContextMenu}
-                      onPointerDown={pauseSlide}
-                      onPointerUp={resumeSlide}
-                      onPointerLeave={resumeSlide}
-                      onPointerCancel={resumeSlide}
+                      onPointerDown={onStoryPointerDown}
+                      onPointerUp={onStoryPointerEnd}
+                      onPointerCancel={onStoryPointerEnd}
                     />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
                     {current.caption && (
@@ -603,9 +694,6 @@ export function StoryViewer({
                     <p className="text-sm text-white/70">فایل استوری در دسترس نیست.</p>
                   </div>
                 )}
-
-                <button type="button" aria-label="قبلی" className="absolute inset-y-0 right-0 z-[12] w-1/3" onClick={goPrev} />
-                <button type="button" aria-label="بعدی" className="absolute inset-y-0 left-0 z-[12] w-1/3" onClick={goNext} />
               </div>
             </div>
           </motion.div>

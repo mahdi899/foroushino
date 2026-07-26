@@ -124,7 +124,7 @@ function renderBlock(block: FamilyPostBlock, postId: number, authorName: string)
           key={block.id}
           text={block.text}
           emojiSize={22}
-          emojiMode="loop"
+          emojiMode="static"
           className="family-post-bubble__text"
         />
       ) : null;

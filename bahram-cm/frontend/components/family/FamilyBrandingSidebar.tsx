@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Bell, CirclePlay } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { FamilyBackButton } from '@/components/family/FamilyBackButton';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
-import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
@@ -14,6 +14,11 @@ import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAcc
 import { FAMILY_GUEST_CTA } from '@/lib/family/guest-access';
 import type { FamilyBranding } from '@/lib/family/types';
 import { FamilyMenuButton } from '@/components/family/FamilyMenuSheet';
+
+const StoryViewer = dynamic(
+  () => import('@/components/family/StoryViewer').then((m) => ({ default: m.StoryViewer })),
+  { ssr: false },
+);
 
 /** Desktop branding column — Telegram channel-info panel + iOS glass. */
 export function FamilyBrandingSidebar({
@@ -166,14 +171,14 @@ export function FamilyBrandingSidebar({
         </div>
       </aside>
 
-      {isMember && !guestStoriesLocked && (
+      {isMember && !guestStoriesLocked && storyOpen ? (
         <StoryViewer
           open={storyOpen}
           onClose={() => setStoryOpen(false)}
           onFinished={handleStoriesFinished}
           profileName={branding.profile_name}
         />
-      )}
+      ) : null}
     </>
   );
 }

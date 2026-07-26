@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useCallback, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyBackButton } from '@/components/family/FamilyBackButton';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
-import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
@@ -16,6 +16,11 @@ import { FamilyMenuButton } from '@/components/family/FamilyMenuSheet';
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import type { FamilyBranding } from '@/lib/family/types';
 import { familyHomeHref } from '@/lib/domains';
+
+const StoryViewer = dynamic(
+  () => import('@/components/family/StoryViewer').then((m) => ({ default: m.StoryViewer })),
+  { ssr: false },
+);
 
 function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean }) {
   return (
@@ -181,14 +186,14 @@ export function FamilyTopBar({
         </div>
       </header>
 
-      {canViewStories && !guestStoriesLocked && !isLoading && (
+      {canViewStories && !guestStoriesLocked && !isLoading && storyOpen ? (
         <StoryViewer
           open={storyOpen}
           onClose={() => setStoryOpen(false)}
           onFinished={handleStoriesFinished}
           profileName={branding.profile_name}
         />
-      )}
+      ) : null}
     </>
   );
 }
