@@ -39,10 +39,14 @@ function enqueueWarmUrl(url: string | null | undefined): void {
  * front of the queue since these are usually about-to-be-viewed (priority). */
 export function warmupUrls(urls: (string | null | undefined)[]): void {
   if (typeof window === 'undefined') return;
+  const priority: string[] = [];
   for (const url of urls) {
     if (!url || warmedUrls.has(url)) continue;
     warmedUrls.add(url);
-    queue.unshift(url);
+    priority.push(url);
+  }
+  if (priority.length > 0) {
+    queue.unshift(...priority);
   }
   drainQueue();
 }
