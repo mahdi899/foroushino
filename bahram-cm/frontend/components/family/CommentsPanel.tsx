@@ -5,6 +5,7 @@ import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
 import { FamilyApiError } from '@/lib/family/errors';
+import { familyHaptic } from '@/lib/family/haptics';
 import { formatPostDateTime } from '@/lib/family/datetime';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
@@ -184,6 +185,7 @@ export function CommentsPanel({
       const created = await submit(body);
       setValue('');
       setJustSent(true);
+      familyHaptic('success');
       familyFeedDebug.measure(`comment:${postId}`, 'comment', {
         postId,
         id: created?.id,
@@ -196,6 +198,7 @@ export function CommentsPanel({
     } catch (e) {
       const message = e instanceof FamilyApiError ? e.message : 'ارسال نظر ناموفق بود.';
       familyFeedDebug.error('comment', 'submit failed', { postId, error: message });
+      familyHaptic('warning');
       setError(message);
     }
   };

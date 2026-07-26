@@ -12,6 +12,7 @@ import {
   normalizePollResults,
 } from '@/lib/family/actionResults';
 import { familyMotion } from '@/lib/family/motion';
+import { familyHaptic } from '@/lib/family/haptics';
 import { useFamilyActionCelebrate } from '@/lib/family/FamilyActionCelebrateContext';
 import type { FamilyAction, FamilyActionResults, FamilyActionType } from '@/lib/family/types';
 
@@ -286,6 +287,7 @@ export function ActionCard({
       if (nextResults) setResults(nextResults);
       setLocalResponse(value);
       setJustSubmitted(true);
+      familyHaptic('success');
       celebrate({ type: action.type });
     } finally {
       setPending(false);

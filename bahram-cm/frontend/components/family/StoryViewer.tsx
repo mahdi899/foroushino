@@ -13,6 +13,7 @@ import {
   resolveFamilyMediaPlaybackCandidates,
 } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
+import { familyHaptic } from '@/lib/family/haptics';
 
 const IMAGE_STORY_MS = 8000;
 const VIDEO_LOAD_TIMEOUT_MS = 25_000;
@@ -538,8 +539,13 @@ export function StoryViewer({
       const rect = e.currentTarget.getBoundingClientRect();
       if (rect.width <= 0) return;
       const ratio = (e.clientX - rect.left) / rect.width;
-      if (ratio <= 1 / 3) goNext();
-      else if (ratio >= 2 / 3) goPrev();
+      if (ratio <= 1 / 3) {
+        familyHaptic('light');
+        goNext();
+      } else if (ratio >= 2 / 3) {
+        familyHaptic('light');
+        goPrev();
+      }
     },
     [goNext, goPrev, resumeSlide],
   );

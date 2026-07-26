@@ -4,6 +4,7 @@ import { forwardRef, useImperativeHandle, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
+import { familyHaptic } from '@/lib/family/haptics';
 
 export type FeedJumpToLatestHandle = {
   setVisible: (show: boolean) => void;
@@ -41,6 +42,7 @@ export const FeedJumpToLatest = forwardRef<
       type="button"
       onClick={(event) => {
         familyFeedDebug.info('fab', 'click jump', { unreadCount, visible: show });
+        familyHaptic('medium');
         onClick();
         // Drop keyboard/mouse focus so global emerald focus-visible ring never sticks.
         event.currentTarget.blur();

@@ -14,6 +14,7 @@ import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAcc
 import { FAMILY_GUEST_CTA } from '@/lib/family/guest-access';
 import type { FamilyBranding } from '@/lib/family/types';
 import { FamilyMenuButton } from '@/components/family/FamilyMenuSheet';
+import { familyHaptic } from '@/lib/family/haptics';
 
 const StoryViewer = dynamic(
   () => import('@/components/family/StoryViewer').then((m) => ({ default: m.StoryViewer })),
@@ -55,6 +56,7 @@ export function FamilyBrandingSidebar({
       return;
     }
     if (!isMember || !storiesAvailable) return;
+    familyHaptic('medium');
     setStoryOpen(true);
   }, [guestAccess, isMember, storiesAvailable, storiesLocked]);
 
@@ -81,7 +83,10 @@ export function FamilyBrandingSidebar({
                 type="button"
                 onClick={() => {
                   if (notificationsActive) onCloseNotifications?.();
-                  else onOpenNotifications?.();
+                  else {
+                    familyHaptic('medium');
+                    onOpenNotifications?.();
+                  }
                 }}
                 aria-pressed={notificationsActive || undefined}
                 aria-label={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}

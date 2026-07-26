@@ -19,6 +19,7 @@ import { fontClassName } from '@/lib/fonts';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { FamilyReactionLottie } from '@/components/family/FamilyReactionLottie';
 import { FAMILY_ALL_REACTIONS, FAMILY_REACTION_EMOJI } from '@/lib/family/reactions';
+import { familyHaptic } from '@/lib/family/haptics';
 import { removeReaction, setReaction } from '@/lib/family/api';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
@@ -298,6 +299,7 @@ export const ReactionBar = forwardRef<
 
   const playInPlaceFeedback = useCallback(
     (type: FamilyReactionType) => {
+      familyHaptic('light');
       if (reduceMotion) {
         setPulseType(type);
         window.setTimeout(() => setPulseType(null), PULSE_MS);
@@ -456,6 +458,7 @@ export const ReactionBar = forwardRef<
         onLockedInteract?.();
         return;
       }
+      familyHaptic('selection');
       const el = anchor ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
       pickerAnchorElRef.current = el;
       if (el) {

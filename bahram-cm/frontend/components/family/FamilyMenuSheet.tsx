@@ -20,6 +20,7 @@ import {
   getFamilyDailyPushState,
 } from '@/lib/family/pwa-push';
 import { logoutStudentAction } from '@/lib/student/actions';
+import { familyHaptic } from '@/lib/family/haptics';
 
 function lockBodyScroll(lock: boolean) {
   if (typeof document === 'undefined') return;
@@ -54,6 +55,7 @@ export function FamilyMenuButton({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          familyHaptic('medium');
           setOpen(true);
         }}
         className={cn('family-topbar__action family-menu-trigger', className)}
@@ -113,12 +115,15 @@ function FamilyMenuSheet({
   }, [onClose]);
 
   const setTheme = (next: SiteTheme) => {
+    familyHaptic('selection');
     applyResolvedTheme(next);
   };
 
   const handleInstall = async () => {
+    familyHaptic('medium');
     const outcome = await promptFamilyPwaInstall();
     if (outcome === 'accepted') {
+      familyHaptic('success');
       dismissFamilyPwaTopBanner();
       return;
     }
@@ -129,6 +134,7 @@ function FamilyMenuSheet({
 
   const handlePushToggle = async () => {
     if (pushBusy) return;
+    familyHaptic('selection');
     setPushBusy(true);
     setPushHint(null);
     try {
@@ -139,6 +145,7 @@ function FamilyMenuSheet({
         const result = await enableFamilyDailyPush();
         if (result === 'subscribed') {
           setPushSubscribed(true);
+          familyHaptic('success');
         } else if (result === 'denied') {
           setPushHint('اجازه اعلان در تنظیمات مرورگر مسدود است.');
         } else if (result === 'no-sw') {
@@ -275,7 +282,10 @@ function FamilyMenuSheet({
                   <button
                     type="button"
                     className="family-menu-item family-menu-item--danger"
-                    onClick={() => setConfirmLogout(true)}
+                    onClick={() => {
+                      familyHaptic('warning');
+                      setConfirmLogout(true);
+                    }}
                   >
                     <LogOut size={18} strokeWidth={1.85} aria-hidden />
                     <span className="family-menu-item__text">

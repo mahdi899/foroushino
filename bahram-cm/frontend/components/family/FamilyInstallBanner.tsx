@@ -11,6 +11,7 @@ import {
   promptFamilyPwaInstall,
   useFamilyPwaInstall,
 } from '@/lib/family/pwa-install';
+import { familyHaptic } from '@/lib/family/haptics';
 
 const HERO_DELAY_MS = 12_000;
 const HERO_SESSION_KEY = 'family-pwa-hero-shown-session';
@@ -29,6 +30,7 @@ export function FamilyInstallPromoInline({
   if (pwa.isInstalled || !pwa.showMidFeedPromos) return null;
 
   const handleInstall = async () => {
+    familyHaptic('medium');
     const outcome = await promptFamilyPwaInstall();
     if (outcome === 'accepted') return;
     if (outcome === 'unavailable') {
@@ -51,7 +53,10 @@ export function FamilyInstallPromoInline({
             type="button"
             className="family-install-promo__dismiss"
             aria-label="پنهان کردن"
-            onClick={() => dismissFamilyPwaMidFeedPromos()}
+            onClick={() => {
+              familyHaptic('selection');
+              dismissFamilyPwaMidFeedPromos();
+            }}
           >
             بعداً
           </button>
@@ -102,8 +107,10 @@ export function FamilyInstallTopBanner({ className }: { className?: string }) {
   if (!visible || pwa.isInstalled) return null;
 
   const handleInstall = async () => {
+    familyHaptic('medium');
     const outcome = await promptFamilyPwaInstall();
     if (outcome === 'accepted') {
+      familyHaptic('success');
       dismissFamilyPwaTopBanner();
       setVisible(false);
       return;
@@ -114,6 +121,7 @@ export function FamilyInstallTopBanner({ className }: { className?: string }) {
   };
 
   const dismiss = () => {
+    familyHaptic('selection');
     dismissFamilyPwaTopBanner();
     setEntered(false);
     window.setTimeout(() => setVisible(false), 180);

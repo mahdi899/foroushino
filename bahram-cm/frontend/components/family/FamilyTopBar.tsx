@@ -16,6 +16,7 @@ import { FamilyMenuButton } from '@/components/family/FamilyMenuSheet';
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import type { FamilyBranding } from '@/lib/family/types';
 import { familyHomeHref } from '@/lib/domains';
+import { familyHaptic } from '@/lib/family/haptics';
 
 const StoryViewer = dynamic(
   () => import('@/components/family/StoryViewer').then((m) => ({ default: m.StoryViewer })),
@@ -80,6 +81,7 @@ export function FamilyTopBar({
       return;
     }
     if (!storiesAvailable) return;
+    familyHaptic('medium');
     setStoryOpen(true);
   }, [guestAccess, storiesAvailable, storiesLocked]);
 
@@ -161,7 +163,10 @@ export function FamilyTopBar({
                     type="button"
                     onClick={() => {
                       if (notificationsActive) onCloseNotifications?.();
-                      else onOpenNotifications?.();
+                      else {
+                        familyHaptic('medium');
+                        onOpenNotifications?.();
+                      }
                     }}
                     aria-pressed={notificationsActive || undefined}
                     aria-label={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}

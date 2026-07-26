@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { cn } from '@/lib/cn';
 import { familyMotion } from '@/lib/family/motion';
+import { familyHaptic } from '@/lib/family/haptics';
 import { ActionCard } from '@/components/family/ActionCard';
 import { ArticleBlock } from '@/components/family/blocks/ArticleBlock';
 import { ImageAlbumBlock, ImageBlock } from '@/components/family/blocks/ImageBlock';
@@ -193,6 +194,7 @@ function FeedPostCard({
       onGuestGate?.('comment');
       return;
     }
+    familyHaptic('medium');
     onOpenComments?.(post.id, {
       onCommentAdded: (comment) => {
         setCommentCount((c) => c + 1);
