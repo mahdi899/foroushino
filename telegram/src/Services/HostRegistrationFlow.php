@@ -158,7 +158,11 @@ final class HostRegistrationFlow
             if (! is_array($reply)) {
                 continue;
             }
-            $this->sendReply($chatId, $telegramUserId, $reply);
+            try {
+                $this->sendReply($chatId, $telegramUserId, $reply);
+            } catch (\Throwable $e) {
+                error_log('[telegram-host] registration reply: '.$e->getMessage());
+            }
         }
     }
 

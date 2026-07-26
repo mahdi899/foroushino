@@ -51,7 +51,11 @@ final class UpdateRouter
 
         $telegramUserId = $this->extractTelegramUserId($update);
         if ($telegramUserId > 0) {
-            $this->accountSync->ensureFresh($telegramUserId);
+            try {
+                $this->accountSync->ensureFresh($telegramUserId);
+            } catch (\Throwable $e) {
+                error_log('[telegram-host] account sync skipped: '.$e->getMessage());
+            }
         }
 
         if ($telegramUserId > 0 && ! $this->cache->botIsActive() && ! $this->accounts->isBotAdmin($telegramUserId)) {

@@ -110,7 +110,7 @@ final class MessageHandler
         }
 
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
-            $this->handleMenuButton($chatId, $telegramUserId, $text);
+            $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
 
             return;
         }
@@ -140,10 +140,11 @@ final class MessageHandler
         $this->registration->start($chatId, $telegramUserId, $from, $startPayload);
     }
 
-    private function handleMenuButton(int $chatId, int $telegramUserId, string $text): void
+    /** @param array<string, mixed> $from */
+    private function handleMenuButton(int $chatId, int $telegramUserId, string $text, array $from = []): void
     {
         if (! $this->accounts->isVerified($telegramUserId)) {
-            $this->handleStart($chatId, $telegramUserId, (array) ($callback['from'] ?? []));
+            $this->handleStart($chatId, $telegramUserId, $from);
 
             return;
         }

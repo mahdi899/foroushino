@@ -26,6 +26,16 @@ final class BotApiClient
         try {
             $this->call('sendMessage', $payload);
         } catch (TelegramApiException $e) {
+            if ($this->shouldRetryWithoutHtml($e)) {
+                $this->call('sendMessage', array_merge([
+                    'chat_id' => $chatId,
+                    'text' => TelegramCustomEmoji::stripHtmlTags($text),
+                    'parse_mode' => 'HTML',
+                ], TelegramCustomEmoji::stripButtonIcons($params)));
+
+                return;
+            }
+
             if (! str_contains($e->getMessage(), 'DOCUMENT_INVALID')) {
                 throw $e;
             }
@@ -54,6 +64,17 @@ final class BotApiClient
         try {
             $this->call('sendPhoto', $payload);
         } catch (TelegramApiException $e) {
+            if ($this->shouldRetryWithoutHtml($e)) {
+                $this->call('sendPhoto', array_merge([
+                    'chat_id' => $chatId,
+                    'photo' => $photo,
+                    'caption' => TelegramCustomEmoji::stripHtmlTags($caption),
+                    'parse_mode' => 'HTML',
+                ], TelegramCustomEmoji::stripButtonIcons($params)));
+
+                return;
+            }
+
             if (! str_contains($e->getMessage(), 'DOCUMENT_INVALID')) {
                 throw $e;
             }
@@ -68,6 +89,14 @@ final class BotApiClient
                 'parse_mode' => 'HTML',
             ], $safeParams));
         }
+    }
+
+    private function shouldRetryWithoutHtml(TelegramApiException $e): bool
+    {
+        $msg = $e->getMessage();
+
+        return str_contains($msg, "can't parse entities")
+            || str_contains($msg, 'Unclosed start tag');
     }
 
     public function sendChatAction(int|string $chatId, string $action = 'typing'): void
