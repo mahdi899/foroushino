@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { Instagram, Mail, Radio, Send, type LucideIcon } from "lucide-react";
 import { site } from "@/content/site";
-import { SITE_MEDIA } from "@/config/media";
 import { Divider } from "@/components/ui/Divider";
-import { DirectMediaImg } from "@/components/ui/DirectMediaImg";
-import { EnamadBadge } from "@/components/ui/EnamadBadge";
+import { FooterTrustBadges } from "@/components/nav/FooterTrustBadges";
 import { Logo } from "./Logo";
 import { toPersianDigits } from "@/lib/persian";
 
@@ -34,42 +32,7 @@ export function SiteFooter() {
             <p className="mt-2 hidden max-w-sm text-caption text-mist md:mt-3 md:block">
               کمپین‌نویسی، ورود به {site.ecosystem}.
             </p>
-            <div
-              className="footer-trust-badges mt-8 hidden border-t border-bone/10 pt-8 md:flex"
-              aria-label="نشان‌های اعتماد"
-            >
-              {site.footer.trustBadges.map((badge) => {
-                if (badge.id === "enamad") {
-                  return <EnamadBadge key={badge.id} />;
-                }
-
-                const src = SITE_MEDIA[`trust-${badge.id}`]?.src;
-                return (
-                  <a
-                    key={badge.id}
-                    href={badge.href}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="footer-trust-badge group"
-                    title={badge.alt}
-                  >
-                    {src ? (
-                      <span className="footer-trust-badge__surface">
-                        <span className="footer-trust-badge__inner">
-                          <DirectMediaImg
-                            src={src}
-                            alt={badge.alt}
-                            className="footer-trust-badge__img"
-                          />
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="footer-trust-badge__surface text-xs text-mist">{badge.alt}</span>
-                    )}
-                  </a>
-                );
-              })}
-            </div>
+            <FooterTrustBadges layout="desktop" />
           </div>
 
           <div className="md:col-span-7 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-8">
@@ -100,9 +63,7 @@ export function SiteFooter() {
                   );
                 })}
               </div>
-              <div className="mt-6 flex justify-center md:hidden">
-                <EnamadBadge />
-              </div>
+              <FooterTrustBadges layout="mobile" />
             </div>
             {/* Desktop */}
             <section className="hidden min-w-0 md:block">

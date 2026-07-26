@@ -6208,34 +6208,6 @@ html[data-theme="light"] .footer-trust-badge:hover .footer-trust-badge__surface 
   object-position: center;
 }
 
-/* eNamad — embed رسمی (بدون قاب تزئینی فوتر تا استایل سایت خراب نشود) */
-.footer-trust-badge--enamad {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 7.25rem;
-  height: 5.75rem;
-  overflow: hidden;
-  text-decoration: none;
-  contain: layout style paint;
-}
-
-.footer-trust-badge--enamad img {
-  display: block;
-  width: auto;
-  height: 100%;
-  max-width: 100%;
-  object-fit: contain;
-  object-position: center;
-}
-
-.footer-trust-badge--enamad__placeholder {
-  display: block;
-  width: 5.5rem;
-  height: 5.75rem;
-}
-
 @media (min-width: 640px) {
   .footer-trust-badges {
     gap: 1rem;
@@ -6249,16 +6221,6 @@ html[data-theme="light"] .footer-trust-badge:hover .footer-trust-badge__surface 
 
   .footer-trust-badge__img {
     height: 3.625rem;
-  }
-
-  .footer-trust-badge--enamad {
-    width: 7.75rem;
-    height: 6.125rem;
-  }
-
-  .footer-trust-badge--enamad__placeholder {
-    width: 6rem;
-    height: 6.125rem;
   }
 }
 
