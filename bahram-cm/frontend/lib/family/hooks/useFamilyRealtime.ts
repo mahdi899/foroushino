@@ -2,10 +2,15 @@
 
 import { useEffect, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
-import { getPost } from '@/lib/family/api';
+import { getFeed, getPost } from '@/lib/family/api';
 import { feedPagesContainPost, prependPostToFeedPages, removePostFromFeedPages, replacePostInFeedPages, repositionPostToFeedTip } from '@/lib/family/feedMerge';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
 import type { FamilyEcho } from '@/lib/realtime/echo';
+import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
+
+const FEED_TIP_PAGE_SIZE = 15;
+
+type FeedPage = { data: FamilyPost[]; meta: FamilyFeedMeta };
 
 export type FamilyFeedUpdatedPayload = {
   post_id: number;
@@ -36,6 +41,16 @@ function isFamilyFeedKey(key: unknown): boolean {
 
 function isFamilyPinnedKey(key: unknown): boolean {
   return key === 'family-pinned' || (Array.isArray(key) && key[0] === 'family-pinned');
+}
+
+let unreadSummaryMutateTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleUnreadSummaryRevalidate(): void {
+  if (unreadSummaryMutateTimer) window.clearTimeout(unreadSummaryMutateTimer);
+  unreadSummaryMutateTimer = window.setTimeout(() => {
+    unreadSummaryMutateTimer = null;
+    void globalMutate(isFeedUnreadKey);
+  }, 2_000);
 }
 
 // Module-level refcount: multiple components (FeedView, FamilyNavButton, ...) subscribe to
@@ -126,10 +141,23 @@ export async function removePostFromFeedCaches(postId: number): Promise<boolean>
   return removed;
 }
 
-/** Force all live feed pages to refetch from the API (admin edit/delete safety net). */
-export function revalidateFamilyFeedCaches(): void {
-  void globalMutate(isFamilyFeedKey, undefined, { revalidate: true });
+/** Refresh only the feed tip page in SWR caches (one /feed call), not every loaded page. */
+export async function revalidateFamilyFeedTipOnly(): Promise<void> {
+  await globalMutate(
+    isFamilyFeedKey,
+    async (pages) => {
+      if (!Array.isArray(pages) || pages.length === 0) return pages;
+      const fresh = (await getFeed(null, FEED_TIP_PAGE_SIZE)) as FeedPage;
+      return [fresh, ...pages.slice(1)];
+    },
+    { revalidate: false },
+  );
   void globalMutate(isFamilyPinnedKey);
+}
+
+/** @deprecated Prefer `revalidateFamilyFeedTipOnly` — avoids N parallel /feed refetches. */
+export function revalidateFamilyFeedCaches(): void {
+  void revalidateFamilyFeedTipOnly();
 }
 
 /** Apply admin moderation to client feed caches immediately, then sync with server. */
@@ -174,7 +202,7 @@ export function useFamilyRealtime({
 
     const handler = (payload: FamilyFeedUpdatedPayload) => {
       void (async () => {
-        void globalMutate(isFeedUnreadKey);
+        scheduleUnreadSummaryRevalidate();
 
         const event = payload.event ?? 'published';
         if (event === 'pinned' || event === 'unpinned' || event === 'archived' || event === 'deleted') {

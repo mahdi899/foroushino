@@ -9,7 +9,10 @@ import {
   writeFamilyShellSnapshot,
 } from '@/lib/family/shellCache';
 import type { FamilyBranding } from '@/lib/family/types';
-import type { FamilyFeedUpdatedPayload } from '@/lib/family/hooks/useFamilyRealtime';
+import {
+  revalidateFamilyFeedTipOnly,
+  type FamilyFeedUpdatedPayload,
+} from '@/lib/family/hooks/useFamilyRealtime';
 
 export type FamilyCacheSection = 'feed' | 'branding' | 'shell' | 'pinned' | 'unread';
 
@@ -51,7 +54,7 @@ async function applyRemoteInvalidate(message: FamilyCacheInvalidateMessage): Pro
         /* ignore */
       }
     }
-    void globalMutate(isFamilyFeedKey, undefined, { revalidate: true });
+    void revalidateFamilyFeedTipOnly();
     void globalMutate(isBrandingKey, undefined, { revalidate: true });
     void globalMutate(isFamilyPinnedKey);
     void globalMutate(isFeedUnreadKey);
@@ -118,7 +121,7 @@ function parseFeedKey(key: string): { scope: 'guest' | 'member'; viewerKey: stri
 function revalidateSwrSection(section: FamilyCacheSection): void {
   switch (section) {
     case 'feed':
-      void globalMutate(isFamilyFeedKey, undefined, { revalidate: true });
+      void revalidateFamilyFeedTipOnly();
       break;
     case 'branding':
       void globalMutate(isBrandingKey, undefined, { revalidate: true });
@@ -187,7 +190,7 @@ export async function invalidateAllFamilyBrowserCache(
     }
   }
 
-  void globalMutate(isFamilyFeedKey, undefined, { revalidate: true });
+  void revalidateFamilyFeedTipOnly();
   void globalMutate(isBrandingKey, undefined, { revalidate: true });
   void globalMutate(isFamilyPinnedKey);
   void globalMutate(isFeedUnreadKey);

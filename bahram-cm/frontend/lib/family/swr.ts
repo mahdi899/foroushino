@@ -1,8 +1,8 @@
 /** Shared SWR defaults — keep family channel gentle on the API. */
 export const familySwrDefaults = {
-  revalidateOnFocus: true,
+  revalidateOnFocus: false,
   revalidateOnReconnect: true,
-  dedupingInterval: 5_000,
+  dedupingInterval: 10_000,
 } as const;
 
 /** Feed: restore from SSR/IndexedDB; avoid refetch fighting first paint. */
@@ -23,8 +23,8 @@ export const familyPinnedSwr = {
 
 export const familyBrandingSwr = {
   ...familySwrDefaults,
-  revalidateOnFocus: true,
+  revalidateOnFocus: false,
   revalidateOnMount: false,
-  dedupingInterval: 30_000,
+  dedupingInterval: 60_000,
   keepPreviousData: true,
 } as const;

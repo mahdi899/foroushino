@@ -13,7 +13,7 @@ Telegram → public/webhook.php → UpdateRouter
 ## نصب روی cPanel
 
 1. کل پوشه `telegram/` را آپلود کنید.
-2. اسکیمای `db/schema.sql` را import کنید (اگر قبلاً ساخته‌اید: `db/migrate-catalog-photos.sql`).
+2. اسکیمای `db/schema.sql` را یک‌بار در phpMySQL import کنید (نصب تازه).
 3. `config.sample.php` → `config.php` (از پنل ادمین سایت).
 4. Document Root → `telegram/public`
 5. **هیچ Cron Job در cPanel نگذارید** (نه pull-sync، نه iran-relay). همه‌چیز event-driven است.

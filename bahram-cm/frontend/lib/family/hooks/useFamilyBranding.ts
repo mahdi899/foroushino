@@ -34,7 +34,7 @@ export function useFamilyBranding(
     if (!initial) return;
     const timer = window.setTimeout(() => {
       void mutate(undefined, { revalidate: true });
-    }, 3500);
+    }, 90_000);
     return () => window.clearTimeout(timer);
   }, [initial, mutate]);
 

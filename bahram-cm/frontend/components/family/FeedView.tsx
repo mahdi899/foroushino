@@ -49,7 +49,6 @@ import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import {
   handleFeedModerationEvent,
   mergePublishedPostIntoFeedCaches,
-  revalidateFamilyFeedCaches,
   useFamilyRealtime,
 } from '@/lib/family/hooks/useFamilyRealtime';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
@@ -338,9 +337,20 @@ export function FeedView({
 
   const recentFeedUpdateIdsRef = useRef<Set<number>>(new Set());
   const feedRevisionRef = useRef<number | null>(null);
+  const lastTipSyncAtRef = useRef(0);
+  const tipSyncInFlightRef = useRef(false);
 
   const syncTipIfServerAhead = useCallback(async () => {
-    if (isPreview || isJumpedAwayRef.current) return;
+    if (isPreview || isJumpedAwayRef.current || tipSyncInFlightRef.current) return;
+
+    const realtime = isRealtimeConfigured();
+    const minGapMs = realtime ? 90_000 : 45_000;
+    const now = Date.now();
+    if (now - lastTipSyncAtRef.current < minGapMs) return;
+
+    tipSyncInFlightRef.current = true;
+    lastTipSyncAtRef.current = now;
+
     const loadedLatest = chronologicalLatestPostId(postsRef.current);
     try {
       const res = await getFeedUnreadSummary(loadedLatest);
@@ -352,29 +362,27 @@ export function FeedView({
         feedRevisionRef.current != null &&
         revision !== feedRevisionRef.current
       ) {
-        familyFeedDebug.info('sync', 'feed revision changed — revalidating', {
+        familyFeedDebug.info('sync', 'feed revision changed — revalidating tip', {
           previous: feedRevisionRef.current,
           next: revision,
         });
         feedRevisionRef.current = revision;
         await revalidateTip();
-        revalidateFamilyFeedCaches();
         return;
       }
       if (revision != null) feedRevisionRef.current = revision;
 
       if (serverLatest === loadedLatest) return;
 
-      familyFeedDebug.info('sync', 'server tip changed — revalidating', {
+      familyFeedDebug.info('sync', 'server tip changed — revalidating tip', {
         loadedLatest,
         serverLatest,
       });
       await revalidateTip();
-      if (serverLatest < loadedLatest) {
-        revalidateFamilyFeedCaches();
-      }
     } catch (err) {
       familyFeedDebug.warn('sync', 'tip sync failed', { error: String(err) });
+    } finally {
+      tipSyncInFlightRef.current = false;
     }
   }, [isPreview, revalidateTip]);
 
@@ -452,29 +460,30 @@ export function FeedView({
 
   // HTTP safety net when Reverb is down or an event was missed (e.g. two quick publishes).
   useEffect(() => {
-    if (isPreview || !feedReady || !pageVisible) return;
+    if (isPreview || !feedReady || !pageVisible || commentsTarget || notificationsOpen) return;
 
     void syncTipIfServerAhead();
 
-    const intervalMs = isRealtimeConfigured() ? 45_000 : 30_000;
+    const intervalMs = isRealtimeConfigured() ? 180_000 : 90_000;
     const id = window.setInterval(() => {
       void syncTipIfServerAhead();
     }, intervalMs);
 
     return () => window.clearInterval(id);
-  }, [feedReady, isPreview, pageVisible, syncTipIfServerAhead]);
+  }, [
+    commentsTarget,
+    feedReady,
+    isPreview,
+    notificationsOpen,
+    pageVisible,
+    syncTipIfServerAhead,
+  ]);
 
   useEffect(() => {
     const revision = meta?.feed_revision;
     if (revision == null) return;
-    if (feedRevisionRef.current == null) {
-      feedRevisionRef.current = revision;
-      return;
-    }
-    if (revision === feedRevisionRef.current) return;
     feedRevisionRef.current = revision;
-    void revalidateTip().then(() => revalidateFamilyFeedCaches());
-  }, [meta?.feed_revision, revalidateTip]);
+  }, [meta?.feed_revision]);
 
   useEffect(() => {
     if (isPreview) return;

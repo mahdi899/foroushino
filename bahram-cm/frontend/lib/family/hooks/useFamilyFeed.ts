@@ -13,6 +13,7 @@ import { getFeed, getPostJumpContext } from '@/lib/family/api';
 import { reconcileDiskCacheWithCurrent, latestPostIdFromPages } from '@/lib/family/feedMerge';
 import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
 import { familyFeedSwr } from '@/lib/family/swr';
+import { isRealtimeConfigured } from '@/lib/realtime/config';
 import type { FamilyBranding, FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 import type { FeedCachePage } from '@/lib/family/feedCache';
 
@@ -73,12 +74,19 @@ export function useFamilyFeed(
     },
   );
 
-  // Soft tip refresh after paint — keeps SSR/IDB first paint free of a competing /feed call.
+  // Optional single tip refresh after paint (SSR seed) — one /feed, not full infinite revalidate.
   useEffect(() => {
-    if (!initialPage) return;
+    if (!initialPage || isRealtimeConfigured()) return;
     const timer = window.setTimeout(() => {
-      void mutate(undefined, { revalidate: true });
-    }, 2800);
+      void mutate(
+        async (pages) => {
+          if (!pages?.length) return pages;
+          const fresh = (await getFeed(null, FEED_PAGE_SIZE)) as FeedPage;
+          return [fresh, ...pages.slice(1)];
+        },
+        { revalidate: false },
+      );
+    }, 12_000);
     return () => window.clearTimeout(timer);
   }, [initialPage, mutate, scope, viewerKey]);
 

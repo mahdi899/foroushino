@@ -87,35 +87,29 @@ export function CommentsPanel({
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
-  const listClientHeightRef = useRef(0);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
 
   const orderedComments = useMemo(() => [...comments].reverse(), [comments]);
 
-  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const root = listRef.current;
-    if (!root) return;
-    root.scrollTo({ top: root.scrollHeight, behavior });
-  }, []);
-
-  /**
-   * When the list viewport shrinks (keyboard), only scroll if comments that were
-   * visible would now sit under the composer/keyboard. Short threads stay put.
-   */
-  const revealCoveredComments = useCallback(() => {
+  /** Pin the thread tail just above the composer (Telegram-style when keyboard opens). */
+  const pinLatestComment = useCallback((behavior: ScrollBehavior = 'auto') => {
     const list = listRef.current;
     if (!list) return;
-    const prevH = listClientHeightRef.current;
-    const nextH = list.clientHeight;
-    listClientHeightRef.current = nextH;
-    if (prevH <= 0) return;
-    const shrink = prevH - nextH;
-    if (shrink <= 1) return;
-    const canScroll = Math.max(0, list.scrollHeight - list.scrollTop - nextH);
-    const covered = Math.min(canScroll, shrink);
-    if (covered > 1) list.scrollTop += covered;
+    const anchor = bottomRef.current;
+    if (anchor && typeof anchor.scrollIntoView === 'function') {
+      anchor.scrollIntoView({ block: 'end', behavior });
+      return;
+    }
+    list.scrollTo({ top: list.scrollHeight, behavior });
   }, []);
+
+  const scrollToLatest = useCallback(
+    (behavior: ScrollBehavior = 'auto') => {
+      pinLatestComment(behavior);
+    },
+    [pinLatestComment],
+  );
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -147,16 +141,17 @@ export function CommentsPanel({
     scrollToLatest('smooth');
   }, [justSent, orderedComments.length, scrollToLatest]);
 
-  /** Lift composer above the keyboard; do not pin the whole thread to the bottom. */
+  /** Lift composer above the keyboard; keep the latest comment pinned above it. */
   useEffect(() => {
     if (!isPage || typeof window === 'undefined' || !window.visualViewport) return;
 
     const vv = window.visualViewport;
     const sync = () => {
-      const list = listRef.current;
-      if (list) listClientHeightRef.current = list.clientHeight;
       const inset = readKeyboardInset();
-      setKeyboardInset(inset > KEYBOARD_INSET_THRESHOLD_PX ? inset : 0);
+      setKeyboardInset((prev) => {
+        const next = inset > KEYBOARD_INSET_THRESHOLD_PX ? inset : 0;
+        return prev === next ? prev : next;
+      });
     };
 
     sync();
@@ -171,9 +166,17 @@ export function CommentsPanel({
   }, [isPage]);
 
   useLayoutEffect(() => {
-    if (!isPage) return;
-    revealCoveredComments();
-  }, [isPage, keyboardInset, revealCoveredComments]);
+    if (!isPage || keyboardInset <= KEYBOARD_INSET_THRESHOLD_PX) return;
+    pinLatestComment('auto');
+    const frame = requestAnimationFrame(() => pinLatestComment('auto'));
+    const t = window.setTimeout(() => pinLatestComment('auto'), 160);
+    const t2 = window.setTimeout(() => pinLatestComment('auto'), 320);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(t);
+      window.clearTimeout(t2);
+    };
+  }, [isPage, keyboardInset, pinLatestComment]);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -263,7 +266,12 @@ export function CommentsPanel({
             {orderedComments.map((comment) => (
               <CommentRow key={comment.id} comment={comment} avatarSize={avatarSize} />
             ))}
-            <div ref={bottomRef} aria-hidden className="h-px shrink-0" />
+            <div
+              ref={bottomRef}
+              aria-hidden
+              className="h-px shrink-0 scroll-mt-2"
+              style={{ scrollMarginBottom: '0.5rem' }}
+            />
           </ul>
         )}
       </div>
@@ -289,13 +297,17 @@ export function CommentsPanel({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onFocus={() => {
-              // Remeasure after the keyboard animates; only nudge covered comments.
+              pinLatestComment('auto');
+              requestAnimationFrame(() => {
+                pinLatestComment('auto');
+                requestAnimationFrame(() => pinLatestComment('auto'));
+              });
               window.setTimeout(() => {
-                const list = listRef.current;
-                if (list) listClientHeightRef.current = list.clientHeight;
                 const inset = readKeyboardInset();
                 setKeyboardInset(inset > KEYBOARD_INSET_THRESHOLD_PX ? inset : 0);
+                pinLatestComment('auto');
               }, 80);
+              window.setTimeout(() => pinLatestComment('auto'), 320);
             }}
             maxLength={500}
             rows={1}

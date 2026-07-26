@@ -36,12 +36,12 @@ export function useFamilyFeedUnreadCount(enabled = true) {
     };
   }, [syncAfterId]);
 
-  // Mild HTTP safety net; when Reverb is configured, poll less often.
+  // Mild HTTP safety net; realtime + FeedView tip sync cover freshness on the family route.
   const refreshInterval = !pageVisible
     ? 0
     : isRealtimeConfigured()
-      ? 180_000
-      : 90_000;
+      ? 300_000
+      : 180_000;
 
   const { data, mutate } = useSWR(
     enabled && pageVisible && afterId > 0 ? ['family-feed-unread-summary', afterId] : null,
