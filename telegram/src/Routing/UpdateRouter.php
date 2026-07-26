@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Routing;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
@@ -18,6 +19,7 @@ final class UpdateRouter
         private readonly DelegationDetector $delegation,
         private readonly IranSyncRelay $iranSync,
         private readonly AccountCache $accounts,
+        private readonly AccountSyncCoordinator $accountSync,
         private readonly SyncCache $cache,
         private readonly BotApiClient $api,
         private readonly MessageHandler $messages,
@@ -48,6 +50,10 @@ final class UpdateRouter
         }
 
         $telegramUserId = $this->extractTelegramUserId($update);
+        if ($telegramUserId > 0) {
+            $this->accountSync->ensureFresh($telegramUserId);
+        }
+
         if ($telegramUserId > 0 && ! $this->cache->botIsActive() && ! $this->accounts->isBotAdmin($telegramUserId)) {
             $chatId = $this->extractChatId($update);
             if ($chatId > 0) {

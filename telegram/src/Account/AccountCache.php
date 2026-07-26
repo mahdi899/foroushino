@@ -197,6 +197,33 @@ final class AccountCache
         return is_array($present) ? $present : null;
     }
 
+    /**
+     * Whether to call Iran account/fetch (identity not on host yet, or snapshot stale).
+     */
+    public function shouldAttemptIranPull(int $telegramUserId, int $minAgeVerifiedSeconds, int $minAgeUnverifiedSeconds): bool
+    {
+        if ($this->isVerified($telegramUserId)) {
+            return $this->shouldRefreshSnapshot($telegramUserId, $minAgeVerifiedSeconds);
+        }
+
+        $account = $this->get($telegramUserId);
+        if ($account === null) {
+            return true;
+        }
+
+        return $this->isStale((string) ($account['updated_at'] ?? ''), $minAgeUnverifiedSeconds);
+    }
+
+    public function recordPullAttempt(int $telegramUserId): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO telegram_accounts_cache (telegram_user_id, is_bot_admin, updated_at)
+             VALUES (:id, 0, NOW())
+             ON DUPLICATE KEY UPDATE updated_at = NOW()',
+        );
+        $stmt->execute(['id' => $telegramUserId]);
+    }
+
     public function shouldRefreshSnapshot(int $telegramUserId, int $minAgeSeconds): bool
     {
         if (! $this->isVerified($telegramUserId)) {
@@ -214,6 +241,16 @@ final class AccountCache
         }
 
         return (time() - $syncedAt) >= $minAgeSeconds;
+    }
+
+    private function isStale(string $updatedAt, int $minAgeSeconds): bool
+    {
+        $ts = strtotime($updatedAt);
+        if ($ts === false || $ts <= 0) {
+            return true;
+        }
+
+        return (time() - $ts) >= $minAgeSeconds;
     }
 
     /** @return list<int> */

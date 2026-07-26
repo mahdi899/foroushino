@@ -8,6 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
+use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -27,6 +28,7 @@ final class MessageHandler
         private readonly MainMenu $mainMenu,
         private readonly MembershipGate $membership,
         private readonly PurchaseFlow $purchaseFlow,
+        private readonly HostRegistrationFlow $registration,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -42,12 +44,12 @@ final class MessageHandler
         }
 
         if (isset($message['contact'])) {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'registration_contact_received',
-                'شماره دریافت شد. ثبت‌نام در حال انجام است؛ اگر منو نیامد، یک دقیقه بعد دوباره /start بزنید.',
-            ), [
-                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-            ]);
+            if ($this->accounts->isVerified($telegramUserId)) {
+                $this->sendMainMenu($chatId, $telegramUserId);
+
+                return;
+            }
+            $this->registration->contact($chatId, $telegramUserId, (array) $message['contact']);
 
             return;
         }
@@ -70,7 +72,21 @@ final class MessageHandler
         $conversation = $this->conversations->get($telegramUserId);
 
         if ($text === '/start' || str_starts_with($text, '/start ')) {
-            $this->handleStart($chatId, $telegramUserId);
+            $startPayload = str_starts_with($text, '/start ') ? trim(substr($text, 7)) : null;
+            $this->handleStart($chatId, $telegramUserId, (array) ($message['from'] ?? []), $startPayload !== '' ? $startPayload : null);
+
+            return;
+        }
+
+        if ($conversation['state'] === 'waiting_for_name' && $text !== '') {
+            $this->registration->name($chatId, $telegramUserId, $text);
+
+            return;
+        }
+
+        if ($conversation['state'] === 'waiting_for_otp' && $text !== '') {
+            $mobile = (string) ($conversation['context']['mobile'] ?? '');
+            $this->registration->verifyOtp($chatId, $telegramUserId, $mobile, $text);
 
             return;
         }
@@ -110,7 +126,10 @@ final class MessageHandler
         ]);
     }
 
-    private function handleStart(int $chatId, int $telegramUserId): void
+    /**
+     * @param array<string, mixed> $from
+     */
+    private function handleStart(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
         if ($this->accounts->isVerified($telegramUserId)) {
             $this->sendMainMenu($chatId, $telegramUserId);
@@ -118,23 +137,13 @@ final class MessageHandler
             return;
         }
 
-        $text = $this->cache->message(
-            'registration_ask_mobile',
-            "به ربات آکادمی بهرام خوش آمدید.\n\nبرای ادامه، شماره موبایل را از دکمه اشتراک‌گذاری بفرستید یا از سایت ثبت‌نام کنید.",
-        );
-        $this->api->sendMessage($chatId, $text, [
-            'reply_markup' => [
-                'keyboard' => [[['text' => '📱 اشتراک شماره موبایل', 'request_contact' => true]]],
-                'resize_keyboard' => true,
-                'one_time_keyboard' => true,
-            ],
-        ]);
+        $this->registration->start($chatId, $telegramUserId, $from, $startPayload);
     }
 
     private function handleMenuButton(int $chatId, int $telegramUserId, string $text): void
     {
         if (! $this->accounts->isVerified($telegramUserId)) {
-            $this->api->sendMessage($chatId, 'لطفاً ابتدا ثبت‌نام را با /start تکمیل کنید.');
+            $this->handleStart($chatId, $telegramUserId, (array) ($callback['from'] ?? []));
 
             return;
         }

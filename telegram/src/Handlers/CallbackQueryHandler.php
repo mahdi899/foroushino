@@ -8,6 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
+use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -26,6 +27,7 @@ final class CallbackQueryHandler
         private readonly MembershipGate $membership,
         private readonly PurchaseFlow $purchaseFlow,
         private readonly MessageHandler $messageHandler,
+        private readonly HostRegistrationFlow $registration,
     ) {}
 
     /** @param array<string, mixed> $callback */
@@ -42,6 +44,12 @@ final class CallbackQueryHandler
 
         $this->api->answerCallbackQuery($callbackId);
 
+        if (str_starts_with($data, 'reg:')) {
+            $this->registration->callback($chatId, $telegramUserId, $data);
+
+            return;
+        }
+
         if (str_starts_with($data, 'support:cat:')) {
             $this->handleSupportCategory($chatId, $telegramUserId, substr($data, strlen('support:cat:')));
 
@@ -51,7 +59,11 @@ final class CallbackQueryHandler
         if (str_starts_with($data, 'nav:')) {
             $action = substr($data, 4);
             if (! $this->accounts->isVerified($telegramUserId)) {
-                $this->api->answerCallbackQuery($callbackId, 'ابتدا ثبت‌نام را کامل کنید.', true);
+                $this->messageHandler->handle([
+                    'chat' => ['id' => $chatId],
+                    'from' => ['id' => $telegramUserId],
+                    'text' => '/start',
+                ]);
 
                 return;
             }
@@ -165,7 +177,11 @@ final class CallbackQueryHandler
         }
 
         if (! $this->accounts->isVerified($telegramUserId)) {
-            $this->api->sendMessage($chatId, 'برای خرید، ابتدا از /start ثبت‌نام را کامل کنید.');
+            $this->messageHandler->handle([
+                'chat' => ['id' => $chatId],
+                'from' => ['id' => $telegramUserId],
+                'text' => '/start',
+            ]);
 
             return;
         }

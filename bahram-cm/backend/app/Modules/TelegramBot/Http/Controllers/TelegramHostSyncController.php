@@ -20,6 +20,7 @@ use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
 use App\Services\TelegramHostAccountSnapshotService;
 use App\Services\TelegramHostCatalogRevision;
+use App\Services\TelegramHostRegistrationService;
 use App\Services\TelegramInfrastructureService;
 use App\Support\AesGcmCipher;
 use Illuminate\Http\JsonResponse;
@@ -53,6 +54,7 @@ class TelegramHostSyncController
         private readonly TelegramInfrastructureService $infrastructure,
         private readonly TelegramHostCatalogRevision $catalogRevision,
         private readonly TelegramHostAccountSnapshotService $accountSnapshots,
+        private readonly TelegramHostRegistrationService $hostRegistration,
     ) {}
 
     public function bootstrap(Request $request): JsonResponse
@@ -289,6 +291,78 @@ class TelegramHostSyncController
             'found' => true,
             'account' => $accountPayload,
         ]);
+    }
+
+    public function registrationStart(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        if ($telegramUserId <= 0) {
+            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'شناسه تلگرام نامعتبر است.'], 422);
+        }
+
+        $from = is_array($payload['from'] ?? null) ? $payload['from'] : [];
+        $startPayload = isset($payload['start_payload']) ? (string) $payload['start_payload'] : null;
+
+        $result = $this->hostRegistration->start(
+            $this->productionBot(),
+            $telegramUserId,
+            $from,
+            $startPayload !== '' ? $startPayload : null,
+        );
+
+        return $this->encryptedResponse($request, $result);
+    }
+
+    public function registrationContact(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $phone = trim((string) ($payload['phone'] ?? ''));
+        $contactUserId = (int) ($payload['contact_user_id'] ?? 0);
+
+        if ($telegramUserId <= 0) {
+            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'شناسه تلگرام نامعتبر است.'], 422);
+        }
+
+        $result = $this->hostRegistration->shareContact(
+            $this->productionBot(),
+            $telegramUserId,
+            $phone,
+            $contactUserId,
+        );
+
+        return $this->encryptedResponse($request, $result);
+    }
+
+    public function registrationName(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $name = trim((string) ($payload['name'] ?? ''));
+
+        if ($telegramUserId <= 0 || $name === '') {
+            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+        }
+
+        $result = $this->hostRegistration->submitName($this->productionBot(), $telegramUserId, $name);
+
+        return $this->encryptedResponse($request, $result);
+    }
+
+    public function registrationCallback(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $data = trim((string) ($payload['callback_data'] ?? ''));
+
+        if ($telegramUserId <= 0 || $data === '') {
+            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'درخواست نامعتبر است.'], 422);
+        }
+
+        $result = $this->hostRegistration->regCallback($this->productionBot(), $telegramUserId, $data);
+
+        return $this->encryptedResponse($request, $result);
     }
 
     /** @return array<string, mixed> */

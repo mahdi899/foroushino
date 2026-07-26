@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Bot;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
@@ -98,6 +99,7 @@ try {
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
     $mainMenu = new MainMenu($cache, $accounts);
+    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache);
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
 
@@ -110,6 +112,7 @@ try {
         $mainMenu,
         $membership,
         $purchaseFlow,
+        $registration,
         $siteBaseUrl
     );
 
@@ -122,13 +125,17 @@ try {
         $mainMenu,
         $membership,
         $purchaseFlow,
-        $messageHandler
+        $messageHandler,
+        $registration,
     );
+
+    $accountSync = new AccountSyncCoordinator($accounts, $sync);
 
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
         $iranSync,
         $accounts,
+        $accountSync,
         $cache,
         $api,
         $messageHandler,

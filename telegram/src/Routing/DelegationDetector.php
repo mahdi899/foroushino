@@ -51,7 +51,9 @@ final class DelegationDetector
         }
 
         if (! $this->accounts->isVerified($telegramUserId)) {
-            return true;
+            if ($this->isPrivateUserFacing($update)) {
+                return false;
+            }
         }
 
         $conversation = $this->conversations->get($telegramUserId);
