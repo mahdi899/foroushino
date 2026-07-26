@@ -31,7 +31,6 @@ final class DelegationDetector
         private readonly ConversationRepository $conversations,
     ) {}
 
-    /** @param array<string, mixed> $update */
     public function shouldRelayToIran(array $update): bool
     {
         if (isset($update['my_chat_member']) || isset($update['chat_member']) || isset($update['chat_join_request'])) {
@@ -53,6 +52,48 @@ final class DelegationDetector
 
         if (! $this->accounts->isVerified($telegramUserId)) {
             return true;
+        }
+
+        $conversation = $this->conversations->get($telegramUserId);
+        if (in_array($conversation['state'], self::SERVER_STATES, true)) {
+            return true;
+        }
+
+        $callbackData = (string) ($update['callback_query']['data'] ?? '');
+        if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
+            return true;
+        }
+
+        if (str_starts_with($callbackData, 'reg:')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Synchronous live relay — only when Iran must answer immediately (OTP, C2C, support thread).
+     * Unverified users use local UX + queued relay instead.
+     *
+     * @param array<string, mixed> $update
+     */
+    public function shouldTrySyncRelayToIran(array $update): bool
+    {
+        if (! $this->shouldRelayToIran($update) || ! $this->isPrivateUserFacing($update)) {
+            return false;
+        }
+
+        $telegramUserId = $this->telegramUserId($update);
+        if ($telegramUserId <= 0) {
+            return false;
+        }
+
+        if ($this->accounts->isBotAdmin($telegramUserId)) {
+            return true;
+        }
+
+        if (! $this->accounts->isVerified($telegramUserId)) {
+            return false;
         }
 
         $conversation = $this->conversations->get($telegramUserId);

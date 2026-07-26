@@ -86,9 +86,8 @@ try {
     $api = new BotApiClient((string) $config['bot_token']);
 
     $reporter = new \TelegramHost\Services\IranFailureReporter($api, $cache, $accounts, $config);
-    $offlineUserMessage = new \TelegramHost\Services\IranOfflineUserMessage($cache);
-    $live = new ResilientLiveClient($liveClient, $api, $reporter, $offlineUserMessage);
-    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter, $offlineUserMessage);
+    $live = new ResilientLiveClient($liveClient, $api, $reporter);
+    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter);
 
     $maxRelay = max(0, (int) ($config['iran_relay_per_webhook'] ?? 2));
     $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
@@ -137,6 +136,12 @@ try {
     );
 
     (new Bot($router))->handle($update);
+
+    try {
+        (new \TelegramHost\Services\HostBackgroundSync($cache, $sync, $accounts))->refreshForUser($senderId);
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] bg sync: '.$e->getMessage());
+    }
 
     try {
         $iranRelay->drain();

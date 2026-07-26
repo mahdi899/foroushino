@@ -11,7 +11,7 @@ use TelegramHost\Handlers\MessageHandler;
 use TelegramHost\Telegram\BotApiClient;
 use TelegramHost\Support\TelegramCustomEmoji;
 
-/** Serves users from local MySQL; Iran is called on demand with typing + outage reporting. */
+/** Local MySQL first; Iran is optional sync/queue — users never see "main server down". */
 final class UpdateRouter
 {
     public function __construct(
@@ -28,17 +28,19 @@ final class UpdateRouter
     public function handle(array $update): void
     {
         if ($this->delegation->shouldRelayToIran($update)) {
-            if ($this->delegation->isPrivateUserFacing($update)) {
-                $telegramUserId = $this->extractTelegramUserId($update);
-                $chatId = $this->extractChatId($update);
-                $this->iranSync->relayOrNotify($chatId, $telegramUserId, $update);
+            $this->iranSync->enqueue($update);
 
+            if (! $this->delegation->isPrivateUserFacing($update)) {
                 return;
             }
 
-            $this->iranSync->enqueueOnly($update);
-
-            return;
+            if ($this->delegation->shouldTrySyncRelayToIran($update)) {
+                $telegramUserId = $this->extractTelegramUserId($update);
+                $chatId = $this->extractChatId($update);
+                if ($this->iranSync->tryRelay($chatId, $telegramUserId, $update)) {
+                    return;
+                }
+            }
         }
 
         if (! $this->delegation->isPrivateUserFacing($update)) {

@@ -43,6 +43,14 @@ final class PurchaseFlow
         }
 
         $preview = $this->live->discountPreview($chatId, $telegramUserId, $productId, $code);
+        if (! empty($preview['offline'])) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'discount_check_deferred',
+                'الان بررسی کد تخفیف ممکن نیست. «بدون کد تخفیف» را بزنید یا چند دقیقه بعد دوباره کد را بفرستید.',
+            ));
+
+            return;
+        }
         if (empty($preview['ok'])) {
             $this->api->sendMessage($chatId, ((string) ($preview['message'] ?? 'کد تخفیف معتبر نیست.'))."\n\nدوباره کد را بفرستید یا «بدون کد تخفیف» را بزنید.");
 
@@ -106,6 +114,15 @@ final class PurchaseFlow
         $coupon = $this->couponFromContext($telegramUserId);
         $result = $this->live->checkoutZarinpal($chatId, $telegramUserId, $productId, $coupon);
 
+        if (! empty($result['offline'])) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'payment_retry_soon',
+                'لطفاً چند دقیقه دیگر دوباره دکمه پرداخت را بزنید.',
+            ));
+
+            return;
+        }
+
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'شروع پرداخت ناموفق بود.'));
 
@@ -133,6 +150,15 @@ final class PurchaseFlow
     {
         $coupon = $this->couponFromContext($telegramUserId);
         $result = $this->live->checkoutC2c($chatId, $telegramUserId, $productId, $coupon);
+
+        if (! empty($result['offline'])) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'payment_retry_soon',
+                'لطفاً چند دقیقه دیگر دوباره «کارت به کارت» را انتخاب کنید.',
+            ));
+
+            return;
+        }
 
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'ثبت سفارش کارت‌به‌کارت ناموفق بود.'));

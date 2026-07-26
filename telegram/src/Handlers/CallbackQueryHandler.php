@@ -137,6 +137,15 @@ final class CallbackQueryHandler
 
         $result = $this->live->supportPrepare($chatId, $telegramUserId, $category);
         if (empty($result['ok'])) {
+            if (! empty($result['offline'])) {
+                $this->conversations->set($telegramUserId, 'waiting_for_support_message', ['category' => $category]);
+                $this->api->sendMessage($chatId, $this->cache->message(
+                    'support_write_prompt',
+                    'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو» بفرستید.',
+                ));
+
+                return;
+            }
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'امکان شروع پشتیبانی نیست.'));
 
             return;
@@ -202,12 +211,8 @@ final class CallbackQueryHandler
     {
         $result = $this->live->capacityCheck($chatId, $telegramUserId, $seminarId);
         if (! empty($result['offline'])) {
-            $this->api->sendMessage($chatId, (string) ($result['message'] ?? ''));
-
-            return;
-        }
-
-        if (! empty($result['ok'])) {
+            // Fall through to cached capacity_hint below.
+        } elseif (! empty($result['ok'])) {
             if (! empty($result['is_full'])) {
                 $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
 

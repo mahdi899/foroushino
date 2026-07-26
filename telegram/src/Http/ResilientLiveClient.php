@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace TelegramHost\Http;
 
 use TelegramHost\Services\IranFailureReporter;
-use TelegramHost\Services\IranOfflineUserMessage;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
@@ -17,7 +16,6 @@ final class ResilientLiveClient
         private readonly LiveClient $live,
         private readonly BotApiClient $api,
         private readonly IranFailureReporter $reporter,
-        private readonly IranOfflineUserMessage $offlineMessages,
     ) {}
 
     /** @param array<string, mixed> $update */
@@ -86,7 +84,6 @@ final class ResilientLiveClient
             return [
                 'ok' => false,
                 'offline' => true,
-                'message' => $this->offlineMessages->text(),
             ];
         }
     }

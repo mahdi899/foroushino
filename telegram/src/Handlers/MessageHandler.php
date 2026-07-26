@@ -42,7 +42,13 @@ final class MessageHandler
         }
 
         if (isset($message['contact'])) {
-            // Unverified users: UpdateRouter relays to Iran synchronously.
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'registration_contact_received',
+                'شماره دریافت شد. ثبت‌نام در حال انجام است؛ اگر منو نیامد، یک دقیقه بعد دوباره /start بزنید.',
+            ), [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
             return;
         }
 
@@ -52,7 +58,10 @@ final class MessageHandler
                 return;
             }
             if (! empty($reply['offline'])) {
-                $this->api->sendMessage($chatId, (string) ($reply['message'] ?? ''));
+                $this->api->sendMessage($chatId, $this->cache->message(
+                    'support_message_received',
+                    'پیام شما ثبت شد. به محض اتصال، برای پشتیبانی ارسال می‌شود.',
+                ));
 
                 return;
             }
@@ -67,11 +76,20 @@ final class MessageHandler
         }
 
         if ($conversation['state'] === 'waiting_for_support_message') {
-            // Relayed to Iran in UpdateRouter when this state is active.
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'support_message_received',
+                'پیام شما ثبت شد. به محض اتصال، برای پشتیبانی ارسال می‌شود.',
+            ));
+
             return;
         }
 
         if ($conversation['state'] === 'waiting_for_card_to_card_receipt') {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'c2c_receipt_received',
+                'رسید دریافت شد و در صف ثبت سفارش است.',
+            ));
+
             return;
         }
 
@@ -237,6 +255,17 @@ final class MessageHandler
         }
 
         if (empty($result['ok'])) {
+            if (! empty($result['offline'])) {
+                $url = $this->cache->siteUrl('sat', $this->siteBaseUrl.'/sat');
+                $this->api->sendMessage($chatId, $this->cache->message(
+                    'sat_use_site',
+                    'فرم سات را از طریق لینک زیر تکمیل کنید:',
+                ), [
+                    'reply_markup' => ['inline_keyboard' => [[InlineButtons::url('ثبت‌نام سات', $url, 'bell', 'primary')]]],
+                ]);
+
+                return;
+            }
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'بخش سات در دسترس نیست.'));
 
             return;
@@ -266,7 +295,7 @@ final class MessageHandler
         if ($result === null || empty($result['text'])) {
             $this->api->sendMessage($chatId, $this->cache->message(
                 'account_snapshot_pending',
-                'اطلاعات خانواده هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+                'اطلاعات خانواده هنوز همگام نشده. چند لحظه بعد دوباره «خانواده» را بزنید.',
             ));
 
             return;
@@ -294,7 +323,7 @@ final class MessageHandler
         if ($result === null) {
             $this->api->sendMessage($chatId, $this->cache->message(
                 'account_snapshot_pending',
-                'اطلاعات معرفی هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+                'اطلاعات معرفی هنوز همگام نشده. چند لحظه بعد دوباره امتحان کنید.',
             ));
 
             return;
@@ -350,7 +379,7 @@ final class MessageHandler
 
         $this->api->sendMessage($chatId, $this->cache->message(
             'account_snapshot_pending',
-            'اطلاعات حساب هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+            'اطلاعات حساب هنوز همگام نشده. چند لحظه بعد دوباره «حساب من» را بزنید.',
         ));
     }
 }
