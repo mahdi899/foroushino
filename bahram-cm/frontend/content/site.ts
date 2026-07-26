@@ -274,7 +274,11 @@ export const site = {
       { href: `mailto:${siteConfig.contact.email}`, label: "ایمیل" },
     ],
     trustBadges: [
-      { id: "enamad", alt: "نماد اعتماد الکترونیکی", href: "https://trustseal.enamad.ir/" },
+      {
+        id: "enamad",
+        alt: "نماد اعتماد الکترونیکی",
+        href: "https://trustseal.enamad.ir/?id=7021219&Code=iJwNC35mKYjZEuZ1zJ3Caldlg8ZFW7gb",
+      },
       { id: "samandehi", alt: "ساماندهی", href: "https://samandehi.ir/" },
       { id: "zarinpal", alt: "درگاه پرداخت زرین‌پال", href: "https://www.zarinpal.com/" },
     ],

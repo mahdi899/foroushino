@@ -65,6 +65,12 @@ final class HostRegistrationFlow
     /** @param array<string, mixed> $contact */
     public function contact(int $chatId, int $telegramUserId, array $contact): void
     {
+        if ($this->accounts->isVerified($telegramUserId)) {
+            $this->showMainMenu($chatId, $telegramUserId);
+
+            return;
+        }
+
         if ($this->accountSync->ensureFresh($telegramUserId, force: true) && $this->accounts->isVerified($telegramUserId)) {
             $this->showMainMenu($chatId, $telegramUserId);
 

@@ -81,12 +81,20 @@ class TelegramHostPushService
 
         if ($result !== null && ($result['ok'] ?? false)) {
             $this->pushState->clear();
+            $this->pushState->recordSuccess();
 
             return true;
         }
 
         if ($action !== 'push_account') {
             $this->pushState->markPending($action);
+        }
+
+        // Only count real network failures (host unreachable/timeout) toward
+        // the circuit breaker — a skipped call ($result === null because the
+        // circuit was already open) must not extend the cooldown further.
+        if ($result !== null) {
+            $this->pushState->recordFailure();
         }
 
         return false;
@@ -122,6 +130,16 @@ class TelegramHostPushService
     }
 
     /**
+     * Force plain HTTP for the Iran → host push call. The host's firewall
+     * (Imunify360/CSF, most likely) blackholes HTTPS from this server's IP
+     * while HTTP answers normally; the payload itself stays encrypted.
+     */
+    private function transportUrl(string $url): string
+    {
+        return preg_replace('#^https://#i', 'http://', $url) ?? $url;
+    }
+
+    /**
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>|null
      */
@@ -140,6 +158,31 @@ class TelegramHostPushService
             return null;
         }
 
+        // The host's firewall silently drops HTTPS (port 443) connections
+        // from this server's IP (confirmed: TLS handshake completes, then
+        // the request just hangs — plain HTTP on port 80 answers instantly).
+        // The body is already AES-256-GCM encrypted and HMAC-signed at the
+        // application layer, so downgrading transport for this one internal
+        // endpoint does not weaken confidentiality/integrity.
+        $pushUrl = $this->transportUrl($infra->hostPushUrl());
+
+        // Circuit breaker: after repeated timeouts (host firewall blocking us,
+        // host down, etc.) skip the network call for a short cooldown instead
+        // of blocking the caller (registration, order notify, queue worker)
+        // for the full HTTP timeout on every single attempt.
+        if ($this->pushState->isCircuitOpen() && $action !== 'register_webhook') {
+            Log::channel('telegram')->info('Telegram host push skipped — circuit open.', [
+                'action' => $action,
+                'retry_in_seconds' => $this->pushState->secondsUntilRetry(),
+            ]);
+
+            if ($action !== 'push_account') {
+                $this->pushState->markPending($action);
+            }
+
+            return null;
+        }
+
         $payload = array_merge(['action' => $action, 'sent_at' => now()->toIso8601String()], $extra);
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) {
@@ -150,29 +193,32 @@ class TelegramHostPushService
             $encrypted = AesGcmCipher::encrypt($json, $aesKey);
             $headers = HmacSigner::headersFor(['body' => $encrypted], $hmacSecret);
 
+            // The host normally answers in well under 1s. Long timeouts here
+            // only turn a blocked/unreachable host into a multi-second hang
+            // for the Telegram user (registration, order notify, etc.).
             $timeout = match ($action) {
-                'register_webhook' => 45,
-                'notify_user' => 15,
-                'push_account' => 25,
-                'refresh_catalog', 'refresh_bootstrap' => 20,
-                default => 30,
+                'register_webhook' => 20,
+                'notify_user' => 8,
+                'push_account' => 8,
+                'refresh_catalog', 'refresh_bootstrap' => 8,
+                default => 10,
             };
 
             $response = Http::timeout($timeout)
-                ->connectTimeout(8)
+                ->connectTimeout(5)
                 ->withHeaders(array_merge($headers, [
                     'Authorization' => 'Bearer '.$hmacSecret,
                     'X-Proxy-Origin' => self::PUSH_ORIGIN,
                     'Content-Type' => 'text/plain',
                 ]))
                 ->withBody($encrypted, 'text/plain')
-                ->post($infra->hostPushUrl());
+                ->post($pushUrl);
 
             if (! $response->successful()) {
                 Log::channel('telegram')->warning('Telegram host push failed.', [
                     'action' => $action,
                     'status' => $response->status(),
-                    'host' => $infra->hostAppBaseUrl(),
+                    'host' => $pushUrl,
                     'body' => mb_substr((string) $response->body(), 0, 500),
                 ]);
 

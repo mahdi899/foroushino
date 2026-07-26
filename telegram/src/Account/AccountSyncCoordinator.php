@@ -45,7 +45,7 @@ final class AccountSyncCoordinator
                     $this->accounts->recordPullAttempt($telegramUserId);
                 }
 
-                return false;
+                return $this->accounts->isVerified($telegramUserId);
             }
 
             $account = $response['account'];

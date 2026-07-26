@@ -280,7 +280,7 @@ final class SyncCache
                 'id' => (int) $seminar['id'],
                 'product_id' => $seminar['product_id'] ?? null,
                 'title' => (string) $seminar['title'],
-                'date' => $seminar['date'] ?? null,
+                'date' => $this->toMysqlDateTime($seminar['date'] ?? null),
                 'location' => $seminar['location'] ?? null,
                 'capacity_hint' => $seminar['capacity_hint'] ?? null,
                 'price' => $seminar['price'] ?? null,
@@ -288,6 +288,21 @@ final class SyncCache
                 'photo_url' => $seminar['photo'] ?? null,
             ]);
         }
+    }
+
+    /**
+     * Iran sends ISO 8601 datetimes (e.g. "2026-07-24T19:46:00+03:30");
+     * MySQL DATETIME columns need "Y-m-d H:i:s" or the INSERT throws.
+     */
+    private function toMysqlDateTime(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $ts = strtotime($value);
+
+        return $ts !== false ? date('Y-m-d H:i:s', $ts) : null;
     }
 
     private function touchSyncMeta(string $key): void

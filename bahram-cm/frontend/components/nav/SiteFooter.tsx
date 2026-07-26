@@ -4,6 +4,7 @@ import { site } from "@/content/site";
 import { SITE_MEDIA } from "@/config/media";
 import { Divider } from "@/components/ui/Divider";
 import { DirectMediaImg } from "@/components/ui/DirectMediaImg";
+import { EnamadBadge } from "@/components/ui/EnamadBadge";
 import { Logo } from "./Logo";
 import { toPersianDigits } from "@/lib/persian";
 
@@ -38,6 +39,18 @@ export function SiteFooter() {
               aria-label="نشان‌های اعتماد"
             >
               {site.footer.trustBadges.map((badge) => {
+                if (badge.id === "enamad") {
+                  return (
+                    <EnamadBadge
+                      key={badge.id}
+                      className="footer-trust-badge group"
+                      surfaceClassName="footer-trust-badge__surface"
+                      innerClassName="footer-trust-badge__inner"
+                      imgClassName="footer-trust-badge__img"
+                    />
+                  );
+                }
+
                 const src = SITE_MEDIA[`trust-${badge.id}`]?.src;
                 return (
                   <a
