@@ -112,11 +112,7 @@ final class MessageHandler
         }
 
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
-            try {
-                $this->accountSync->ensureFresh($telegramUserId);
-            } catch (\Throwable $e) {
-                error_log('[telegram-host] account sync: '.$e->getMessage());
-            }
+            $this->accountSync->ensureFresh($telegramUserId, force: true);
             $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
 
             return;
@@ -138,11 +134,13 @@ final class MessageHandler
      */
     private function handleStart(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
-        try {
-            $this->accountSync->ensureFresh($telegramUserId);
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] account sync: '.$e->getMessage());
+        if ($this->accounts->isVerified($telegramUserId)) {
+            $this->sendMainMenu($chatId, $telegramUserId);
+
+            return;
         }
+
+        $this->accountSync->ensureFresh($telegramUserId, force: true);
 
         if ($this->accounts->isVerified($telegramUserId)) {
             $this->sendMainMenu($chatId, $telegramUserId);
@@ -150,7 +148,7 @@ final class MessageHandler
             return;
         }
 
-        $this->registration->start($chatId, $telegramUserId, $from, $startPayload);
+        $this->registration->showLocalWelcome($chatId, $telegramUserId);
     }
 
     private function handleMenuButton(int $chatId, int $telegramUserId, string $text, array $from = []): void

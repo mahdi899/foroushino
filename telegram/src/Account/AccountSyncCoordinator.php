@@ -21,18 +21,18 @@ final class AccountSyncCoordinator
         private readonly SyncClient $sync,
     ) {}
 
-    public function ensureFresh(int $telegramUserId): void
+    public function ensureFresh(int $telegramUserId, bool $force = false): bool
     {
         if ($telegramUserId <= 0) {
-            return;
+            return false;
         }
 
-        if (! $this->accounts->shouldAttemptIranPull(
+        if (! $force && ! $this->accounts->shouldAttemptIranPull(
             $telegramUserId,
             self::REFRESH_INTERVAL_VERIFIED_SECONDS,
             self::RETRY_INTERVAL_UNVERIFIED_SECONDS,
         )) {
-            return;
+            return $this->accounts->isVerified($telegramUserId);
         }
 
         try {
@@ -41,17 +41,25 @@ final class AccountSyncCoordinator
                 'include_snapshot' => true,
             ]);
             if (empty($response['found']) || ! is_array($response['account'] ?? null)) {
-                $this->accounts->recordPullAttempt($telegramUserId);
+                if (! $force) {
+                    $this->accounts->recordPullAttempt($telegramUserId);
+                }
 
-                return;
+                return false;
             }
 
             $account = $response['account'];
             $id = (int) ($account['telegram_user_id'] ?? $telegramUserId);
             $this->accounts->store($id, $account);
+
+            return $this->accounts->isVerified($telegramUserId);
         } catch (\Throwable $e) {
             error_log('[telegram-host] account sync: '.$e->getMessage());
-            $this->accounts->recordPullAttempt($telegramUserId);
+            if (! $force) {
+                $this->accounts->recordPullAttempt($telegramUserId);
+            }
+
+            return $this->accounts->isVerified($telegramUserId);
         }
     }
 }

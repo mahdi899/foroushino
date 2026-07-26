@@ -25,21 +25,37 @@ final class HostRegistrationFlow
     ) {}
 
     /**
+     * Welcome + phone keyboard from host MySQL only (no registration/start API).
+     */
+    public function showLocalWelcome(int $chatId, int $telegramUserId): void
+    {
+        $this->conversations->set($telegramUserId, 'waiting_for_mobile', []);
+
+        $text = $this->cache->message(
+            'registration_ask_mobile',
+            "به ربات آکادمی بهرام خوش آمدید.\n\nبرای ادامه، شماره موبایل را با دکمه زیر بفرستید.",
+        );
+
+        $this->api->sendMessage($chatId, $text, [
+            'parse_mode' => 'HTML',
+            'reply_markup' => [
+                'keyboard' => [[[
+                    'text' => '📱 ارسال شماره تماس',
+                    'request_contact' => true,
+                ]]],
+                'resize_keyboard' => true,
+                'one_time_keyboard' => true,
+            ],
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $from
+     * @deprecated Use showLocalWelcome after account pull; Iran API only on contact/name.
      */
     public function start(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
-        try {
-            $response = $this->sync->call('registration/start', array_filter([
-                'telegram_user_id' => $telegramUserId,
-                'from' => $from,
-                'start_payload' => $startPayload,
-            ]));
-            $this->apply($chatId, $telegramUserId, $response);
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] registration/start: '.$e->getMessage());
-            $this->api->sendMessage($chatId, 'اتصال به سرور ثبت‌نام برقرار نشد. چند لحظه بعد دوباره /start بزنید.');
-        }
+        $this->showLocalWelcome($chatId, $telegramUserId);
     }
 
     /** @param array<string, mixed> $contact */
@@ -57,7 +73,38 @@ final class HostRegistrationFlow
             $this->apply($chatId, $telegramUserId, $response);
         } catch (\Throwable $e) {
             error_log('[telegram-host] registration/contact: '.$e->getMessage());
-            $this->api->sendMessage($chatId, 'ثبت شماره انجام نشد. اتصال به سرور اصلی را بررسی کنید و دوباره تلاش کنید.');
+            if ($this->tryPullVerifiedAndMenu($chatId, $telegramUserId)) {
+                return;
+            }
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'registration_contact_retry',
+                'ثبت شماره روی سرور اصلی موقتاً در دسترس نیست. چند دقیقه بعد دوباره شماره را بفرستید یا از سایت ثبت‌نام کنید.',
+            ));
+        }
+    }
+
+    private function tryPullVerifiedAndMenu(int $chatId, int $telegramUserId): bool
+    {
+        try {
+            $response = $this->sync->call('account/fetch', [
+                'telegram_user_id' => $telegramUserId,
+                'include_snapshot' => true,
+            ]);
+            if (empty($response['found']) || ! is_array($response['account'] ?? null)) {
+                return false;
+            }
+            $this->accounts->store($telegramUserId, $response['account']);
+            if (! $this->accounts->isVerified($telegramUserId)) {
+                return false;
+            }
+            $this->conversations->set($telegramUserId, 'idle', []);
+            $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
+            return true;
+        } catch (\Throwable) {
+            return false;
         }
     }
 
