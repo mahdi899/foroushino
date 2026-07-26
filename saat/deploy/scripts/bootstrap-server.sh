@@ -170,6 +170,14 @@ supervisorctl reread
 supervisorctl update
 supervisorctl start saat-queue:* || true
 
+echo "==> Cron (daily backup + Laravel scheduler)"
+chmod +x "${APP_ROOT}/deploy/scripts/backup.sh"
+CRON_MARK="# saat-backup-cron"
+(crontab -l 2>/dev/null | grep -v "$CRON_MARK" || true; \
+  echo "0 3 * * * ${APP_ROOT}/deploy/scripts/backup.sh # saat-backup-cron"; \
+  echo "* * * * * cd ${APP_ROOT}/backend && php artisan schedule:run >> /var/log/saat-schedule.log 2>&1 # saat-backup-cron") \
+  | crontab -
+
 echo "==> SSL (Let's Encrypt)"
 echo "Run: certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
 echo

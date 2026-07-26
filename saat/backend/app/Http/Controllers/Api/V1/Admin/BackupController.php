@@ -33,7 +33,9 @@ class BackupController extends Controller
 
         $validated = $request->validate([
             'is_auto_enabled' => ['sometimes', 'boolean'],
+            'is_weekly_auto_enabled' => ['sometimes', 'boolean'],
             'schedule_time' => ['sometimes', 'string', 'regex:/^\d{2}:\d{2}$/'],
+            'weekly_schedule_weekday' => ['sometimes', 'integer', 'min:0', 'max:6'],
             'retention_count' => ['sometimes', 'integer', 'min:1', 'max:30'],
         ]);
 
@@ -47,6 +49,27 @@ class BackupController extends Controller
         $result = $this->backup->runBackup();
 
         return ApiResponse::success($result, $result['message'], $result['ok'] ? 200 : 422);
+    }
+
+    public function runWeekly(Request $request): JsonResponse
+    {
+        $this->authorizeBackup($request);
+
+        $result = $this->backup->runWeeklyFullBackup();
+
+        if ($result['ok'] && $request->boolean('upload_offsite', true)) {
+            $upload = $this->downloadHostBackup->uploadWeeklyBackup(true);
+            $result['offsite'] = $upload;
+            if ($upload['ok']) {
+                $result['message'] .= ' '.$upload['message'];
+            }
+        }
+
+        return ApiResponse::success(
+            array_merge($result, $this->downloadHostBackup->adminSnapshot()),
+            $result['message'],
+            $result['ok'] ? 200 : 422,
+        );
     }
 
     public function exportDatabase(Request $request): BinaryFileResponse|JsonResponse

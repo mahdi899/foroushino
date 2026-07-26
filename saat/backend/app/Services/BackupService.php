@@ -22,15 +22,25 @@ class BackupService
 
         return [
             'is_auto_enabled' => (bool) $settings->is_auto_enabled,
+            'is_weekly_auto_enabled' => (bool) ($settings->is_weekly_auto_enabled ?? true),
             'schedule_time' => $settings->schedule_time ?? '04:00',
+            'weekly_schedule_weekday' => (int) ($settings->weekly_schedule_weekday ?? 0),
             'retention_count' => (int) ($settings->retention_count ?? 30),
+            'daily_retention_days' => $this->dailyRetentionDays(),
+            'weekly_retention_days' => $this->weeklyRetentionDays(),
             'last_backup_at' => $settings->last_backup_at?->toIso8601String(),
             'last_backup_status' => $settings->last_backup_status,
             'last_backup_message' => $settings->last_backup_message,
             'last_backup_size_bytes' => $settings->last_backup_size_bytes,
+            'last_weekly_backup_at' => $settings->last_weekly_backup_at?->toIso8601String(),
+            'last_weekly_backup_status' => $settings->last_weekly_backup_status,
+            'last_weekly_backup_message' => $settings->last_weekly_backup_message,
+            'last_weekly_backup_size_bytes' => $settings->last_weekly_backup_size_bytes,
             'mysqldump_available' => $this->mysqldumpBinary() !== null,
             'database_name' => $this->databaseName(),
             'storage_app_exists' => is_dir(storage_path('app')),
+            'daily_backup_dir' => $this->dailyBackupDirectory(),
+            'weekly_backup_dir' => $this->weeklyBackupDirectory(),
         ];
     }
 
@@ -44,12 +54,24 @@ class BackupService
             $patch['is_auto_enabled'] = (bool) $input['is_auto_enabled'];
         }
 
+        if (array_key_exists('is_weekly_auto_enabled', $input)) {
+            $patch['is_weekly_auto_enabled'] = (bool) $input['is_weekly_auto_enabled'];
+        }
+
         if (array_key_exists('schedule_time', $input)) {
             $time = trim((string) $input['schedule_time']);
             if (! preg_match('/^\d{2}:\d{2}$/', $time)) {
                 throw new RuntimeException('زمان اجرای بکاپ نامعتبر است.');
             }
             $patch['schedule_time'] = $time;
+        }
+
+        if (array_key_exists('weekly_schedule_weekday', $input)) {
+            $weekday = (int) $input['weekly_schedule_weekday'];
+            if ($weekday < 0 || $weekday > 6) {
+                throw new RuntimeException('روز هفته برای بکاپ هفتگی نامعتبر است.');
+            }
+            $patch['weekly_schedule_weekday'] = $weekday;
         }
 
         if (array_key_exists('retention_count', $input)) {
@@ -127,24 +149,118 @@ class BackupService
         return ['ok' => $result['ok'], 'message' => $result['message']];
     }
 
+    public function shouldRunWeeklyScheduled(): bool
+    {
+        $settings = DatabaseBackupSetting::current();
+
+        if (! ($settings->is_weekly_auto_enabled ?? true)) {
+            return false;
+        }
+
+        $weekday = (string) ($settings->weekly_schedule_weekday ?? 0);
+        if (now()->format('w') !== $weekday) {
+            return false;
+        }
+
+        return ! ($settings->last_weekly_backup_at && $settings->last_weekly_backup_at->isToday());
+    }
+
+    /** @return array{ok: bool, message: string, path?: string, size_bytes?: int} */
+    public function runWeeklyFullBackup(): array
+    {
+        $settings = DatabaseBackupSetting::current();
+
+        try {
+            $dateFolder = now()->format('Y-m-d');
+            $dir = $this->weeklyBackupDirectory().DIRECTORY_SEPARATOR.$dateFolder;
+            File::ensureDirectoryExists($dir);
+
+            $dbArtifact = $this->createDumpInDirectory($dir, 'database.sql.gz');
+            $storageArtifact = $this->createStorageZipInDirectory($dir);
+
+            $manifest = [
+                'type' => 'weekly_full',
+                'created_at' => now()->toIso8601String(),
+                'database' => $dbArtifact['filename'],
+                'storage' => $storageArtifact['filename'],
+                'size_bytes' => $dbArtifact['size_bytes'] + $storageArtifact['size_bytes'],
+            ];
+            file_put_contents(
+                $dir.DIRECTORY_SEPARATOR.'manifest.json',
+                json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            );
+
+            $this->pruneWeeklyBackups();
+
+            $settings->update([
+                'last_weekly_backup_at' => now(),
+                'last_weekly_backup_status' => 'success',
+                'last_weekly_backup_message' => 'بکاپ کامل هفتگی (دیتابیس + فایل‌ها) ساخته شد.',
+                'last_weekly_backup_size_bytes' => $manifest['size_bytes'],
+            ]);
+
+            return [
+                'ok' => true,
+                'message' => 'بکاپ کامل هفتگی با موفقیت ساخته شد.',
+                'path' => $dir,
+                'size_bytes' => $manifest['size_bytes'],
+            ];
+        } catch (Throwable $e) {
+            Log::error('Saat weekly full backup failed.', ['message' => $e->getMessage()]);
+
+            $settings->update([
+                'last_weekly_backup_at' => now(),
+                'last_weekly_backup_status' => 'failed',
+                'last_weekly_backup_message' => $e->getMessage(),
+                'last_weekly_backup_size_bytes' => null,
+            ]);
+
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /** @return array{ok: bool, message: string} */
+    public function runWeeklyScheduled(): array
+    {
+        if (! $this->shouldRunWeeklyScheduled()) {
+            return ['ok' => true, 'message' => 'زمان بکاپ هفتگی فرا نرسیده است.'];
+        }
+
+        $result = $this->runWeeklyFullBackup();
+
+        return ['ok' => $result['ok'], 'message' => $result['message']];
+    }
+
     /** @return array{path: string, filename: string, size_bytes: int} */
     public function createDumpArtifact(): array
     {
         $this->ensureMysql();
 
+        $dir = $this->dailyBackupDirectory();
+        File::ensureDirectoryExists($dir);
+
+        $timestamp = now()->format('Y-m-d_His');
+        $filename = 'backup_'.$this->databaseName().'_'.$timestamp.'.sql.gz';
+
+        $artifact = $this->createDumpInDirectory($dir, $filename);
+        $this->pruneDailyBackups();
+
+        return $artifact;
+    }
+
+    /** @return array{path: string, filename: string, size_bytes: int} */
+    private function createDumpInDirectory(string $directory, string $filename): array
+    {
         $binary = $this->mysqldumpBinary();
         if ($binary === null) {
             throw new RuntimeException('ابزار mysqldump یافت نشد. MYSQLDUMP_PATH را در env تنظیم کنید.');
         }
 
         $config = $this->mysqlConfig();
-        $dir = $this->backupDirectory();
-        File::ensureDirectoryExists($dir);
-
-        $timestamp = now()->format('Y-m-d_His');
-        $filename = "backup_{$config['database']}_{$timestamp}.sql.gz";
-        $gzPath = $dir.DIRECTORY_SEPARATOR.$filename;
-        $sqlPath = $dir.DIRECTORY_SEPARATOR."backup_{$config['database']}_{$timestamp}.sql";
+        $gzPath = $directory.DIRECTORY_SEPARATOR.$filename;
+        $sqlPath = str_ends_with($filename, '.gz')
+            ? $directory.DIRECTORY_SEPARATOR.str_replace('.sql.gz', '.sql', $filename)
+            : $directory.DIRECTORY_SEPARATOR.$filename.'.sql';
 
         $command = [
             $binary,
@@ -184,31 +300,36 @@ class BackupService
         file_put_contents($gzPath, $gz);
         @unlink($sqlPath);
 
-        $artifact = [
+        return [
             'path' => $gzPath,
-            'filename' => $filename,
+            'filename' => basename($gzPath),
             'size_bytes' => filesize($gzPath) ?: 0,
         ];
+    }
 
-        $this->pruneLocalBackups();
+    /** @return array{path: string, filename: string, size_bytes: int} */
+    public function createStorageArtifact(): array
+    {
+        $dir = $this->dailyBackupDirectory();
+        File::ensureDirectoryExists($dir);
+
+        $timestamp = now()->format('Y-m-d_His');
+        $artifact = $this->createStorageZipInDirectory($dir, 'storage_app_'.$timestamp.'.zip');
+        $this->pruneDailyBackups();
 
         return $artifact;
     }
 
     /** @return array{path: string, filename: string, size_bytes: int} */
-    public function createStorageArtifact(): array
+    private function createStorageZipInDirectory(string $directory, ?string $filename = null): array
     {
         $source = storage_path('app');
         if (! is_dir($source)) {
             throw new RuntimeException('پوشه storage/app یافت نشد.');
         }
 
-        $dir = $this->backupDirectory();
-        File::ensureDirectoryExists($dir);
-
-        $timestamp = now()->format('Y-m-d_His');
-        $filename = "storage_app_{$timestamp}.zip";
-        $zipPath = $dir.DIRECTORY_SEPARATOR.$filename;
+        $filename ??= 'storage_app_'.now()->format('Y-m-d_His').'.zip';
+        $zipPath = $directory.DIRECTORY_SEPARATOR.$filename;
 
         $zip = new ZipArchive();
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -233,6 +354,10 @@ class BackupService
             $path = $file->getPathname();
             $relative = substr($path, strlen($sourceReal) + 1);
 
+            if (str_starts_with(str_replace('\\', '/', $relative), 'backups/')) {
+                continue;
+            }
+
             if ($file->isDir()) {
                 $zip->addEmptyDir(str_replace('\\', '/', $relative));
             } else {
@@ -246,15 +371,11 @@ class BackupService
             throw new RuntimeException('فایل ZIP ساخته نشد.');
         }
 
-        $artifact = [
+        return [
             'path' => $zipPath,
-            'filename' => $filename,
+            'filename' => basename($zipPath),
             'size_bytes' => filesize($zipPath) ?: 0,
         ];
-
-        $this->pruneLocalBackups();
-
-        return $artifact;
     }
 
     public function restoreUploadedFile(UploadedFile $file): void
@@ -295,26 +416,83 @@ class BackupService
 
     public function pruneLocalBackups(?int $retentionCount = null): void
     {
-        $retentionCount = max(1, $retentionCount ?? (int) (DatabaseBackupSetting::current()->retention_count ?? 30));
-
-        $this->pruneDirectoryBySuffix($this->backupDirectory(), '.sql.gz', $retentionCount);
-        $this->pruneDirectoryBySuffix($this->backupDirectory(), '.zip', $retentionCount);
+        $this->pruneDailyBackups();
+        $this->pruneWeeklyBackups();
     }
 
-    private function pruneDirectoryBySuffix(string $directory, string $suffix, int $retentionCount): void
+    public function pruneDailyBackups(?int $retentionDays = null): void
+    {
+        $days = max(1, $retentionDays ?? $this->dailyRetentionDays());
+        $this->pruneDirectoryByAge($this->dailyBackupDirectory(), $days);
+        $this->pruneLegacyRootBackups($days);
+    }
+
+    public function pruneWeeklyBackups(?int $retentionDays = null): void
+    {
+        $days = max(1, $retentionDays ?? $this->weeklyRetentionDays());
+        $weeklyDir = $this->weeklyBackupDirectory();
+        if (! is_dir($weeklyDir)) {
+            return;
+        }
+
+        $cutoff = now()->subDays($days)->startOfDay()->getTimestamp();
+
+        foreach (File::directories($weeklyDir) as $directory) {
+            $name = basename($directory);
+            $folderTime = strtotime($name.' 00:00:00');
+            if ($folderTime !== false && $folderTime < $cutoff) {
+                File::deleteDirectory($directory);
+            }
+        }
+    }
+
+    private function pruneLegacyRootBackups(int $days): void
+    {
+        $root = $this->backupDirectory();
+        if (! is_dir($root)) {
+            return;
+        }
+
+        $cutoff = now()->subDays($days)->getTimestamp();
+        foreach (File::files($root) as $file) {
+            if ($file->getMTime() < $cutoff) {
+                @unlink($file->getPathname());
+            }
+        }
+    }
+
+    private function pruneDirectoryByAge(string $directory, int $retentionDays): void
     {
         if (! is_dir($directory)) {
             return;
         }
 
-        $files = collect(File::files($directory))
-            ->filter(fn ($file) => str_ends_with($file->getFilename(), $suffix))
-            ->sortByDesc(fn ($file) => $file->getMTime())
-            ->values();
-
-        foreach ($files->slice($retentionCount) as $stale) {
-            @unlink($stale->getPathname());
+        $cutoff = now()->subDays($retentionDays)->getTimestamp();
+        foreach (File::files($directory) as $file) {
+            if ($file->getMTime() < $cutoff) {
+                @unlink($file->getPathname());
+            }
         }
+    }
+
+    private function dailyRetentionDays(): int
+    {
+        return max(1, (int) config('saat.backup.daily_retention_days', 30));
+    }
+
+    private function weeklyRetentionDays(): int
+    {
+        return max(1, (int) config('saat.backup.weekly_retention_days', 90));
+    }
+
+    private function dailyBackupDirectory(): string
+    {
+        return $this->backupDirectory().'/daily';
+    }
+
+    private function weeklyBackupDirectory(): string
+    {
+        return $this->backupDirectory().'/weekly';
     }
 
     private function backupDirectory(): string

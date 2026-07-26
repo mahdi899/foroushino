@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { useLazyInViewOnce } from '@/hooks/useLazyInViewOnce';
+import { useFamilyFeedMediaInView } from '@/hooks/useFamilyFeedMediaInView';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
 import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
@@ -39,7 +39,7 @@ export function ImageBlock({
   const [error, setError] = useState(false);
 
   const { src: imageUrl, previewSrc, fromCache, resolved } = useFamilyImageSrc(media.url, media.id);
-  const shouldLoad = useLazyInViewOnce(rootRef, resolved && Boolean(imageUrl));
+  const shouldLoad = useFamilyFeedMediaInView(rootRef, resolved && Boolean(imageUrl));
   const downloadUrl = resolveFamilyMediaUrl(media.url) ?? media.url;
 
   useEffect(() => {
@@ -52,14 +52,11 @@ export function ImageBlock({
   }, [fromCache]);
 
   if (resolved && !imageUrl) {
-    return <div className={cn('aspect-square w-full bg-white/5', roundedClass, className)} />;
+    return <div className={cn('aspect-square w-full', roundedClass, className)} style={aspectStyle(media)} />;
   }
 
-  // fillCell stretches in album grids; otherwise always reserve aspect so remount
-  // doesn't measure 0-height placeholders (jumbled gaps until images decode).
   const containerStyle = fillCell ? undefined : aspectStyle(media);
-  const showPlaceholder = !loaded && !error;
-  const showPreview = Boolean(previewSrc && showPlaceholder);
+  const showTinyPreview = Boolean(previewSrc && !loaded && !error && !fromCache);
 
   const openLightbox = () => {
     if (manageLightboxExternally && onOpenLightbox) {
@@ -99,24 +96,14 @@ export function ImageBlock({
           handleActivate();
         }}
         className={cn(
-          'relative block cursor-pointer overflow-hidden bg-[color-mix(in_oklab,var(--family-text)_7%,transparent)]',
+          'relative block cursor-pointer overflow-hidden',
           fillCell ? 'h-full min-h-0 w-full' : constrained ? 'family-feed-image' : 'w-full',
           roundedClass,
           className,
         )}
         style={containerStyle}
       >
-        {showPlaceholder && (
-          <span
-            className={cn(
-              'absolute inset-0 bg-[color-mix(in_oklab,var(--family-text)_5%,transparent)]',
-              showPreview && 'opacity-0',
-            )}
-            aria-hidden
-          />
-        )}
-
-        {shouldLoad && showPreview && (
+        {shouldLoad && showTinyPreview && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={previewSrc ?? undefined}
@@ -124,7 +111,7 @@ export function ImageBlock({
             decoding="async"
             aria-hidden
             className={cn(
-              'absolute inset-0 h-full w-full object-cover blur-md scale-[1.03] saturate-[0.85]',
+              'absolute inset-0 h-full w-full object-cover blur-md scale-[1.03] saturate-[0.92]',
               fillCell ? 'object-cover' : 'object-contain',
             )}
           />
@@ -137,14 +124,12 @@ export function ImageBlock({
             src={imageUrl}
             alt=""
             decoding="async"
-            loading="lazy"
+            fetchPriority="high"
             onLoad={() => setLoaded(true)}
             onError={() => setError(true)}
             className={cn(
               'absolute inset-0 h-full w-full',
               fillCell ? 'object-cover' : 'object-contain',
-              loaded || fromCache ? 'opacity-100' : 'opacity-0',
-              !fromCache && 'transition-opacity duration-150',
             )}
           />
         )}

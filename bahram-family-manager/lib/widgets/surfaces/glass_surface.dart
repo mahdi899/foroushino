@@ -31,15 +31,16 @@ class GlassPanel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
     final fillOpacity = opacity ?? AppGlass.panelOpacity(scheme.brightness);
-    final borderColor = blur > 0
+    final effectiveBlur = AppGlass.effectiveBlur(blur);
+    final borderColor = effectiveBlur > 0
         ? (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.55))
         : (isDark ? AppColors.borderDark : AppColors.border);
 
     final decoration = BoxDecoration(
-      color: scheme.surface.withValues(alpha: blur > 0 ? fillOpacity : (opacity ?? 1)),
+      color: scheme.surface.withValues(alpha: effectiveBlur > 0 ? fillOpacity : (opacity ?? 1)),
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(color: borderColor),
-      boxShadow: blur > 0
+      boxShadow: effectiveBlur > 0
           ? [
               BoxShadow(
                 color: (isDark ? Colors.black : AppColors.primaryDark).withValues(alpha: isDark ? 0.22 : 0.05),
@@ -52,9 +53,9 @@ class GlassPanel extends StatelessWidget {
 
     final panel = ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: blur > 0
+      child: effectiveBlur > 0
           ? BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              filter: ImageFilter.blur(sigmaX: effectiveBlur, sigmaY: effectiveBlur),
               child: DecoratedBox(
                 decoration: decoration,
                 child: padding != null ? Padding(padding: padding!, child: child) : child,

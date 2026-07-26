@@ -136,67 +136,70 @@ class _MobileComposeFabState extends State<_MobileComposeFab> with SingleTickerP
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (_open) ...[
-          if (widget.onComposeStory != null)
-            _FabOption(
-              label: 'قرار دادن استوری',
-              icon: Icons.auto_stories_rounded,
-              onTap: () => _pick(widget.onComposeStory!),
-            ),
-          if (widget.onComposePost != null)
-            _FabOption(
-              label: 'قرار دادن پست',
-              icon: Icons.campaign_rounded,
-              onTap: () => _pick(widget.onComposePost!),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-        ],
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: AppGradients.primary,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: AppShadows.panelGlow,
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                if (!_open) {
-                  final hasPost = widget.onComposePost != null;
-                  final hasStory = widget.onComposeStory != null;
-                  if (hasPost && !hasStory) {
-                    widget.onComposePost!();
-                    return;
-                  }
-                  if (hasStory && !hasPost) {
-                    widget.onComposeStory!();
-                    return;
-                  }
-                }
-                _toggle();
-              },
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_open) ...[
+            if (widget.onComposeStory != null)
+              _FabOption(
+                label: 'قرار دادن استوری',
+                icon: Icons.auto_stories_rounded,
+                onTap: () => _pick(widget.onComposeStory!),
+              ),
+            if (widget.onComposePost != null)
+              _FabOption(
+                label: 'قرار دادن پست',
+                icon: Icons.campaign_rounded,
+                onTap: () => _pick(widget.onComposePost!),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: AppGradients.primary,
               borderRadius: BorderRadius.circular(18),
-              child: AnimatedRotation(
-                turns: _open ? 0.125 : 0,
-                duration: AppMotion.fast,
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: Icon(
-                    _open ? Icons.close_rounded : Icons.edit_rounded,
-                    color: Colors.white,
-                    size: 26,
+              boxShadow: AppShadows.panelGlow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  if (!_open) {
+                    final hasPost = widget.onComposePost != null;
+                    final hasStory = widget.onComposeStory != null;
+                    if (hasPost && !hasStory) {
+                      widget.onComposePost!();
+                      return;
+                    }
+                    if (hasStory && !hasPost) {
+                      widget.onComposeStory!();
+                      return;
+                    }
+                  }
+                  _toggle();
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: AnimatedRotation(
+                  turns: _open ? 0.125 : 0,
+                  duration: AppMotion.fast,
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Icon(
+                      _open ? Icons.close_rounded : Icons.edit_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -214,38 +217,41 @@ class _FabOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GlassPanel(
-            borderRadius: 12,
-            blur: AppGlass.sheetBlur,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          DecoratedBox(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+              color: scheme.surface.withValues(alpha: 0.92),
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: scheme.primary.withValues(alpha: 0.14)),
               boxShadow: AppShadows.soft,
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Icon(icon, color: AppColors.primary),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: AppColors.primary, size: 22),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

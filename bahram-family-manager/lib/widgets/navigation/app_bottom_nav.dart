@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
@@ -25,63 +26,71 @@ class AppBottomNav extends StatelessWidget {
     final compact = width < 380 || items.length > 5;
     final showLabels = !compact || width >= 340;
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: scheme.surface.withValues(alpha: 0.92),
-            border: Border(
-              top: BorderSide(color: scheme.primary.withValues(alpha: 0.1)),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: (isDark ? Colors.black : AppColors.primaryDark).withValues(alpha: isDark ? 0.28 : 0.07),
-                blurRadius: 20,
-                offset: const Offset(0, -6),
-              ),
-            ],
+    final chrome = DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: kIsWeb ? 0.98 : 0.92),
+        border: Border(
+          top: BorderSide(color: scheme.primary.withValues(alpha: 0.1)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.black : AppColors.primaryDark).withValues(alpha: isDark ? 0.28 : 0.07),
+            blurRadius: 20,
+            offset: const Offset(0, -6),
           ),
-          child: SafeArea(
-            top: false,
-            child: SizedBox(
-              height: showLabels ? 62 : 56,
-              child: Row(
-                children: List.generate(items.length, (index) {
-                  final item = items[index];
-                  final active = index == currentIndex;
-                  return Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => onTap(index),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _NavIconShell(icon: item.icon, active: active, compact: compact),
-                            if (showLabels) ...[
-                              const SizedBox(height: 3),
-                              Text(
-                                item.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: compact ? 10 : 11,
-                                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                                  color: active ? scheme.primary : scheme.onSurface.withValues(alpha: 0.55),
-                                  height: 1.1,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: showLabels ? 62 : 56,
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final item = items[index];
+              final active = index == currentIndex;
+              return Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onTap(index),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _NavIconShell(icon: item.icon, active: active, compact: compact),
+                        if (showLabels) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: compact ? 10 : 11,
+                              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                              color: active ? scheme.primary : scheme.onSurface.withValues(alpha: 0.55),
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  );
-                }),
-              ),
-            ),
+                  ),
+                ),
+              );
+            }),
           ),
+        ),
+      ),
+    );
+
+    if (kIsWeb) {
+      return RepaintBoundary(child: chrome);
+    }
+
+    return RepaintBoundary(
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: chrome,
         ),
       ),
     );

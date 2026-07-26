@@ -12,9 +12,16 @@ return [
         explode(',', (string) env('SAAT_PASSWORD_LOGIN_PHONES', '09367018089')),
     ))),
 
+    'cloudflare' => [
+        'zone_id' => env('CLOUDFLARE_ZONE_ID', ''),
+        'api_token' => env('CLOUDFLARE_API_TOKEN', ''),
+    ],
+
     'backup' => [
         'mysqldump_path' => env('MYSQLDUMP_PATH'),
         'mysql_path' => env('MYSQL_PATH'),
+        'daily_retention_days' => (int) env('BACKUP_DAILY_RETENTION_DAYS', 30),
+        'weekly_retention_days' => (int) env('BACKUP_WEEKLY_RETENTION_DAYS', 90),
         'download_host' => [
             'base_path' => env('BACKUP_FTP_BASE', 'backups'),
             'site_slug' => env('BACKUP_SITE_SLUG', 'saat'),

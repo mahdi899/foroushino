@@ -22,7 +22,7 @@ export function PageTransition({ children }: PageTransitionProps) {
       initial={{ opacity: 0, x: 10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-      className="min-h-full"
+      className="flex h-full min-h-full flex-col"
     >
       {children}
     </motion.div>

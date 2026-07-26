@@ -6,6 +6,8 @@ import {
   getFamilyMediaBlobUrl,
   readFamilyMediaBlob,
 } from '@/lib/family/mediaCache';
+import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
+import { tryBuildImagePreviewBlob } from '@/lib/family/mediaPreview';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 
 export type FamilyImageSrcState = {
@@ -57,6 +59,16 @@ export function useFamilyImageSrc(
         previewSrc,
         fromCache: false,
         resolved: true,
+      });
+
+      void enqueueFamilyMediaLoad('preview', mediaId, () =>
+        tryBuildImagePreviewBlob(mediaId, streamUrl),
+      ).then((blob) => {
+        if (cancelled || !blob) return;
+        const built = getFamilyMediaBlobUrl(`preview:${mediaId}:${streamUrl}`, blob);
+        setState((prev) =>
+          prev.src === streamUrl && !prev.fromCache ? { ...prev, previewSrc: built } : prev,
+        );
       });
     })();
 

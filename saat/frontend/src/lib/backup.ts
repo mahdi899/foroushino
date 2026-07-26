@@ -3,12 +3,20 @@ import { API_BASE_URL, http } from '@/services/http'
 
 export type BackupView = {
   is_auto_enabled: boolean
+  is_weekly_auto_enabled: boolean
   schedule_time: string
+  weekly_schedule_weekday: number
   retention_count: number
+  daily_retention_days: number
+  weekly_retention_days: number
   last_backup_at: string | null
   last_backup_status: string | null
   last_backup_message: string | null
   last_backup_size_bytes: number | null
+  last_weekly_backup_at: string | null
+  last_weekly_backup_status: string | null
+  last_weekly_backup_message: string | null
+  last_weekly_backup_size_bytes: number | null
   mysqldump_available: boolean
   database_name: string
   storage_app_exists: boolean
@@ -22,14 +30,24 @@ export type BackupView = {
 
 export type BackupForm = {
   isAutoEnabled: boolean
+  isWeeklyAutoEnabled: boolean
   scheduleTime: string
+  weeklyScheduleWeekday: number
   retentionCount: number
+}
+
+const WEEKDAY_LABELS = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه']
+
+export function weekdayLabel(day: number): string {
+  return WEEKDAY_LABELS[day] ?? WEEKDAY_LABELS[0]
 }
 
 export function backupViewToForm(view: BackupView): BackupForm {
   return {
     isAutoEnabled: view.is_auto_enabled,
+    isWeeklyAutoEnabled: view.is_weekly_auto_enabled ?? true,
     scheduleTime: view.schedule_time,
+    weeklyScheduleWeekday: view.weekly_schedule_weekday ?? 0,
     retentionCount: view.retention_count,
   }
 }
@@ -46,7 +64,9 @@ export async function fetchBackupSettings(): Promise<BackupView> {
 
 export async function updateBackupSettings(input: {
   is_auto_enabled?: boolean
+  is_weekly_auto_enabled?: boolean
   schedule_time?: string
+  weekly_schedule_weekday?: number
   retention_count?: number
 }): Promise<BackupView> {
   return http.patch<BackupView>('/admin/backup', input)
@@ -133,6 +153,13 @@ export async function importDatabaseBackup(file: File, confirm: string): Promise
     (typeof payload?.message === 'string' ? payload.message : 'دیتابیس با موفقیت بازیابی شد.')
 
   return { ok: true, message }
+}
+
+export async function runWeeklyBackupNow(): Promise<{ ok: boolean; message: string }> {
+  const data = await http.post<{ ok: boolean; message: string }>('/admin/backup/run-weekly', {
+    upload_offsite: true,
+  })
+  return { ok: data.ok, message: data.message }
 }
 
 export async function uploadDownloadHostBackup(): Promise<{ ok: boolean; message: string }> {

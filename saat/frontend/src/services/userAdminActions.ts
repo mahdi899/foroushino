@@ -49,9 +49,7 @@ export async function fetchAdminAgents(force = false) {
   if (!force) {
     const cached = readCachedAdminUsers()
     if (cached) {
-      if (useStore.getState().agents.length === 0) {
-        useStore.getState().setAgents(cached)
-      }
+      useStore.getState().setAgents(cached)
       return cached
     }
 

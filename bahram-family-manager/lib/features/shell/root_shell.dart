@@ -56,6 +56,8 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   var _index = 0;
+  /// Tabs mount on first visit — avoids 5+ parallel API calls at login.
+  final _mountedTabs = <int>{0};
 
   static final _primaryTabs = <_Tab>[
     _Tab(label: 'خانه', icon: Icons.dashboard_rounded, builder: (_) => const HomeScreen()),
@@ -151,14 +153,21 @@ class _RootShellState extends State<RootShell> {
       );
     }
 
+    void selectTab(int i) {
+      setState(() {
+        _index = i;
+        _mountedTabs.add(i);
+      });
+    }
+
     return ShellScope(
-      goToTab: (i) => setState(() => _index = i),
+      goToTab: selectTab,
       onComposePost: canCompose ? openCompose : null,
       onComposeStory: canComposeStory ? openStoryCompose : null,
       tabLabels: shellTabs.map((t) => t.label).toList(),
       child: DesktopShell(
         currentIndex: index,
-        onIndexChanged: (i) => setState(() => _index = i),
+        onIndexChanged: selectTab,
         onComposePost: canCompose ? openCompose : null,
         onComposeStory: canComposeStory ? openStoryCompose : null,
         items: shellTabs
@@ -168,11 +177,14 @@ class _RootShellState extends State<RootShell> {
           index: index,
           sizing: StackFit.expand,
           children: [
-            for (final tab in shellTabs)
-              _KeepAliveTab(
-                key: ValueKey(tab.label),
-                builder: tab.builder,
-              ),
+            for (var i = 0; i < shellTabs.length; i++)
+              if (_mountedTabs.contains(i))
+                _KeepAliveTab(
+                  key: ValueKey(shellTabs[i].label),
+                  builder: shellTabs[i].builder,
+                )
+              else
+                const SizedBox.shrink(),
           ],
         ),
       ),

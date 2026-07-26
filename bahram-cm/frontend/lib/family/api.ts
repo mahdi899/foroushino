@@ -65,10 +65,14 @@ export async function getStories(): Promise<{ data: FamilyStory[] }> {
 }
 
 export async function recordStoryView(storyId: number): Promise<{ data: { recorded: boolean } }> {
-  return run(
-    () => familyFetch<{ data: { recorded: boolean } }>(`/stories/${storyId}/view`, { method: 'POST' }),
-    'ثبت بازدید استوری ناموفق بود.',
-  );
+  try {
+    return await familyFetch<{ data: { recorded: boolean } }>(`/stories/${storyId}/view`, {
+      method: 'POST',
+      body: {},
+    });
+  } catch {
+    return { data: { recorded: false } };
+  }
 }
 
 export async function getPinnedPosts(): Promise<{ data: FamilyPost[] }> {

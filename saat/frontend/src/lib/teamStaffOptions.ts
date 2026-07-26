@@ -12,6 +12,7 @@ export function buildTeamStaffOptions(agents: Agent[], teams: Team[]) {
     id: agent.id,
     firstName: agent.firstName,
     lastName: agent.lastName,
+    avatar: agent.avatar,
     teamId: agent.teamId,
     teamName: teamName(agent.teamId),
   })

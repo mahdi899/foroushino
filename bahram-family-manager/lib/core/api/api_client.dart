@@ -24,7 +24,11 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _storage.readToken();
+          if (!_tokenCacheReady) {
+            _cachedToken = await _storage.readToken();
+            _tokenCacheReady = true;
+          }
+          final token = _cachedToken;
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -59,6 +63,7 @@ class ApiClient {
             );
           }
           if (error.response?.statusCode == 401) {
+            resetAuthCache();
             await _storage.clearToken();
             onUnauthorized?.call();
           }
@@ -70,9 +75,20 @@ class ApiClient {
 
   final SecureStorage _storage;
   late final Dio _dio;
+  String? _cachedToken;
+  bool _tokenCacheReady = false;
+
+  /// All three collaborators must share a single [ApiClient] instance — it's
+  /// wired in [AppState] and passed into services.
 
   /// Set by AppState so a global 401 can drop the user back to the login screen.
   void Function()? onUnauthorized;
+
+  /// Clears in-memory bearer token (call after logout).
+  void resetAuthCache() {
+    _cachedToken = null;
+    _tokenCacheReady = false;
+  }
 
   Dio get dio => _dio;
 

@@ -6,6 +6,8 @@ import { TopPerformerAvatarRing } from '@/components/ui/TopPerformerAvatarRing'
 import type { DailyTopRank } from '@/lib/dailyTopPerformers'
 import { ApiError } from '@/services/http'
 import { uploadAvatar } from '@/services/auth'
+import { invalidateAdminDirectory } from '@/services/adminDataCache'
+import { trySyncAppData } from '@/services/sync'
 import { useStore } from '@/store/useStore'
 import { AVATAR_ACCEPT, validateAvatarFile } from '@/lib/avatarUpload'
 import { toFa } from '@/lib/format'
@@ -53,6 +55,8 @@ export function ProfileAvatarPicker({
           ? `${user.avatar}${user.avatar.includes('?') ? '&' : '?'}v=${Date.now()}`
           : null
         setAgentAvatar(avatar)
+        invalidateAdminDirectory()
+        void trySyncAppData()
       } else {
         const dataUrl = await readFileAsDataUrl(file)
         setAgentAvatar(dataUrl)

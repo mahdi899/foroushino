@@ -77,26 +77,23 @@ it('creates storage zip artifact when storage app exists', function () {
     @unlink($artifact['path']);
 });
 
-it('prunes local database and storage backup artifacts by retention count', function () {
-    $dir = storage_path('app/backups');
+it('prunes daily backups older than retention days', function () {
+    $dir = storage_path('app/backups/daily');
     if (! is_dir($dir)) {
         mkdir($dir, 0777, true);
     }
 
-    for ($i = 0; $i < 4; $i++) {
-        $dbPath = $dir.'/backup_test_'.$i.'.sql.gz';
-        $zipPath = $dir.'/storage_app_test_'.$i.'.zip';
-        file_put_contents($dbPath, 'db');
-        file_put_contents($zipPath, 'zip');
-        touch($dbPath, now()->subDays($i)->getTimestamp());
-        touch($zipPath, now()->subDays($i)->getTimestamp());
-    }
+    $old = $dir.'/old.sql.gz';
+    $fresh = $dir.'/fresh.sql.gz';
+    file_put_contents($old, 'old');
+    file_put_contents($fresh, 'fresh');
+    touch($old, now()->subDays(40)->getTimestamp());
+    touch($fresh, now()->getTimestamp());
 
-    \App\Models\DatabaseBackupSetting::current()->update(['retention_count' => 2]);
-    app(\App\Services\BackupService::class)->pruneLocalBackups(2);
+    app(BackupService::class)->pruneDailyBackups(30);
 
-    expect(glob($dir.'/*.sql.gz'))->toHaveCount(2);
-    expect(glob($dir.'/*.zip'))->toHaveCount(2);
+    expect(is_file($old))->toBeFalse();
+    expect(is_file($fresh))->toBeTrue();
 
     foreach (glob($dir.'/*') ?: [] as $path) {
         @unlink($path);

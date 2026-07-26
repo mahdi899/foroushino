@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -377,8 +378,9 @@ class _StoryListCardState extends State<_StoryListCard> {
   var _loadingViewers = false;
   var _expanded = false;
 
-  Future<void> _loadViewers() async {
-    if (_viewers != null || _loadingViewers) return;
+  Future<void> _loadViewers({bool force = false}) async {
+    if (_loadingViewers) return;
+    if (!force && _viewers != null) return;
     setState(() => _loadingViewers = true);
     try {
       final viewers = await context.read<AppState>().manager.listStoryViewers(widget.story.id);
@@ -394,6 +396,9 @@ class _StoryListCardState extends State<_StoryListCard> {
   Widget build(BuildContext context) {
     final story = widget.story;
     final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    final displayedViews = _viewers != null
+        ? math.max(story.viewsCount, _viewers!.length)
+        : story.viewsCount;
 
     return GlassPanel(
       borderRadius: 18,
@@ -423,7 +428,7 @@ class _StoryListCardState extends State<_StoryListCard> {
                     Text(formatJalaliDateTime(story.publishedAt), style: const TextStyle(fontSize: 12)),
                     const SizedBox(height: 6),
                     StatusChip(
-                      label: '${toFaDigits(story.viewsCount.toString())} بازدید',
+                      label: '${toFaDigits(displayedViews.toString())} بازدید',
                       color: AppColors.primary,
                       icon: Icons.visibility_rounded,
                     ),
@@ -447,8 +452,9 @@ class _StoryListCardState extends State<_StoryListCard> {
           const SizedBox(height: AppSpacing.sm),
           InkWell(
             onTap: () {
-              setState(() => _expanded = !_expanded);
-              if (_expanded) _loadViewers();
+              final next = !_expanded;
+              setState(() => _expanded = next);
+              if (next) _loadViewers(force: true);
             },
             borderRadius: BorderRadius.circular(10),
             child: Padding(

@@ -87,6 +87,8 @@ deploy_backend() {
 
   COMPOSER_ALLOW_SUPERUSER=1 composer install --optimize-autoloader --no-dev --no-interaction
 
+  # Production safety: incremental migrations only — never fresh/seed/wipe (data is preserved).
+  print_status "Running pending migrations (data preserved)..."
   php artisan migrate --force
   php artisan storage:link 2>/dev/null || true
 
@@ -117,8 +119,9 @@ deploy_frontend() {
     print_status "Created .env.production from example"
   fi
 
-  if ! npm ci; then
-    npm install --no-audit --no-fund
+  # NODE_ENV=production on the server skips devDependencies; tsc/vite need them for build.
+  if ! npm ci --include=dev; then
+    npm install --include=dev --no-audit --no-fund
   fi
 
   # Professional update pipeline: fresh buildHash in version.json

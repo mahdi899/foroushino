@@ -5,6 +5,8 @@ const STORE = 'feed';
 const DB_VERSION = 2;
 const CACHE_SCHEMA_VERSION = 2 as const;
 const MAX_PAGES = 12;
+/** Discard stale offline feed snapshots — avoids confusing old UI after long absence. */
+const MAX_CACHE_AGE_MS = 5 * 24 * 60 * 60 * 1000;
 
 export type FeedCachePage = {
   data: FamilyPost[];
@@ -88,6 +90,8 @@ export async function readFeedCache(
     const record = await idbGet<FeedCacheRecord>(cacheKey(scope, viewerKey));
     if (!record || record.schemaVersion !== CACHE_SCHEMA_VERSION) return null;
     if (!Array.isArray(record.pages) || record.pages.length === 0) return null;
+    const age = Date.now() - (record.savedAt ?? 0);
+    if (!Number.isFinite(age) || age < 0 || age > MAX_CACHE_AGE_MS) return null;
     return {
       pages: record.pages.slice(0, MAX_PAGES),
       revision: record.revision ?? null,

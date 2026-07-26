@@ -10,6 +10,7 @@ export type TeamStaffOption = {
   id: string
   firstName: string
   lastName: string
+  avatar?: string | null
   teamId?: string
   teamName?: string | null
 }
@@ -81,6 +82,7 @@ function PersonRow({
         id={option.id}
         first={option.firstName}
         last={option.lastName}
+        src={option.avatar}
         size={36}
       />
       <div className="min-w-0 flex-1">

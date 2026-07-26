@@ -29,7 +29,7 @@ class UserAdminResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
-            'avatar' => PublicMediaUrl::normalize($this->avatar),
+            'avatar' => PublicMediaUrl::withVersion($this->avatar, $this->updated_at),
             'team_id' => $this->team_id,
             'team_name' => $this->whenLoaded('team', fn () => $this->team?->name),
             'is_active' => $this->is_active,

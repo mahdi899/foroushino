@@ -57,6 +57,20 @@ import { isRealtimeConfigured } from '@/lib/realtime/echo';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import { estimateFeedItemSize, type FeedListItem } from '@/lib/family/feedItemEstimate';
+import {
+  FAMILY_FEED_HISTORY_PREFETCH_COOLDOWN_MS,
+  FAMILY_FEED_HISTORY_PREFETCH_SCROLL_PX,
+  FAMILY_FEED_INITIAL_WARM_POST_COUNT,
+  FAMILY_FEED_MEDIA_WARM_POSTS_AFTER,
+  FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE,
+  FAMILY_FEED_TOP_SENTINEL_ROOT_MARGIN,
+  FAMILY_FEED_VIRTUAL_OVERSCAN,
+} from '@/lib/family/feedUx';
+import {
+  estimatePostIndexFromScroll,
+  warmupFamilyPostsMedia,
+  warmupFamilyPostsWindow,
+} from '@/lib/family/feedMediaWarmup';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
 type CommentsTarget = {
@@ -252,6 +266,10 @@ export function FeedView({
   const jumpToLatestInFlightRef = useRef(false);
   const scrollStickRafRef = useRef<number | null>(null);
   const scrollAnchorRafRef = useRef<number | null>(null);
+  const mediaWarmupRafRef = useRef<number | null>(null);
+  const lastScrollTopRef = useRef(0);
+  const lastHistoryPrefetchAtRef = useRef(0);
+  const initialMediaWarmDoneRef = useRef(false);
   const revealTimerRef = useRef<number | null>(null);
   const maxPostIdRef = useRef(0);
   /** False until initial scroll target is applied — hides feed to prevent top→bottom jump. */
@@ -865,6 +883,53 @@ export function FeedView({
     }
   }, [getScrollCtx, isPreview, markCaughtUpToLatest, pushUnreadBadge, setJumpFabVisible, viewerKey]);
 
+  const estimatePostHeight = useCallback((post: FamilyPost) => {
+    return estimateFeedItemSize(0, { kind: 'post', key: `estimate-${post.id}`, post });
+  }, []);
+
+  const scheduleFeedMediaWarmup = useCallback(() => {
+    if (!feedReadyRef.current || isPreview) return;
+    const { root } = getScrollCtx();
+    const list = postsRef.current;
+    if (!root || list.length === 0) return;
+
+    const anchor = estimatePostIndexFromScroll(list, root.scrollTop, estimatePostHeight);
+    warmupFamilyPostsWindow(
+      list,
+      anchor,
+      FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE,
+      FAMILY_FEED_MEDIA_WARM_POSTS_AFTER,
+    );
+  }, [estimatePostHeight, getScrollCtx, isPreview]);
+
+  const tryProactiveHistoryLoad = useCallback(() => {
+    if (isPreview || !feedReadyRef.current || !historyReadyRef.current) return;
+    if (pinNavigateRef.current || commentsOpenRef.current || notificationsOpenRef.current) return;
+    if (!hasMoreRef.current || isValidatingRef.current || loadingHistoryRef.current) return;
+
+    const { root, lenis } = getScrollCtx();
+    if (!root || root.scrollTop > FAMILY_FEED_HISTORY_PREFETCH_SCROLL_PX) return;
+
+    const now = Date.now();
+    if (now - lastHistoryPrefetchAtRef.current < FAMILY_FEED_HISTORY_PREFETCH_COOLDOWN_MS) return;
+    lastHistoryPrefetchAtRef.current = now;
+
+    loadingHistoryRef.current = true;
+    scrollRestoreRef.current = captureFeedScrollRestore(root, lenis);
+    loadMore();
+    if (hasNewer) isJumpedAwayRef.current = true;
+  }, [getScrollCtx, hasNewer, isPreview, loadMore]);
+
+  useEffect(() => {
+    if (!feedReady || isPreview || initialMediaWarmDoneRef.current) return;
+    const list = postsRef.current;
+    if (list.length === 0) return;
+    initialMediaWarmDoneRef.current = true;
+    const n = FAMILY_FEED_INITIAL_WARM_POST_COUNT;
+    const tail = Math.max(0, list.length - n);
+    warmupFamilyPostsMedia(list, tail, Math.min(n, list.length));
+  }, [feedReady, isPreview, posts.length]);
+
   const handleFeedScroll = useCallback(() => {
     // User is scrolling — stop fighting them with history pin restores.
     if (historyPinRef.current) {
@@ -875,12 +940,25 @@ export function FeedView({
       }
     }
     if (pinNavigateRef.current) return;
+    if (mediaWarmupRafRef.current == null) {
+      mediaWarmupRafRef.current = requestAnimationFrame(() => {
+        mediaWarmupRafRef.current = null;
+        const { root } = getScrollCtx();
+        if (root) {
+          const scrollTop = root.scrollTop;
+          const scrollingUp = scrollTop < lastScrollTopRef.current - 6;
+          lastScrollTopRef.current = scrollTop;
+          scheduleFeedMediaWarmup();
+          if (scrollingUp) tryProactiveHistoryLoad();
+        }
+      });
+    }
     if (scrollAnchorRafRef.current != null) return;
     scrollAnchorRafRef.current = requestAnimationFrame(() => {
       scrollAnchorRafRef.current = null;
       updateAnchoredToBottom();
     });
-  }, [updateAnchoredToBottom]);
+  }, [getScrollCtx, scheduleFeedMediaWarmup, tryProactiveHistoryLoad, updateAnchoredToBottom]);
 
   useEffect(() => {
     if (commentsTarget || notificationsOpen || restoringFromCommentsRef.current) {
@@ -1449,7 +1527,7 @@ export function FeedView({
         // If tip page was pruned by MAX_FEED_PAGES, treat as jumped-away.
         if (hasNewer) isJumpedAwayRef.current = true;
       },
-      { root, rootMargin: '240px 0px 0px 0px', threshold: 0 },
+      { root, rootMargin: FAMILY_FEED_TOP_SENTINEL_ROOT_MARGIN, threshold: 0 },
     );
 
     observer.observe(sentinel);
@@ -1688,7 +1766,7 @@ export function FeedView({
                     ref={virtualListRef}
                     items={feedItems}
                     gap={8}
-                    overscan={10}
+                    overscan={FAMILY_FEED_VIRTUAL_OVERSCAN}
                     className="family-feed-list__virtual"
                     getScrollElement={() => feedScrollRef.current?.getScrollElement() ?? null}
                     estimateSize={estimateFeedItemSize}

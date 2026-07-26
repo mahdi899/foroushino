@@ -1,8 +1,6 @@
 import { siteStorageMedia } from '@/config/media';
 import { cn } from '@/lib/cn';
 
-const SPOTPLAYER_PLATFORM_ICON_BASE = 'https://app.spotplayer.ir/assets/img/platform';
-
 const PLATFORMS: {
   id: string;
   label: string;
@@ -13,37 +11,37 @@ const PLATFORMS: {
   {
     id: 'windows',
     label: 'Windows',
-    logo: siteStorageMedia('platform-windows.svg'),
+    logo: siteStorageMedia('platform-windows.png'),
     href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.exe',
   },
   {
     id: 'macos',
     label: 'MacOS',
-    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/mac.png`,
+    logo: siteStorageMedia('platform-macos.png'),
     href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.dmg',
   },
   {
     id: 'android',
     label: 'Android',
-    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/android.png`,
+    logo: siteStorageMedia('platform-android.png'),
     href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.apk',
   },
   {
     id: 'web',
     label: 'Web',
-    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/web.png`,
+    logo: siteStorageMedia('platform-web.png'),
     href: 'https://app.spotplayer.ir/',
   },
   {
     id: 'ios',
     label: 'iOS',
-    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/ios.png`,
+    logo: siteStorageMedia('platform-ios.png'),
     comingSoon: true,
   },
   {
     id: 'ubuntu',
     label: 'Ubuntu',
-    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/ubuntu.png`,
+    logo: siteStorageMedia('platform-ubuntu.png'),
     comingSoon: true,
   },
 ];
@@ -63,10 +61,10 @@ function PlatformTile({
     <>
       <img
         src={logo}
-        alt=""
-        width={40}
-        height={40}
-        className={cn('h-10 w-10 shrink-0 object-contain', comingSoon && 'opacity-35 grayscale')}
+        alt={label}
+        width={48}
+        height={48}
+        className={cn('h-12 w-12 shrink-0 object-contain', comingSoon && 'opacity-35 grayscale')}
         loading="lazy"
         decoding="async"
       />

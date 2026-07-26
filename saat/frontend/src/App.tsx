@@ -162,13 +162,16 @@ function Shell() {
   }, [location.pathname])
 
   return (
-    <main className="relative h-full w-full min-w-0 max-w-full overflow-x-hidden bg-background font-sans transition-colors duration-500">
+    <main className="relative flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden bg-background font-sans transition-colors duration-500">
       <FollowUpChrome />
       <div
         ref={scrollRef}
-        className={cn('h-full no-scrollbar', lockScroll ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn(
+          'min-h-0 flex-1 no-scrollbar',
+          lockScroll ? 'overflow-hidden' : 'overflow-y-auto overscroll-y-contain',
+        )}
       >
-        <div className={lockScroll ? 'h-full' : 'h-full min-h-full'}>
+        <div className={lockScroll ? 'h-full' : 'flex h-full min-h-full flex-col'}>
           <PageTransition>
             <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
               <Route path="/" element={<SplashScreen />} />
@@ -276,19 +279,22 @@ export default function App() {
         <div
           data-shell={mode}
           className={cn(
-            'app-shell relative overflow-x-hidden bg-background font-sans',
+            'app-shell relative flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden bg-background font-sans',
             mode === 'device'
-              ? 'mx-auto h-[100dvh] w-full min-w-0'
-              : 'h-[100dvh] w-full max-w-[440px] sm:h-[896px] sm:max-h-[94vh] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl dark:sm:border-neutral-800/80 dark:sm:shadow-black/60',
+              ? 'mx-auto max-w-[min(100vw,480px)]'
+              : 'max-w-[440px] sm:h-[min(896px,94dvh)] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl dark:sm:border-neutral-800/80 dark:sm:shadow-black/60',
           )}
+          style={{ height: 'var(--app-vh, 100dvh)', maxHeight: 'var(--app-vh, 100dvh)' }}
         >
           <OfflineBanner />
-          <BrowserRouter>
-            <AuthSessionWatcher />
-            <ErrorBoundary>
-              <Shell />
-            </ErrorBoundary>
-          </BrowserRouter>
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+            <BrowserRouter>
+              <AuthSessionWatcher />
+              <ErrorBoundary>
+                <Shell />
+              </ErrorBoundary>
+            </BrowserRouter>
+          </div>
           <InstallPrompt />
           <UpdateBanner />
         </div>

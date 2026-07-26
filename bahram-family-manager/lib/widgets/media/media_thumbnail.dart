@@ -43,6 +43,8 @@ class MediaThumbnail extends StatelessWidget {
     final url = media.playableUrl;
 
     if (media.type == 'image' && url != null) {
+      final dpr = MediaQuery.devicePixelRatioOf(context);
+      final cacheWidth = (MediaQuery.sizeOf(context).width * dpr).round().clamp(320, 1200);
       return ClipRRect(
         borderRadius: radius,
         child: CachedNetworkImage(
@@ -50,6 +52,8 @@ class MediaThumbnail extends StatelessWidget {
           height: height,
           width: double.infinity,
           fit: BoxFit.cover,
+          memCacheWidth: cacheWidth,
+          maxWidthDiskCache: cacheWidth,
           placeholder: (_, __) => _Placeholder(type: media.type, height: height, radius: radius),
           errorWidget: (_, __, ___) => _Placeholder(type: media.type, height: height, radius: radius),
         ),

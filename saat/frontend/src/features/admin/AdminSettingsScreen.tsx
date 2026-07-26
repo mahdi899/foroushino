@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { CatalogSettingsSection } from '@/features/admin/CatalogSettingsSection'
 import { BackupSettingsSection } from '@/features/admin/BackupSettingsSection'
+import { CloudflareSettingsSection } from '@/features/admin/CloudflareSettingsSection'
 import { BahramBridgeSettingsSection } from '@/features/admin/BahramBridgeSettingsSection'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -318,6 +319,7 @@ export function AdminSettingsScreen() {
               <div className="space-y-5">
                 <CatalogSettingsSection />
                 <BahramBridgeSettingsSection settings={settings} setSettings={setSettings} />
+                <CloudflareSettingsSection />
               </div>
             )}
 

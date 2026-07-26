@@ -15,8 +15,13 @@ export function avatarUrl(id: string): string {
   return `/avatars/${avatarPoolSlug(id)}.jpg`
 }
 
+/**
+ * Prefer the user's real avatar URL. In production (http API) never substitute
+ * a stock portrait from the demo pool — show initials instead when missing.
+ */
 export function resolveAvatar(id: string, src?: string | null): string | null {
   if (src) return src
-  if (id) return avatarUrl(id)
+  const isHttpApi = import.meta.env?.VITE_API_MODE === 'http'
+  if (!isHttpApi && id) return avatarUrl(id)
   return null
 }
