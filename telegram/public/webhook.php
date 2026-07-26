@@ -10,7 +10,10 @@ use TelegramHost\Db\Connection;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
 use TelegramHost\Http\LiveClient;
+use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Queue\BackgroundIranRelay;
+use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Routing\DelegationDetector;
 use TelegramHost\Routing\UpdateRouter;
 use TelegramHost\Security\RateLimiter;
@@ -75,7 +78,10 @@ try {
     }
 
     $sync = new SyncClient($config);
-    $live = new LiveClient($sync);
+    $live = new ResilientLiveClient(new LiveClient($sync));
+    $iranQueue = new IranUpdateQueue($pdo);
+    $maxRelay = max(0, (int) ($config['iran_relay_per_webhook'] ?? 2));
+    $iranRelay = new BackgroundIranRelay($iranQueue, new LiveClient($sync), $sync, maxPerRun: $maxRelay);
     $cache = new SyncCache($pdo, $sync, $config);
     $accounts = new AccountCache($pdo);
     $membershipCache = new \TelegramHost\Services\MembershipCheckCache(
@@ -116,7 +122,7 @@ try {
 
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
-        $live,
+        $iranQueue,
         $accounts,
         $cache,
         $api,
@@ -125,6 +131,12 @@ try {
     );
 
     (new Bot($router))->handle($update);
+
+    try {
+        $iranRelay->drain();
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] iran relay: '.$e->getMessage());
+    }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());
 }

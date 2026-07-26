@@ -7,7 +7,7 @@ namespace TelegramHost\Handlers;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
-use TelegramHost\Http\LiveClient;
+use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -21,7 +21,7 @@ final class MessageHandler
     public function __construct(
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
-        private readonly LiveClient $live,
+        private readonly ResilientLiveClient $live,
         private readonly ConversationRepository $conversations,
         private readonly AccountCache $accounts,
         private readonly MainMenu $mainMenu,
@@ -41,6 +41,17 @@ final class MessageHandler
             return;
         }
 
+        if (isset($message['contact'])) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'registration_contact_queued',
+                'شماره دریافت شد. ثبت‌نام روی سرور اصلی در پس‌زمینه انجام می‌شود؛ تا آن زمان منوهای ذخیره‌شده در دسترس است.',
+            ), [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
+            return;
+        }
+
         if (isset($message['reply_to_message'])) {
             $reply = $this->live->supportTryReply($telegramUserId, $message);
             if (! empty($reply['handled'])) {
@@ -49,6 +60,30 @@ final class MessageHandler
         }
 
         $conversation = $this->conversations->get($telegramUserId);
+
+        if ($text === '/start' || str_starts_with($text, '/start ')) {
+            $this->handleStart($chatId, $telegramUserId);
+
+            return;
+        }
+
+        if ($conversation['state'] === 'waiting_for_support_message') {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'support_message_queued',
+                'پیام شما ثبت شد. پس از اتصال سرور اصلی، برای پشتیبانی ارسال می‌شود.',
+            ));
+
+            return;
+        }
+
+        if ($conversation['state'] === 'waiting_for_card_to_card_receipt') {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'c2c_receipt_queued',
+                'رسید دریافت شد و در صف ارسال به سرور اصلی است.',
+            ));
+
+            return;
+        }
 
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
             $this->handleMenuButton($chatId, $telegramUserId, $text);
@@ -64,6 +99,27 @@ final class MessageHandler
 
         $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'از دکمه‌های منو استفاده کنید.'), [
             'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+        ]);
+    }
+
+    private function handleStart(int $chatId, int $telegramUserId): void
+    {
+        if ($this->accounts->isVerified($telegramUserId)) {
+            $this->sendMainMenu($chatId, $telegramUserId);
+
+            return;
+        }
+
+        $text = $this->cache->message(
+            'registration_ask_mobile',
+            "به ربات آکادمی بهرام خوش آمدید.\n\nبرای ادامه، شماره موبایل را از دکمه اشتراک‌گذاری بفرستید یا از سایت ثبت‌نام کنید.",
+        );
+        $this->api->sendMessage($chatId, $text, [
+            'reply_markup' => [
+                'keyboard' => [[['text' => '📱 اشتراک شماره موبایل', 'request_contact' => true]]],
+                'resize_keyboard' => true,
+                'one_time_keyboard' => true,
+            ],
         ]);
     }
 

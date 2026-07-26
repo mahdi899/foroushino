@@ -50,6 +50,9 @@ return [
     ],
 
     // Cron pull from Iran is OFF by default — the main server pushes to host-sync.php.
+    // Background Iran relay (after each webhook); 0 = only cron/iran-relay.php
+    'iran_relay_per_webhook' => 2,
+
     'pull_sync_enabled' => false,
     'pull_sync_min_interval_seconds' => 3600,
     'membership_cache_ttl_seconds' => 900,

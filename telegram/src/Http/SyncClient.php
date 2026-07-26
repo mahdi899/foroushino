@@ -36,8 +36,8 @@ final class SyncClient
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $encrypted,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 10,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 4,
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_HTTPHEADER => array_merge([

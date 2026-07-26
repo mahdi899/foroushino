@@ -7,7 +7,7 @@ namespace TelegramHost\Handlers;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
-use TelegramHost\Http\LiveClient;
+use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -19,7 +19,7 @@ final class CallbackQueryHandler
     public function __construct(
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
-        private readonly LiveClient $live,
+        private readonly ResilientLiveClient $live,
         private readonly ConversationRepository $conversations,
         private readonly AccountCache $accounts,
         private readonly MainMenu $mainMenu,

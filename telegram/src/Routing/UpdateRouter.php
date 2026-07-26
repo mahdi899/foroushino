@@ -8,15 +8,16 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
-use TelegramHost\Http\LiveClient;
+use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Telegram\BotApiClient;
 use TelegramHost\Support\TelegramCustomEmoji;
 
+/** Serves users from local MySQL only; Iran is contacted asynchronously when needed. */
 final class UpdateRouter
 {
     public function __construct(
         private readonly DelegationDetector $delegation,
-        private readonly LiveClient $live,
+        private readonly IranUpdateQueue $iranQueue,
         private readonly AccountCache $accounts,
         private readonly SyncCache $cache,
         private readonly BotApiClient $api,
@@ -27,9 +28,11 @@ final class UpdateRouter
     /** @param array<string, mixed> $update */
     public function handle(array $update): void
     {
-        if ($this->delegation->shouldDelegate($update)) {
-            $this->live->processUpdate($update);
+        if ($this->delegation->shouldRelayToIran($update)) {
+            $this->iranQueue->push($update);
+        }
 
+        if (! $this->delegation->isPrivateUserFacing($update)) {
             return;
         }
 

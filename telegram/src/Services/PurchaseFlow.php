@@ -6,7 +6,7 @@ namespace TelegramHost\Services;
 
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
-use TelegramHost\Http\LiveClient;
+use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
@@ -15,7 +15,7 @@ final class PurchaseFlow
 {
     public function __construct(
         private readonly BotApiClient $api,
-        private readonly LiveClient $live,
+        private readonly ResilientLiveClient $live,
         private readonly SyncCache $cache,
         private readonly ConversationRepository $conversations,
         private readonly MainMenu $mainMenu,
