@@ -43,10 +43,10 @@ function isFamilyPinnedKey(key: unknown): boolean {
   return key === 'family-pinned' || (Array.isArray(key) && key[0] === 'family-pinned');
 }
 
-let unreadSummaryMutateTimer: ReturnType<typeof setTimeout> | null = null;
+let unreadSummaryMutateTimer: number | null = null;
 
 function scheduleUnreadSummaryRevalidate(): void {
-  if (unreadSummaryMutateTimer) window.clearTimeout(unreadSummaryMutateTimer);
+  if (unreadSummaryMutateTimer != null) window.clearTimeout(unreadSummaryMutateTimer);
   unreadSummaryMutateTimer = window.setTimeout(() => {
     unreadSummaryMutateTimer = null;
     void globalMutate(isFeedUnreadKey);

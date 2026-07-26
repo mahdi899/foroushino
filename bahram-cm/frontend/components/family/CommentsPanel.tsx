@@ -11,6 +11,7 @@ import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import { cn } from '@/lib/cn';
+import { useVisualViewportBox } from '@/lib/hooks/useVisualViewportBox';
 
 type CommentsPanelProps = {
   postId: number;
@@ -22,17 +23,7 @@ type CommentsPanelProps = {
 
 const TEXTAREA_MAX_PX = 120;
 /** Ignore tiny visualViewport jitter (browser chrome, address bar). */
-const KEYBOARD_INSET_THRESHOLD_PX = 48;
-
-/** Keyboard overlap under the family shell (works with 100dvh + overlays-content). */
-function readKeyboardInset(): number {
-  const vv = window.visualViewport;
-  if (!vv) return 0;
-  const root = document.getElementById('family-root');
-  const rootBottom = root?.getBoundingClientRect().bottom ?? window.innerHeight;
-  const visibleBottom = vv.offsetTop + vv.height;
-  return Math.max(0, Math.round(rootBottom - visibleBottom));
-}
+const KEYBOARD_INSET_THRESHOLD_PX = 24;
 
 function CommentRow({
   comment,
@@ -82,13 +73,43 @@ export function CommentsPanel({
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
-  const [keyboardInset, setKeyboardInset] = useState(0);
+  const [composerHeight, setComposerHeight] = useState(76);
+  const [mobilePage, setMobilePage] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
+  const viewport = useVisualViewportBox(isPage);
+  const keyboardInset =
+    isPage && viewport.keyboardInset > KEYBOARD_INSET_THRESHOLD_PX ? viewport.keyboardInset : 0;
+  const fixedComposer = isPage && mobilePage;
+
+  useEffect(() => {
+    if (!isPage || typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setMobilePage(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, [isPage]);
+
+  useEffect(() => {
+    if (!fixedComposer) return;
+    const el = composerRef.current;
+    if (!el) return;
+    const measure = () => setComposerHeight(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fixedComposer, error, justSent, value]);
+
+  const listBottomPad =
+    fixedComposer && composerHeight > 0
+      ? composerHeight + keyboardInset
+      : undefined;
 
   const orderedComments = useMemo(() => [...comments].reverse(), [comments]);
 
@@ -141,32 +162,8 @@ export function CommentsPanel({
     scrollToLatest('smooth');
   }, [justSent, orderedComments.length, scrollToLatest]);
 
-  /** Lift composer above the keyboard; keep the latest comment pinned above it. */
-  useEffect(() => {
-    if (!isPage || typeof window === 'undefined' || !window.visualViewport) return;
-
-    const vv = window.visualViewport;
-    const sync = () => {
-      const inset = readKeyboardInset();
-      setKeyboardInset((prev) => {
-        const next = inset > KEYBOARD_INSET_THRESHOLD_PX ? inset : 0;
-        return prev === next ? prev : next;
-      });
-    };
-
-    sync();
-    vv.addEventListener('resize', sync);
-    vv.addEventListener('scroll', sync);
-    window.addEventListener('resize', sync);
-    return () => {
-      vv.removeEventListener('resize', sync);
-      vv.removeEventListener('scroll', sync);
-      window.removeEventListener('resize', sync);
-    };
-  }, [isPage]);
-
   useLayoutEffect(() => {
-    if (!isPage || keyboardInset <= KEYBOARD_INSET_THRESHOLD_PX) return;
+    if (!fixedComposer || keyboardInset <= 0) return;
     pinLatestComment('auto');
     const frame = requestAnimationFrame(() => pinLatestComment('auto'));
     const t = window.setTimeout(() => pinLatestComment('auto'), 160);
@@ -176,7 +173,7 @@ export function CommentsPanel({
       window.clearTimeout(t);
       window.clearTimeout(t2);
     };
-  }, [isPage, keyboardInset, pinLatestComment]);
+  }, [fixedComposer, keyboardInset, pinLatestComment]);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -211,12 +208,14 @@ export function CommentsPanel({
       className={cn(
         'family-comments-panel flex min-h-0 min-w-0 flex-col overflow-x-hidden',
         variant === 'inline' && 'border-t border-[var(--family-border-subtle)]',
-        isPage && keyboardInset > 0 && 'family-comments-panel--keyboard',
         className,
       )}
       style={
-        isPage && keyboardInset > 0
-          ? ({ ['--family-keyboard-inset' as string]: `${keyboardInset}px` } as CSSProperties)
+        fixedComposer
+          ? ({
+              ['--family-keyboard-inset' as string]: `${keyboardInset}px`,
+              ['--family-composer-height' as string]: `${composerHeight}px`,
+            } as CSSProperties)
           : undefined
       }
     >
@@ -231,7 +230,18 @@ export function CommentsPanel({
         className={cn(
           'family-feed-scroll family-comments-list min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain',
           isPage ? 'flex-1 px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
+          fixedComposer && 'family-comments-list--fixed-composer',
         )}
+        style={
+          listBottomPad != null
+            ? {
+                paddingBottom:
+                  keyboardInset > 0
+                    ? `${listBottomPad}px`
+                    : `calc(${listBottomPad}px + env(safe-area-inset-bottom, 0px))`,
+              }
+            : undefined
+        }
       >
         {isLoading ? (
           <div className={cn('flex items-center justify-center', isPage ? 'min-h-full' : 'py-16')} aria-busy>
@@ -243,9 +253,11 @@ export function CommentsPanel({
         ) : loadError ? (
           <p className="py-12 text-center text-sm text-red-400">{loadError}</p>
         ) : orderedComments.length === 0 ? (
-          <p className="py-12 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
+          <p className={cn('py-12 text-center text-sm text-bone/50', isPage && 'mt-auto')}>
+            هنوز نظری ثبت نشده. اولین نفر باش.
+          </p>
         ) : (
-          <ul className="space-y-2 pb-2">
+          <ul className={cn('family-comments-thread space-y-2 pb-2', isPage && 'mt-auto')}>
             {hasMore && (
               <li className="flex justify-center py-2">
                 <button
@@ -281,7 +293,18 @@ export function CommentsPanel({
         className={cn(
           'family-glass-bar family-comment-composer shrink-0 p-3 sm:p-4',
           isPage && 'family-comment-composer--page',
+          fixedComposer && 'family-comment-composer--fixed',
         )}
+        style={
+          fixedComposer
+            ? ({
+                bottom:
+                  keyboardInset > 0
+                    ? `${keyboardInset}px`
+                    : 'env(safe-area-inset-bottom, 0px)',
+              } as CSSProperties)
+            : undefined
+        }
       >
         {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
         {justSent && !error && <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد.</p>}
@@ -302,11 +325,7 @@ export function CommentsPanel({
                 pinLatestComment('auto');
                 requestAnimationFrame(() => pinLatestComment('auto'));
               });
-              window.setTimeout(() => {
-                const inset = readKeyboardInset();
-                setKeyboardInset(inset > KEYBOARD_INSET_THRESHOLD_PX ? inset : 0);
-                pinLatestComment('auto');
-              }, 80);
+              window.setTimeout(() => pinLatestComment('auto'), 80);
               window.setTimeout(() => pinLatestComment('auto'), 320);
             }}
             maxLength={500}

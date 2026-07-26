@@ -640,8 +640,24 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
-/* Keyboard inset sits under the composer (overlaid by the OS keyboard) — lifts the
-   compose bar without inventing empty space inside the comment list. */
+/* Mobile page comments: composer pinned above keyboard (Telegram-style). */
+.family-comment-composer--fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  transition: bottom 120ms ease-out;
+}
+
+.family-comments-list--fixed-composer {
+  display: flex;
+  flex-direction: column;
+}
+
+.family-comments-list--fixed-composer .family-comments-thread {
+  margin-top: auto;
+}
+
 .family-comments-panel--keyboard {
   padding-bottom: var(--family-keyboard-inset, 0px);
   transition: padding-bottom 120ms ease-out;

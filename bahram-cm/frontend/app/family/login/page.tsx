@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { ArrowRight } from 'lucide-react';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
+import { FamilyLoginScrollShell } from '@/components/family/FamilyLoginScrollShell';
 import { StudentLoginForm } from '@/components/student-panel/auth/StudentLoginForm';
 import { familyFetch } from '@/lib/family/session';
 import { getCurrentStudent } from '@/lib/student/session';
@@ -42,16 +43,16 @@ export default async function FamilyLoginPage({
   const profileName = branding?.profile_name ?? 'بهرام';
 
   return (
-    <main id="main-content" className="relative flex min-h-[100dvh] flex-col items-center justify-center px-5 py-10 lg:py-16">
+    <FamilyLoginScrollShell>
       <Link
         href={backHref}
         aria-label="بازگشت به خانواده"
-        className="family-nav-icon absolute end-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--family-border-subtle)] bg-[var(--family-surface)]/80 text-bone/70 backdrop-blur-sm transition hover:text-[var(--family-accent)] sm:end-5 sm:top-5"
+        className="family-nav-icon fixed end-4 top-4 z-[2] flex h-10 w-10 items-center justify-center rounded-full border border-[var(--family-border-subtle)] bg-[var(--family-surface)]/80 text-bone/70 backdrop-blur-sm transition hover:text-[var(--family-accent)] sm:end-5 sm:top-5"
       >
         <ArrowRight className="h-[18px] w-[18px]" strokeWidth={1.75} />
       </Link>
 
-      <div className="mb-5 w-full max-w-md text-center">
+      <div className="mb-5 w-full text-center">
         <div className="relative mx-auto mb-4 flex w-fit justify-center">
           <div
             aria-hidden
@@ -68,6 +69,6 @@ export default async function FamilyLoginPage({
         <p className="mt-1.5 text-sm text-bone/55">شماره موبایلت رو وارد کن تا کد تأیید بفرستیم.</p>
       </div>
       <StudentLoginForm redirectTo={redirectTo} variant="page" active context="family" />
-    </main>
+    </FamilyLoginScrollShell>
   );
 }
