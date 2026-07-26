@@ -53,6 +53,10 @@ final class SyncCache
 
         $this->storeFeatureFlags($flags);
         $this->storeRequiredChats((array) ($bootstrap['required_chats'] ?? []));
+        $revision = trim((string) ($bootstrap['catalog_revision'] ?? ''));
+        if ($revision !== '') {
+            $this->storeMessages(['__catalog_revision' => $revision]);
+        }
         $this->touchSyncMeta('bootstrap');
     }
 
@@ -106,6 +110,33 @@ final class SyncCache
         $value = $stmt->fetchColumn();
 
         return is_string($value) ? $value : null;
+    }
+
+    public function catalogRevision(): string
+    {
+        return $this->message('__catalog_revision', '');
+    }
+
+    public function secondsSinceRevisionCheck(): int
+    {
+        $stmt = $this->pdo->prepare('SELECT synced_at FROM sync_meta WHERE sync_key = :key');
+        $stmt->execute(['key' => 'revision_check']);
+        $value = $stmt->fetchColumn();
+        if (! is_string($value) || $value === '') {
+            return PHP_INT_MAX;
+        }
+
+        return max(0, time() - strtotime($value));
+    }
+
+    public function markRevisionChecked(): void
+    {
+        $this->touchSyncMeta('revision_check');
+    }
+
+    public function touchSyncMetaPublic(string $key): void
+    {
+        $this->touchSyncMeta($key);
     }
 
     public function checkoutZarinpalEnabled(): bool

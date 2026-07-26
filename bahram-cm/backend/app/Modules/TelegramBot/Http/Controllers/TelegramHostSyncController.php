@@ -18,6 +18,7 @@ use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Modules\TelegramBot\Services\TelegramUserSyncService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
+use App\Services\TelegramHostCatalogRevision;
 use App\Services\TelegramInfrastructureService;
 use App\Support\AesGcmCipher;
 use Illuminate\Http\JsonResponse;
@@ -49,6 +50,7 @@ class TelegramHostSyncController
         private readonly TelegramCheckoutService $checkout,
         private readonly TelegramCatalogMediaService $catalogMedia,
         private readonly TelegramInfrastructureService $infrastructure,
+        private readonly TelegramHostCatalogRevision $catalogRevision,
     ) {}
 
     public function bootstrap(Request $request): JsonResponse
@@ -86,7 +88,18 @@ class TelegramHostSyncController
                 'referral_panel' => TelegramSiteUrl::page('panel/referrals'),
             ],
             'synced_at' => now()->toIso8601String(),
+            'catalog_revision' => $this->catalogRevision->current(),
         ], $this->infrastructure->pendingHostWebhookBootstrapExtra()));
+    }
+
+    public function syncMeta(Request $request): JsonResponse
+    {
+        $this->productionBot();
+
+        return $this->encryptedResponse($request, [
+            'catalog_revision' => $this->catalogRevision->current(),
+            'synced_at' => now()->toIso8601String(),
+        ]);
     }
 
     public function webhookRegisterAck(Request $request): JsonResponse

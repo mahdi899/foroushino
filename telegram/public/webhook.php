@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Bot;
+use TelegramHost\Cache\CatalogSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Db\Connection;
@@ -76,7 +77,8 @@ try {
 
     $sync = new SyncClient($config);
     $live = new LiveClient($sync);
-    $cache = new SyncCache($pdo, $sync);
+    $cache = new SyncCache($pdo, $sync, $config);
+    (new CatalogSyncCoordinator($config, $cache, $sync))->ensureFresh();
     $accounts = new AccountCache($pdo);
     $conversations = new ConversationRepository($pdo);
     $api = new BotApiClient((string) $config['bot_token']);

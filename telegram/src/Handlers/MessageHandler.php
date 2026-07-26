@@ -115,17 +115,10 @@ final class MessageHandler
 
         foreach (array_slice($courses, 0, 10) as $course) {
             $productId = (int) $course['id'];
-            $present = $this->live->productPresent($telegramUserId, $productId);
-            if (! empty($present['ok']) && ! empty($present['owns'])) {
-                $this->sendProductView($chatId, $present);
-
-                continue;
-            }
-
             $caption = CatalogPresenter::courseCaption($course);
             $keyboard = ['reply_markup' => ['inline_keyboard' => [[InlineButtons::buy($productId)]]]];
 
-            $photo = (string) ($course['photo_url'] ?? $present['photo'] ?? '');
+            $photo = (string) ($course['photo_url'] ?? '');
             if ($photo !== '') {
                 $this->api->sendPhoto($chatId, $photo, $caption, $keyboard);
             } else {
@@ -145,14 +138,6 @@ final class MessageHandler
 
         foreach (array_slice($seminars, 0, 10) as $seminar) {
             $productId = (int) ($seminar['product_id'] ?? 0);
-            if ($productId > 0) {
-                $present = $this->live->productPresent($telegramUserId, $productId);
-                if (! empty($present['ok']) && ! empty($present['owns'])) {
-                    $this->sendProductView($chatId, $present);
-
-                    continue;
-                }
-            }
 
             $caption = CatalogPresenter::seminarCaption($seminar);
 

@@ -16,7 +16,7 @@ Telegram → public/webhook.php → UpdateRouter
 2. اسکیمای `db/schema.sql` را import کنید (اگر قبلاً ساخته‌اید: `db/migrate-catalog-photos.sql`).
 3. `config.sample.php` → `config.php` (از پنل ادمین سایت).
 4. Document Root → `telegram/public`
-5. Cron هر ۵ دقیقه: `php cron/pull-sync.php`
+5. Cron هر **۲** دقیقه (پشتیبان): `*/2 * * * * php cron/pull-sync.php`
 6. یک‌بار دستی: `php cron/pull-sync.php`
 7. در پنل ادمین: حالت «هاست خارج» + ثبت webhook
 

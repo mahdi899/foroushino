@@ -19,6 +19,7 @@ Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle
     ->prefix('api/v1/integrations/telegram-host')
     ->group(function (): void {
         Route::post('/bootstrap', [TelegramHostSyncController::class, 'bootstrap']);
+        Route::post('/sync-meta', [TelegramHostSyncController::class, 'syncMeta']);
         Route::post('/catalog', [TelegramHostSyncController::class, 'catalog']);
         Route::post('/webhook-register/ack', [TelegramHostSyncController::class, 'webhookRegisterAck']);
         Route::post('/otp/request', [TelegramHostSyncController::class, 'otpRequest'])->middleware('throttle:20,1');

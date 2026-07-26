@@ -3,6 +3,7 @@
 namespace App\Modules\TelegramBot\Services;
 
 use App\Jobs\PushTelegramHostSyncJob;
+use App\Services\TelegramHostCatalogRevision;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramBotMessage;
 use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
@@ -245,7 +246,7 @@ class BotMessageCatalog
         Cache::forget($this->cacheKey((int) $bot->id, $key));
 
         if ($bot->key === 'production') {
-            PushTelegramHostSyncJob::bootstrap();
+            app(TelegramHostCatalogRevision::class)->bump();
         }
 
         return $row;
@@ -261,7 +262,7 @@ class BotMessageCatalog
         Cache::forget($this->cacheKey((int) $bot->id, $key));
 
         if ($bot->key === 'production') {
-            PushTelegramHostSyncJob::bootstrap();
+            app(TelegramHostCatalogRevision::class)->bump();
         }
     }
 
