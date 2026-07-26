@@ -40,15 +40,7 @@ export function SiteFooter() {
             >
               {site.footer.trustBadges.map((badge) => {
                 if (badge.id === "enamad") {
-                  return (
-                    <EnamadBadge
-                      key={badge.id}
-                      className="footer-trust-badge group"
-                      surfaceClassName="footer-trust-badge__surface"
-                      innerClassName="footer-trust-badge__inner"
-                      imgClassName="footer-trust-badge__img"
-                    />
-                  );
+                  return <EnamadBadge key={badge.id} />;
                 }
 
                 const src = SITE_MEDIA[`trust-${badge.id}`]?.src;
@@ -107,6 +99,9 @@ export function SiteFooter() {
                     </Link>
                   );
                 })}
+              </div>
+              <div className="mt-6 flex justify-center md:hidden">
+                <EnamadBadge />
               </div>
             </div>
             {/* Desktop */}
