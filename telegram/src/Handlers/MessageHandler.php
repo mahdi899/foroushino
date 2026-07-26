@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Handlers;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
@@ -29,6 +30,7 @@ final class MessageHandler
         private readonly MembershipGate $membership,
         private readonly PurchaseFlow $purchaseFlow,
         private readonly HostRegistrationFlow $registration,
+        private readonly AccountSyncCoordinator $accountSync,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -110,6 +112,11 @@ final class MessageHandler
         }
 
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
+            try {
+                $this->accountSync->ensureFresh($telegramUserId);
+            } catch (\Throwable $e) {
+                error_log('[telegram-host] account sync: '.$e->getMessage());
+            }
             $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
 
             return;
@@ -131,6 +138,12 @@ final class MessageHandler
      */
     private function handleStart(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
+        try {
+            $this->accountSync->ensureFresh($telegramUserId);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] account sync: '.$e->getMessage());
+        }
+
         if ($this->accounts->isVerified($telegramUserId)) {
             $this->sendMainMenu($chatId, $telegramUserId);
 
@@ -140,7 +153,6 @@ final class MessageHandler
         $this->registration->start($chatId, $telegramUserId, $from, $startPayload);
     }
 
-    /** @param array<string, mixed> $from */
     private function handleMenuButton(int $chatId, int $telegramUserId, string $text, array $from = []): void
     {
         if (! $this->accounts->isVerified($telegramUserId)) {

@@ -18,6 +18,7 @@ use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Routing\DelegationDetector;
 use TelegramHost\Routing\UpdateRouter;
 use TelegramHost\Security\RateLimiter;
+use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -37,14 +38,6 @@ $update = json_decode((string) $raw, true);
 if (! is_array($update)) {
     http_response_code(400);
     exit;
-}
-
-// Ack Telegram immediately — processing continues after response (faster UX).
-http_response_code(200);
-echo 'ok';
-
-if (function_exists('fastcgi_finish_request')) {
-    fastcgi_finish_request();
 }
 
 try {
@@ -103,6 +96,8 @@ try {
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
 
+    $accountSync = new AccountSyncCoordinator($accounts, $sync);
+
     $messageHandler = new MessageHandler(
         $api,
         $cache,
@@ -113,6 +108,7 @@ try {
         $membership,
         $purchaseFlow,
         $registration,
+        $accountSync,
         $siteBaseUrl
     );
 
@@ -129,13 +125,10 @@ try {
         $registration,
     );
 
-    $accountSync = new AccountSyncCoordinator($accounts, $sync);
-
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
         $iranSync,
         $accounts,
-        $accountSync,
         $cache,
         $api,
         $messageHandler,
@@ -158,3 +151,6 @@ try {
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());
 }
+
+http_response_code(200);
+echo 'ok';

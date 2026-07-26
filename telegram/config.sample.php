@@ -51,7 +51,7 @@ return [
 
     // Event-driven only — Iran pushes to host-sync.php; no cPanel cron required.
     // After each webhook, drain a few queued Iran updates (registration/support relay).
-    'iran_relay_per_webhook' => 5,
+    'iran_relay_per_webhook' => 0,
 
     'pull_sync_enabled' => false,
     'pull_sync_min_interval_seconds' => 3600,
