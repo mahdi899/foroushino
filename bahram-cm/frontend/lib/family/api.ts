@@ -69,7 +69,7 @@ function fetchStoriesNow(): Promise<{ data: FamilyStory[] }> {
 }
 
 /** Fire-and-forget: warm the stories list + first media before the viewer opens. */
-export function prefetchStories(): void {
+export async function prefetchStories(): Promise<void> {
   if (storiesPrefetch && Date.now() - storiesPrefetchAt < STORIES_PREFETCH_TTL_MS) return;
   storiesPrefetchAt = Date.now();
   storiesPrefetch = fetchStoriesNow().catch((err) => {

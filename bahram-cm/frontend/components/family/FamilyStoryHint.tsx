@@ -50,7 +50,7 @@ export function FamilyStoryHint({
     let cancelled = false;
     void import('@/lib/family/api').then(({ prefetchStories, getStories }) => {
       if (cancelled) return;
-      prefetchStories();
+      void prefetchStories();
       void getStories()
         .then((res) => {
           if (cancelled) return;

@@ -380,11 +380,14 @@ html[data-theme="light"] .hero-light-section .hero-light-grid-scrim {
   }
 }
 
-/* Mobile — hero fills the full screen below the header (no next-section peek) */
+/* Mobile — comfortable, non-cropped hero. Never exceeds the space under the
+   header (header + hero must stay ≤ 100dvh — it must not push content below
+   the fold), but does not force-stretch the square mobile photo either. */
 @media (max-width: 639px) {
   .hero-light-section {
     --hero-headline-size: clamp(1.25rem, 5.2vw, 1.65rem);
-    --hero-light-image-max-h: calc(
+    --hero-light-image-max-h: min(66svh, 480px);
+    --hero-light-viewport-cap: calc(
       100dvh - var(--site-header-height) - var(--site-bottom-nav-offset)
     );
   }
@@ -395,9 +398,9 @@ html[data-theme="light"] .hero-light-section .hero-light-grid-scrim {
   }
 
   .hero-light-section .hero-light-panel {
-    min-height: calc(
-      100dvh - var(--site-header-height) - var(--site-bottom-nav-offset)
-    );
+    min-height: min(var(--hero-light-image-max-h), var(--hero-light-viewport-cap));
+    /* Hard cap: header + hero can never add up to more than 100dvh. */
+    max-height: var(--hero-light-viewport-cap);
   }
 
   .hero-light-section .hero-light-content {

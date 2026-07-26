@@ -632,6 +632,15 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   field-sizing: content;
 }
 
+/* iOS Safari auto-zooms (and animates a page scroll) on focus for any input
+ * under 16px — that browser-driven zoom/scroll is what caused the laggy jump
+ * fighting our own instant visualViewport positioning. 16px disables it. */
+@media (max-width: 639px) {
+  .family-comment-input {
+    font-size: 16px;
+  }
+}
+
 .family-comment-submit {
   min-width: 4.25rem;
 }
