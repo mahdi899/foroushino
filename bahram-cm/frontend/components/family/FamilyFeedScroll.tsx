@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useRef,
   type CSSProperties,
@@ -19,6 +20,9 @@ import {
   type FamilyFeedScrollBehavior,
   type FeedScrollRestoreSnapshot,
 } from '@/lib/family/feedScroll';
+
+/** Drop glass blur shortly after the last scroll pulse — keeps fling composited cheap. */
+const SCROLL_GLASS_IDLE_MS = 140;
 
 export type FamilyFeedScrollHandle = {
   getScrollElement: () => HTMLElement | null;
@@ -49,6 +53,15 @@ export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScr
     ref,
   ) {
     const nativeRef = useRef<HTMLDivElement>(null);
+    const scrollIdleTimerRef = useRef<number | null>(null);
+
+    useEffect(() => {
+      return () => {
+        if (scrollIdleTimerRef.current != null) {
+          window.clearTimeout(scrollIdleTimerRef.current);
+        }
+      };
+    }, []);
 
     useImperativeHandle(
       ref,
@@ -72,6 +85,19 @@ export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScr
       [],
     );
 
+    const markScrolling = () => {
+      const el = nativeRef.current;
+      if (!el) return;
+      el.classList.add('family-feed-scroll--scrolling');
+      if (scrollIdleTimerRef.current != null) {
+        window.clearTimeout(scrollIdleTimerRef.current);
+      }
+      scrollIdleTimerRef.current = window.setTimeout(() => {
+        el.classList.remove('family-feed-scroll--scrolling');
+        scrollIdleTimerRef.current = null;
+      }, SCROLL_GLASS_IDLE_MS);
+    };
+
     return (
       <div
         ref={nativeRef}
@@ -80,7 +106,10 @@ export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScr
           className,
         )}
         style={style}
-        onScroll={onScroll}
+        onScroll={() => {
+          markScrolling();
+          onScroll?.();
+        }}
         onWheel={onWheel}
         onTouchMove={onTouchMove}
         onKeyDown={onKeyDown}

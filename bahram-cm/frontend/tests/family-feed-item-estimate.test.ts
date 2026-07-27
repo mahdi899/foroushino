@@ -82,4 +82,44 @@ describe('estimateFeedItemSize', () => {
     const estimate = estimateFeedItemSize(0, { kind: 'post', key: 'post-2', post });
     expect(estimate).toBeGreaterThan(400);
   });
+
+  it('caps tall portrait images to CSS media max-height (~416px)', () => {
+    const post = basePost({
+      blocks: [
+        {
+          id: 1,
+          type: 'image',
+          position: 0,
+          text: null,
+          data: null,
+          media: { id: 1, url: '/a.webp', width: 1080, height: 2400, mime_type: 'image/webp' },
+          article: null,
+        },
+      ],
+    });
+
+    const estimate = estimateFeedItemSize(0, { kind: 'post', key: 'post-img', post });
+    // chrome (~76) + capped image (416) — must not use uncapped aspect (~755)
+    expect(estimate).toBeLessThanOrEqual(520);
+    expect(estimate).toBeGreaterThan(400);
+  });
+
+  it('treats consecutive images as one album row instead of summing heights', () => {
+    const post = basePost({
+      blocks: Array.from({ length: 6 }, (_, i) => ({
+        id: i + 1,
+        type: 'image' as const,
+        position: i,
+        text: null,
+        data: null,
+        media: { id: i + 1, url: `/a${i}.webp`, width: 800, height: 800, mime_type: 'image/webp' },
+        article: null,
+      })),
+    });
+
+    const estimate = estimateFeedItemSize(0, { kind: 'post', key: 'post-album', post });
+    // album ~384 + chrome — not 6×340
+    expect(estimate).toBeLessThan(520);
+    expect(estimate).toBeGreaterThan(300);
+  });
 });

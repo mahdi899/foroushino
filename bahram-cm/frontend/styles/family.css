@@ -87,7 +87,8 @@ html[data-family-host='1'] body {
   --family-bubble-channel-bg: rgba(255, 255, 255, 0.78);
   --family-bubble-channel-border: rgba(255, 255, 255, 0.55);
   --family-bubble-border: rgba(255, 255, 255, 0.5);
-  --family-bubble-glass: blur(28px) saturate(200%);
+  /* Lighter glass — full 28px blur on every visible bubble tanks mobile scroll FPS. */
+  --family-bubble-glass: blur(12px) saturate(150%);
   --family-bubble-shadow:
     0 0.5px 0 rgba(255, 255, 255, 0.9) inset,
     0 1px 2px rgba(16, 35, 47, 0.05),
@@ -209,7 +210,7 @@ html[data-theme='dark'] .family-app {
   --family-bubble-channel-bg: rgba(24, 34, 44, 0.86);
   --family-bubble-channel-border: rgba(255, 255, 255, 0.06);
   --family-bubble-border: rgba(255, 255, 255, 0.08);
-  --family-bubble-glass: blur(28px) saturate(175%);
+  --family-bubble-glass: blur(12px) saturate(150%);
   --family-bubble-shadow:
     0 0.5px 0 rgba(255, 255, 255, 0.08) inset,
     0 2px 12px rgba(0, 0, 0, 0.32),
@@ -691,7 +692,6 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   display: block;
   width: var(--family-media-max-w);
   max-width: 100%;
-  height: auto;
   max-height: var(--family-media-max-h);
   align-self: center;
   margin-inline: auto;
@@ -2307,6 +2307,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   transition:
     transform 200ms var(--family-tg-spring),
     box-shadow 200ms var(--family-tg-spring);
+}
+
+/* While flinging: drop per-bubble backdrop-filter — dominant mobile scroll jank source. */
+.family-feed-scroll--scrolling .family-post-bubble {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .family-reaction-icon-slot {

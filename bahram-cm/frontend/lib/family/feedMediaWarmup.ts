@@ -110,7 +110,7 @@ export function warmupFamilyPostsWindow(
   warmupFamilyPostsMedia(posts, from, count);
 }
 
-/** Extra warmup boost while flinging — widens the window in the scroll direction. */
+/** Mild directional boost — avoid doubling the whole window (decode storms). */
 export function warmupFamilyPostsWindowDirectional(
   posts: FamilyPost[],
   anchorIndex: number,
@@ -119,10 +119,10 @@ export function warmupFamilyPostsWindowDirectional(
   scrollingUp: boolean,
 ): void {
   if (scrollingUp) {
-    warmupFamilyPostsWindow(posts, anchorIndex, before * 2, after);
+    warmupFamilyPostsWindow(posts, anchorIndex, before + 2, after);
     return;
   }
-  warmupFamilyPostsWindow(posts, anchorIndex, before, after * 2);
+  warmupFamilyPostsWindow(posts, anchorIndex, before, after + 1);
 }
 
 /** Rough post index from scroll offset (oldest post = index 0). */
@@ -139,4 +139,28 @@ export function estimatePostIndexFromScroll(
     acc += h;
   }
   return posts.length - 1;
+}
+
+/**
+ * Prefer the first mounted post still intersecting the scrollport — more accurate
+ * than estimate accumulation when row heights vary.
+ */
+export function findVisiblePostAnchorIndex(
+  root: HTMLElement,
+  posts: FamilyPost[],
+  estimatePostHeight: (post: FamilyPost) => number,
+): number {
+  if (posts.length === 0) return 0;
+  const rootTop = root.getBoundingClientRect().top;
+  const nodes = root.querySelectorAll<HTMLElement>('[id^="family-post-"]');
+  for (const el of nodes) {
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom <= rootTop + 4) continue;
+    const match = /^family-post-(\d+)$/.exec(el.id);
+    if (!match) continue;
+    const id = Number(match[1]);
+    const idx = posts.findIndex((post) => post.id === id);
+    if (idx >= 0) return idx;
+  }
+  return estimatePostIndexFromScroll(posts, root.scrollTop, estimatePostHeight);
 }

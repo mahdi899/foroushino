@@ -130,7 +130,7 @@ export function ImageBlock({
               setLqipReady(true);
             }}
             className={cn(
-              'pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.12] blur-2xl transition-opacity duration-200',
+              'pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.08] blur-xl transition-opacity duration-200',
               loaded || !lqipReady ? 'opacity-0' : 'opacity-100',
               fillCell ? 'object-cover' : 'object-contain',
             )}
@@ -144,7 +144,7 @@ export function ImageBlock({
             src={imageUrl}
             alt=""
             decoding="async"
-            fetchPriority="high"
+            fetchPriority="auto"
             onLoad={() => {
               markFamilyMediaSeen(imageUrl);
               rememberFamilyMediaView(imageUrl, media.id, 'image', media.mime_type);
@@ -196,12 +196,13 @@ export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyM
     count === 1
       ? cn('grid grid-cols-1', constrained && 'family-feed-image')
       : count === 2
-        ? 'grid grid-cols-2 gap-0.5'
+        ? 'grid min-h-[120px] grid-cols-2 gap-0.5'
         : count === 3
           ? 'grid aspect-[5/4] grid-cols-2 grid-rows-2 gap-0.5'
           : count === 4
             ? 'grid aspect-square grid-cols-2 grid-rows-2 gap-0.5'
-            : 'grid grid-cols-2 gap-0.5 sm:grid-cols-3';
+            : // Intrinsic height required — absolute fillCell children collapse the parent otherwise.
+              'grid aspect-[4/5] max-h-[var(--family-media-album-max-h)] grid-cols-2 gap-0.5 sm:aspect-[3/2] sm:grid-cols-3';
 
   return (
     <>
