@@ -31,13 +31,11 @@ final class IranSyncRelay
 
         try {
             $result = $this->live->processUpdate($update);
-            if (! empty($result['ok']) || ! array_key_exists('ok', $result)) {
+            if (($result['ok'] ?? false) === true) {
                 return true;
             }
 
-            // Iran answered successfully but rejected the update — this is
-            // NOT a connectivity failure, so it must never touch the circuit
-            // breaker or spam the reports group with a "server down" alert.
+            // Iran answered but rejected the update — not a connectivity failure.
             error_log('[telegram-host] relay rejected: '.(string) ($result['message'] ?? 'relay_rejected'));
             $this->queue->push($update);
 

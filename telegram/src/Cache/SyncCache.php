@@ -50,6 +50,17 @@ final class SyncCache
         $this->touchSyncMeta('full_refresh');
     }
 
+    /** Lighter than refreshAll — only bootstrap (reports group id, messages, flags). */
+    public function refreshBootstrap(): void
+    {
+        $bootstrap = $this->sync->call('bootstrap');
+        if ($this->hostConfig !== null) {
+            (new WebhookRegisterFromPull($this->hostConfig))->processIfRequested($bootstrap, $this->sync);
+        }
+        $this->storeBootstrapOnly($bootstrap);
+        $this->touchSyncMeta('bootstrap_refresh');
+    }
+
     /** @param array<string, mixed> $bootstrap */
     public function storeBootstrapOnly(array $bootstrap): void
     {

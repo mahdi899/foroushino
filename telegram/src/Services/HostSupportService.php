@@ -70,11 +70,9 @@ final class HostSupportService
         }
 
         try {
-            $this->cache->refreshAll();
+            $this->cache->refreshBootstrap();
         } catch (\Throwable $e) {
             error_log('[telegram-host] support bootstrap refresh failed: '.$e->getMessage());
-
-            return null;
         }
 
         return $this->cache->reportsGroupChatId();

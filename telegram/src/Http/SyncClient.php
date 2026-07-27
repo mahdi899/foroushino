@@ -152,6 +152,12 @@ final class SyncClient
             throw new \RuntimeException("Sync request returned invalid JSON (HTTP {$status}).");
         }
 
+        if ($status >= 400) {
+            $detail = (string) ($decoded['error']['message'] ?? $decoded['message'] ?? "HTTP {$status}");
+
+            throw new \RuntimeException("Sync request failed (HTTP {$status}): {$detail}");
+        }
+
         return $decoded;
     }
 }
