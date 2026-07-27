@@ -450,6 +450,8 @@ export async function createReferenceChannel(input: {
   title: string;
   description?: string;
   status?: string;
+  show_in_panel?: boolean;
+  show_in_telegram?: boolean;
   price: number;
   telegram_destination_id?: number | null;
   cover_image?: string | null;

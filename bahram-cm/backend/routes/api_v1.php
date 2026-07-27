@@ -205,6 +205,7 @@ Route::prefix('student')->group(function () {
         Route::get('seminars/{seminar:id}', [StudentSeminarController::class, 'show'])->whereNumber('seminar');
 
         Route::get('reference-channels', [StudentReferenceChannelController::class, 'index']);
+        Route::get('reference-channels/offer', [StudentReferenceChannelController::class, 'offer']);
         Route::get('reference-channels/{channel:id}', [StudentReferenceChannelController::class, 'show'])->whereNumber('channel');
 
         Route::get('referrals', [StudentReferralController::class, 'show']);

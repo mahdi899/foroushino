@@ -8,6 +8,7 @@ use App\Http\Resources\ProductListResource;
 use App\Models\Product;
 use App\Services\MediaAltResolver;
 use App\Services\PurchaseGuardService;
+use App\Services\ReferenceChannelPricingService;
 use App\Support\ApiResponse;
 use App\Support\MediaUrl;
 use App\Support\OptionalStudent;
@@ -55,7 +56,7 @@ class ProductController extends Controller
         $product = RuntimeCache::remember($cacheKey, 3600, function () use ($slug) {
             return Product::query()
                 ->active()
-                ->with('seminar')
+                ->with(['seminar', 'referenceChannel'])
                 ->where('slug', $slug)
                 ->first();
         }, 'services');
@@ -77,6 +78,13 @@ class ProductController extends Controller
                 ? $this->purchaseGuard->ownsProduct($student, (string) $student->mobile, $product)
                 : false,
         );
+
+        if ($product->isReferenceChannelProduct()) {
+            $request->attributes->set(
+                'reference_quote',
+                app(ReferenceChannelPricingService::class)->quoteForProduct($product, $student),
+            );
+        }
 
         return ProductDetailResource::make($product);
     }

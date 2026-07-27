@@ -35,7 +35,7 @@ class ReferenceChannelProductService
             'is_active' => $isPublished,
             'show_on_courses' => false,
             'featured_listing' => false,
-            'show_in_telegram' => true,
+            'show_in_telegram' => (bool) ($channel->show_in_telegram ?? true),
             'telegram_list_visibility' => 'public',
             'landing_href' => '/reference-channels/'.$channel->slug,
             'featured_image' => $channel->cover_image,

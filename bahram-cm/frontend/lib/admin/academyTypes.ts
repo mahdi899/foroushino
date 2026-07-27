@@ -149,6 +149,8 @@ export type AdminReferenceChannel = {
   title: string;
   slug: string;
   status: string | null;
+  show_in_panel?: boolean;
+  show_in_telegram?: boolean;
   price: number;
   product_id: number | null;
   product_slug: string | null;

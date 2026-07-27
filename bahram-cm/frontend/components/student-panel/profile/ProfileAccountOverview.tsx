@@ -61,7 +61,7 @@ export function ProfileAccountOverview({ user }: { user: StudentUser }) {
         {showReferenceChip ? (
           <StatusChip icon={Lock} title="کانال مرجع" subtitle="پس از تأیید هویت" tone="locked" />
         ) : (
-          <StatusChip icon={Radio} title="کانال مرجع" subtitle="به‌زودی" tone="muted" />
+          <StatusChip icon={Radio} title="کانال مرجع" subtitle="خرید و دسترسی در پنل" tone="success" />
         )}
         <StatusChip
           icon={satStatus === 'active' ? Trophy : Lock}

@@ -10,6 +10,7 @@ use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\DestinationInviteLinkService;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\ReferenceChannelAccessService;
+use App\Services\ReferenceChannelPricingService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,6 +41,46 @@ class ReferenceChannelController extends Controller
             'bot_start_url' => $botUrl,
             'source' => $channel->entitlements->first()?->source,
         ]));
+    }
+
+    /**
+     * Published channels available to buy in the student panel (not yet entitled).
+     */
+    public function offer(
+        Request $request,
+        ReferenceChannelAccessService $access,
+        ReferenceChannelPricingService $pricing,
+    ): JsonResponse {
+        $user = $request->user();
+        $access->syncFromPaidOrders($user);
+
+        $channels = ReferenceChannel::query()
+            ->where('status', 'published')
+            ->where('show_in_panel', true)
+            ->where('price', '>', 0)
+            ->with('product')
+            ->orderByDesc('id')
+            ->get()
+            ->filter(fn (ReferenceChannel $channel) => ! $access->userHasEntitlement($user, $channel))
+            ->filter(fn (ReferenceChannel $channel) => filled($channel->product?->slug) && (bool) $channel->product?->is_active)
+            ->values();
+
+        return ApiResponse::success($channels->map(function (ReferenceChannel $channel) use ($user, $pricing) {
+            $quote = $pricing->quote($channel, $user);
+
+            return [
+                'id' => $channel->id,
+                'slug' => $channel->slug,
+                'title' => $channel->title,
+                'description' => $channel->description,
+                'product_slug' => $channel->product?->slug,
+                'purchase_path' => '/purchase/'.$channel->product->slug,
+                'amount' => $quote['amount'],
+                'final_amount' => $quote['final_amount'],
+                'seminar_discount' => $quote['seminar_discount'],
+                'seminar_off' => $quote['seminar_off'],
+            ];
+        }));
     }
 
     public function show(

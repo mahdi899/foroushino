@@ -21,6 +21,11 @@ class ProductDetailResource extends JsonResource
         $altResolver = app(MediaAltResolver::class);
         $enricher = app(HtmlImageEnricher::class);
         $seminar = $this->seminar;
+        /** @var array{amount:int,final_amount:int,seminar_discount:int,seminar_off:bool}|null $referenceQuote */
+        $referenceQuote = $request->attributes->get('reference_quote');
+        $effectivePrice = is_array($referenceQuote)
+            ? (int) $referenceQuote['final_amount']
+            : (int) $this->effective_price;
 
         return [
             'id' => $this->id,
@@ -31,7 +36,7 @@ class ProductDetailResource extends JsonResource
             'short_description' => $this->short_description,
             'price' => $this->price,
             'sale_price' => $this->sale_price,
-            'effective_price' => $this->effective_price,
+            'effective_price' => $effectivePrice,
             'featured_image' => $imageRef ? MediaUrl::resolve($imageRef) : null,
             'featured_image_alt' => $imageRef
                 ? $altResolver->resolve($imageRef, $this->title)
@@ -44,6 +49,12 @@ class ProductDetailResource extends JsonResource
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
             'already_purchased' => (bool) $request->attributes->get('already_purchased', false),
+            'reference_pricing' => is_array($referenceQuote) ? [
+                'amount' => (int) $referenceQuote['amount'],
+                'final_amount' => (int) $referenceQuote['final_amount'],
+                'seminar_discount' => (int) $referenceQuote['seminar_discount'],
+                'seminar_off' => (bool) $referenceQuote['seminar_off'],
+            ] : null,
             'seminar' => $seminar ? [
                 'capacity' => $seminar->capacity,
                 'attendees_count' => $seminar->registeredCount(),
