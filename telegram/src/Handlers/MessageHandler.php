@@ -371,6 +371,12 @@ final class MessageHandler
 
     private function sendReferral(int $chatId, int $telegramUserId): void
     {
+        if (! $this->cache->featureEnabled('referral_enabled')) {
+            $this->api->sendMessage($chatId, 'این بخش فعلاً غیرفعال است.');
+
+            return;
+        }
+
         $result = $this->accounts->referralResponse($telegramUserId);
         if ($result === null) {
             $this->api->sendMessage($chatId, $this->cache->message(
