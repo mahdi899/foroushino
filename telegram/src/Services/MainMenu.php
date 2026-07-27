@@ -95,10 +95,7 @@ final class MainMenu
             [self::ACTION_CHANNEL, self::ACTION_FAMILY, self::ACTION_SUPPORT],
         ];
 
-        $lastRow = [self::ACTION_ACCOUNT];
-        if ($this->cache->featureEnabled('referral_enabled')) {
-            array_unshift($lastRow, self::ACTION_REFERRAL);
-        }
+        $lastRow = [self::ACTION_REFERRAL, self::ACTION_ACCOUNT];
         $rows[] = $lastRow;
 
         if ($this->accounts->isBotAdmin($telegramUserId)) {

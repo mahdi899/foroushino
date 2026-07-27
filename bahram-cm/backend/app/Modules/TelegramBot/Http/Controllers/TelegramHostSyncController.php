@@ -6,8 +6,10 @@ use App\Enums\OtpPurpose;
 use App\Models\DiscountCode;
 use App\Models\Product;
 use App\Models\Seminar;
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramRequiredChat;
+use App\Modules\TelegramBot\Models\TelegramSupportCategory;
 use App\Modules\TelegramBot\Services\AccountLinkService;
 use App\Modules\TelegramBot\Services\BotMessageCatalog;
 use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
@@ -72,16 +74,35 @@ class TelegramHostSyncController
             ->get(['id', 'chat_id', 'title', 'invite_link', 'is_required'])
             ->toArray();
 
+        $features = [];
+        foreach (BotFeatureFlag::cases() as $flag) {
+            $features[$flag->value] = $bot->featureEnabled($flag);
+        }
+
+        $supportCategories = TelegramSupportCategory::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['key', 'title_fa', 'default_topic_id', 'sort_order'])
+            ->map(fn (TelegramSupportCategory $c) => [
+                'key' => $c->key,
+                'title_fa' => $c->title_fa,
+                'default_topic_id' => $c->default_topic_id,
+                'sort_order' => $c->sort_order,
+            ])
+            ->values()
+            ->all();
+
         return $this->encryptedResponse($request, array_merge([
             'bot' => [
                 'id' => $bot->id,
                 'key' => $bot->key,
-                'features' => $bot->settings['features'] ?? [],
+                'features' => $features,
                 'is_active' => (bool) $bot->is_active,
                 'reports_group_chat_id' => $bot->reportsGroupChatId(),
             ],
             'messages' => $messages,
             'required_chats' => $requiredChats,
+            'support_categories' => $supportCategories,
             'checkout' => [
                 'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
                 'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),

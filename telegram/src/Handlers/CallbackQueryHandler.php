@@ -9,6 +9,7 @@ use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Services\HostRegistrationFlow;
+use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -28,6 +29,7 @@ final class CallbackQueryHandler
         private readonly PurchaseFlow $purchaseFlow,
         private readonly MessageHandler $messageHandler,
         private readonly HostRegistrationFlow $registration,
+        private readonly HostSupportService $support,
     ) {}
 
     /** @param array<string, mixed> $callback */
@@ -142,27 +144,12 @@ final class CallbackQueryHandler
             return;
         }
 
-        $result = $this->live->supportPrepare($chatId, $telegramUserId, $category);
-        if (empty($result['ok'])) {
-            if (! empty($result['offline'])) {
-                $this->conversations->set($telegramUserId, 'waiting_for_support_message', ['category' => $category]);
-                $this->api->sendMessage($chatId, $this->cache->message(
-                    'support_write_prompt',
-                    'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو» بفرستید.',
-                ));
-
-                return;
-            }
-            $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'امکان شروع پشتیبانی نیست.'));
-
-            return;
-        }
-
-        if (! empty($result['state'])) {
-            $this->conversations->set($telegramUserId, (string) $result['state'], (array) ($result['context'] ?? []));
-        }
-
-        $this->api->sendMessage($chatId, 'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو» بفرستید.');
+        // Entirely local — no Iran prepare call.
+        $this->support->prepare($telegramUserId, $category);
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'support_write_prompt',
+            'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو» بفرستید.',
+        ));
     }
 
     private function handleBuy(int $chatId, int $telegramUserId, int $productId): void

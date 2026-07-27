@@ -14,6 +14,21 @@ use TelegramHost\Services\WebhookRegisterFromPull;
  */
 final class SyncCache
 {
+    /** @var array<string, bool> */
+    private const FEATURE_DEFAULTS = [
+        'referral_enabled' => true,
+        'collect_phone_and_name' => true,
+        'iran_mobile_only' => true,
+        'zarinpal_payment' => true,
+        'card_to_card_payment' => false,
+        'sms_otp_verification' => false,
+        'ticket_requires_subscription' => false,
+        'support_requires_subscription' => false,
+        'checkout_zarinpal' => true,
+        'checkout_c2c' => false,
+        'bot_is_active' => true,
+    ];
+
     /** @param array<string, mixed>|null $hostConfig */
     public function __construct(
         private readonly \PDO $pdo,
@@ -47,18 +62,29 @@ final class SyncCache
 
         $flags = (array) ($bootstrap['bot']['features'] ?? []);
         $checkout = (array) ($bootstrap['checkout'] ?? []);
-        $flags['checkout_zarinpal'] = (bool) ($checkout['zarinpal_enabled'] ?? false);
-        $flags['checkout_c2c'] = (bool) ($checkout['c2c_enabled'] ?? false);
+        $flags['checkout_zarinpal'] = (bool) ($checkout['zarinpal_enabled'] ?? ($flags['zarinpal_payment'] ?? true));
+        $flags['checkout_c2c'] = (bool) ($checkout['c2c_enabled'] ?? ($flags['card_to_card_payment'] ?? false));
         $flags['bot_is_active'] = (bool) ($bootstrap['bot']['is_active'] ?? true);
+
+        // Fill missing flags with Iran-compatible defaults so referral etc. stay visible.
+        foreach (self::FEATURE_DEFAULTS as $key => $default) {
+            if (! array_key_exists($key, $flags)) {
+                $flags[$key] = $default;
+            }
+        }
 
         $this->storeFeatureFlags($flags);
         $this->storeRequiredChats((array) ($bootstrap['required_chats'] ?? []));
+        $this->storeSupportCategories((array) ($bootstrap['support_categories'] ?? []));
         $revision = trim((string) ($bootstrap['catalog_revision'] ?? ''));
         if ($revision !== '') {
             $this->storeMessages(['__catalog_revision' => $revision]);
         }
 
         $reportsChat = trim((string) ($bootstrap['bot']['reports_group_chat_id'] ?? ''));
+        if ($reportsChat === '' && is_array($this->hostConfig)) {
+            $reportsChat = trim((string) ($this->hostConfig['reports_group_chat_id'] ?? ''));
+        }
         if ($reportsChat !== '') {
             $this->storeMessages(['__reports_group_chat_id' => $reportsChat]);
         }
@@ -88,7 +114,11 @@ final class SyncCache
         $stmt->execute(['key' => $key]);
         $value = $stmt->fetchColumn();
 
-        return $value !== false && (int) $value === 1;
+        if ($value === false) {
+            return self::FEATURE_DEFAULTS[$key] ?? false;
+        }
+
+        return (int) $value === 1;
     }
 
     /** @return list<array<string, mixed>> */
@@ -163,8 +193,30 @@ final class SyncCache
     public function reportsGroupChatId(): ?string
     {
         $value = trim($this->message('__reports_group_chat_id', ''));
+        if ($value !== '') {
+            return $value;
+        }
 
-        return $value !== '' ? $value : null;
+        if (is_array($this->hostConfig)) {
+            $override = trim((string) ($this->hostConfig['reports_group_chat_id'] ?? ''));
+            if ($override !== '') {
+                return $override;
+            }
+        }
+
+        return null;
+    }
+
+    public function supportTopicId(string $categoryKey): ?int
+    {
+        $raw = trim($this->message('__support_topic_'.$categoryKey, ''));
+        if ($raw === '' || ! ctype_digit($raw)) {
+            return null;
+        }
+
+        $id = (int) $raw;
+
+        return $id > 0 ? $id : null;
     }
 
     public function botIsActive(): bool
@@ -244,6 +296,23 @@ final class SyncCache
                 'invite_link' => $chat['invite_link'] ?? null,
                 'is_required' => ! empty($chat['is_required']) ? 1 : 0,
             ]);
+        }
+    }
+
+    /** @param list<array<string, mixed>> $categories */
+    private function storeSupportCategories(array $categories): void
+    {
+        $messages = [];
+        foreach ($categories as $category) {
+            $key = trim((string) ($category['key'] ?? ''));
+            if ($key === '') {
+                continue;
+            }
+            $topicId = (int) ($category['default_topic_id'] ?? 0);
+            $messages['__support_topic_'.$key] = $topicId > 0 ? (string) $topicId : '';
+        }
+        if ($messages !== []) {
+            $this->storeMessages($messages);
         }
     }
 

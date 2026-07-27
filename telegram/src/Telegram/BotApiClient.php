@@ -17,6 +17,15 @@ final class BotApiClient
     /** @param array<string, mixed> $params */
     public function sendMessage(int|string $chatId, string $text, array $params = []): void
     {
+        $this->sendMessageResult($chatId, $text, $params);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function sendMessageResult(int|string $chatId, string $text, array $params = []): array
+    {
         $payload = array_merge([
             'chat_id' => $chatId,
             'text' => $text,
@@ -24,16 +33,14 @@ final class BotApiClient
         ], $params);
 
         try {
-            $this->call('sendMessage', $payload);
+            return $this->resultOf($this->call('sendMessage', $payload, true));
         } catch (TelegramApiException $e) {
             if ($this->shouldRetryWithoutHtml($e)) {
-                $this->call('sendMessage', array_merge([
+                return $this->resultOf($this->call('sendMessage', array_merge([
                     'chat_id' => $chatId,
                     'text' => TelegramCustomEmoji::stripHtmlTags($text),
                     'parse_mode' => 'HTML',
-                ], TelegramCustomEmoji::stripButtonIcons($params)));
-
-                return;
+                ], TelegramCustomEmoji::stripButtonIcons($params)), true));
             }
 
             if (! str_contains($e->getMessage(), 'DOCUMENT_INVALID')) {
@@ -43,12 +50,38 @@ final class BotApiClient
             $safeText = TelegramCustomEmoji::stripHtmlTags($text);
             $safeParams = TelegramCustomEmoji::stripButtonIcons($params);
 
-            $this->call('sendMessage', array_merge([
+            return $this->resultOf($this->call('sendMessage', array_merge([
                 'chat_id' => $chatId,
                 'text' => $safeText,
                 'parse_mode' => 'HTML',
-            ], $safeParams));
+            ], $safeParams), true));
         }
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function forwardMessage(int|string $toChatId, int|string $fromChatId, int $messageId, array $params = []): array
+    {
+        return $this->resultOf($this->call('forwardMessage', array_merge([
+            'chat_id' => $toChatId,
+            'from_chat_id' => $fromChatId,
+            'message_id' => $messageId,
+        ], $params), true));
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function copyMessage(int|string $toChatId, int|string $fromChatId, int $messageId, array $params = []): array
+    {
+        return $this->resultOf($this->call('copyMessage', array_merge([
+            'chat_id' => $toChatId,
+            'from_chat_id' => $fromChatId,
+            'message_id' => $messageId,
+        ], $params), true));
     }
 
     /** @param array<string, mixed> $params */
@@ -147,6 +180,12 @@ final class BotApiClient
         ], true);
 
         return is_array($result['result'] ?? null) ? $result['result'] : [];
+    }
+
+    /** @param array<string, mixed> $decoded */
+    private function resultOf(array $decoded): array
+    {
+        return is_array($decoded['result'] ?? null) ? $decoded['result'] : [];
     }
 
     /**

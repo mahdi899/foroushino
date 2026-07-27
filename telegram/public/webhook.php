@@ -97,6 +97,7 @@ try {
     $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $accountSync);
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
+    $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo);
 
     $messageHandler = new MessageHandler(
         $api,
@@ -109,6 +110,8 @@ try {
         $purchaseFlow,
         $registration,
         $accountSync,
+        $support,
+        $iranSync,
         $siteBaseUrl
     );
 
@@ -123,6 +126,7 @@ try {
         $purchaseFlow,
         $messageHandler,
         $registration,
+        $support,
     );
 
     $router = new UpdateRouter(
@@ -133,6 +137,7 @@ try {
         $api,
         $messageHandler,
         $callbackHandler,
+        $support,
     );
 
     (new Bot($router))->handle($update);

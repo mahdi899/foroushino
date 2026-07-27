@@ -8,6 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
+use TelegramHost\Services\HostSupportService;
 use TelegramHost\Telegram\BotApiClient;
 use TelegramHost\Support\TelegramCustomEmoji;
 
@@ -22,11 +23,19 @@ final class UpdateRouter
         private readonly BotApiClient $api,
         private readonly MessageHandler $messages,
         private readonly CallbackQueryHandler $callbacks,
+        private readonly HostSupportService $support,
     ) {}
 
     /** @param array<string, mixed> $update */
     public function handle(array $update): void
     {
+        // Reports-group support replies are handled locally — no Iran needed.
+        if (isset($update['message']) && ! $this->delegation->isPrivateUserFacing($update)) {
+            if ($this->support->tryHandleGroupMessage($update['message'])) {
+                return;
+            }
+        }
+
         if ($this->delegation->shouldRelayToIran($update)) {
             $this->iranSync->enqueue($update);
 

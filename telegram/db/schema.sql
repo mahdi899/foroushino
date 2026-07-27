@@ -98,3 +98,19 @@ CREATE TABLE IF NOT EXISTS pending_iran_updates (
     updated_at DATETIME NOT NULL,
     INDEX idx_pending_iran_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Local support threads (user ↔ reports group) — no Iran dependency.
+CREATE TABLE IF NOT EXISTS support_message_maps (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    direction VARCHAR(32) NOT NULL,
+    source_chat_id VARCHAR(64) NOT NULL,
+    source_message_id BIGINT NOT NULL,
+    target_chat_id VARCHAR(64) NOT NULL,
+    target_message_id BIGINT NOT NULL,
+    target_thread_id BIGINT NULL,
+    forward_message_id BIGINT NULL,
+    created_at DATETIME NOT NULL,
+    INDEX idx_support_map_target (direction, target_chat_id, target_message_id),
+    INDEX idx_support_map_source (direction, source_chat_id, source_message_id),
+    INDEX idx_support_map_forward (target_chat_id, forward_message_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

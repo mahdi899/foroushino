@@ -9,19 +9,20 @@ use TelegramHost\Conversation\ConversationRepository;
 
 /**
  * Decides which updates should be relayed to Iran in the background (never blocks the user).
+ *
+ * Support runs locally on the host. Admin panel still needs Iran, but only when
+ * the user is already inside admin_panel / admin_waiting_input — not for every
+ * admin menu press (that caused 8s timeouts on every button).
  */
 final class DelegationDetector
 {
     /** @var list<string> */
     private const SERVER_STATES = [
         'waiting_for_terms',
-        'waiting_for_name',
         'waiting_for_mobile',
         'confirming_registration',
-        'waiting_for_otp',
         'filling_sat_application',
         'waiting_for_card_to_card_receipt',
-        'waiting_for_support_message',
         'admin_panel',
         'admin_waiting_input',
     ];
@@ -41,13 +42,14 @@ final class DelegationDetector
             return true;
         }
 
+        // Group/channel traffic (except reports-group support, handled locally first).
+        if (! $this->isPrivateUserFacing($update)) {
+            return true;
+        }
+
         $telegramUserId = $this->telegramUserId($update);
         if ($telegramUserId <= 0) {
             return false;
-        }
-
-        if ($this->accounts->isBotAdmin($telegramUserId)) {
-            return true;
         }
 
         if (! $this->accounts->isVerified($telegramUserId)) {
@@ -61,12 +63,14 @@ final class DelegationDetector
             return true;
         }
 
-        $callbackData = (string) ($update['callback_query']['data'] ?? '');
-        if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
-            return true;
+        // OTP verification still needs Iran when that flow is active.
+        if ($conversation['state'] === 'waiting_for_otp' || $conversation['state'] === 'waiting_for_name') {
+            // Host registration handles these locally via HostRegistrationFlow + sync OTP APIs.
+            return false;
         }
 
-        if (str_starts_with($callbackData, 'reg:')) {
+        $callbackData = (string) ($update['callback_query']['data'] ?? '');
+        if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
             return true;
         }
 
@@ -74,8 +78,7 @@ final class DelegationDetector
     }
 
     /**
-     * Synchronous live relay — only when Iran must answer immediately (OTP, C2C, support thread).
-     * Unverified users use local UX + queued relay instead.
+     * Synchronous live relay — only when Iran must answer immediately (OTP/C2C/admin panel).
      *
      * @param array<string, mixed> $update
      */
@@ -90,25 +93,13 @@ final class DelegationDetector
             return false;
         }
 
-        if ($this->accounts->isBotAdmin($telegramUserId)) {
-            return true;
-        }
-
-        if (! $this->accounts->isVerified($telegramUserId)) {
-            return false;
-        }
-
         $conversation = $this->conversations->get($telegramUserId);
-        if (in_array($conversation['state'], self::SERVER_STATES, true)) {
+        if (in_array($conversation['state'], ['admin_panel', 'admin_waiting_input', 'waiting_for_card_to_card_receipt', 'filling_sat_application'], true)) {
             return true;
         }
 
         $callbackData = (string) ($update['callback_query']['data'] ?? '');
         if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
-            return true;
-        }
-
-        if (str_starts_with($callbackData, 'reg:')) {
             return true;
         }
 

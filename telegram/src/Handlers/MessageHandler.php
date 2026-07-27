@@ -9,11 +9,12 @@ use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
+use TelegramHost\Routing\IranSyncRelay;
 use TelegramHost\Services\HostRegistrationFlow;
+use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
-use TelegramHost\Support\CatalogPresenter;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
@@ -31,6 +32,8 @@ final class MessageHandler
         private readonly PurchaseFlow $purchaseFlow,
         private readonly HostRegistrationFlow $registration,
         private readonly AccountSyncCoordinator $accountSync,
+        private readonly HostSupportService $support,
+        private readonly IranSyncRelay $iranSync,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -57,16 +60,7 @@ final class MessageHandler
         }
 
         if (isset($message['reply_to_message'])) {
-            $reply = $this->live->supportTryReply($chatId, $telegramUserId, $message);
-            if (! empty($reply['handled'])) {
-                return;
-            }
-            if (! empty($reply['offline'])) {
-                $this->api->sendMessage($chatId, $this->cache->message(
-                    'support_message_received',
-                    'پیام شما ثبت شد. به محض اتصال، برای پشتیبانی ارسال می‌شود.',
-                ));
-
+            if ($this->support->tryHandleUserReply($telegramUserId, $message)) {
                 return;
             }
         }
@@ -94,10 +88,21 @@ final class MessageHandler
         }
 
         if ($conversation['state'] === 'waiting_for_support_message') {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'support_message_received',
-                'پیام شما ثبت شد. به محض اتصال، برای پشتیبانی ارسال می‌شود.',
-            ));
+            // Menu buttons / cancel exit support mode — don't swallow them as tickets.
+            if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
+                $this->conversations->set($telegramUserId, 'idle', []);
+                $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
+
+                return;
+            }
+            if ($this->support->isCancelText($text)) {
+                $this->conversations->set($telegramUserId, 'idle', []);
+                $this->sendMainMenu($chatId, $telegramUserId);
+
+                return;
+            }
+
+            $this->support->handleUserMessage($chatId, $telegramUserId, $message);
 
             return;
         }
@@ -176,8 +181,40 @@ final class MessageHandler
             MainMenu::ACTION_REFERRAL => $this->sendReferral($chatId, $telegramUserId),
             MainMenu::ACTION_SUPPORT => $this->openSupportHub($chatId),
             MainMenu::ACTION_ACCOUNT => $this->sendAccount($chatId, $telegramUserId),
+            MainMenu::ACTION_ADMIN => $this->openAdminPanel($chatId, $telegramUserId, $text),
             default => $this->sendMainMenu($chatId, $telegramUserId),
         };
+    }
+
+    private function openAdminPanel(int $chatId, int $telegramUserId, string $text): void
+    {
+        if (! $this->accounts->isBotAdmin($telegramUserId)) {
+            $this->sendMainMenu($chatId, $telegramUserId);
+
+            return;
+        }
+
+        $update = [
+            'update_id' => 0,
+            'message' => [
+                'message_id' => 0,
+                'date' => time(),
+                'chat' => ['id' => $chatId, 'type' => 'private'],
+                'from' => ['id' => $telegramUserId],
+                'text' => $text,
+            ],
+        ];
+
+        if ($this->iranSync->tryRelay($chatId, $telegramUserId, $update)) {
+            return;
+        }
+
+        $this->api->sendMessage(
+            $chatId,
+            TelegramCustomEmoji::tag('warning')
+            .' پنل ادمین فعلاً به سرور اصلی وصل نمی‌شود. منوی عادی از کش محلی کار می‌کند؛ بعد از وصل شدن دوباره «پنل ادمین» را بزنید.',
+            ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
+        );
     }
 
     private function sendMainMenu(int $chatId, int $telegramUserId): void
@@ -334,12 +371,6 @@ final class MessageHandler
 
     private function sendReferral(int $chatId, int $telegramUserId): void
     {
-        if (! $this->cache->featureEnabled('referral_enabled')) {
-            $this->api->sendMessage($chatId, 'این بخش فعلاً غیرفعال است.');
-
-            return;
-        }
-
         $result = $this->accounts->referralResponse($telegramUserId);
         if ($result === null) {
             $this->api->sendMessage($chatId, $this->cache->message(
