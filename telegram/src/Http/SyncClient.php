@@ -6,16 +6,27 @@ namespace TelegramHost\Http;
 
 use TelegramHost\Support\AesGcmCipher;
 use TelegramHost\Support\HmacClient;
+use TelegramHost\Support\IranCircuitBreaker;
 
 /**
  * Talks to the main Laravel server's `telegram-host` sync API.
  * Every call: encrypt body (AES-256-GCM) -> sign (HMAC-SHA256) -> POST.
  * Every response: `{"payload": "<encrypted>"}` -> decrypt -> decode JSON.
+ *
+ * Wrapped with a circuit breaker: once Iran is confirmed down, further calls
+ * fail instantly instead of each burning a fresh multi-second timeout — this
+ * is what previously made every webhook hang and the outage alert repeat for
+ * every single update while Iran was unreachable.
  */
 final class SyncClient
 {
+    private readonly IranCircuitBreaker $breaker;
+
     /** @param array<string, mixed> $config */
-    public function __construct(private readonly array $config) {}
+    public function __construct(private readonly array $config)
+    {
+        $this->breaker = new IranCircuitBreaker();
+    }
 
     /**
      * @param  array<string, mixed>  $payload
@@ -27,6 +38,28 @@ final class SyncClient
      * making healthy-but-slightly-slow calls look like outages.
      */
     public function call(string $path, array $payload = [], int $timeoutSeconds = 8): array
+    {
+        if ($this->breaker->isOpen()) {
+            throw new \RuntimeException('Sync request skipped: Iran main server is currently marked unreachable (circuit open).');
+        }
+
+        try {
+            $result = $this->doCall($path, $payload, $timeoutSeconds);
+            $this->breaker->recordSuccess();
+
+            return $result;
+        } catch (\Throwable $e) {
+            $this->breaker->recordFailure();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function doCall(string $path, array $payload, int $timeoutSeconds): array
     {
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) {
