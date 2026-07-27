@@ -18,4 +18,15 @@ class JalaliDateTest extends TestCase
         $this->assertMatchesRegularExpression('/\d/u', $formatted);
         $this->assertStringContainsString(':', $formatted);
     }
+
+    public function test_format_api_uses_latin_unpadded_jalali_date(): void
+    {
+        // 1992-03-21 ≈ 1371/1/1 (Nowruz 1371)
+        $formatted = JalaliDate::formatApi(
+            Carbon::parse('1992-03-21 12:00:00', 'Asia/Tehran'),
+        );
+
+        $this->assertSame('1371/1/1', $formatted);
+        $this->assertMatchesRegularExpression('/^[0-9]+\/[0-9]+\/[0-9]+$/', $formatted);
+    }
 }

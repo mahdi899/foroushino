@@ -38,6 +38,7 @@ function ProviderCard({
   const router = useRouter();
   const ui = getProviderUi(provider.slug);
   const isUid = provider.slug.startsWith('uid-');
+  const isApiIr = provider.slug === 'api-ir-shahkar';
   const [pending, startTransition] = useTransition();
   const [enabled, setEnabled] = useState(provider.is_enabled);
   const [apiToken, setApiToken] = useState('');
@@ -66,7 +67,7 @@ function ProviderCard({
       }
       if (Object.keys(credentials).length) body.credentials = credentials;
 
-      if (baseUrl.trim()) body.settings = { base_url: baseUrl.trim() };
+      if (!isApiIr && baseUrl.trim()) body.settings = { base_url: baseUrl.trim() };
 
       const res = await updateIdentityProviderAction(provider.slug, body);
       if (!res.ok) {
@@ -167,21 +168,23 @@ function ProviderCard({
               <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
               فعال‌سازی سرویس
             </label>
-            <div>
-              <label className="field-label" htmlFor={`base-url-${provider.slug}`}>
-                آدرس پایه سرویس (Base URL)
-              </label>
-              <input
-                id={`base-url-${provider.slug}`}
-                type="text"
-                className="field-input"
-                dir="ltr"
-                placeholder="https://s.api.ir"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                autoComplete="off"
-              />
-            </div>
+            {!isApiIr ? (
+              <div>
+                <label className="field-label" htmlFor={`base-url-${provider.slug}`}>
+                  آدرس پایه سرویس (Base URL)
+                </label>
+                <input
+                  id={`base-url-${provider.slug}`}
+                  type="text"
+                  className="field-input"
+                  dir="ltr"
+                  placeholder="https://s.api.ir"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+            ) : null}
             {isUid ? (
               <>
                 <div>
@@ -218,18 +221,31 @@ function ProviderCard({
             ) : (
               <div>
                 <label className="field-label" htmlFor={`key-${provider.slug}`}>
-                  توکن API (api_token) — فقط در صورت تغییر
+                  {isApiIr
+                    ? 'توکن Bearer — فقط در صورت تغییر'
+                    : 'توکن API (api_token) — فقط در صورت تغییر'}
                 </label>
                 <input
                   id={`key-${provider.slug}`}
                   type="password"
                   className="field-input"
                   dir="ltr"
-                  placeholder={provider.credentials_configured ? '••••••••' : 'وارد کردن توکن'}
+                  placeholder={
+                    provider.credentials_configured
+                      ? '••••••••'
+                      : isApiIr
+                        ? 'eyJhbGciOiJIUzI1NiIs...'
+                        : 'وارد کردن توکن'
+                  }
                   value={apiToken}
                   onChange={(e) => setApiToken(e.target.value)}
                   autoComplete="off"
                 />
+                {isApiIr ? (
+                  <p className="mt-1 text-caption text-text-muted">
+                    فقط توکن خام؛ نیازی به نوشتن Bearer نیست. آدرس پایه ثابت است: s.api.ir
+                  </p>
+                ) : null}
               </div>
             )}
             <div className="flex flex-wrap gap-2">

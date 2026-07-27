@@ -60,7 +60,7 @@ class VerifyBankAccount
                 ]);
             }
 
-            $jalaliBirthDate = JalaliDate::format($birthDate);
+            $jalaliBirthDate = JalaliDate::formatApi($birthDate);
             $summary = $this->referrals->summary($user);
             $fee = (int) config('bahram.withdrawal.verification_fee', 7_000);
 

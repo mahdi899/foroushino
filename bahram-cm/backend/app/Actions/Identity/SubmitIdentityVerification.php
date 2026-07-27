@@ -173,7 +173,7 @@ class SubmitIdentityVerification
         string $nationalCode,
         array $data,
     ): IdentityVerificationSubmission {
-        $birthDate = JalaliDate::format(\Illuminate\Support\Carbon::parse($data['date_of_birth']));
+        $birthDate = JalaliDate::formatApi(\Illuminate\Support\Carbon::parse($data['date_of_birth']));
 
         try {
             $outcome = $this->registry->resolveForCapability(
