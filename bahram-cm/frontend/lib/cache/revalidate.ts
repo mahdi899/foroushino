@@ -10,6 +10,7 @@ const FALLBACK_TTLS: Record<RevalidateKey, number> = {
   services: REVALIDATE.services,
   settings: REVALIDATE.settings,
   pricing: REVALIDATE.pricing,
+  seminars: REVALIDATE.seminars,
   home: 600,
 };
 
@@ -31,6 +32,7 @@ export async function getRevalidateSeconds(key: RevalidateKey): Promise<number> 
     services: cfg.ttls.services,
     settings: cfg.ttls.settings,
     pricing: cfg.ttls.pricing,
+    seminars: REVALIDATE.seminars,
     home: cfg.ttls.home,
   };
 

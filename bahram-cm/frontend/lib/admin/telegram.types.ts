@@ -35,7 +35,6 @@ export type TelegramInfrastructureView = {
   bridge_type?: 'direct' | 'worker' | 'host';
   has_host_secrets?: boolean;
   host_sync_secret_preview?: string | null;
-  host_encryption_key_preview?: string | null;
   host_sync_base_url?: string | null;
   /** Public base URL of telegram/ on external host (no /public). */
   host_app_base_url?: string | null;

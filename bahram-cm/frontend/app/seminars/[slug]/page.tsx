@@ -16,10 +16,10 @@ import { sanitizeRichHtml } from '@/lib/sanitize';
 import { buildCommentAuthorFromStudent } from '@/lib/contentComments/author';
 import { getContentCommentsFromApi } from '@/lib/services/contentComments.server';
 import { getCurrentStudent } from '@/lib/student/session';
-import { REVALIDATE } from '@/lib/api/config';
 import { ensureStaticPageCache } from '@/lib/cache/staticPage';
 
-export const revalidate = REVALIDATE.seminars;
+// Literal required for Next segment config static analysis (Next 16).
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,

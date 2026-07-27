@@ -135,7 +135,7 @@ export function TelegramBridgePanel({
     if (
       typeof window !== 'undefined' &&
       !window.confirm(
-        'کلیدهای رمزنگاری، HMAC و رمز وب‌هوک هاست خارج عوض می‌شوند. تا وقتی config.php جدید را روی هاست آپلود و دوباره وب‌هوک را ثبت نکنید، ربات از طریق هاست کار نخواهد کرد. ادامه می‌دهید؟',
+        'توکن ارتباطی هاست خارج و رمز وب‌هوک عوض می‌شوند. تا وقتی config.php جدید را روی هاست آپلود و دوباره وب‌هوک را ثبت نکنید، ربات از طریق هاست کار نخواهد کرد. ادامه می‌دهید؟',
       )
     ) {
       return;
@@ -270,7 +270,7 @@ export function TelegramBridgePanel({
               title="پیکربندی اپ هاست"
               filename="config.php"
               source={hostConfigSource}
-              hint="در پوشه telegram/ (کنار config.sample.php) به‌عنوان config.php آپلود کنید. شامل کلید رمزنگاری و توکن — هرگز در گیت‌هاب عمومی قرار نگیرد."
+              hint="در پوشه telegram/ (کنار config.sample.php) به‌عنوان config.php آپلود کنید. شامل host_sync_token و تنظیمات محرمانه است — هرگز در گیت‌هاب عمومی قرار نگیرد."
             />
           ) : (
             <p className="text-caption text-text-muted">

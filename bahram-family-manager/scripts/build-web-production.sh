@@ -2,6 +2,14 @@
 # Build Flutter Family Manager for production (rostami.club/admin/)
 set -euo pipefail
 
+# Kill-switch: production Flutter builds were hanging the 4GB origin host.
+# Remove /tmp/FLUTTER_BUILD_DISABLED (or set ALLOW_FLUTTER_BUILD=1) to re-enable.
+if [[ -f /tmp/FLUTTER_BUILD_DISABLED && "${ALLOW_FLUTTER_BUILD:-0}" != "1" ]]; then
+  echo "SKIP: Flutter production build disabled (/tmp/FLUTTER_BUILD_DISABLED)."
+  echo "Existing build/web will be served. Set ALLOW_FLUTTER_BUILD=1 to override."
+  exit 0
+fi
+
 APP_DIR="${APP_DIR:-/var/www/foroushino/bahram-family-manager}"
 FLUTTER_BIN="${FLUTTER_BIN:-${APP_DIR}/../.tools/flutter/bin/flutter}"
 API_BASE_URL="${API_BASE_URL:-https://rostami.club/api/v1}"
