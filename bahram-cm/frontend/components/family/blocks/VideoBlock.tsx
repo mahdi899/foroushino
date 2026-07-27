@@ -109,9 +109,9 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             src={posterUrl}
             alt=""
             decoding="async"
-            fetchPriority="high"
+            fetchPriority="auto"
             className={cn(
-              'pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.08] blur-md transition-opacity duration-200 ease-out',
+              'pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.04] blur-sm transition-opacity duration-200 ease-out',
               posterLoaded ? 'opacity-100' : 'opacity-0',
             )}
             onLoad={() => {

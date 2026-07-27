@@ -9,6 +9,17 @@ export type FeedListItem =
 /** Bubble chrome: meta row + reactions strip (measured ≈72–96 on mobile). */
 const POST_CHROME_HEIGHT = 76;
 
+/**
+ * Must stay aligned with `family.css` media caps:
+ * --family-media-max-w ≈ 24rem, --family-media-max-h ≈ min(70dvh, 26rem),
+ * --family-media-album-max-h ≈ min(70dvh, 24rem).
+ * Wrong caps → virtualizer estimate→measure thrash and scroll jumps.
+ */
+const FEED_CONTENT_WIDTH = 340;
+const MEDIA_MAX_H = 416; // 26rem
+const ALBUM_MAX_H = 384; // 24rem
+const VIDEO_MAX_H = 416;
+
 function estimateTextHeight(text: string | null | undefined): number {
   const chars = text?.length ?? 0;
   if (chars <= 0) return 0;
@@ -16,32 +27,33 @@ function estimateTextHeight(text: string | null | undefined): number {
   return Math.max(22, Math.ceil(chars / 28) * 24);
 }
 
-function estimateBlockHeight(block: FamilyPostBlock): number {
-  switch (block.type) {
-    case 'text':
-      return estimateTextHeight(block.text);
-    case 'image': {
-      const media = block.media;
-      if (media?.width && media?.height && media.width > 0) {
-        // Mobile feed bubble ≈ 340px content width after list padding.
-        return Math.min(420, Math.max(120, Math.round((340 * media.height) / media.width)));
-      }
-      return 220;
-    }
-    case 'video': {
-      const media = block.media;
-      if (media?.width && media?.height && media.width > 0) {
-        return Math.min(480, Math.max(160, Math.round((340 * media.height) / media.width)));
-      }
-      return 260;
-    }
-    case 'audio':
-      return 72;
-    case 'article_reference':
-      return 108;
-    default:
-      return 0;
+function aspectHeight(width: number, height: number, maxH: number): number {
+  if (width <= 0) return Math.min(maxH, 220);
+  return Math.min(maxH, Math.max(120, Math.round((FEED_CONTENT_WIDTH * height) / width)));
+}
+
+function estimateImageHeight(media: FamilyPostBlock['media']): number {
+  if (media?.width && media?.height && media.width > 0) {
+    return aspectHeight(media.width, media.height, MEDIA_MAX_H);
   }
+  return 220;
+}
+
+function estimateVideoHeight(media: FamilyPostBlock['media']): number {
+  if (media?.width && media?.height && media.width > 0) {
+    return aspectHeight(media.width, media.height, VIDEO_MAX_H);
+  }
+  return 240;
+}
+
+/** Match PostCard ImageAlbumBlock intrinsic layouts so estimates don't collapse. */
+function estimateAlbumHeight(count: number): number {
+  if (count <= 1) return 220;
+  if (count === 2) return Math.min(ALBUM_MAX_H, 168);
+  if (count === 3) return Math.min(ALBUM_MAX_H, Math.round(FEED_CONTENT_WIDTH * 0.8)); // aspect 5/4
+  if (count === 4) return Math.min(ALBUM_MAX_H, FEED_CONTENT_WIDTH); // aspect square
+  // 5+: aspect 4/5 grid (see ImageAlbumBlock) clipped by album max-h
+  return Math.min(ALBUM_MAX_H, Math.round(FEED_CONTENT_WIDTH * 1.25));
 }
 
 function estimateActionHeight(action: FamilyAction): number {
@@ -85,6 +97,54 @@ function estimateActionHeight(action: FamilyAction): number {
   return height;
 }
 
+/**
+ * Walk blocks like PostCard: consecutive images become one album row.
+ * Summing per-image heights was overshooting and fighting CSS max-height.
+ */
+function estimatePostBlocksHeight(blocks: FamilyPostBlock[]): number {
+  const sorted = [...blocks].sort((a, b) => a.position - b.position);
+  let height = 0;
+  let imageBatch: FamilyPostBlock['media'][] = [];
+
+  const flushImages = () => {
+    if (imageBatch.length === 1) {
+      height += estimateImageHeight(imageBatch[0] ?? null);
+    } else if (imageBatch.length > 1) {
+      height += estimateAlbumHeight(imageBatch.length);
+    }
+    imageBatch = [];
+  };
+
+  for (const block of sorted) {
+    if (block.type === 'image' && block.media) {
+      imageBatch.push(block.media);
+      continue;
+    }
+
+    flushImages();
+
+    switch (block.type) {
+      case 'text':
+        height += estimateTextHeight(block.text);
+        break;
+      case 'video':
+        height += estimateVideoHeight(block.media);
+        break;
+      case 'audio':
+        height += 72;
+        break;
+      case 'article_reference':
+        height += 108;
+        break;
+      default:
+        break;
+    }
+  }
+
+  flushImages();
+  return height;
+}
+
 /** Rough height guess for virtualizer — measured after mount for accuracy. */
 export function estimateFeedItemSize(_index: number, item: FeedListItem): number {
   if (item.kind === 'separator') return 44;
@@ -93,11 +153,7 @@ export function estimateFeedItemSize(_index: number, item: FeedListItem): number
 
   const post = item.post;
   let height = POST_CHROME_HEIGHT;
-  const blocks = post.blocks ?? [];
-
-  for (const block of blocks) {
-    height += estimateBlockHeight(block);
-  }
+  height += estimatePostBlocksHeight(post.blocks ?? []);
 
   for (const action of post.actions ?? []) {
     height += estimateActionHeight(action);

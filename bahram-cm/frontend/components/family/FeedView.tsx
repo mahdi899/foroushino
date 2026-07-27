@@ -74,7 +74,7 @@ import {
   FAMILY_FEED_VIRTUAL_OVERSCAN,
 } from '@/lib/family/feedUx';
 import {
-  estimatePostIndexFromScroll,
+  findVisiblePostAnchorIndex,
   warmupFamilyPostsMedia,
   warmupFamilyPostsWindowDirectional,
 } from '@/lib/family/feedMediaWarmup';
@@ -783,15 +783,11 @@ export function FeedView({
         scrollFeedToLatest(behavior, { root, lenis });
         anchoredToBottomRef.current = true;
       };
+      // Immediate + one rAF + one late settle. Extra 400/1000ms passes fought the user
+      // after media/chrome grew and felt like rubber-banding on production.
       run();
-      requestAnimationFrame(() => {
-        run();
-        requestAnimationFrame(run);
-      });
-      window.setTimeout(run, 120);
-      window.setTimeout(run, 400);
-      // Late pass after images / chrome inset (pinned bar) finish growing.
-      window.setTimeout(run, 1000);
+      requestAnimationFrame(run);
+      window.setTimeout(run, 280);
     },
     [getScrollCtx],
   );
@@ -816,11 +812,8 @@ export function FeedView({
     if (!overlayOpen && overlayOpenRef.current && tipBeforeOverlayRef.current) {
       tipBeforeOverlayRef.current = false;
       anchoredToBottomRef.current = true;
-      tipSettleUntilRef.current = performance.now() + 900;
+      tipSettleUntilRef.current = performance.now() + 700;
       scrollToLatestReliable('auto');
-      window.requestAnimationFrame(() => {
-        scrollToLatestReliable('auto');
-      });
     }
 
     overlayOpenRef.current = overlayOpen;
@@ -964,7 +957,7 @@ export function FeedView({
       const list = postsRef.current;
       if (!root || list.length === 0) return;
 
-      const anchor = estimatePostIndexFromScroll(list, root.scrollTop, estimatePostHeight);
+      const anchor = findVisiblePostAnchorIndex(root, list, estimatePostHeight);
       warmupFamilyPostsWindowDirectional(
         list,
         anchor,
@@ -1241,22 +1234,19 @@ export function FeedView({
       if (historyPinClearTimerRef.current != null) {
         window.clearTimeout(historyPinClearTimerRef.current);
       }
-      // Keep the same post glued while newly prepended media/layout settles.
-      // User wheel/touch clears this via markFeedUserScrollIntent.
-      const followUps = [80, 200, 420].map((ms) =>
-        window.setTimeout(() => {
-          if (historyPinRef.current !== snapshot) return;
-          virtualListRef.current?.remasureVisible();
-          apply();
-        }, ms),
-      );
+      // One short follow-up while media settles — long multi-timeout pins fought fling.
+      const followUp = window.setTimeout(() => {
+        if (historyPinRef.current !== snapshot) return;
+        virtualListRef.current?.remasureVisible();
+        apply();
+      }, 160);
       historyPinClearTimerRef.current = window.setTimeout(() => {
-        followUps.forEach((id) => window.clearTimeout(id));
+        window.clearTimeout(followUp);
         if (historyPinRef.current === snapshot) {
           historyPinRef.current = null;
         }
         historyPinClearTimerRef.current = null;
-      }, 750);
+      }, 400);
     });
   }, [getScrollCtx, posts.length]);
 
@@ -1380,8 +1370,8 @@ export function FeedView({
       // historyReady enabled in revealFeed after tip scroll
       anchoredToBottomRef.current = true;
       unreadBootLockRef.current = false;
-      // Keep sticking through image decode / pinned chrome inset after reveal.
-      tipSettleUntilRef.current = performance.now() + 2200;
+      // Keep sticking briefly through image decode / pinned chrome after reveal.
+      tipSettleUntilRef.current = performance.now() + 1000;
       scrollToLatestReliable('auto');
       scheduleRevealFeed(160);
       return;
@@ -1577,7 +1567,7 @@ export function FeedView({
   useLayoutEffect(() => {
     if (!feedReady) return;
     virtualListRef.current?.remasureVisible();
-    const timers = [80, 200, 450].map((ms) =>
+    const timers = [120, 320].map((ms) =>
       window.setTimeout(() => virtualListRef.current?.remasureVisible(), ms),
     );
     return () => timers.forEach((id) => window.clearTimeout(id));
@@ -1930,7 +1920,7 @@ export function FeedView({
                 unreadBootLockRef.current = false;
                 anchoredToBottomRef.current = true;
                 jumpToLatestInFlightRef.current = true;
-                tipSettleUntilRef.current = performance.now() + 1500;
+                tipSettleUntilRef.current = performance.now() + 900;
                 // Clear unread session first so scrollToLatestReliable is not cancelled.
                 unreadSplitRef.current = null;
                 setUnreadSplitId(null);

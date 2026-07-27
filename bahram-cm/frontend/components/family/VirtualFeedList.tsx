@@ -118,12 +118,10 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
     if (typeof document !== 'undefined' && document.fonts?.ready) {
       void document.fonts.ready.then(run);
     }
-    const t1 = window.setTimeout(run, 120);
-    const t2 = window.setTimeout(run, 400);
+    const t1 = window.setTimeout(run, 180);
     return () => {
       cancelled = true;
       window.clearTimeout(t1);
-      window.clearTimeout(t2);
     };
   }, [count, remasureVisible]);
 
