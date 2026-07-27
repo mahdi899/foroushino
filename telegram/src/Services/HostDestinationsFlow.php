@@ -38,12 +38,14 @@ final class HostDestinationsFlow
             return false;
         }
 
-        $baseText = trim((string) ($profile['text'] ?? ''));
+        // Never trust membership lines baked into an old Iran snapshot —
+        // live getChatMember below is the source of truth (works while Iran is down).
+        $baseText = $this->stripStaleDestinationSection(trim((string) ($profile['text'] ?? '')));
         if ($baseText === '') {
             return false;
         }
 
-        $accessible = $this->accessibleDestinations($telegramUserId);
+        $accessible = $this->accessibleDestinations($telegramUserId, $profile);
         $syncItems = [];
         $joinButtons = [];
         $destLines = [];
@@ -78,6 +80,23 @@ final class HostDestinationsFlow
                     $joinButtons[] = [InlineButtons::url(
                         (string) $destination['title'],
                         $inviteUrl,
+                        'pin',
+                    )];
+                }
+            }
+        } else {
+            // destinations_cache empty (bootstrap not refreshed) but old snapshot
+            // still has invite URL buttons — offer rejoin without claiming membership.
+            $recovered = $this->recoverDestinationsFromProfile($profile);
+            if ($recovered !== []) {
+                $destLines[] = TelegramCustomEmoji::tag('pin').' <b>گروه‌های پشتیبانی شما</b>';
+                $destLines[] = '──────────────';
+                foreach ($recovered as $item) {
+                    $destLines[] = '• <b>'.$this->escape((string) $item['title']).'</b>';
+                    $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
+                    $joinButtons[] = [InlineButtons::url(
+                        (string) $item['title'],
+                        (string) $item['url'],
                         'pin',
                     )];
                 }
@@ -120,9 +139,10 @@ final class HostDestinationsFlow
     }
 
     /**
+     * @param  array<string, mixed>  $profile
      * @return list<array<string, mixed>>
      */
-    private function accessibleDestinations(int $telegramUserId): array
+    private function accessibleDestinations(int $telegramUserId, array $profile = []): array
     {
         $seminarProductIds = [];
         foreach ($this->cache->seminars() as $seminar) {
@@ -133,9 +153,18 @@ final class HostDestinationsFlow
         }
 
         $hasSat = $this->hasSatAccess($telegramUserId);
-        $matched = [];
+        $catalog = $this->cache->destinations();
+        if ($catalog === []) {
+            // Snapshot fallback while destinations_cache is empty (Iran down / bootstrap stale).
+            foreach ((array) ($profile['destinations'] ?? []) as $row) {
+                if (is_array($row) && (int) ($row['id'] ?? 0) > 0) {
+                    $catalog[] = $row;
+                }
+            }
+        }
 
-        foreach ($this->cache->destinations() as $destination) {
+        $matched = [];
+        foreach ($catalog as $destination) {
             if (! $this->userCanAccess($telegramUserId, $destination, $hasSat)) {
                 continue;
             }
@@ -210,10 +239,14 @@ final class HostDestinationsFlow
 
         try {
             $member = $this->api->getChatMember($chatId, $telegramUserId);
-            $status = (string) ($member['status'] ?? '');
+            $status = strtolower(trim((string) ($member['status'] ?? '')));
+            if ($status === '' || in_array($status, ['left', 'kicked'], true)) {
+                return false;
+            }
 
             return in_array($status, self::MEMBER_STATUSES, true);
         } catch (\Throwable) {
+            // Bot can't see the user / API error → treat as not a member so re-join is offered.
             return false;
         }
     }
@@ -233,22 +266,129 @@ final class HostDestinationsFlow
             return null;
         }
 
-        try {
-            $created = $this->api->createChatInviteLink($chatId, [
-                'name' => 'dest-'.(int) ($destination['id'] ?? 0).'-tg-'.$telegramUserId,
-                'member_limit' => 1,
-            ]);
-            $url = trim((string) ($created['invite_link'] ?? ''));
-            if ($url !== '') {
-                return $url;
+        $name = 'dest-'.(int) ($destination['id'] ?? 0).'-tg-'.$telegramUserId.'-'.substr((string) time(), -5);
+        $attempts = [
+            ['name' => $name, 'creates_join_request' => true],
+            ['name' => $name.'-m', 'member_limit' => 1],
+        ];
+
+        foreach ($attempts as $options) {
+            try {
+                $created = $this->api->createChatInviteLink($chatId, $options);
+                $url = trim((string) ($created['invite_link'] ?? ''));
+                if ($url !== '') {
+                    return $url;
+                }
+            } catch (\Throwable $e) {
+                error_log('[telegram-host] createChatInviteLink: '.$e->getMessage());
             }
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] createChatInviteLink: '.$e->getMessage());
         }
 
         $shared = trim((string) ($destination['shared_invite_url'] ?? ''));
 
         return $shared !== '' ? $shared : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     * @return list<array{title: string, url: string}>
+     */
+    private function recoverDestinationsFromProfile(array $profile): array
+    {
+        $options = (array) ($profile['options'] ?? []);
+        $markup = (array) ($options['reply_markup'] ?? []);
+        $rows = (array) ($markup['inline_keyboard'] ?? []);
+        $skipTitles = [
+            'احراز هویت سطح ۲',
+            'ورود به پنل دانشجو',
+            'باشگاه مشتریان در پنل',
+        ];
+
+        $out = [];
+        $seen = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            foreach ($row as $button) {
+                if (! is_array($button)) {
+                    continue;
+                }
+                $url = trim((string) ($button['url'] ?? ''));
+                $title = trim((string) ($button['text'] ?? ''));
+                if ($url === '' || $title === '' || isset($seen[$title])) {
+                    continue;
+                }
+                if (in_array($title, $skipTitles, true)) {
+                    continue;
+                }
+                // Invite / t.me links only — not site panel URLs.
+                if (! str_contains($url, 't.me/') && ! str_contains($url, 'telegram.me/')) {
+                    continue;
+                }
+                $seen[$title] = true;
+                $out[] = ['title' => $title, 'url' => $url];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Old Iran account snapshots appended destination membership into profile text.
+     * Those lines go stale the moment the user leaves a group — strip them always.
+     */
+    private function stripStaleDestinationSection(string $text): string
+    {
+        if ($text === '') {
+            return '';
+        }
+
+        $markers = [
+            'گروه‌های پشتیبانی شما',
+            'گروه پشتیبانی سات',
+            'شما عضو این گروه هستید',
+            'برای عضویت از دکمه زیر',
+            'برای عضویت از لینک',
+        ];
+
+        $cutAt = null;
+        foreach ($markers as $marker) {
+            $pos = mb_strpos($text, $marker);
+            if ($pos === false) {
+                continue;
+            }
+            $before = mb_substr($text, 0, $pos);
+            $nl = mb_strrpos($before, "\n\n");
+            $candidate = $nl !== false ? $nl : $pos;
+            $cutAt = $cutAt === null ? $candidate : min($cutAt, $candidate);
+        }
+
+        if ($cutAt !== null) {
+            $text = trim(mb_substr($text, 0, $cutAt));
+        }
+
+        // Drop leftover bullet destination lines if a header was partially missing.
+        $lines = preg_split("/\r\n|\n|\r/", $text) ?: [];
+        $kept = [];
+        foreach ($lines as $line) {
+            $plain = trim(html_entity_decode(strip_tags($line), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($plain === '') {
+                $kept[] = $line;
+                continue;
+            }
+            if (str_contains($plain, 'عضو این گروه هستید')
+                || str_contains($plain, 'برای عضویت از دکمه')
+                || str_contains($plain, 'برای عضویت از لینک')
+                || str_contains($plain, 'گروه‌های پشتیبانی')
+                || str_contains($plain, 'گروه پشتیبانی سات')
+            ) {
+                continue;
+            }
+            $kept[] = $line;
+        }
+
+        return trim(implode("\n", $kept));
     }
 
     private function escape(string $value): string

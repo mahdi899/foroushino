@@ -216,6 +216,8 @@ class TelegramHostAccountSnapshotService
             'text' => $text,
             'verification_level' => $verificationLevel,
             'has_seminar' => $pricing->userHasSeminar($account->user, $account->mobile),
+            // Meta only (no is_member) — host checks Telegram live.
+            'destinations' => $this->accessibleDestinationsMeta($bot, $account),
             'options' => array_filter([
                 'parse_mode' => 'HTML',
                 'reply_markup' => $keyboard !== []
@@ -223,6 +225,39 @@ class TelegramHostAccountSnapshotService
                     : null,
             ]),
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function accessibleDestinationsMeta(TelegramBot $bot, TelegramAccount $account): array
+    {
+        if (! $account->user_id) {
+            return [];
+        }
+
+        $policy = app(\App\Modules\TelegramBot\Services\DestinationAccessPolicy::class);
+        $allowedIds = \App\Modules\TelegramBot\Models\TelegramDestination::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('is_active', true)
+            ->with('requirements')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn ($destination) => (bool) ($policy->evaluate($destination, (int) $account->user_id)['allowed'] ?? false))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($allowedIds === []) {
+            return [];
+        }
+
+        $allowedLookup = array_fill_keys($allowedIds, true);
+
+        return array_values(array_filter(
+            app(TelegramHostPayloadBuilder::class)->destinationsPayload($bot),
+            fn (array $row): bool => isset($allowedLookup[(int) ($row['id'] ?? 0)]),
+        ));
     }
 
     /**

@@ -241,7 +241,7 @@ class TelegramHostPayloadBuilder
      *
      * @return list<array<string, mixed>>
      */
-    private function destinationsPayload(TelegramBot $bot): array
+    public function destinationsPayload(TelegramBot $bot): array
     {
         return TelegramDestination::query()
             ->where('telegram_bot_id', $bot->id)
