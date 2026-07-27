@@ -13,13 +13,10 @@ if (preg_match('/^Bearer\s+(.+)$/i', (string) ($_SERVER['HTTP_AUTHORIZATION'] ??
 }
 
 $raw = (string) file_get_contents('php://input');
-$timestamp = (string) ($_SERVER['HTTP_X_TIMESTAMP'] ?? '');
-$nonce = (string) ($_SERVER['HTTP_X_NONCE'] ?? '');
-$signature = (string) ($_SERVER['HTTP_X_SIGNATURE'] ?? '');
 
 try {
     $handler = new InboundSyncHandler($config);
-    $result = $handler->handle($raw, $timestamp, $nonce, $signature, $origin, $bearer);
+    $result = $handler->handle($raw, $origin, $bearer);
 
     if (! ($result['ok'] ?? false)) {
         http_response_code(403);

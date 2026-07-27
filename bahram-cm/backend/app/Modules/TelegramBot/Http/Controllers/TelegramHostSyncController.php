@@ -15,7 +15,6 @@ use App\Services\TelegramHostCatalogRevision;
 use App\Services\TelegramHostPayloadBuilder;
 use App\Services\TelegramHostRegistrationService;
 use App\Services\TelegramInfrastructureService;
-use App\Support\AesGcmCipher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,8 +23,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Sync/live API for the external "host" Telegram app (standalone PHP+MySQL
  * app deployed on a cPanel host, see `telegram/`). Everything here is
- * reached only through `proxy.origin:presence` + `telegram.host.signature`
- * (HMAC + AES-GCM) — see routes/telegram-host.php.
+ * reached only through `proxy.origin:presence` + `telegram.host.token`
+ * (Bearer host_sync_secret + JSON over HTTPS).
  *
  * Two kinds of endpoints:
  *  - "Bootstrap/catalog" (bootstrap, catalog): safe to cache long-term on the
@@ -50,14 +49,14 @@ class TelegramHostSyncController
     {
         $bot = $this->productionBot();
 
-        return $this->encryptedResponse($request, $this->payloadBuilder->bootstrapPayload($bot));
+        return $this->jsonResponse($this->payloadBuilder->bootstrapPayload($bot));
     }
 
     public function syncMeta(Request $request): JsonResponse
     {
         $this->productionBot();
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'catalog_revision' => $this->catalogRevision->current(),
             'synced_at' => now()->toIso8601String(),
         ]);
@@ -69,12 +68,12 @@ class TelegramHostSyncController
         $nonce = trim((string) ($payload['nonce'] ?? ''));
         $cleared = $this->infrastructure->clearHostWebhookRegistration($nonce !== '' ? $nonce : null);
 
-        return $this->encryptedResponse($request, ['ok' => $cleared]);
+        return $this->jsonResponse(['ok' => $cleared]);
     }
 
     public function catalog(Request $request): JsonResponse
     {
-        return $this->encryptedResponse($request, $this->payloadBuilder->catalogPayload());
+        return $this->jsonResponse($this->payloadBuilder->catalogPayload());
     }
 
     public function otpRequest(Request $request): JsonResponse
@@ -83,16 +82,16 @@ class TelegramHostSyncController
         $mobile = trim((string) ($payload['mobile'] ?? ''));
 
         if ($mobile === '') {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'شماره موبایل نامعتبر است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'شماره موبایل نامعتبر است.'], 422);
         }
 
         try {
             $this->otp->send($mobile, OtpPurpose::TelegramLink, $request->ip());
         } catch (OtpException $e) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => $e->getMessage()], 429);
+            return $this->jsonResponse(['ok' => false, 'message' => $e->getMessage()], 429);
         }
 
-        return $this->encryptedResponse($request, ['ok' => true]);
+        return $this->jsonResponse(['ok' => true]);
     }
 
     public function otpVerify(Request $request): JsonResponse
@@ -104,13 +103,13 @@ class TelegramHostSyncController
         $displayName = trim((string) ($payload['display_name'] ?? ''));
 
         if ($mobile === '' || $code === '' || $telegramUserId <= 0) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
         }
 
         try {
             $this->otp->verify($mobile, $code, OtpPurpose::TelegramLink);
         } catch (OtpException $e) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => $e->getMessage()], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => $e->getMessage()], 422);
         }
 
         $bot = $this->productionBot();
@@ -125,7 +124,7 @@ class TelegramHostSyncController
             return ['account' => $account, 'user' => $result['user'], 'lines' => $result['lines']];
         });
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'account' => $this->accountSnapshots->accountPayload($sync['account']->fresh(['user', 'bot'])),
             'summary_lines' => $sync['lines'],
@@ -139,10 +138,10 @@ class TelegramHostSyncController
 
         $seminar = Seminar::query()->find($seminarId);
         if ($seminar === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'سمینار یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'سمینار یافت نشد.'], 404);
         }
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'is_full' => $seminar->isFull(),
             'remaining_seats' => $seminar->remainingSeats(),
@@ -155,16 +154,16 @@ class TelegramHostSyncController
         $code = trim((string) ($payload['code'] ?? ''));
 
         if ($code === '') {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'کد تخفیف را وارد کنید.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'کد تخفیف را وارد کنید.'], 422);
         }
 
         $discount = DiscountCode::query()->where('code', $code)->where('is_active', true)->first();
 
         if ($discount === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'کد تخفیف نامعتبر است.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'کد تخفیف نامعتبر است.'], 404);
         }
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'discount_type' => $discount->discount_type?->value,
             'discount_value' => $discount->discount_value,
@@ -181,7 +180,7 @@ class TelegramHostSyncController
         $account = $bot->accounts()->where('telegram_user_id', $telegramUserId)->first();
 
         if ($account === null) {
-            return $this->encryptedResponse($request, ['ok' => true, 'found' => false]);
+            return $this->jsonResponse(['ok' => true, 'found' => false]);
         }
 
         $accountPayload = [
@@ -198,7 +197,7 @@ class TelegramHostSyncController
             $accountPayload['snapshot'] = $this->accountSnapshots->buildSnapshot($account);
         }
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'found' => true,
             'account' => $accountPayload,
@@ -210,7 +209,7 @@ class TelegramHostSyncController
         $payload = $this->hostPayload($request);
         $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
         if ($telegramUserId <= 0) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'شناسه تلگرام نامعتبر است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'شناسه تلگرام نامعتبر است.'], 422);
         }
 
         $from = is_array($payload['from'] ?? null) ? $payload['from'] : [];
@@ -223,7 +222,7 @@ class TelegramHostSyncController
             $startPayload !== '' ? $startPayload : null,
         );
 
-        return $this->encryptedResponse($request, $result);
+        return $this->jsonResponse($result);
     }
 
     public function registrationContact(Request $request): JsonResponse
@@ -234,7 +233,7 @@ class TelegramHostSyncController
         $contactUserId = (int) ($payload['contact_user_id'] ?? 0);
 
         if ($telegramUserId <= 0) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'شناسه تلگرام نامعتبر است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'شناسه تلگرام نامعتبر است.'], 422);
         }
 
         $result = $this->hostRegistration->shareContact(
@@ -244,7 +243,7 @@ class TelegramHostSyncController
             $contactUserId,
         );
 
-        return $this->encryptedResponse($request, $result);
+        return $this->jsonResponse($result);
     }
 
     public function registrationName(Request $request): JsonResponse
@@ -254,12 +253,12 @@ class TelegramHostSyncController
         $name = trim((string) ($payload['name'] ?? ''));
 
         if ($telegramUserId <= 0 || $name === '') {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
         }
 
         $result = $this->hostRegistration->submitName($this->productionBot(), $telegramUserId, $name);
 
-        return $this->encryptedResponse($request, $result);
+        return $this->jsonResponse($result);
     }
 
     public function registrationCallback(Request $request): JsonResponse
@@ -269,12 +268,12 @@ class TelegramHostSyncController
         $data = trim((string) ($payload['callback_data'] ?? ''));
 
         if ($telegramUserId <= 0 || $data === '') {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'درخواست نامعتبر است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'درخواست نامعتبر است.'], 422);
         }
 
         $result = $this->hostRegistration->regCallback($this->productionBot(), $telegramUserId, $data);
 
-        return $this->encryptedResponse($request, $result);
+        return $this->jsonResponse($result);
     }
 
     /** @return array<string, mixed> */
@@ -299,15 +298,8 @@ class TelegramHostSyncController
     }
 
     /** @param  array<string, mixed>  $data */
-    private function encryptedResponse(Request $request, array $data, int $status = 200): JsonResponse
+    private function jsonResponse(array $data, int $status = 200): JsonResponse
     {
-        $aesKey = (string) $request->attributes->get('host_aes_key', '');
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        if ($aesKey === '' || $json === false) {
-            return response()->json($data, $status);
-        }
-
-        return response()->json(['payload' => AesGcmCipher::encrypt($json, $aesKey)], $status);
+        return response()->json($data, $status);
     }
 }

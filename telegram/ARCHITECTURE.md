@@ -44,7 +44,7 @@
 
 - **وب‌هوک:** فقط MySQL محلی + تلگرام — **هیچ انتظاری برای ایران نیست.**
 - **push فوری (event-driven):** ثبت‌نام، ویرایش حساب، **تکمیل سفارش** → `push_account` بلافاصله از ایران به `host-sync.php` (+ پیام آنی `notification` برای پرداخت).
-- **سیکل reconcile هر ۵ دقیقه:** `telegram:host-sync-accounts` روی ایران — پوشش هر خریدی که push فوری‌اش fail شده (مثلاً circuit باز بود یا هاست موقتاً پایین بود). همان دستور کاتالوگ/bootstrap را هم رفرش می‌کند.
+- **سیکل reconcile هر ۱۰ دقیقه:** `telegram:host-sync-accounts --skip-catalog` روی ایران — پوشش خریدهایی که push فوری‌شان fail شده؛ کاتالوگ/bootstrap جداگانه با push رویدادی یا `refresh_catalog` دستی.
 - **ثبت‌نام / پرداخت:** در صف `pending_iran_updates` → `BackgroundIranRelay` وقتی ایران در دسترس بود.
 - **پشتیبانی:** کاملاً محلی روی هاست (فوروارد به گروه گزارشات + پاسخ ادمین) — بدون ایران.
 
@@ -100,13 +100,19 @@ OTP/SMS، شروع زرین‌پال/C2C روی سرور، پنل ادمین، �
 - پورت کامل پنل ادمین (`BotAdminPanelService`) به PHP هاست
 - اجرای کامل C2C/SAT بدون هیچ وابستگی به ایران
 
-## deploy
+## ارتباط هاست ↔ ایران (bridge)
 
-1. deploy سرور ایران (routes + LiveController + `telegram:host-sync-accounts`)
-2. آپلود `telegram/` + migrate DB روی هاست
-3. `php artisan telegram:host-sync-accounts --sync` (اجرای یک‌بارهٔ اولیه)
-4. تأیید schedule: `php artisan schedule:list` باید `telegram:host-sync-accounts` را هر ۵ دقیقه نشان دهد
-5. ثبت webhook از پنل ادمین
+- **HTTPS** روی آدرس عمومی هاست (TLS برای محرمانگی در مسیر).
+- یک توکن مشترک: `host_sync_token` در `config.php` هاست = `host_sync_secret` در پنل ایران.
+- هر درخواست: `Authorization: Bearer <token>` + `X-Proxy-Origin` (`Telegram-Host-App` هاست→ایران، `Main-Server` ایران→هاست) + بدنه/پاسخ **JSON** (بدون AES/HMAC روی wire).
+
+## deploy (bridge ساده — همزمان ایران + هاست)
+
+1. deploy سرور ایران + `php artisan config:clear`
+2. در پنل infra آدرس پایه هاست را با **https://** ذخیره کن
+3. `php artisan telegram:export-host-config ... --output=config.php` و آپلود روی هاست (فقط `host_sync_token` — دیگر `aes_key` لازم نیست)
+4. آپلود کل `telegram/` (حداقل `SyncClient`, `InboundSyncHandler`, `host-sync.php`, `config.php`)
+5. `php artisan telegram:host-sync-accounts --sync` + تست ربات
 
 ## چک‌لیست رفع باگ ربات هاست خارج (بعد از هر deploy کد جدید)
 

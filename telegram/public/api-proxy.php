@@ -2,24 +2,7 @@
 
 declare(strict_types=1);
 
-/**
- * Dumb reverse proxy: Main-Server (Iran, api.telegram.org blocked) -> this
- * host (unrestricted network) -> api.telegram.org -> back.
- *
- * Used only for OUTBOUND Bot API calls made directly by the Laravel server
- * (e.g. sendMessage during a delegated registration flow). The external
- * host already talks to api.telegram.org fine (see BotApiClient), so it can
- * relay on the main server's behalf instead of the main server hitting the
- * (blocked) address itself.
- *
- * URL shape mirrors the real Bot API so the caller only swaps the base URL:
- *   https://<host_public_url>/public/api-proxy.php/bot<token>/<method>
- *
- * Auth: `Authorization: Bearer <hmac_secret>` — same secret already shared
- * with the main server for the host-sync bridge. No HMAC/AES here (low
- * value target, single shared secret is enough, mirrors the Cloudflare
- * Worker's identical `PROXY_SHARED_TOKEN` design for the same problem).
- */
+use TelegramHost\Support\HostBridgeConfig;
 
 $config = require __DIR__.'/../bootstrap.php';
 
@@ -28,7 +11,7 @@ if (preg_match('/^Bearer\s+(.+)$/i', (string) ($_SERVER['HTTP_AUTHORIZATION'] ??
     $bearer = trim($m[1]);
 }
 
-if (! hash_equals((string) $config['hmac_secret'], $bearer)) {
+if (! hash_equals(HostBridgeConfig::syncToken($config), $bearer)) {
     http_response_code(403);
     header('Content-Type: application/json');
     echo json_encode(['ok' => false, 'error_code' => 403, 'description' => 'Forbidden']);

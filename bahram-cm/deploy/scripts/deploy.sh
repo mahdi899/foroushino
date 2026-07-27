@@ -68,11 +68,29 @@ fi
 
 echo "==> Frontend build"
 cd "$APP_ROOT/frontend"
-# devDependencies (e.g. @next/bundle-analyzer) are required for next.config.ts at build time.
-unset NODE_ENV
-if ! npm ci; then npm install --no-audit --no-fund; fi
-export NODE_ENV=production
-npm run build
+if [[ -r /proc/meminfo ]]; then
+  AVAIL_MB="$(awk '/MemAvailable:/ {print int($2/1024)}' /proc/meminfo)"
+  echo "MemAvailable=${AVAIL_MB}MB"
+  if [[ "${AVAIL_MB:-0}" -lt 1800 ]]; then
+    echo "SKIP frontend build — need >= 1800MB MemAvailable (use CI .next or rebuild-frontend.sh later)"
+    if [[ ! -f .next/BUILD_ID ]]; then
+      echo "ERROR: no .next/BUILD_ID and build skipped"
+      exit 1
+    fi
+  else
+    # devDependencies (e.g. @next/bundle-analyzer) are required for next.config.ts at build time.
+    unset NODE_ENV
+    export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}"
+    if ! npm ci; then npm install --no-audit --no-fund; fi
+    export NODE_ENV=production
+    npm run build
+  fi
+else
+  unset NODE_ENV
+  if ! npm ci; then npm install --no-audit --no-fund; fi
+  export NODE_ENV=production
+  npm run build
+fi
 
 echo "==> Reload PM2 (Next.js)"
 PM2_CONFIG="$APP_ROOT/deploy/pm2/ecosystem.config.cjs"

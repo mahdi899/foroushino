@@ -9,13 +9,12 @@ use TelegramHost\Account\PendingMobileAccess;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Db\Connection;
 use TelegramHost\Services\WebhookRegisterFromPull;
-use TelegramHost\Support\AesGcmCipher;
-use TelegramHost\Support\HmacVerifier;
+use TelegramHost\Support\HostBridgeConfig;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
  * Handles push commands from the main server (server → host).
- * Triggered via public/host-sync.php after HMAC + AES verification.
+ * Triggered via public/host-sync.php after Bearer token verification.
  */
 final class InboundSyncHandler
 {
@@ -25,9 +24,9 @@ final class InboundSyncHandler
     /**
      * @return array{ok: bool, action?: string, error?: string, defer?: bool, payload?: array<string, mixed>}
      */
-    public function handle(string $encryptedBody, string $timestamp, string $nonce, string $signature, string $origin, string $bearer): array
+    public function handle(string $rawBody, string $origin, string $bearer): array
     {
-        $payload = $this->decodePayload($encryptedBody, $timestamp, $nonce, $signature, $origin, $bearer);
+        $payload = $this->decodePayload($rawBody, $origin, $bearer);
         if (! ($payload['ok'] ?? false)) {
             return $payload;
         }
@@ -166,28 +165,23 @@ final class InboundSyncHandler
     /**
      * @return array{ok: bool, error?: string, payload?: array<string, mixed>}
      */
-    private function decodePayload(string $encryptedBody, string $timestamp, string $nonce, string $signature, string $origin, string $bearer): array
+    private function decodePayload(string $rawBody, string $origin, string $bearer): array
     {
         $expectedOrigin = (string) ($this->config['server_push_origin'] ?? 'Main-Server');
         if (! hash_equals($expectedOrigin, $origin)) {
             return ['ok' => false, 'error' => 'invalid_origin'];
         }
 
-        if (! hash_equals((string) $this->config['hmac_secret'], $bearer)) {
+        $token = HostBridgeConfig::syncToken($this->config);
+        if ($token === '' || ! hash_equals($token, $bearer)) {
             return ['ok' => false, 'error' => 'invalid_bearer'];
         }
 
-        $failure = HmacVerifier::verify($encryptedBody, $timestamp, $nonce, $signature, (string) $this->config['hmac_secret']);
-        if ($failure !== null) {
-            return ['ok' => false, 'error' => $failure];
+        if ($rawBody === '') {
+            return ['ok' => false, 'error' => 'empty_body'];
         }
 
-        $plaintext = $encryptedBody !== '' ? AesGcmCipher::decrypt($encryptedBody, (string) $this->config['aes_key']) : '{}';
-        if ($plaintext === null) {
-            return ['ok' => false, 'error' => 'decrypt_failed'];
-        }
-
-        $payload = json_decode($plaintext, true);
+        $payload = json_decode($rawBody, true);
 
         return is_array($payload)
             ? ['ok' => true, 'payload' => $payload]

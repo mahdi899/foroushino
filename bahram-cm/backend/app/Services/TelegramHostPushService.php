@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use App\Support\AesGcmCipher;
-use App\Support\HmacSigner;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -188,16 +186,6 @@ class TelegramHostPushService
     }
 
     /**
-     * Force plain HTTP for the Iran → host push call. The host's firewall
-     * (Imunify360/CSF, most likely) blackholes HTTPS from this server's IP
-     * while HTTP answers normally; the payload itself stays encrypted.
-     */
-    private function transportUrl(string $url): string
-    {
-        return preg_replace('#^https://#i', 'http://', $url) ?? $url;
-    }
-
-    /**
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>|null
      */
@@ -210,19 +198,12 @@ class TelegramHostPushService
         }
 
         $hmacSecret = $infra->hostSyncSecret();
-        $aesKey = $infra->hostEncryptionKey();
 
-        if ($infra->hostPushUrl() === '' || $hmacSecret === null || $aesKey === null) {
+        if ($infra->hostPushUrl() === '' || $hmacSecret === null) {
             return null;
         }
 
-        // The host's firewall silently drops HTTPS (port 443) connections
-        // from this server's IP (confirmed: TLS handshake completes, then
-        // the request just hangs — plain HTTP on port 80 answers instantly).
-        // The body is already AES-256-GCM encrypted and HMAC-signed at the
-        // application layer, so downgrading transport for this one internal
-        // endpoint does not weaken confidentiality/integrity.
-        $pushUrl = $this->transportUrl($infra->hostPushUrl());
+        $pushUrl = $infra->hostPushUrl();
 
         // Circuit breaker: after repeated timeouts (host firewall blocking us,
         // host down, etc.) skip the network call for a short cooldown instead
@@ -247,29 +228,24 @@ class TelegramHostPushService
             return null;
         }
 
+        $timeout = match ($action) {
+            'register_webhook' => 20,
+            'notify_user' => 8,
+            'push_account' => 8,
+            'refresh_catalog', 'refresh_bootstrap' => 8,
+            default => 10,
+        };
+
         try {
-            $encrypted = AesGcmCipher::encrypt($json, $aesKey);
-            $headers = HmacSigner::headersFor(['body' => $encrypted], $hmacSecret);
-
-            // The host normally answers in well under 1s. Long timeouts here
-            // only turn a blocked/unreachable host into a multi-second hang
-            // for the Telegram user (registration, order notify, etc.).
-            $timeout = match ($action) {
-                'register_webhook' => 20,
-                'notify_user' => 8,
-                'push_account' => 8,
-                'refresh_catalog', 'refresh_bootstrap' => 8,
-                default => 10,
-            };
-
             $response = Http::timeout($timeout)
                 ->connectTimeout(5)
-                ->withHeaders(array_merge($headers, [
+                ->withHeaders([
                     'Authorization' => 'Bearer '.$hmacSecret,
                     'X-Proxy-Origin' => self::PUSH_ORIGIN,
-                    'Content-Type' => 'text/plain',
-                ]))
-                ->withBody($encrypted, 'text/plain')
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])
+                ->withBody($json, 'application/json')
                 ->post($pushUrl);
 
             if (! $response->successful()) {

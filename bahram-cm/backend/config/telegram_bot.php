@@ -48,7 +48,8 @@ return [
     'membership_cache_seconds' => (int) env('TELEGRAM_MEMBERSHIP_CACHE_SECONDS', 900),
 
     /** When true, handlers send Telegram messages in-process (no telegram-replies queue hop). */
-    'outbound_sync' => filter_var(env('TELEGRAM_OUTBOUND_SYNC', true), FILTER_VALIDATE_BOOL),
+    // false = send replies via telegram-replies queue (faster ingest, fewer inline HTTP waits).
+    'outbound_sync' => filter_var(env('TELEGRAM_OUTBOUND_SYNC', false), FILTER_VALIDATE_BOOL),
 
     /*
     | Per Telegram user inbound rate limit. After the limit, updates are

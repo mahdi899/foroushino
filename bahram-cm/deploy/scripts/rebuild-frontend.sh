@@ -12,6 +12,17 @@ exec > >(tee "$LOG") 2>&1
 echo "=== Bahram/Family frontend rebuild $(date -Is) ==="
 echo "APP_ROOT=$APP_ROOT FRONTEND=$FRONTEND"
 
+if [[ -r /proc/meminfo ]]; then
+  AVAIL_MB="$(awk '/MemAvailable:/ {print int($2/1024)}' /proc/meminfo)"
+  echo "MemAvailable=${AVAIL_MB}MB"
+  if [[ "${AVAIL_MB:-0}" -lt 1800 ]]; then
+    echo "ERROR: need >= 1800MB MemAvailable for on-server next build — free RAM or build in CI and rsync .next"
+    exit 1
+  fi
+fi
+
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}"
+
 # Stop crash-loop while .next is missing
 pm2 stop bahram-frontend 2>/dev/null || true
 pkill -f 'next build' 2>/dev/null || true

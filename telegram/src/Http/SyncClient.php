@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace TelegramHost\Http;
 
-use TelegramHost\Support\AesGcmCipher;
-use TelegramHost\Support\HmacClient;
+use TelegramHost\Support\HostBridgeConfig;
 use TelegramHost\Support\IranCircuitBreaker;
 use TelegramHost\Support\IranSyncFailureException;
 
 /**
- * Talks to the main Laravel server's `telegram-host` sync API.
- * Every call: encrypt body (AES-256-GCM) -> sign (HMAC-SHA256) -> POST.
- * Every response: `{"payload": "<encrypted>"}` -> decrypt -> decode JSON.
+ * Talks to the main Laravel server's `telegram-host` sync API over HTTPS:
+ * Bearer `host_sync_token` + JSON request/response (no AES/HMAC wire format).
  *
  * Wrapped with a circuit breaker: once Iran is confirmed down, further calls
  * fail instantly instead of each burning a fresh multi-second timeout — this
@@ -118,30 +116,26 @@ final class SyncClient
             throw new \RuntimeException('Failed to encode sync payload.');
         }
 
-        $encrypted = AesGcmCipher::encrypt($json, (string) $this->config['aes_key']);
-        $headers = HmacClient::headersFor($encrypted, (string) $this->config['hmac_secret']);
+        $token = HostBridgeConfig::syncToken($this->config);
+        if ($token === '') {
+            throw new \RuntimeException('Host sync token is not configured.');
+        }
 
         $ch = curl_init(rtrim((string) $this->config['sync_base_url'], '/').'/'.ltrim($path, '/'));
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $encrypted,
+            CURLOPT_POSTFIELDS => $json,
             CURLOPT_RETURNTRANSFER => true,
-            // Respect the caller timeout exactly — previously max(6, …) could
-            // stretch a short registration budget and leave the chat hanging
-            // after the "verifying…" ACK for longer than intended.
             CURLOPT_CONNECTTIMEOUT => max(1, min(3, $timeoutSeconds)),
             CURLOPT_TIMEOUT => max(1, $timeoutSeconds),
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
-            CURLOPT_HTTPHEADER => array_merge([
-                'Content-Type: text/plain',
-                'Authorization: Bearer '.$this->config['hmac_secret'],
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Accept: application/json',
+                'Authorization: Bearer '.$token,
                 'X-Proxy-Origin: '.($this->config['proxy_origin'] ?? 'Telegram-Host-App'),
-            ], array_map(
-                static fn (string $k, string $v): string => "{$k}: {$v}",
-                array_keys($headers),
-                array_values($headers),
-            )),
+            ],
         ]);
 
         $body = curl_exec($ch);
@@ -158,17 +152,6 @@ final class SyncClient
             throw new \RuntimeException("Sync request returned invalid JSON (HTTP {$status}).");
         }
 
-        if (isset($decoded['payload']) && is_string($decoded['payload'])) {
-            $plaintext = AesGcmCipher::decrypt($decoded['payload'], (string) $this->config['aes_key']);
-            if ($plaintext === null) {
-                throw new \RuntimeException('Failed to decrypt sync response.');
-            }
-            $result = json_decode($plaintext, true);
-
-            return is_array($result) ? $result : [];
-        }
-
-        // Fallback: server responded unencrypted (e.g. host bridge not fully configured yet).
         return $decoded;
     }
 }

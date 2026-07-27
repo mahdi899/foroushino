@@ -42,9 +42,9 @@ Telegram → public/webhook.php → UpdateRouter
 
 ## امنیت
 
-- توکن ربات، `webhook_secret`, `hmac_secret`, `aes_key` فقط در `config.php` (gitignored)
+- توکن ربات، `webhook_secret`, `host_sync_token` فقط در `config.php` (gitignored)
 - کلید زرین‌پال و SMS هرگز به هاست خارج نمی‌رود
-- HMAC-SHA256 + AES-256-GCM روی همه تماس‌های sync/live
+- ارتباط sync/live: HTTPS + `Authorization: Bearer` (همان `host_sync_secret` روی سرور ایران) + `X-Proxy-Origin`
 
 ## فایل‌های مهم
 

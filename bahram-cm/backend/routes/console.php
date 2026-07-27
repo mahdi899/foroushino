@@ -13,14 +13,14 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('telegram:cleanup')->hourly()->onOneServer();
-Schedule::command('telegram:reconcile-webhook')->everyMinute()->onOneServer();
+Schedule::command('telegram:reconcile-webhook')->everyTwoMinutes()->onOneServer();
 Schedule::command('telegram:host-push-retry')->everyThreeMinutes()->onOneServer();
-Schedule::command('telegram:host-sync-accounts')->everyFiveMinutes()->onOneServer();
+Schedule::command('telegram:host-sync-accounts --skip-catalog --limit=2000')->everyTenMinutes()->onOneServer();
 Schedule::command('telegram:health-check')->hourly()->onOneServer();
 Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServer();
 
 Schedule::command('chatbot:purge-old')->dailyAt('03:00');
-Schedule::command('backup:database')->everyMinute();
+Schedule::command('backup:database')->everyFiveMinutes();
 Schedule::command('backup:upload-download-host')->weeklyOn(0, '03:30')->onOneServer();
 
 // Family analytics — read models are rebuildable; schedule keeps dashboards fast.

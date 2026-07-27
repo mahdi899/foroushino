@@ -33,7 +33,6 @@ use App\Services\Family\FamilyAccessService;
 use App\Services\Family\FamilyAssignmentService;
 use App\Services\ReferralService;
 use App\Services\TelegramHostUpdateProcessor;
-use App\Support\AesGcmCipher;
 use App\Support\InflatedMemberCount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -82,7 +81,7 @@ class TelegramHostLiveController
         $update = (array) ($payload['update'] ?? []);
 
         if ($update === []) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'update missing'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'update missing'], 422);
         }
 
         try {
@@ -97,13 +96,13 @@ class TelegramHostLiveController
                 'update' => $update,
             ]);
 
-            return $this->encryptedResponse($request, [
+            return $this->jsonResponse([
                 'ok' => false,
                 'message' => 'پردازش ناموفق بود.',
             ], 500);
         }
 
-        return $this->encryptedResponse($request, ['ok' => true]);
+        return $this->jsonResponse(['ok' => true]);
     }
 
     public function productPresent(Request $request): JsonResponse
@@ -113,19 +112,19 @@ class TelegramHostLiveController
         $productId = (int) ($payload['product_id'] ?? 0);
 
         if ($account === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
         }
 
         $product = $this->catalog->findForTelegram($productId);
         if ($product === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
         }
 
         $bot = $this->productionBot();
         $view = $this->access->present($bot, $account, $product);
         $photo = $this->catalogMedia->productPhoto($product);
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'text' => $view['text'],
             'options' => $view['options'],
@@ -138,7 +137,7 @@ class TelegramHostLiveController
     {
         $bot = $this->productionBot();
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
             'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),
@@ -151,7 +150,7 @@ class TelegramHostLiveController
         $bot = $this->productionBot();
 
         if ($account === null || $account->user === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'ابتدا ثبت‌نام کنید.'], 403);
+            return $this->jsonResponse(['ok' => false, 'message' => 'ابتدا ثبت‌نام کنید.'], 403);
         }
 
         try {
@@ -166,13 +165,13 @@ class TelegramHostLiveController
                 .TelegramCustomEmoji::tag('check').' خریدهای موفق: <b>'.number_format((int) ($summary['successful_purchases'] ?? 0))."</b>\n"
                 .TelegramCustomEmoji::tag('money').' پاداش قابل برداشت: <b>'.number_format((int) ($summary['payable_amount'] ?? 0)).'</b> تومان';
 
-            return $this->encryptedResponse($request, [
+            return $this->jsonResponse([
                 'ok' => true,
                 'text' => $text,
                 'reply_markup' => TelegramSiteUrl::linkMarkup($panelUrl, 'باشگاه مشتریان در پنل', [], 'success', 'gift'),
             ]);
         } catch (Throwable) {
-            return $this->encryptedResponse($request, [
+            return $this->jsonResponse([
                 'ok' => false,
                 'message' => 'لینک معرفی در دسترس نیست. کمی بعد دوباره تلاش کنید.',
             ], 503);
@@ -185,7 +184,7 @@ class TelegramHostLiveController
         $familyUrl = TelegramSiteUrl::familyHome();
 
         if ($account === null || $account->user === null) {
-            return $this->encryptedResponse($request, [
+            return $this->jsonResponse([
                 'ok' => true,
                 'text' => TelegramCustomEmoji::tag('family')." <b>خانواده</b>\n\nابتدا ثبت‌نام را کامل کنید.",
                 'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'صفحه خانواده', [], 'primary', 'globe'),
@@ -202,7 +201,7 @@ class TelegramHostLiveController
 
         $membership = $this->familyAccess->homeMembership($user);
         if ($membership === null) {
-            return $this->encryptedResponse($request, [
+            return $this->jsonResponse([
                 'ok' => true,
                 'text' => TelegramCustomEmoji::tag('family')." <b>خانواده</b>\n\nهنوز به خانواده‌ای وصل نیستید.\nبا ورود به وب‌اپ، عضویت شما فعال می‌شود.",
                 'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'ورود به خانواده', [], 'primary', 'globe'),
@@ -232,7 +231,7 @@ class TelegramHostLiveController
             $lines[] = TelegramCustomEmoji::tag('point_up').' فعلاً همه‌چیز را دیده‌اید. برای حال‌وهوای خانواده یک سر بزنید.';
         }
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'text' => implode("\n", $lines),
             'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'ورود به خانواده', [], 'primary', 'globe'),
@@ -246,14 +245,14 @@ class TelegramHostLiveController
         $chatId = (int) ($payload['chat_id'] ?? 0);
 
         if ($account === null || $chatId <= 0) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
         }
 
         $bot = $this->productionBot();
         $payload = $this->satFlow->open($bot, $account, $chatId, deliverViaHost: true);
         $conversation = $this->conversations->forAccount($account);
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'text' => $payload['text'] ?? '',
             'options' => $payload['options'] ?? [],
@@ -269,7 +268,7 @@ class TelegramHostLiveController
         $category = trim((string) ($payload['category'] ?? 'other'));
 
         if ($account === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'ابتدا ثبت‌نام کنید.'], 403);
+            return $this->jsonResponse(['ok' => false, 'message' => 'ابتدا ثبت‌نام کنید.'], 403);
         }
 
         $bot = $this->productionBot();
@@ -277,7 +276,7 @@ class TelegramHostLiveController
             || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
 
         if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
-            return $this->encryptedResponse($request, [
+            return $this->jsonResponse([
                 'ok' => false,
                 'message' => $this->subscriberEligibility->denialMessage(),
             ], 403);
@@ -289,7 +288,7 @@ class TelegramHostLiveController
         ]);
         $conversation->refresh();
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'state' => $conversation->state->value,
             'context' => $conversation->context ?? [],
@@ -303,13 +302,13 @@ class TelegramHostLiveController
         $message = (array) ($payload['message'] ?? []);
 
         if ($account === null || $message === []) {
-            return $this->encryptedResponse($request, ['ok' => true, 'handled' => false]);
+            return $this->jsonResponse(['ok' => true, 'handled' => false]);
         }
 
         $bot = $this->productionBot();
         $handled = $this->supportTickets->tryHandleUserReplyToSupport($bot, $account, $message);
 
-        return $this->encryptedResponse($request, ['ok' => true, 'handled' => $handled]);
+        return $this->jsonResponse(['ok' => true, 'handled' => $handled]);
     }
 
     public function supportSend(Request $request): JsonResponse
@@ -322,13 +321,13 @@ class TelegramHostLiveController
         $hasMedia = ! empty($payload['has_media']);
 
         if ($account === null || $chatId <= 0) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
         }
 
         $bot = $this->productionBot();
 
         if (blank($bot->reportsGroupChatId())) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'گروه گزارشات تنظیم نشده است.'], 503);
+            return $this->jsonResponse(['ok' => false, 'message' => 'گروه گزارشات تنظیم نشده است.'], 503);
         }
 
         try {
@@ -348,7 +347,7 @@ class TelegramHostLiveController
                 $category,
             );
         } catch (Throwable) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'ارسال پیام پشتیبانی ناموفق بود.'], 500);
+            return $this->jsonResponse(['ok' => false, 'message' => 'ارسال پیام پشتیبانی ناموفق بود.'], 500);
         }
 
         $ack = $this->outbound->reply(
@@ -372,7 +371,7 @@ class TelegramHostLiveController
             );
         }
 
-        return $this->encryptedResponse($request, ['ok' => true]);
+        return $this->jsonResponse(['ok' => true]);
     }
 
     public function discountPreview(Request $request): JsonResponse
@@ -383,12 +382,12 @@ class TelegramHostLiveController
         $productId = (int) ($payload['product_id'] ?? 0);
 
         if ($account === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'حساب تلگرام یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'حساب تلگرام یافت نشد.'], 404);
         }
 
         $product = $this->catalog->findForTelegram($productId);
         if ($product === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
         }
 
         try {
@@ -396,10 +395,10 @@ class TelegramHostLiveController
         } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?: 'کد تخفیف معتبر نیست.';
 
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => (string) $message], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => (string) $message], 422);
         }
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'coupon' => $preview['discount_code']->normalizedCode(),
             'coupon_discount' => (int) $preview['coupon_discount'],
@@ -414,15 +413,15 @@ class TelegramHostLiveController
         $productId = (int) ($payload['product_id'] ?? 0);
 
         if ($account === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
         }
 
         $product = $this->catalog->findForTelegram($productId);
         if ($product === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
         }
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'owns' => $this->access->owns($account, $product),
         ]);
@@ -442,7 +441,7 @@ class TelegramHostLiveController
     {
         $account = $this->resolveAccount($request);
         if ($account === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
         }
 
         $bot = $this->productionBot();
@@ -464,7 +463,7 @@ class TelegramHostLiveController
             $keyboard[] = $row;
         }
 
-        return $this->encryptedResponse($request, [
+        return $this->jsonResponse([
             'ok' => true,
             'stats' => $stats,
             'text' => $text,
@@ -485,21 +484,21 @@ class TelegramHostLiveController
         $coupon = trim((string) ($payload['coupon'] ?? '')) ?: null;
 
         if ($account === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'ابتدا ثبت‌نام کنید.'], 403);
+            return $this->jsonResponse(['ok' => false, 'message' => 'ابتدا ثبت‌نام کنید.'], 403);
         }
 
         $product = $this->catalog->findForTelegram($productId);
         if ($product === null) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
+            return $this->jsonResponse(['ok' => false, 'message' => 'محصول یافت نشد.'], 404);
         }
 
         $product->loadMissing('seminar');
         if ($product->seminar && $product->seminar->isFull()) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'ظرفیت سمینار تکمیل شده است.'], 409);
+            return $this->jsonResponse(['ok' => false, 'message' => 'ظرفیت سمینار تکمیل شده است.'], 409);
         }
 
         if ($this->access->owns($account, $product)) {
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => 'شما قبلاً این محصول را دارید.'], 409);
+            return $this->jsonResponse(['ok' => false, 'message' => 'شما قبلاً این محصول را دارید.'], 409);
         }
 
         $bot = $this->productionBot();
@@ -516,7 +515,7 @@ class TelegramHostLiveController
             } catch (ValidationException $e) {
                 $message = collect($e->errors())->flatten()->first() ?: 'خطا در شروع پرداخت.';
 
-                return $this->encryptedResponse($request, ['ok' => false, 'message' => (string) $message], 422);
+                return $this->jsonResponse(['ok' => false, 'message' => (string) $message], 422);
             }
 
             if ($chatId > 0) {
@@ -533,7 +532,7 @@ class TelegramHostLiveController
 
             $conversation = $this->conversations->forAccount($account);
 
-            return $this->encryptedResponse($request, [
+            return $this->jsonResponse([
                 'ok' => true,
                 'gateway' => 'c2c',
                 'order_id' => (int) $result['order_id'],
@@ -549,10 +548,10 @@ class TelegramHostLiveController
         } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?: 'خطا در شروع پرداخت.';
 
-            return $this->encryptedResponse($request, ['ok' => false, 'message' => (string) $message], 422);
+            return $this->jsonResponse(['ok' => false, 'message' => (string) $message], 422);
         }
 
-        return $this->encryptedResponse($request, array_merge(['ok' => true, 'gateway' => $gateway], $result));
+        return $this->jsonResponse(array_merge(['ok' => true, 'gateway' => $gateway], $result));
     }
 
     private function familyUnreadPostCount(\App\Models\User $user, \App\Models\FamilyMembership $membership): int
@@ -586,15 +585,8 @@ class TelegramHostLiveController
     }
 
     /** @param  array<string, mixed>  $data */
-    private function encryptedResponse(Request $request, array $data, int $status = 200): JsonResponse
+    private function jsonResponse(array $data, int $status = 200): JsonResponse
     {
-        $aesKey = (string) $request->attributes->get('host_aes_key', '');
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        if ($aesKey === '' || $json === false) {
-            return response()->json($data, $status);
-        }
-
-        return response()->json(['payload' => AesGcmCipher::encrypt($json, $aesKey)], $status);
+        return response()->json($data, $status);
     }
 }

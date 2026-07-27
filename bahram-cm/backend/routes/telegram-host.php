@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 | Consumed only by the standalone PHP app in `telegram/` (deployed on an
 | external cPanel host). Never called from the browser or the site's own
 | frontend. Guarded by `proxy.origin:presence` (Bearer + X-Proxy-Origin)
-| then `telegram.host.signature` (HMAC-SHA256 + AES-256-GCM body).
+| then `telegram.host.token` (Bearer `host_sync_secret` + JSON body over HTTPS).
 |
 */
 Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle:120,1'])

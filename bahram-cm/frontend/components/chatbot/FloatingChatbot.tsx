@@ -1058,8 +1058,8 @@ export function FloatingChatbot({
 
     const pollIntervalMs = () => {
       if (document.hidden) return 30_000;
-      if (open && tab === 'chat') return 8_000;
-      return 18_000;
+      if (open && tab === 'chat') return 12_000;
+      return 25_000;
     };
 
     const schedule = () => {

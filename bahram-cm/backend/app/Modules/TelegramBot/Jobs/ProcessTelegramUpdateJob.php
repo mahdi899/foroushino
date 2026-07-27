@@ -71,13 +71,10 @@ class ProcessTelegramUpdateJob implements ShouldQueue
             : null;
 
         if ($lock !== null && ! $lock->get()) {
-            if (config('telegram_bot.outbound_sync', false)) {
-                $lock->block(min($lockSeconds, 10));
-            } else {
-                $this->release(2);
+            // Never block the worker for up to 10s on lock contention.
+            $this->release(2);
 
-                return;
-            }
+            return;
         }
 
         try {

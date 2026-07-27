@@ -45,13 +45,13 @@ step('PHP / extensions', function () {
 });
 
 step('Config sanity', function () use ($config) {
-    $required = ['bot_token', 'webhook_secret', 'hmac_secret', 'aes_key', 'sync_base_url', 'host_public_url', 'db'];
+    $required = ['bot_token', 'webhook_secret', 'sync_base_url', 'host_public_url', 'db'];
     foreach ($required as $key) {
         $present = array_key_exists($key, $config) && $config[$key] !== '' && $config[$key] !== null;
         echo $key.': '.($present ? 'present' : 'MISSING/EMPTY')."\n";
     }
-    $key = base64_decode((string) $config['aes_key'], true);
-    echo 'aes_key decodes to '.($key === false ? 'INVALID base64' : strlen($key).' bytes (expected 32)')."\n";
+    $syncToken = \TelegramHost\Support\HostBridgeConfig::syncToken($config);
+    echo 'host_sync_token: '.($syncToken !== '' ? 'present ('.strlen($syncToken).' chars)' : 'MISSING/EMPTY')."\n";
 });
 
 step('MySQL connection', function () use ($config) {

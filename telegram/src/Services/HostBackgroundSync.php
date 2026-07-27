@@ -6,7 +6,6 @@ namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
-use TelegramHost\Cache\CatalogSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Http\SyncClient;
 
@@ -19,14 +18,9 @@ final class HostBackgroundSync
         private readonly AccountCache $accounts,
     ) {}
 
+    /** Account pull only — catalog refresh stays on cron/pull-sync (not webhook). */
     public function refreshForUser(int $telegramUserId): void
     {
-        try {
-            (new CatalogSyncCoordinator($this->cache, $this->sync))->ensureFresh();
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] bg catalog: '.$e->getMessage());
-        }
-
         if ($telegramUserId <= 0) {
             return;
         }

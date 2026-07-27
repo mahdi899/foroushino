@@ -37,6 +37,7 @@ export const REVALIDATE = {
   services: isDev ? devRevalidate : 3600,
   settings: isDev ? devRevalidate : 3600,
   articles: isDev ? devRevalidate : 300,
+  seminars: isDev ? devRevalidate : 300,
   cases: isDev ? devRevalidate : 600,
   pricing: isDev ? devRevalidate : 600,
 } as const;

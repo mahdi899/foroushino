@@ -29,15 +29,14 @@ class ExportTelegramHostConfig extends Command
         $template = (string) file_get_contents($samplePath);
         $bot = TelegramBot::query()->where('key', 'production')->first();
 
-        if ($infra->hostSyncSecret() === null || $infra->hostEncryptionKey() === null) {
-            $this->warn('Host secrets not set — save host mode in admin panel first (or re-save infrastructure).');
+        if ($infra->hostSyncSecret() === null) {
+            $this->warn('Host sync token not set — save host mode in admin panel first (or re-save infrastructure).');
         }
 
         $filled = str_replace(
             [
                 '__SYNC_BASE_URL__',
-                '__HMAC_SECRET__',
-                '__AES_KEY__',
+                '__HOST_SYNC_TOKEN__',
                 '__WEBHOOK_SECRET__',
                 '__BOT_TOKEN__',
                 '__DB_HOST__',
@@ -49,7 +48,6 @@ class ExportTelegramHostConfig extends Command
             [
                 $infra->backendOrigin().'/api/v1/integrations/telegram-host',
                 (string) ($infra->hostSyncSecret() ?? ''),
-                (string) ($infra->hostEncryptionKey() ?? ''),
                 (string) ($infra->webhookSecret() ?? ''),
                 (string) ($bot?->resolveToken() ?? ''),
                 (string) $this->option('db-host'),

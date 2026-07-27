@@ -82,7 +82,19 @@ class TelegramInfrastructureService
     /** Public base URL of the standalone `telegram/` app (no trailing slash). */
     public function hostAppBaseUrl(): string
     {
-        return rtrim($this->panelBaseUrl(), '/');
+        $url = rtrim($this->panelBaseUrl(), '/');
+
+        return $this->normalizeHostUrlToHttps($url);
+    }
+
+    /** Prefer HTTPS for the external host app (TLS carries confidentiality). */
+    private function normalizeHostUrlToHttps(string $url): string
+    {
+        if (preg_match('#^http://#i', $url) === 1) {
+            return (string) preg_replace('#^http://#i', 'https://', $url);
+        }
+
+        return $url;
     }
 
     public function hostWebhookUrl(): string
@@ -444,9 +456,8 @@ class TelegramInfrastructureService
             'host_proxy_deploy_sample' => $this->buildHostProxyDeploySample(),
             'host_proxy_htaccess_sample' => $this->buildHostProxyHtaccessSample(),
             'bridge_type' => $this->bridgeType(),
-            'has_host_secrets' => $this->hostSyncSecret() !== null && $this->hostEncryptionKey() !== null,
+            'has_host_secrets' => $this->hostSyncSecret() !== null,
             'host_sync_secret_preview' => $this->hostSyncSecret() ? $this->maskSecret($this->hostSyncSecret()) : null,
-            'host_encryption_key_preview' => $this->hostEncryptionKey() ? $this->maskSecret($this->hostEncryptionKey()) : null,
             'host_sync_base_url' => $this->backendOrigin().'/api/v1/integrations/telegram-host',
             'host_config_sample' => $this->buildHostAppConfigSample(),
         ];
@@ -470,8 +481,7 @@ class TelegramInfrastructureService
         return str_replace(
             [
                 '__SYNC_BASE_URL__',
-                '__HMAC_SECRET__',
-                '__AES_KEY__',
+                '__HOST_SYNC_TOKEN__',
                 '__WEBHOOK_SECRET__',
                 '__BOT_TOKEN__',
                 '__DB_HOST__',
@@ -483,7 +493,6 @@ class TelegramInfrastructureService
             [
                 $this->backendOrigin().'/api/v1/integrations/telegram-host',
                 (string) ($this->hostSyncSecret() ?? ''),
-                (string) ($this->hostEncryptionKey() ?? ''),
                 (string) ($this->webhookSecret() ?? ''),
                 (string) ($bot?->resolveToken() ?? ''),
                 '127.0.0.1',
@@ -535,9 +544,6 @@ class TelegramInfrastructureService
             if (trim((string) ($next['host_sync_secret'] ?? '')) === '') {
                 $next['host_sync_secret'] = Str::random(64);
             }
-            if (trim((string) ($next['host_encryption_key'] ?? '')) === '') {
-                $next['host_encryption_key'] = AesGcmCipher::generateKey();
-            }
         }
 
         $connectionToken = trim((string) ($input['connection_token_input'] ?? $input['bearer_token_input'] ?? ''));
@@ -570,9 +576,8 @@ class TelegramInfrastructureService
     }
 
     /**
-     * Rotates every secret shared with the external host app (HMAC sync key,
-     * AES encryption key, Telegram webhook secret) in one shot. Use after a
-     * leak risk (e.g. repo went public / secrets touched by mistake).
+     * Rotates secrets shared with the external host app (sync bearer token,
+     * Telegram webhook secret) in one shot. Use after a leak risk.
      *
      * The host app's `config.php` is a static file uploaded manually, so it
      * does NOT get the new values automatically — the admin must copy the
@@ -586,7 +591,6 @@ class TelegramInfrastructureService
         $next = $this->stored();
 
         $next['host_sync_secret'] = Str::random(64);
-        $next['host_encryption_key'] = AesGcmCipher::generateKey();
         $next['webhook_secret'] = Str::random(32);
 
         $this->settings->updateGroup(self::GROUP, [self::KEY => $next]);

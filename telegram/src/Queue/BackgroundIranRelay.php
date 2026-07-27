@@ -6,6 +6,7 @@ namespace TelegramHost\Queue;
 
 use TelegramHost\Http\LiveClient;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Support\IranCircuitBreaker;
 
 /** Tries to drain queued updates to Iran after the user already got a response. */
 final class BackgroundIranRelay
@@ -41,11 +42,15 @@ final class BackgroundIranRelay
         $this->queue->pruneOld();
     }
 
-    /** Lightweight probe — does not block UI (called after response). */
+    /** Skip relay when the shared circuit is open — avoids an 8s sync-meta probe per webhook. */
     public function iranReachable(): bool
     {
+        if ((new IranCircuitBreaker)->isOpen()) {
+            return false;
+        }
+
         try {
-            $this->sync->call('sync-meta', []);
+            $this->sync->call('sync-meta', [], 3);
 
             return true;
         } catch (\Throwable) {

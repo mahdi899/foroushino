@@ -16,6 +16,7 @@ import { PerformanceProvider } from "@/components/performance/PerformanceProvide
 import { getPublicChatbotConfig } from "@/lib/chatbot/public";
 import { EMPTY_CHATBOT_PUBLIC } from "@/lib/chatbot/types";
 import { getPublicPerfConfig } from "@/lib/cache/public";
+import { DEFAULT_PUBLIC_PERF } from "@/lib/cache/types";
 import { getActiveSeminarPromo } from "@/lib/services/seminarPromo";
 import { getStudentDisplayName } from "@/lib/student/displayName";
 import { buildStudentFormPrefill } from "@/lib/student/formPrefill";
@@ -68,11 +69,12 @@ export default async function RootLayout({
 
   const [chatbotConfig, perfConfig, seminarPromo] = await Promise.all([
     isBareShellRoute ? Promise.resolve(EMPTY_CHATBOT_PUBLIC) : getPublicChatbotConfig(),
-    getPublicPerfConfig(),
+    isBareShellRoute ? Promise.resolve(DEFAULT_PUBLIC_PERF) : getPublicPerfConfig(),
     isBareShellRoute || hidePromoRoute ? Promise.resolve(null) : getActiveSeminarPromo(),
   ]);
   const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
-  const studentUser = !isAdminRoute ? await getCurrentStudent() : null;
+  const studentUser =
+    !isAdminRoute && !onFamilyHost ? await getCurrentStudent() : null;
   const studentLoggedIn = Boolean(studentUser);
   const studentDisplayName = studentUser ? getStudentDisplayName(studentUser) : null;
   const studentPrefill = studentUser ? buildStudentFormPrefill(studentUser) : null;

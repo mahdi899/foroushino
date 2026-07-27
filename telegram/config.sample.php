@@ -17,11 +17,9 @@ return [
     // Base URL of the sync API on the main Laravel server (host → server pull).
     'sync_base_url' => '__SYNC_BASE_URL__',
 
-    // HMAC-SHA256 secret shared with the main server (both directions).
-    'hmac_secret' => '__HMAC_SECRET__',
-
-    // Base64-encoded 32-byte AES-256-GCM key shared with the main server.
-    'aes_key' => '__AES_KEY__',
+    // Shared bearer token for host ↔ Iran bridge (HTTPS + JSON). Same value as
+    // `host_sync_secret` stored in Iran admin → Telegram infrastructure.
+    'host_sync_token' => '__HOST_SYNC_TOKEN__',
 
     // X-Proxy-Origin for host → server requests.
     'proxy_origin' => 'Telegram-Host-App',

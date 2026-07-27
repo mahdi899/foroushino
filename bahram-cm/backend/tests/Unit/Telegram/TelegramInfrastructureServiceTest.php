@@ -73,14 +73,17 @@ class TelegramInfrastructureServiceTest extends TestCase
 
     public function test_host_mode_uses_public_webhook_and_direct_telegram_api(): void
     {
-        config(['bahram.frontend_url' => 'https://site.example.com']);
+        config([
+            'bahram.frontend_url' => 'https://site.example.com',
+            'telegram_bot.host_api_proxy_url' => '',
+            'telegram_bot.api_base_url' => '',
+        ]);
 
         app(SettingService::class)->updateGroup(TelegramInfrastructureService::GROUP, [
             TelegramInfrastructureService::KEY => [
                 'bridge_type' => 'host',
                 'base_url' => 'https://bahram.rahai.online/rostam/telegram',
                 'host_sync_secret' => str_repeat('a', 32),
-                'host_encryption_key' => base64_encode(random_bytes(32)),
             ],
         ]);
         TelegramInfrastructureService::forgetCachedConfig();
@@ -99,5 +102,26 @@ class TelegramInfrastructureServiceTest extends TestCase
         );
         $this->assertSame(TelegramInfrastructureService::DEFAULT_BASE_URL, $service->telegramApiBaseUrl());
         $this->assertTrue($service->isConfigured());
+    }
+
+    public function test_host_mode_normalizes_http_base_url_to_https(): void
+    {
+        config(['bahram.frontend_url' => 'https://site.example.com']);
+
+        app(SettingService::class)->updateGroup(TelegramInfrastructureService::GROUP, [
+            TelegramInfrastructureService::KEY => [
+                'bridge_type' => 'host',
+                'base_url' => 'http://bahram.rahai.online/rostam/telegram',
+                'host_sync_secret' => str_repeat('a', 32),
+            ],
+        ]);
+        TelegramInfrastructureService::forgetCachedConfig();
+
+        $service = app(TelegramInfrastructureService::class);
+
+        $this->assertSame(
+            'https://bahram.rahai.online/rostam/telegram',
+            $service->hostAppBaseUrl(),
+        );
     }
 }

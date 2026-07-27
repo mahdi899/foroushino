@@ -144,6 +144,13 @@ try {
 
     (new Bot($router))->handle($update);
 
+    http_response_code(200);
+    echo 'ok';
+
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+
     try {
         (new \TelegramHost\Services\HostBackgroundSync($cache, $sync, $accounts))->refreshForUser($senderId);
     } catch (\Throwable $e) {
@@ -157,7 +164,8 @@ try {
     }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());
+    if (! headers_sent()) {
+        http_response_code(200);
+        echo 'ok';
+    }
 }
-
-http_response_code(200);
-echo 'ok';

@@ -16,9 +16,10 @@ import { sanitizeRichHtml } from '@/lib/sanitize';
 import { buildCommentAuthorFromStudent } from '@/lib/contentComments/author';
 import { getContentCommentsFromApi } from '@/lib/services/contentComments.server';
 import { getCurrentStudent } from '@/lib/student/session';
+import { REVALIDATE } from '@/lib/api/config';
+import { ensureStaticPageCache } from '@/lib/cache/staticPage';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = REVALIDATE.seminars;
 
 export async function generateMetadata({
   params,
@@ -43,6 +44,7 @@ export default async function PublicSeminarPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await ensureStaticPageCache();
   const { slug } = await params;
   const [result, student, commentsResult] = await Promise.all([
     getPublicSeminarBySlug(slug),

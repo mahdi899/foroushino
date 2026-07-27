@@ -29,9 +29,10 @@ class WebhookController
         $update = $this->ingest->ingest($bot, $payload);
 
         if ($update !== null && $update->wasRecentlyCreated) {
-            // Process inline in the webhook request — Worker already acks via Laravel 200.
-            // Avoids silent failures when Horizon/telegram-inbound queue is down.
-            ProcessTelegramUpdateJob::dispatchSync($update->id);
+            // Queue-first: return 200 immediately; stale/failed updates are retried by
+            // telegram:reconcile-webhook / telegram:retry-failed-updates.
+            ProcessTelegramUpdateJob::dispatch($update->id)
+                ->onQueue((string) config('telegram_bot.queues.inbound', 'telegram-inbound'));
         }
 
         return response()->json(['ok' => true]);

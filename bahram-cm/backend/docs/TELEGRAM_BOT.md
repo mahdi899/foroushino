@@ -16,8 +16,8 @@ Webhook:
 - تلگرام webhook را به URL ورکر ثبت می‌کند (نه مستقیم rostami.app)
 - Worker هدر `Authorization: Bearer PROXY_SHARED_TOKEN` را به Laravel اضافه می‌کند
 - Laravel secret را با `X-Telegram-Bot-Api-Secret-Token` چک می‌کند
-- آپدیت **همان لحظه** پردازش می‌شود (`dispatchSync`) — بدون وابستگی به صف inbound
-- پاسخ‌ها با `TELEGRAM_OUTBOUND_SYNC=true` مستقیم از همان request ارسال می‌شوند
+- آپدیت در صف `telegram-inbound` قرار می‌گیرد و Laravel فوراً `200` برمی‌گرداند؛ reconcile برای pending/stale
+- پاسخ‌ها پیش‌فرض از صف `telegram-replies` (`TELEGRAM_OUTBOUND_SYNC=false`) — برای دیباگ می‌توان `true` گذاشت
 
 nginx مسیر webhook را مستقیم به PHP-FPM می‌فرستد (bypass Next.js) —
 `deploy/nginx/rostami-app-origin.conf`
@@ -30,7 +30,7 @@ TELEGRAM_BOT_USERNAME=
 TELEGRAM_WEBHOOK_SECRET=
 TELEGRAM_BOT_KEY=production
 TELEGRAM_WEBHOOK_BASE_URL=https://broken-mountain-6b4f.shokspy.workers.dev
-TELEGRAM_OUTBOUND_SYNC=true
+TELEGRAM_OUTBOUND_SYNC=false
 PROXY_SHARED_TOKEN=
 ```
 
