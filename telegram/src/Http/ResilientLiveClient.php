@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Http;
 
 use TelegramHost\Services\IranFailureReporter;
+use TelegramHost\Support\IranSyncFailureException;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
@@ -78,8 +79,15 @@ final class ResilientLiveClient
 
         try {
             return $call();
+        } catch (IranSyncFailureException $e) {
+            $this->reporter->reportFailure($telegramUserId, $operation, $e);
+
+            return [
+                'ok' => false,
+                'offline' => true,
+            ];
         } catch (\Throwable $e) {
-            $this->reporter->report($telegramUserId, $operation, $e->getMessage());
+            $this->reporter->reportUnexpected($telegramUserId, $operation, $e->getMessage());
 
             return [
                 'ok' => false,

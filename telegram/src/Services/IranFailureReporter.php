@@ -6,46 +6,61 @@ namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
-use TelegramHost\Support\IranCircuitBreaker;
+use TelegramHost\Support\IranSyncFailureException;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
  * Notifies the support reports group when the main (Iran) server is unreachable.
  *
- * Throttled via {@see IranCircuitBreaker}: while Iran stays down, only the
- * first failure and then one heartbeat every ~10 minutes actually send a
- * Telegram message — every other failed call during the same outage is
- * recorded silently instead of spamming the reports group.
+ * Does NOT own a circuit breaker anymore — the notification decision
+ * (`shouldNotify`/`wasAlreadyDown`) is made once, by {@see \TelegramHost\Http\SyncClient},
+ * and carried on {@see IranSyncFailureException}. A second breaker instance
+ * here used to double-record every failure (and every circuit-open skip),
+ * which kept the circuit open indefinitely under normal traffic.
  */
 final class IranFailureReporter
 {
-    private readonly IranCircuitBreaker $breaker;
-
     /** @param array<string, mixed> $hostConfig */
     public function __construct(
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
         private readonly AccountCache $accounts,
         private readonly array $hostConfig,
-    ) {
-        $this->breaker = new IranCircuitBreaker();
-    }
+    ) {}
 
-    public function report(int $telegramUserId, string $operation, ?string $technicalDetail = null): void
+    /**
+     * Report a failure coming from a real Iran sync/live call.
+     */
+    public function reportFailure(int $telegramUserId, string $operation, IranSyncFailureException $exception): void
     {
-        $outcome = $this->breaker->recordFailure();
-        if (! $outcome['shouldNotify']) {
+        if (! $exception->shouldNotify) {
             return;
         }
 
+        $this->send($telegramUserId, $operation, $exception->wasAlreadyDown, $exception->getMessage());
+    }
+
+    /**
+     * Defensive fallback for exceptions that did not go through SyncClient
+     * (should not normally happen since every Iran call is routed through
+     * it) — log only, never mutate the circuit or spam the reports group
+     * for something we can't classify as a real outage.
+     */
+    public function reportUnexpected(int $telegramUserId, string $operation, string $technicalDetail): void
+    {
+        error_log("[telegram-host] unexpected failure ({$operation}) for user {$telegramUserId}: {$technicalDetail}");
+    }
+
+    private function send(int $telegramUserId, string $operation, bool $wasAlreadyDown, ?string $technicalDetail): void
+    {
         $reportsChat = $this->resolveReportsChatId();
         if ($reportsChat === null || $reportsChat === '') {
             return;
         }
 
         $label = $this->accounts->displayLabel($telegramUserId);
-        $title = $outcome['wasAlreadyDown']
+        $title = $wasAlreadyDown
             ? 'قطع ارتباط با سرور اصلی (ربات هاست) — همچنان ادامه دارد'
             : 'قطع ارتباط با سرور اصلی (ربات هاست)';
         $lines = [

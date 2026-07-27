@@ -81,6 +81,31 @@ final class IranCircuitBreaker
         });
     }
 
+    /**
+     * Called instead of {@see recordFailure()} when a request was skipped
+     * because the circuit was already open (no real network attempt was
+     * made). Must NOT touch `consecutive_failures`/`last_failure_at` — doing
+     * so would keep restarting the cooldown on every skipped call under
+     * traffic and the circuit would never close. Only decides (and
+     * throttles) whether a "still down" heartbeat should be sent.
+     *
+     * @return array{shouldNotify: bool, wasAlreadyDown: bool}
+     */
+    public function peekOpenNotification(): array
+    {
+        return $this->withLock(function (array $state, callable $save): array {
+            $now = time();
+            $shouldNotify = ($now - (int) ($state['notified_at'] ?? 0)) >= self::RENOTIFY_AFTER_SECONDS;
+
+            if ($shouldNotify) {
+                $state['notified_at'] = $now;
+                $save($state);
+            }
+
+            return ['shouldNotify' => $shouldNotify, 'wasAlreadyDown' => true];
+        });
+    }
+
     /** Call after a successful Iran request. Returns true if the link had been marked down. */
     public function recordSuccess(): bool
     {

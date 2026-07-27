@@ -57,6 +57,30 @@ final class HostSupportService
     }
 
     /**
+     * Reads the cached reports group chat id and, if it's still empty (e.g.
+     * a fresh install that never got a bootstrap push yet), tries a single
+     * bootstrap refresh from Iran before giving up. Cheap even when Iran is
+     * down: SyncClient fails fast once the circuit is open, no timeout wait.
+     */
+    private function refreshedReportsGroupChatId(): ?string
+    {
+        $reportsChat = $this->cache->reportsGroupChatId();
+        if ($reportsChat !== null && $reportsChat !== '') {
+            return $reportsChat;
+        }
+
+        try {
+            $this->cache->refreshAll();
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] support bootstrap refresh failed: '.$e->getMessage());
+
+            return null;
+        }
+
+        return $this->cache->reportsGroupChatId();
+    }
+
+    /**
      * @param array<string, mixed> $message
      */
     public function handleUserMessage(int $chatId, int $telegramUserId, array $message): void
@@ -68,10 +92,10 @@ final class HostSupportService
             $category = 'other';
         }
 
-        $reportsChat = $this->cache->reportsGroupChatId();
+        $reportsChat = $this->refreshedReportsGroupChatId();
         if ($reportsChat === null || $reportsChat === '') {
             $this->conversations->set($telegramUserId, 'idle', []);
-            $this->api->sendMessage($chatId, '⛔ گروه گزارشات هنوز تنظیم نشده است. لطفاً بعداً دوباره تلاش کنید.', [
+            $this->api->sendMessage($chatId, '⛔ گروه گزارشات هنوز تنظیم نشده است. لطفاً از پنل ادمین سایت «گروه گزارشات» را تنظیم کنید یا کمی بعد دوباره تلاش کنید.', [
                 'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
             ]);
 
@@ -129,7 +153,8 @@ final class HostSupportService
                     'forward_message_id' => $forwardMessageId,
                 ]);
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] support forward failed (category='.$category.', user='.$telegramUserId.'): '.$e->getMessage());
             $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی ناموفق بود. لطفاً دوباره تلاش کنید.');
 
             return;

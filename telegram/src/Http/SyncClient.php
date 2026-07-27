@@ -7,6 +7,7 @@ namespace TelegramHost\Http;
 use TelegramHost\Support\AesGcmCipher;
 use TelegramHost\Support\HmacClient;
 use TelegramHost\Support\IranCircuitBreaker;
+use TelegramHost\Support\IranSyncFailureException;
 
 /**
  * Talks to the main Laravel server's `telegram-host` sync API.
@@ -40,7 +41,18 @@ final class SyncClient
     public function call(string $path, array $payload = [], int $timeoutSeconds = 8): array
     {
         if ($this->breaker->isOpen()) {
-            throw new \RuntimeException('Sync request skipped: Iran main server is currently marked unreachable (circuit open).');
+            // Fail fast — no network attempt, and critically no recordFailure()
+            // here: that used to refresh last_failure_at on every single skip,
+            // which meant the 20s cooldown never actually elapsed while users
+            // kept messaging the bot (see IranSyncFailureException docblock).
+            $outcome = $this->breaker->peekOpenNotification();
+
+            throw new IranSyncFailureException(
+                'Sync request skipped: Iran main server is currently marked unreachable (circuit open).',
+                shouldNotify: $outcome['shouldNotify'],
+                wasAlreadyDown: true,
+                circuitOpenSkip: true,
+            );
         }
 
         try {
@@ -49,9 +61,15 @@ final class SyncClient
 
             return $result;
         } catch (\Throwable $e) {
-            $this->breaker->recordFailure();
+            $outcome = $this->breaker->recordFailure();
 
-            throw $e;
+            throw new IranSyncFailureException(
+                $e->getMessage(),
+                shouldNotify: $outcome['shouldNotify'],
+                wasAlreadyDown: $outcome['wasAlreadyDown'],
+                circuitOpenSkip: false,
+                previous: $e,
+            );
         }
     }
 

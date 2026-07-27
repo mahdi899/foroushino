@@ -152,6 +152,53 @@ final class AccountCache
         return $account !== null && ! empty($account['mobile_verified_at']);
     }
 
+    /**
+     * True when the local row is verified (mobile confirmed) but has no
+     * Iran `user_id` yet — i.e. it was created entirely by
+     * {@see storeLocalOnlyRegistration()} while Iran was unreachable and was
+     * never actually reconciled with a real account on Iran. Left alone,
+     * such a user stays a host-only "ghost": ownership, referral, family and
+     * admin data never populate because Iran has no matching record.
+     */
+    public function needsIranReconcile(int $telegramUserId): bool
+    {
+        $account = $this->get($telegramUserId);
+
+        return $account !== null
+            && ! empty($account['mobile_verified_at'])
+            && empty($account['user_id']);
+    }
+
+    /** @return array{mobile: string, display_name: string}|null */
+    public function pendingRegistration(int $telegramUserId): ?array
+    {
+        if (! $this->needsIranReconcile($telegramUserId)) {
+            return null;
+        }
+
+        $account = $this->get($telegramUserId);
+        $mobile = trim((string) ($account['mobile'] ?? ''));
+        $displayName = trim((string) ($account['display_name'] ?? ''));
+        if ($mobile === '' || $displayName === '') {
+            return null;
+        }
+
+        return ['mobile' => $mobile, 'display_name' => $displayName];
+    }
+
+    /** Seconds since the row was last touched — used to throttle reconcile retries. */
+    public function secondsSinceUpdate(int $telegramUserId): int
+    {
+        $account = $this->get($telegramUserId);
+        if ($account === null) {
+            return PHP_INT_MAX;
+        }
+
+        $ts = strtotime((string) ($account['updated_at'] ?? ''));
+
+        return $ts !== false && $ts > 0 ? max(0, time() - $ts) : PHP_INT_MAX;
+    }
+
     public function isBotAdmin(int $telegramUserId): bool
     {
         $account = $this->get($telegramUserId);

@@ -116,6 +116,38 @@ final class MessageHandler
             return;
         }
 
+        if (in_array($conversation['state'], ['admin_panel', 'admin_waiting_input'], true)) {
+            // Reaching MessageHandler at all while in this state means the
+            // synchronous relay to Iran (see DelegationDetector +
+            // IranSyncRelay) just failed — Iran normally answers every
+            // admin-panel keystroke directly and the host never gets here.
+            if ($this->isAdminExitText($text)) {
+                $this->conversations->set($telegramUserId, 'idle', []);
+                $this->sendMainMenu($chatId, $telegramUserId);
+
+                return;
+            }
+
+            if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
+                // User gave up on the panel and tapped a normal menu button —
+                // let them out locally instead of leaving them stuck.
+                $this->conversations->set($telegramUserId, 'idle', []);
+                $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
+
+                return;
+            }
+
+            // Any other admin-only button: keep the local state as-is so the
+            // next press retries the relay once Iran is reachable again.
+            $this->api->sendMessage(
+                $chatId,
+                TelegramCustomEmoji::tag('warning')
+                .' پنل ادمین فعلاً به سرور اصلی وصل نمی‌شود. لطفاً چند لحظه دیگر دوباره تلاش کنید.',
+            );
+
+            return;
+        }
+
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
             // Local cache first — instant reply. Iran sync happens in the
             // background after the reply is sent (see HostBackgroundSync in
@@ -206,6 +238,14 @@ final class MessageHandler
         ];
 
         if ($this->iranSync->tryRelay($chatId, $telegramUserId, $update)) {
+            // Iran now owns this conversation server-side. Mirror that
+            // locally so DelegationDetector forwards every subsequent
+            // admin-panel keystroke to Iran instead of the host trying (and
+            // failing) to interpret admin-only button labels itself — that
+            // gap was the actual reason the admin panel "stopped working"
+            // after the first button press.
+            $this->conversations->set($telegramUserId, 'admin_panel', []);
+
             return;
         }
 
@@ -215,6 +255,11 @@ final class MessageHandler
             .' پنل ادمین فعلاً به سرور اصلی وصل نمی‌شود. منوی عادی از کش محلی کار می‌کند؛ بعد از وصل شدن دوباره «پنل ادمین» را بزنید.',
             ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
         );
+    }
+
+    private function isAdminExitText(string $text): bool
+    {
+        return in_array(trim($text), ['خروج از پنل ادمین', '❌ خروج از پنل ادمین'], true);
     }
 
     private function sendMainMenu(int $chatId, int $telegramUserId): void

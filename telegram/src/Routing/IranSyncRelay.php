@@ -7,6 +7,7 @@ namespace TelegramHost\Routing;
 use TelegramHost\Http\LiveClient;
 use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Services\IranFailureReporter;
+use TelegramHost\Support\IranSyncFailureException;
 use TelegramHost\Telegram\BotApiClient;
 
 /** Tries Iran process-update; failures are queued silently (no user-facing outage text). */
@@ -34,12 +35,20 @@ final class IranSyncRelay
                 return true;
             }
 
-            $this->reporter->report($telegramUserId, 'پردازش روی سرور اصلی', (string) ($result['message'] ?? 'relay_rejected'));
+            // Iran answered successfully but rejected the update — this is
+            // NOT a connectivity failure, so it must never touch the circuit
+            // breaker or spam the reports group with a "server down" alert.
+            error_log('[telegram-host] relay rejected: '.(string) ($result['message'] ?? 'relay_rejected'));
+            $this->queue->push($update);
+
+            return false;
+        } catch (IranSyncFailureException $e) {
+            $this->reporter->reportFailure($telegramUserId, 'پردازش روی سرور اصلی', $e);
             $this->queue->push($update);
 
             return false;
         } catch (\Throwable $e) {
-            $this->reporter->report($telegramUserId, 'پردازش روی سرور اصلی', $e->getMessage());
+            $this->reporter->reportUnexpected($telegramUserId, 'پردازش روی سرور اصلی', $e->getMessage());
             $this->queue->push($update);
 
             return false;

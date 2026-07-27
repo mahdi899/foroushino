@@ -27,7 +27,16 @@ final class AccountSyncCoordinator
             return false;
         }
 
-        if (! $force && ! $this->accounts->shouldAttemptIranPull(
+        // A local-only registration (Iran was unreachable at contact/name
+        // time) never gets picked up by the normal verified/unverified
+        // throttle above — it's already "verified" locally with a fresh
+        // snapshot-less row. Bypass the throttle (rate-limited on its own,
+        // via secondsSinceUpdate) so it actually gets reconciled once Iran
+        // is reachable again, instead of staying a host-only ghost forever.
+        $needsReconcile = $this->accounts->needsIranReconcile($telegramUserId)
+            && $this->accounts->secondsSinceUpdate($telegramUserId) >= self::RETRY_INTERVAL_UNVERIFIED_SECONDS;
+
+        if (! $force && ! $needsReconcile && ! $this->accounts->shouldAttemptIranPull(
             $telegramUserId,
             self::REFRESH_INTERVAL_VERIFIED_SECONDS,
             self::RETRY_INTERVAL_UNVERIFIED_SECONDS,
@@ -41,6 +50,9 @@ final class AccountSyncCoordinator
                 'include_snapshot' => true,
             ]);
             if (empty($response['found']) || ! is_array($response['account'] ?? null)) {
+                if ($needsReconcile) {
+                    $this->reconcileLocalRegistration($telegramUserId);
+                }
                 if (! $force) {
                     $this->accounts->recordPullAttempt($telegramUserId);
                 }
@@ -60,6 +72,37 @@ final class AccountSyncCoordinator
             }
 
             return $this->accounts->isVerified($telegramUserId);
+        }
+    }
+
+    /**
+     * Replays the registration Iran never received (contact + name) for a
+     * user who was finished entirely on the host while Iran was down. This
+     * is what actually turns a host-only "ghost" account into a real Iran
+     * user — a plain account/fetch alone can never find one, since Iran
+     * never had a record to find.
+     */
+    private function reconcileLocalRegistration(int $telegramUserId): void
+    {
+        $pending = $this->accounts->pendingRegistration($telegramUserId);
+        if ($pending === null) {
+            return;
+        }
+
+        try {
+            $this->sync->call('registration/contact', [
+                'telegram_user_id' => $telegramUserId,
+                'phone' => $pending['mobile'],
+            ]);
+            $response = $this->sync->call('registration/name', [
+                'telegram_user_id' => $telegramUserId,
+                'name' => $pending['display_name'],
+            ]);
+            if (is_array($response['account'] ?? null)) {
+                $this->accounts->store($telegramUserId, $response['account']);
+            }
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] local registration reconcile: '.$e->getMessage());
         }
     }
 }
