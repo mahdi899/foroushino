@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Save } from 'lucide-react';
-import { updateReferenceChannel } from '../../actions';
+import { updateReferenceChannel } from '../actions';
 import { formatToman, type AdminReferenceChannelDetail } from '@/lib/admin/academyTypes';
 
 type DestinationOption = { id: number; title: string };

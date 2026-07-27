@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus } from 'lucide-react';
-import { addReferenceChannelEntitlement } from '../../actions';
+import { addReferenceChannelEntitlement } from '../actions';
 import type { AdminReferenceChannelDetail } from '@/lib/admin/academyTypes';
 
 export function ReferenceChannelEntitlementsPanel({ channel }: { channel: AdminReferenceChannelDetail }) {
