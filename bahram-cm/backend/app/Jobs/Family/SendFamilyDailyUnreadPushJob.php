@@ -15,8 +15,8 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Daily unread digest for Family PWA — one reminder per subscribed member
- * who has unseen posts (not per-post Telegram-style spam).
+ * Hourly unread digest for Family PWA — at most one reminder per hour per
+ * subscribed member who has unseen posts (not per-post spam).
  */
 class SendFamilyDailyUnreadPushJob implements ShouldQueue
 {
@@ -38,19 +38,20 @@ class SendFamilyDailyUnreadPushJob implements ShouldQueue
         }
 
         if (! $webPush->isConfigured()) {
-            Log::info('family.daily_push.skipped', ['reason' => 'vapid_unconfigured']);
+            Log::info('family.unread_push.skipped', ['reason' => 'vapid_unconfigured']);
 
             return;
         }
 
         $url = $this->targetUrl();
+        $cooldownMinutes = max(1, (int) config('webpush.family_daily.cooldown_minutes', 55));
         $sent = 0;
         $skipped = 0;
 
         PushSubscription::query()
             ->where('channel', 'family')
             ->orderBy('id')
-            ->chunkById(100, function ($subscriptions) use ($webPush, $feed, $url, &$sent, &$skipped) {
+            ->chunkById(100, function ($subscriptions) use ($webPush, $feed, $url, $cooldownMinutes, &$sent, &$skipped) {
                 /** @var \Illuminate\Support\Collection<int, PushSubscription> $subscriptions */
                 $userIds = $subscriptions->pluck('user_id')->unique()->values();
 
@@ -87,10 +88,10 @@ class SendFamilyDailyUnreadPushJob implements ShouldQueue
                         continue;
                     }
 
-                    // Idempotent within the same calendar day (Tehran timezone via APP_TIMEZONE).
+                    // At most one digest per cooldown window (default ~hourly).
                     if (
-                      $subscription->last_notified_at &&
-                      $subscription->last_notified_at->isSameDay(now())
+                        $subscription->last_notified_at &&
+                        $subscription->last_notified_at->greaterThan(now()->subMinutes($cooldownMinutes))
                     ) {
                         $skipped++;
 
@@ -98,7 +99,7 @@ class SendFamilyDailyUnreadPushJob implements ShouldQueue
                     }
 
                     $body = $unread === 1
-                        ? 'امروز ۱ پیام جدید در خانواده منتظرته — بیا یه سر بزن.'
+                        ? (string) config('webpush.family_daily.body_one', '۱ پیام جدید در خانواده منتظرته — بیا یه سر بزن.')
                         : str_replace(
                             ':count',
                             number_format($unread),
@@ -109,7 +110,7 @@ class SendFamilyDailyUnreadPushJob implements ShouldQueue
                         'title' => (string) config('webpush.family_daily.title', 'خانواده'),
                         'body' => $body,
                         'url' => $url,
-                        'tag' => 'family-daily-unread',
+                        'tag' => 'family-unread',
                         'badge' => min($unread, 99),
                     ]);
 
@@ -119,7 +120,7 @@ class SendFamilyDailyUnreadPushJob implements ShouldQueue
                 }
             });
 
-        Log::info('family.daily_push.done', compact('sent', 'skipped'));
+        Log::info('family.unread_push.done', compact('sent', 'skipped'));
     }
 
     private function unreadCountFor(FeedService $feed, FamilyMembership $membership, int $afterId): int
@@ -144,7 +145,7 @@ class SendFamilyDailyUnreadPushJob implements ShouldQueue
 
             return max(0, (int) $query->count());
         } catch (\Throwable $e) {
-            Log::warning('family.daily_push.unread_failed', [
+            Log::warning('family.unread_push.unread_failed', [
                 'user_id' => $membership->user_id,
                 'message' => $e->getMessage(),
             ]);

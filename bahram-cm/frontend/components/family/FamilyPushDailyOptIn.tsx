@@ -11,7 +11,7 @@ import {
 } from '@/lib/family/pwa-push';
 
 /**
- * Soft opt-in for daily unread Web Push — shown to logged-in members
+ * Soft opt-in for unread Web Push — shown to logged-in members
  * inside the installed Family PWA when permission is not yet granted.
  */
 export function FamilyPushDailyOptIn({ enabled = true }: { enabled?: boolean }) {
@@ -66,7 +66,7 @@ export function FamilyPushDailyOptIn({ enabled = true }: { enabled?: boolean }) 
   };
 
   return (
-    <div className="family-push-optin" role="region" aria-label="یادآوری روزانه">
+    <div className="family-push-optin" role="region" aria-label="یادآوری پیام جدید">
       <div className="family-push-optin__card">
         <button type="button" className="family-push-optin__close" aria-label="بستن" onClick={dismiss}>
           <X size={16} strokeWidth={1.85} aria-hidden />
@@ -75,9 +75,9 @@ export function FamilyPushDailyOptIn({ enabled = true }: { enabled?: boolean }) 
           <Bell size={18} strokeWidth={1.85} />
         </span>
         <div className="family-push-optin__copy">
-          <p className="family-push-optin__title">یادآوری روزانه خانواده</p>
+          <p className="family-push-optin__title">یادآوری پیام جدید</p>
           <p className="family-push-optin__sub">
-            هر روز یک نوتیف کوتاه می‌آید اگر پیام جدیدی باشد — نه برای هر پیام.
+            هر ساعت یک نوتیف کوتاه می‌آید اگر پیام جدیدی باشد — نه برای هر پیام.
           </p>
           {error ? <p className="family-push-optin__error">{error}</p> : null}
         </div>

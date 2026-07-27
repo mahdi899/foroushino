@@ -39,9 +39,9 @@ Schedule::job(new CalculateFamilyDnaSnapshotJob(), config('family.queues.analyti
 
 Schedule::command('family:publish-scheduled')->everyMinute()->onOneServer();
 
-// Family PWA — daily unread reminder (default 14:00 Asia/Tehran via APP_TIMEZONE).
+// Family PWA — hourly unread digest (only if member has unseen posts).
 Schedule::job(new SendFamilyDailyUnreadPushJob(), config('family.queues.notifications', 'family-notifications'))
-    ->dailyAt((string) config('webpush.family_daily.send_at', '14:00'))
+    ->hourly()
     ->when(fn () => (bool) config('webpush.family_daily.enabled', true))
     ->onOneServer();
 

@@ -264,11 +264,11 @@ function FamilyMenuSheet({
                     <BellOff size={18} strokeWidth={1.85} aria-hidden />
                   )}
                   <span className="family-menu-item__text">
-                    <span className="family-menu-item__title">یادآوری روزانه</span>
+                    <span className="family-menu-item__title">یادآوری پیام جدید</span>
                     <span className="family-menu-item__sub">
                       {pushSubscribed
-                        ? 'فعال — هر روز اگر پیام جدید باشد'
-                        : 'یک نوتیف در روز، نه برای هر پیام'}
+                        ? 'فعال — هر ساعت اگر پیام جدید باشد'
+                        : 'حداکثر یک نوتیف در ساعت، نه برای هر پیام'}
                     </span>
                   </span>
                 </button>
