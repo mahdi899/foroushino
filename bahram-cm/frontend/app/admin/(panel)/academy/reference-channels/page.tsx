@@ -57,8 +57,12 @@ export default async function ReferenceChannelsPage() {
                       {c.status === 'published' ? <Badge tone="success">منتشر</Badge> : <Badge>پیش‌نویس</Badge>}
                     </span>
                   }
-                  meta={`${formatToman(c.price)} · ${c.telegram_destination_title ?? 'بدون مقصد'}`}
-                  actions={<EditLink href={`/admin/academy/reference-channels/${c.id}`} />}
+                  fields={[
+                    { label: 'قیمت', value: formatToman(c.price) },
+                    { label: 'مقصد', value: c.telegram_destination_title ?? 'بدون مقصد' },
+                    { label: 'دسترسی‌ها', value: c.entitlements_count.toLocaleString('fa-IR') },
+                  ]}
+                  footer={<EditLink href={`/admin/academy/reference-channels/${c.id}`} />}
                 />
               ))}
             >
