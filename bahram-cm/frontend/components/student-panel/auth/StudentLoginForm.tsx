@@ -262,11 +262,10 @@ export function StudentLoginForm({
                   onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
                   onBlur={() => setPhoneTouched(true)}
                   onFocus={(e) => {
-                    // Popup modal already pins the card above the keyboard via
-                    // `useVisualViewportBox`'s `keyboardInset` padding — an extra
-                    // `scrollIntoView` here fought that layout and caused the
-                    // laggy jump/scroll on mobile. Only the full-page variant
-                    // (which lives in a plain scrollable shell) still needs it.
+                    // Popup modal already pins the card inside the visible
+                    // visualViewport shell — an extra `scrollIntoView` fought
+                    // that layout and caused the laggy jump on mobile. Only the
+                    // full-page variant still needs it.
                     if (!isPage) return;
                     const target = e.currentTarget;
                     window.setTimeout(() => {

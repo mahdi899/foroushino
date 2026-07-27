@@ -5,14 +5,22 @@ namespace App\Http\Controllers\Api\V1\Student;
 use App\Enums\InAppNotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\NotificationRecipient;
+use App\Services\InAppNotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
+    public function __construct(
+        private readonly InAppNotificationService $notifications,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
+        // Collapse historical welcome spam (same bug as repeated first-login side effects).
+        $this->notifications->dedupeWelcomeNotifications($request->user());
+
         $perPage = min(max((int) $request->input('per_page', 50), 1), 100);
 
         $query = $request->user()->notificationRecipients()

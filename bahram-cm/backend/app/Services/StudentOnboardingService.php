@@ -8,9 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Handles the student's first entry into /panel: recording first_login_at,
- * sending a one-time welcome SMS, and computing the onboarding checklist
- * shown on the dashboard. The in-app "welcome" notification is intentionally
- * not sent — disabled per product decision.
+ * sending a one-time welcome (in-app notification + SMS once per mobile),
+ * and computing the onboarding checklist shown on the dashboard.
  */
 class StudentOnboardingService
 {
@@ -18,27 +17,37 @@ class StudentOnboardingService
 
     public function __construct(
         private readonly SmsService $sms,
+        private readonly InAppNotificationService $notifications,
         private readonly AdminTelegramLogService $adminTelegram,
     ) {}
 
-    /** Idempotent: only fires side effects the very first time. */
+    /** Idempotent: welcome SMS + in-app notify only once per user (first claim wins). */
     public function handleFirstLogin(User $user): void
     {
         if ($user->first_login_at !== null) {
             return;
         }
 
-        DB::transaction(function () use ($user) {
-            $user->refresh();
-            if ($user->first_login_at !== null) {
+        $claimed = false;
+
+        DB::transaction(function () use ($user, &$claimed) {
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->first();
+            if ($locked === null || $locked->first_login_at !== null) {
                 return;
             }
 
-            $user->update(['first_login_at' => now()]);
-
-            app(\App\Actions\Identity\EnsureIdentityProfile::class)($user);
+            $locked->update(['first_login_at' => now()]);
+            app(\App\Actions\Identity\EnsureIdentityProfile::class)($locked);
+            $user->refresh();
+            $claimed = true;
         });
 
+        // Concurrent callers must not re-send welcome after another request already claimed.
+        if (! $claimed) {
+            return;
+        }
+
+        $this->notifications->welcome($user);
         $this->adminTelegram->notifyStudentFirstLogin($user->fresh());
 
         if (filled($user->mobile)) {

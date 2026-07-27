@@ -6,13 +6,14 @@ export type FeedListItem =
   | { kind: 'install-promo'; key: string; afterPostCount: number }
   | { kind: 'post'; key: string; post: FamilyPost };
 
-/** Bubble chrome: padding, meta row, reactions strip. */
-const POST_CHROME_HEIGHT = 88;
+/** Bubble chrome: meta row + reactions strip (measured ≈72–96 on mobile). */
+const POST_CHROME_HEIGHT = 76;
 
 function estimateTextHeight(text: string | null | undefined): number {
   const chars = text?.length ?? 0;
   if (chars <= 0) return 0;
-  return Math.max(24, Math.ceil(chars / 34) * 22);
+  // Persian glyphs are wider than Latin; ~28 chars/line on a ~340px bubble.
+  return Math.max(22, Math.ceil(chars / 28) * 24);
 }
 
 function estimateBlockHeight(block: FamilyPostBlock): number {
@@ -22,17 +23,17 @@ function estimateBlockHeight(block: FamilyPostBlock): number {
     case 'image': {
       const media = block.media;
       if (media?.width && media?.height && media.width > 0) {
-        // Feed content ≈ 360px wide on phones; clamp to typical bubble max.
-        return Math.min(420, Math.max(120, Math.round((360 * media.height) / media.width)));
+        // Mobile feed bubble ≈ 340px content width after list padding.
+        return Math.min(420, Math.max(120, Math.round((340 * media.height) / media.width)));
       }
-      return 240;
+      return 220;
     }
     case 'video': {
       const media = block.media;
       if (media?.width && media?.height && media.width > 0) {
-        return Math.min(480, Math.max(160, Math.round((360 * media.height) / media.width)));
+        return Math.min(480, Math.max(160, Math.round((340 * media.height) / media.width)));
       }
-      return 280;
+      return 260;
     }
     case 'audio':
       return 72;

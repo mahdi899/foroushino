@@ -94,15 +94,65 @@ class InAppNotificationService
         );
     }
 
+    /** Once per user — never create a second welcome notification. */
     public function welcome(User $user): NotificationRecipient
     {
-        return $this->notifyUser(
-            $user,
-            'به آکادمی بهرام رستمی خوش آمدی!',
-            'خوشحالیم که همراه ما هستی. از داشبورد پنل کاربری‌ات شروع کن.',
-            InAppNotificationType::Welcome,
-            '/panel',
-        );
+        return DB::transaction(function () use ($user) {
+            $existing = $this->existingWelcomeRecipient($user->id, forUpdate: true);
+
+            if ($existing) {
+                $this->purgeDuplicateWelcomes($user->id, $existing->id);
+
+                return $existing->loadMissing('notification');
+            }
+
+            return $this->notifyUser(
+                $user,
+                'به آکادمی بهرام رستمی خوش آمدی!',
+                'خوشحالیم که همراه ما هستی. از داشبورد پنل کاربری‌ات شروع کن.',
+                InAppNotificationType::Welcome,
+                '/panel',
+            );
+        });
+    }
+
+    /** Collapse historical welcome spam so inbox/family shows only one. */
+    public function dedupeWelcomeNotifications(User $user): void
+    {
+        $keep = $this->existingWelcomeRecipient($user->id, forUpdate: false);
+        if ($keep) {
+            $this->purgeDuplicateWelcomes($user->id, $keep->id);
+        }
+    }
+
+    private function existingWelcomeRecipient(int $userId, bool $forUpdate): ?NotificationRecipient
+    {
+        $query = NotificationRecipient::query()
+            ->where('user_id', $userId)
+            ->whereHas('notification', fn ($q) => $q->where('type', InAppNotificationType::Welcome->value))
+            ->orderBy('id');
+
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
+    }
+
+    /** Keep the oldest welcome; drop later duplicates from the same user. */
+    private function purgeDuplicateWelcomes(int $userId, int $keepRecipientId): void
+    {
+        $duplicateIds = NotificationRecipient::query()
+            ->where('user_id', $userId)
+            ->where('id', '!=', $keepRecipientId)
+            ->whereHas('notification', fn ($q) => $q->where('type', InAppNotificationType::Welcome->value))
+            ->pluck('id');
+
+        if ($duplicateIds->isEmpty()) {
+            return;
+        }
+
+        NotificationRecipient::query()->whereIn('id', $duplicateIds)->delete();
     }
 
     public function orderPaid(Order $order): ?NotificationRecipient

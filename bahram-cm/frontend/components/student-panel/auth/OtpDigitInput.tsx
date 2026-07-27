@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 
 type OtpDigitInputProps = {
@@ -31,8 +31,11 @@ export function OtpDigitInput({
 
   const focusIndex = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(length - 1, index));
-    inputsRef.current[clamped]?.focus();
-    inputsRef.current[clamped]?.select();
+    const input = inputsRef.current[clamped];
+    // preventScroll keeps iOS/Android from panning the page behind login/
+    // checkout modals when digits auto-advance.
+    input?.focus({ preventScroll: true });
+    input?.select();
   }, [length]);
 
   const updateValue = useCallback(

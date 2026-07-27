@@ -89,12 +89,15 @@ export function CommentsPanel({
   const pinLatestComment = useCallback((behavior: ScrollBehavior = 'auto') => {
     const list = listRef.current;
     if (!list) return;
-    const anchor = bottomRef.current;
-    if (anchor && typeof anchor.scrollIntoView === 'function') {
-      anchor.scrollIntoView({ block: 'end', behavior });
+    // Never use scrollIntoView here — on mobile it can pan ancestors / the
+    // visual viewport behind the comments overlay when the keyboard opens.
+    // Scroll only the comments list itself.
+    const top = list.scrollHeight;
+    if (behavior === 'smooth' && typeof list.scrollTo === 'function') {
+      list.scrollTo({ top, behavior: 'smooth' });
       return;
     }
-    list.scrollTo({ top: list.scrollHeight, behavior });
+    list.scrollTop = top;
   }, []);
 
   const scrollToLatest = useCallback(

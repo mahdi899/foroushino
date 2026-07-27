@@ -5,7 +5,9 @@ import { useVisualViewportBox } from '@/lib/hooks/useVisualViewportBox';
 
 /** Keeps family login content scrollable and above the mobile keyboard. */
 export function FamilyLoginScrollShell({ children }: { children: ReactNode }) {
-  const { offsetTop, height, keyboardInset } = useVisualViewportBox(true);
+  // Shell height already tracks the visible visualViewport; do not also pad
+  // by keyboardInset or the form double-shrinks above the keyboard.
+  const { offsetTop, height } = useVisualViewportBox(true, { watchScroll: false });
   const shellHeight = height > 0 ? height : undefined;
 
   return (
@@ -15,7 +17,7 @@ export function FamilyLoginScrollShell({ children }: { children: ReactNode }) {
       style={{
         top: offsetTop,
         height: shellHeight ?? '100dvh',
-        paddingBottom: `max(1.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px)))`,
+        paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))',
       }}
     >
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center">{children}</div>

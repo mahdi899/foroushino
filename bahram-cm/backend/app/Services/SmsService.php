@@ -61,6 +61,26 @@ class SmsService
 
     public function sendWelcome(User $user): bool
     {
+        if (blank($user->mobile)) {
+            return false;
+        }
+
+        // Once per mobile — never re-send welcome SMS to the same number.
+        $alreadySent = SmsLog::query()
+            ->where('event_key', SmsEventKey::Welcome->value)
+            ->where('mobile', $user->mobile)
+            ->where('status', 'sent')
+            ->exists();
+
+        if ($alreadySent) {
+            Log::channel('sms')->info('SMS skipped: welcome already sent to this mobile.', [
+                'mobile' => $user->mobile,
+                'user_id' => $user->id,
+            ]);
+
+            return false;
+        }
+
         $name = $user->name ?: 'دانشجو';
 
         return $this->sendEvent(SmsEventKey::Welcome, $user->mobile, ['{name}' => $name], $user->id);

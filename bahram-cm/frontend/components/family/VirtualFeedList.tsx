@@ -48,7 +48,8 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
     overscan = 8,
     gap = 8,
     anchorTo = 'end',
-    followOnAppend = 'auto',
+    // FeedView owns tip-following; default off so measurement alone cannot yank scroll.
+    followOnAppend = false,
     className,
     style,
   }: VirtualFeedListProps<T>,
@@ -126,8 +127,9 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
     };
   }, [count, remasureVisible]);
 
-  // Only rebuild measurements when older rows prepend or order shifts — not when
-  // a new post appends at the tip (wiping the cache caused visible gap jitter).
+  // Keep measured sizes across prepend/append. Wiping the cache with measure()
+  // forced every row back to rough estimates and created empty gaps + scroll jumps
+  // on mobile while history loaded above the viewport.
   const edgeKeysRef = useRef({ first: '', last: '', count: 0 });
   useEffect(() => {
     const first = items[0]?.key ?? '';
@@ -138,18 +140,19 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
       count === prev.count && count > 0 && (first !== prev.first || last !== prev.last);
     edgeKeysRef.current = { first, last, count };
 
-    if (prepended || reordered) {
+    if (reordered) {
+      // Keys moved without a net insert — safest to rebuild.
       virtualizer.measure();
       requestAnimationFrame(() => remasureVisible());
       return;
     }
 
-    const appended = count > prev.count && first === prev.first;
-    if (!appended) return;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => remasureVisible());
-    });
+    if (prepended || (count > prev.count && first === prev.first)) {
+      requestAnimationFrame(() => {
+        remasureVisible();
+        requestAnimationFrame(() => remasureVisible());
+      });
+    }
   }, [count, items, remasureVisible, virtualizer]);
 
   return (

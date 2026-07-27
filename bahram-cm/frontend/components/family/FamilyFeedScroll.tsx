@@ -1,6 +1,15 @@
 'use client';
 
-import { forwardRef, useImperativeHandle, useRef, type CSSProperties, type ReactNode } from 'react';
+import {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  type CSSProperties,
+  type KeyboardEventHandler,
+  type ReactNode,
+  type TouchEventHandler,
+  type WheelEventHandler,
+} from 'react';
 import { cn } from '@/lib/cn';
 import {
   getFeedDistanceFromBottom,
@@ -25,6 +34,9 @@ type FamilyFeedScrollProps = {
   className?: string;
   style?: CSSProperties;
   onScroll?: () => void;
+  onWheel?: WheelEventHandler<HTMLDivElement>;
+  onTouchMove?: TouchEventHandler<HTMLDivElement>;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
 };
 
 /**
@@ -32,7 +44,10 @@ type FamilyFeedScrollProps = {
  * response without Lenis interpolation overhead on long virtualized lists.
  */
 export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScrollProps>(
-  function FamilyFeedScroll({ children, className, style, onScroll }, ref) {
+  function FamilyFeedScroll(
+    { children, className, style, onScroll, onWheel, onTouchMove, onKeyDown },
+    ref,
+  ) {
     const nativeRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(
@@ -66,6 +81,9 @@ export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScr
         )}
         style={style}
         onScroll={onScroll}
+        onWheel={onWheel}
+        onTouchMove={onTouchMove}
+        onKeyDown={onKeyDown}
       >
         {children}
       </div>

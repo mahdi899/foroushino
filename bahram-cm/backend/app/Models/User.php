@@ -35,6 +35,9 @@ class User extends Authenticatable
         'is_sat_staff',
         'sat_leader_id',
         'mobile_verified_at',
+        'first_login_at',
+        'last_login_at',
+        'onboarding_progress',
     ];
 
     /**

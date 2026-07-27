@@ -3627,21 +3627,26 @@ html[data-theme="light"] .mobile-sticky-enroll-bar {
 .site-bottom-nav {
   border-top: 1px solid color-mix(in oklab, var(--color-bone) 8%, transparent);
   background: color-mix(in srgb, var(--color-charcoal) 94%, transparent);
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.35rem);
+  /*
+    Safe-area + Safari dynamic-toolbar bleed.
+    Extra padding is pulled below the viewport with negative margin so when
+    Safari's bottom chrome collapses on scroll, no gap (and no floating
+    upward shadow) appears under the bar. Visible height / --*-offset
+    tokens stay the same. Harmless in Chrome/Firefox/Android.
+  */
+  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), 0.35rem) + 3.5rem);
+  margin-bottom: -3.5rem;
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, var(--color-bone) 5%, transparent),
     0 -10px 36px -20px rgba(0, 0, 0, 0.42);
-  /* iOS Safari fix: promote to its own compositing layer so the bar doesn't
-     flicker/jump while the address bar collapses/expands during scroll. */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  /*
+    Do NOT use transform/will-change/contain:paint on this fixed bar —
+    they make iOS Safari pin it to a stale visual viewport and leave a
+    gap when the toolbar collapses.
+  */
   isolation: isolate;
-  contain: layout style paint;
 }
 
 .site-header__mobile {

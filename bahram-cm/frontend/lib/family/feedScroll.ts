@@ -2,10 +2,14 @@ import type Lenis from 'lenis';
 
 export type FamilyFeedScrollBehavior = 'auto' | 'smooth';
 
-/** Prefer anchor restore (stable with Lenis); delta is a fallback only. */
-export type FeedScrollRestoreSnapshot =
-  | { mode: 'anchor'; anchorId: string; offsetFromRootTop: number }
-  | { mode: 'delta'; height: number; top: number };
+/** Prefer anchor restore; keep delta as fallback when the anchored row is virtualized away. */
+export type FeedScrollRestoreSnapshot = {
+  mode: 'anchor' | 'delta';
+  height: number;
+  top: number;
+  anchorId?: string;
+  offsetFromRootTop?: number;
+};
 
 export function getFeedDistanceFromBottom(root: HTMLElement) {
   return root.scrollHeight - root.clientHeight - root.scrollTop;
@@ -201,6 +205,10 @@ export function captureFeedScrollRestore(
 ): FeedScrollRestoreSnapshot {
   const rootTop = root.getBoundingClientRect().top;
   const posts = root.querySelectorAll<HTMLElement>('[id^="family-post-"]');
+  const base = {
+    height: root.scrollHeight,
+    top: getFeedScrollTop(root, lenis),
+  };
 
   for (const el of posts) {
     const rect = el.getBoundingClientRect();
@@ -208,6 +216,7 @@ export function captureFeedScrollRestore(
     if (rect.bottom > rootTop + 4 && el.id) {
       return {
         mode: 'anchor',
+        ...base,
         anchorId: el.id,
         offsetFromRootTop: rect.top - rootTop,
       };
@@ -216,8 +225,7 @@ export function captureFeedScrollRestore(
 
   return {
     mode: 'delta',
-    height: root.scrollHeight,
-    top: getFeedScrollTop(root, lenis),
+    ...base,
   };
 }
 
@@ -233,18 +241,19 @@ export function restoreFeedScrollPosition(
 ) {
   if (!root) return;
 
-  if (previous.mode === 'anchor') {
+  if (previous.mode === 'anchor' && previous.anchorId) {
     const el = document.getElementById(previous.anchorId);
-    if (!el) return;
-
-    const rootTop = root.getBoundingClientRect().top;
-    const currentOffset = el.getBoundingClientRect().top - rootTop;
-    const drift = currentOffset - previous.offsetFromRootTop;
-    if (Math.abs(drift) < 0.5) return;
-
-    const nextTop = getFeedScrollTop(root, lenis) + drift;
-    scrollFeedTo(nextTop, 'auto', { root, lenis });
-    return;
+    if (el && previous.offsetFromRootTop != null) {
+      const rootTop = root.getBoundingClientRect().top;
+      const currentOffset = el.getBoundingClientRect().top - rootTop;
+      const drift = currentOffset - previous.offsetFromRootTop;
+      if (Math.abs(drift) >= 0.5) {
+        const nextTop = getFeedScrollTop(root, lenis) + drift;
+        scrollFeedTo(nextTop, 'auto', { root, lenis });
+      }
+      return;
+    }
+    // Anchor row not mounted yet — fall through to delta restore.
   }
 
   const delta = root.scrollHeight - previous.height;
