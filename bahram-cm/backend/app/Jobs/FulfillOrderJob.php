@@ -176,6 +176,24 @@ class FulfillOrderJob implements ShouldQueue
             .'سفارش: '.($order->order_number ?? $order->id)."\n"
             .'محصول: '.($order->product?->title ?? '—');
 
+        $identityUrl = \App\Modules\TelegramBot\Support\TelegramSiteUrl::identityPage();
+        if ($order->product?->slug === \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG) {
+            $orderPaidText .= "\n\n"
+                .'قدم بعدی: احراز هویت سطح ۲.'."\n"
+                .'بعد از تأیید، لینک مقاصد برایتان در بخش «کانال مرجع» فعال می‌شود.';
+        }
+
+        $notifyOptions = [];
+        if ($identityUrl && $order->product?->slug === \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG) {
+            $keyboard = [];
+            foreach (\App\Modules\TelegramBot\Support\TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
+                $keyboard[] = $row;
+            }
+            if ($keyboard !== []) {
+                $notifyOptions['reply_markup'] = ['inline_keyboard' => $keyboard];
+            }
+        }
+
         $usesHost = app(TelegramInfrastructureService::class)->usesHostBridge();
 
         if ($userId) {
@@ -189,7 +207,7 @@ class FulfillOrderJob implements ShouldQueue
 
             if ($usesHost) {
                 foreach ($telegramAccounts as $account) {
-                    if ($hostSync->pushPaidOrderNotification($account, $orderPaidText)) {
+                    if ($hostSync->pushPaidOrderNotification($account, $orderPaidText, $notifyOptions)) {
                         $hostNotified = true;
                     }
                 }

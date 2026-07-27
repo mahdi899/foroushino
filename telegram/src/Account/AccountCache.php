@@ -274,6 +274,52 @@ final class AccountCache
         return in_array($productId, $ids, true);
     }
 
+    public function hasIdentityLevel2(int $telegramUserId): bool
+    {
+        $account = $this->get($telegramUserId);
+        if ($account === null) {
+            return false;
+        }
+
+        $level = null;
+        $profile = $this->decodeJsonObject($account['profile_json'] ?? null);
+        if (is_array($profile) && array_key_exists('verification_level', $profile)) {
+            $level = (int) $profile['verification_level'];
+        }
+
+        if ($level === null) {
+            $snapshotMeta = $this->decodeJsonObject($account['owned_presents_json'] ?? null);
+            // Iran may also mirror level next to presents under __meta (optional).
+            if (is_array($snapshotMeta) && isset($snapshotMeta['__meta']['verification_level'])) {
+                $level = (int) $snapshotMeta['__meta']['verification_level'];
+            }
+        }
+
+        return $level !== null && $level >= 2;
+    }
+
+    public function hasSeminarOnAccount(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): bool
+    {
+        $account = $this->get($telegramUserId);
+        if ($account === null) {
+            return false;
+        }
+
+        $profile = $this->decodeJsonObject($account['profile_json'] ?? null);
+        if (is_array($profile) && ! empty($profile['has_seminar'])) {
+            return true;
+        }
+
+        foreach ($cache->seminars() as $seminar) {
+            $productId = (int) ($seminar['product_id'] ?? 0);
+            if ($productId > 0 && $this->ownsProduct($telegramUserId, $productId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** @return array<string, mixed>|null */
     public function profileResponse(int $telegramUserId): ?array
     {

@@ -57,8 +57,9 @@ class TelegramCourseAccessPresenter
 
         $access = $this->resolveAccess($account, $product);
         $licenseKey = $this->resolveLicenseKey($account, $product);
-        $destRows = $this->destinationKeyboardRows($bot, $account, $product);
-        $destinationLines = $this->destinationMessageLines($bot, $account, $product);
+        $identityReady = $this->hasIdentityLevel2($account);
+        $destRows = $identityReady ? $this->destinationKeyboardRows($bot, $account, $product) : [];
+        $destinationLines = $identityReady ? $this->destinationMessageLines($bot, $account, $product) : [];
         $watchUrl = $access
             ? TelegramSiteUrl::courseWatchPage($access->id)
             : TelegramSiteUrl::coursesPanel();
@@ -80,7 +81,10 @@ class TelegramCourseAccessPresenter
             $lines[] = TelegramCustomEmoji::tag('key').' کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
         }
 
-        if ($destinationLines !== []) {
+        if (! $identityReady) {
+            $lines[] = '';
+            $lines[] = TelegramCustomEmoji::tag('lock').' <b>احراز هویت سطح ۲</b> برای دریافت لینک مقاصد لازم است.';
+        } elseif ($destinationLines !== []) {
             $lines[] = '';
             $lines[] = TelegramCustomEmoji::tag('pin').' <b>گروه پشتیبانی این دوره</b>';
             $lines[] = 'ربات لینک عضویت را برای شما می‌سازد — فقط با همین اکانت تلگرام درخواست بدهید.';
@@ -92,6 +96,11 @@ class TelegramCourseAccessPresenter
         $keyboard = [];
         foreach (TelegramSiteUrl::urlKeyboardRow('پخش آنلاین در پنل', $watchUrl, 'success', 'play') as $row) {
             $keyboard[] = $row;
+        }
+        if (! $identityReady) {
+            foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
+                $keyboard[] = $row;
+            }
         }
         foreach ($destRows as $row) {
             $keyboard[] = $row;
@@ -106,6 +115,14 @@ class TelegramCourseAccessPresenter
                     : null,
             ]),
         ];
+    }
+
+    private function hasIdentityLevel2(TelegramAccount $account): bool
+    {
+        $account->loadMissing('user.identityProfile');
+        $level = (int) ($account->user?->identityProfile?->verification_level ?? 0);
+
+        return $level >= 2;
     }
 
     private function resolveAccess(TelegramAccount $account, Product $product): ?CourseAccess

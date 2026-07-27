@@ -23,6 +23,7 @@ use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
+use TelegramHost\Services\ReferenceChannelFlow;
 use TelegramHost\Telegram\BotApiClient;
 
 $config = require __DIR__.'/../bootstrap.php';
@@ -111,6 +112,7 @@ try {
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
     $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo);
+    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $purchaseFlow, $siteBaseUrl);
 
     $messageHandler = new MessageHandler(
         $api,
@@ -125,6 +127,7 @@ try {
         $accountSync,
         $support,
         $iranSync,
+        $referenceChannel,
         $siteBaseUrl
     );
 

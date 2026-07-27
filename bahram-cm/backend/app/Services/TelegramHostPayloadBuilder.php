@@ -113,6 +113,7 @@ class TelegramHostPayloadBuilder
                 'family' => TelegramSiteUrl::familyHome(),
                 'sat' => TelegramSiteUrl::satPage(),
                 'referral_panel' => TelegramSiteUrl::page('panel/referrals'),
+                'reference_channel' => $this->referenceChannelInviteUrl($bot),
             ],
             'synced_at' => now()->toIso8601String(),
             'catalog_revision' => $this->catalogRevision->current(),
@@ -161,5 +162,18 @@ class TelegramHostPayloadBuilder
             'seminars' => $seminars,
             'synced_at' => now()->toIso8601String(),
         ];
+    }
+
+    private function referenceChannelInviteUrl(TelegramBot $bot): ?string
+    {
+        $url = TelegramRequiredChat::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('is_active', true)
+            ->whereNotNull('invite_link')
+            ->where('invite_link', '!=', '')
+            ->orderBy('sort_order')
+            ->value('invite_link');
+
+        return filled($url) ? (string) $url : null;
     }
 }

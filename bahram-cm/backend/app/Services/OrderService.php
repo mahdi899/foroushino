@@ -49,8 +49,9 @@ class OrderService
         $this->purchaseGuard->assertCanPurchase($authenticatedUser, $phone, $product);
         $this->assertSeminarPurchaseAllowed($product, $userId, $phone);
 
-        $amount = (int) $product->price;
-        $finalAmount = (int) $product->effective_price;
+        $pricing = app(SeminarAttendeeCoursePricing::class)->quote($product, $authenticatedUser, $phone);
+        $amount = (int) $pricing['amount'];
+        $finalAmount = (int) $pricing['final_amount'];
         $saleDiscount = max($amount - $finalAmount, 0);
 
         $validatedReferralCode = app(ReferralService::class)->validateForOrder(
