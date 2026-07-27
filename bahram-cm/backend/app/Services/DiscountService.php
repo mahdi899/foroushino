@@ -38,7 +38,7 @@ class DiscountService
         bool $viaLink,
     ): array {
         $discountCode = $this->resolveEligibleCode($code, $product, $user, $phone, $viaLink);
-        $subtotal = (int) $product->effective_price;
+        $subtotal = (int) app(SeminarAttendeeCoursePricing::class)->quote($product, $user, $phone)['final_amount'];
         $couponDiscount = $this->calculateDiscountAmount($discountCode, $subtotal);
         $finalAmount = max($subtotal - $couponDiscount, 0);
 
@@ -143,7 +143,7 @@ class DiscountService
             ]);
         }
 
-        $subtotal = (int) $product->effective_price;
+        $subtotal = (int) app(SeminarAttendeeCoursePricing::class)->quote($product, $user, $phone)['final_amount'];
 
         if ($discountCode->min_order_amount !== null && $subtotal < (int) $discountCode->min_order_amount) {
             throw ValidationException::withMessages([

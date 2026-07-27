@@ -263,6 +263,23 @@ final class SyncCache
         return null;
     }
 
+    /** @return array<string, mixed>|null */
+    public function findProductBySlug(string $slug): ?array
+    {
+        $slug = trim($slug);
+        if ($slug === '') {
+            return null;
+        }
+
+        foreach ($this->courses() as $course) {
+            if ((string) ($course['slug'] ?? '') === $slug) {
+                return $course;
+            }
+        }
+
+        return null;
+    }
+
     /** @param array<string, string> $messages */
     private function storeMessages(array $messages): void
     {

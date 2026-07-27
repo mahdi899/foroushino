@@ -15,6 +15,7 @@ use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
+use TelegramHost\Services\ReferenceChannelFlow;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
@@ -34,6 +35,7 @@ final class MessageHandler
         private readonly AccountSyncCoordinator $accountSync,
         private readonly HostSupportService $support,
         private readonly IranSyncRelay $iranSync,
+        private readonly ReferenceChannelFlow $referenceChannel,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -207,7 +209,7 @@ final class MessageHandler
             MainMenu::ACTION_COURSES => $this->sendCourseList($chatId, $telegramUserId),
             MainMenu::ACTION_SEMINARS => $this->sendSeminarList($chatId, $telegramUserId),
             MainMenu::ACTION_SAT => $this->openSat($chatId, $telegramUserId),
-            MainMenu::ACTION_CHANNEL => $this->sendReferenceChannel($chatId),
+            MainMenu::ACTION_CHANNEL => $this->referenceChannel->open($chatId, $telegramUserId),
             MainMenu::ACTION_FAMILY => $this->sendFamily($chatId, $telegramUserId),
             MainMenu::ACTION_REFERRAL => $this->sendReferral($chatId, $telegramUserId),
             MainMenu::ACTION_SUPPORT => $this->openSupportHub($chatId),
@@ -380,15 +382,6 @@ final class MessageHandler
             }
             $this->api->sendMessage($chatId, (string) $result['text'], $options);
         }
-    }
-
-    private function sendReferenceChannel(int $chatId): void
-    {
-        $url = $this->cache->siteUrl('identity', $this->siteBaseUrl.'/identity');
-        $text = $this->cache->message('purchase_need_course', 'برای دسترسی به کانال مرجع، احراز هویت سطح ۲ لازم است.');
-        $this->api->sendMessage($chatId, $text, [
-            'reply_markup' => ['inline_keyboard' => [[InlineButtons::url('احراز هویت سطح ۲', $url, 'lock', 'primary')]]],
-        ]);
     }
 
     private function sendFamily(int $chatId, int $telegramUserId): void

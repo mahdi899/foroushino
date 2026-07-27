@@ -280,7 +280,7 @@ class MessageHandler implements UpdateHandlerInterface
             MainMenuKeyboard::ACTION_COURSES => $this->sendProducts($bot, $account, $chatId),
             MainMenuKeyboard::ACTION_SEMINARS => $this->sendSeminars($bot, $chatId),
             MainMenuKeyboard::ACTION_SAT => $this->sendSatStatus($bot, $chatId, $account),
-            MainMenuKeyboard::ACTION_CHANNEL => $this->sendReferenceChannel($bot, $chatId),
+            MainMenuKeyboard::ACTION_CHANNEL => $this->sendReferenceChannel($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_FAMILY => $this->sendFamily($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_REFERRAL => $this->sendReferral($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_SUPPORT => $this->openSupportHub($bot, $account, $chatId),
@@ -518,17 +518,58 @@ class MessageHandler implements UpdateHandlerInterface
         $this->satFlow->open($bot, $account, $chatId);
     }
 
-    private function sendReferenceChannel(TelegramBot $bot, int $chatId): void
+    private function sendReferenceChannel(TelegramBot $bot, int $chatId, TelegramAccount $account): void
     {
-        $identityUrl = TelegramSiteUrl::identityPage();
-        $text = $this->messages->get($bot, 'purchase_need_course');
-        $this->sendWithLink(
+        $pricing = app(\App\Services\SeminarAttendeeCoursePricing::class);
+        $product = \App\Models\Product::query()
+            ->where('slug', \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product !== null && $this->courseAccessPresenter->owns($account, $product)) {
+            $view = $this->courseAccessPresenter->present($bot, $account, $product);
+            $this->outbound->reply($bot, $chatId, $view['text'], $view['options'], sync: true);
+
+            return;
+        }
+
+        $description = $this->messages->get($bot, 'reference_channel_description');
+        $joinLabel = $this->messages->get($bot, 'reference_channel_join_btn');
+        $joinUrl = $bot->requiredChats()
+            ->whereNotNull('invite_link')
+            ->where('invite_link', '!=', '')
+            ->value('invite_link');
+
+        $descKeyboard = [];
+        if (filled($joinUrl)) {
+            foreach (TelegramSiteUrl::urlKeyboardRow($joinLabel, (string) $joinUrl, 'primary', 'channel') as $row) {
+                $descKeyboard[] = $row;
+            }
+        }
+        $this->replyHtml(
             $bot,
             $chatId,
-            $text,
-            $identityUrl,
-            '🔐 احراز هویت سطح ۲',
+            $description,
+            $descKeyboard !== [] ? ['reply_markup' => ['inline_keyboard' => $descKeyboard]] : [],
         );
+
+        if ($product === null) {
+            $this->outbound->reply(
+                $bot,
+                $chatId,
+                $this->messages->get($bot, 'purchase_catalog_empty'),
+                $this->messages->htmlOptions(),
+                sync: true,
+            );
+
+            return;
+        }
+
+        $priceKey = $pricing->userHasSeminar($account->user, $account->mobile)
+            ? 'reference_channel_price_seminar'
+            : 'reference_channel_price_full';
+        $this->replyHtml($bot, $chatId, $this->messages->get($bot, $priceKey));
+        $this->purchaseFlow->proceedToPaymentMethods($bot, $account, $chatId, (int) $product->id, null);
     }
 
     private function sendFamily(TelegramBot $bot, int $chatId, TelegramAccount $account): void

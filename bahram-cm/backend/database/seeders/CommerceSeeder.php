@@ -62,8 +62,8 @@ class CommerceSeeder extends Seeder
 <li>حاضر نیستی روی تمرین‌ها وقت بگذاری</li>
 </ul>
 HTML,
-                'price' => 2_500_000,
-                'sale_price' => 1_990_000,
+                'price' => 30_000_000,
+                'sale_price' => null,
                 'referral_cashback_enabled' => true,
                 'referral_cashback_type' => 'fixed',
                 'referral_cashback_value' => 2_000_000,

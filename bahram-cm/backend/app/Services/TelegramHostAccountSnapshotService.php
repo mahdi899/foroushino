@@ -152,9 +152,14 @@ class TelegramHostAccountSnapshotService
             $keyboard[] = $row;
         }
 
+        $account->loadMissing('user.identityProfile');
+        $pricing = app(SeminarAttendeeCoursePricing::class);
+
         return [
             'ok' => true,
             'text' => $text,
+            'verification_level' => (int) ($account->user?->identityProfile?->verification_level ?? 0),
+            'has_seminar' => $pricing->userHasSeminar($account->user, $account->mobile),
             'options' => array_filter([
                 'parse_mode' => 'HTML',
                 'reply_markup' => $keyboard !== []
