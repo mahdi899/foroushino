@@ -30,7 +30,8 @@ final class IranSyncRelay
         }
 
         try {
-            $result = $this->live->processUpdate($update);
+            // Single attempt, short-enough for UX: no 8s+8s retry storm.
+            $result = $this->live->processUpdate($update, 5, false);
             if (($result['ok'] ?? false) === true) {
                 return true;
             }

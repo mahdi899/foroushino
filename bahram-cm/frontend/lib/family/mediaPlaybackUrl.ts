@@ -144,7 +144,7 @@ function rewriteKnownMediaUrl(trimmed: string): string | null {
 }
 
 /**
- * Stream URL for family voice/video/images — always the download host (cdn.rostami.app).
+ * Stream URL for family voice/video — always the download host (cdn.rostami.app).
  * Rewrites rostami.club proxy URLs, legacy /storage paths, and local dev origins.
  */
 export function resolveFamilyMediaPlaybackUrl(url: string | null | undefined): string | null {
@@ -156,17 +156,35 @@ export function resolveFamilyMediaPlaybackUrl(url: string | null | undefined): s
   return `${FAMILY_MEDIA_PLAYBACK_HOST}/${url.trim().replace(/^\/+/, '')}`;
 }
 
-export function resolveFamilyMediaPosterUrl(url: string | null | undefined): string | null {
+/**
+ * Same-origin /media/family proxy when on the family host — enables SW cache-first
+ * for images/posters without putting Range video through the service worker.
+ * Falls back to CDN when not on a proxy host (SSR, tests, non-club origins).
+ */
+export function resolveFamilyMediaDisplayUrl(url: string | null | undefined): string | null {
+  const sameOrigin = clubSameOriginMediaUrl(url);
+  if (
+    sameOrigin &&
+    typeof window !== 'undefined' &&
+    isFamilyMediaSameOriginHost(window.location.hostname)
+  ) {
+    return sameOrigin;
+  }
   return resolveFamilyMediaPlaybackUrl(url);
 }
 
-/** Direct CDN URL for images and downloads — same download host. */
+/** Feed image / LQIP poster — same-origin on club for durable browser cache. */
+export function resolveFamilyMediaPosterUrl(url: string | null | undefined): string | null {
+  return resolveFamilyMediaDisplayUrl(url);
+}
+
+/** Direct CDN URL for downloads and video/voice playback. */
 export function resolveFamilyMediaDownloadUrl(url: string | null | undefined): string | null {
   return resolveFamilyMediaPlaybackUrl(url);
 }
 
-/** Images, voice, video — same download-host URL resolver. */
-export const resolveFamilyMediaUrl = resolveFamilyMediaPlaybackUrl;
+/** Images in the feed — same-origin display URL when available. */
+export const resolveFamilyMediaUrl = resolveFamilyMediaDisplayUrl;
 
 /** Guess MIME from API hint or file extension (helps `<video>` / `<source type>`). */
 export function inferFamilyMediaMimeType(

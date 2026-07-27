@@ -151,12 +151,7 @@ try {
         fastcgi_finish_request();
     }
 
-    try {
-        (new \TelegramHost\Services\HostBackgroundSync($cache, $sync, $accounts))->refreshForUser($senderId);
-    } catch (\Throwable $e) {
-        error_log('[telegram-host] bg sync: '.$e->getMessage());
-    }
-
+    // Account mirror is Iran→host push only — do not pull Iran on every webhook.
     try {
         $iranRelay->drain();
     } catch (\Throwable $e) {

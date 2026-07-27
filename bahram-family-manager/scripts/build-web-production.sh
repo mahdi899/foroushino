@@ -3,9 +3,13 @@
 set -euo pipefail
 
 # Kill-switch: production Flutter builds were hanging the 4GB origin host.
-# Remove /tmp/FLUTTER_BUILD_DISABLED (or set ALLOW_FLUTTER_BUILD=1) to re-enable.
-if [[ -f /tmp/FLUTTER_BUILD_DISABLED && "${ALLOW_FLUTTER_BUILD:-0}" != "1" ]]; then
-  echo "SKIP: Flutter production build disabled (/tmp/FLUTTER_BUILD_DISABLED)."
+# Remove disable flags (or set ALLOW_FLUTTER_BUILD=1) to re-enable.
+APP_DIR_EARLY="${APP_DIR:-/var/www/foroushino/bahram-family-manager}"
+GIT_ROOT_EARLY="$(cd "${APP_DIR_EARLY}/.." 2>/dev/null && pwd || echo /var/www/foroushino)"
+if [[ "${ALLOW_FLUTTER_BUILD:-0}" != "1" ]] && {
+  [[ -f /tmp/FLUTTER_BUILD_DISABLED ]] || [[ -f "${GIT_ROOT_EARLY}/.flutter-build-disabled" ]]
+}; then
+  echo "SKIP: Flutter production build disabled."
   echo "Existing build/web will be served. Set ALLOW_FLUTTER_BUILD=1 to override."
   exit 0
 fi

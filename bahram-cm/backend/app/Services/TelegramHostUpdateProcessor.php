@@ -56,7 +56,8 @@ class TelegramHostUpdateProcessor
             : null;
 
         if ($lock !== null && ! $lock->get()) {
-            $lock->block(min($lockSeconds, 10));
+            // Host admin UX: do not block up to 10s waiting on another update.
+            $lock->block(min($lockSeconds, 2));
         }
 
         try {

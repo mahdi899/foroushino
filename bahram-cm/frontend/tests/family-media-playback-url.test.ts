@@ -4,9 +4,12 @@ import {
   familyMediaPathname,
   inferFamilyMediaMimeType,
   normalizeFamilyGalleryMediaPath,
+  resolveFamilyMediaDisplayUrl,
   resolveFamilyMediaDownloadUrl,
   resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaPlaybackUrl,
+  resolveFamilyMediaPosterUrl,
+  resolveFamilyMediaUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 
 describe('normalizeFamilyGalleryMediaPath', () => {
@@ -87,6 +90,43 @@ describe('resolveFamilyMediaPlaybackUrl', () => {
         'https://cdn.rostami.app/media/family/2026/07/image/a.webp',
       ),
     ).toBe('https://cdn.rostami.app/media/family/2026/07/image/a.webp');
+  });
+});
+
+describe('resolveFamilyMediaDisplayUrl / poster / image', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('uses CDN when not on a family same-origin host', () => {
+    expect(resolveFamilyMediaDisplayUrl('/media/family/demo/a.webp')).toBe(
+      'https://cdn.rostami.app/media/family/demo/a.webp',
+    );
+    expect(resolveFamilyMediaPosterUrl('/media/family/demo/a.webp')).toBe(
+      'https://cdn.rostami.app/media/family/demo/a.webp',
+    );
+  });
+
+  it('prefers same-origin /media/family on rostami.club for feed images', () => {
+    vi.stubGlobal('window', {
+      location: { origin: 'https://rostami.club', hostname: 'rostami.club' },
+    });
+    expect(resolveFamilyMediaUrl('/media/family/demo/a.webp')).toBe(
+      'https://rostami.club/media/family/demo/a.webp',
+    );
+    expect(resolveFamilyMediaPosterUrl('/media/family/demo/a.webp?v=9')).toBe(
+      'https://rostami.club/media/family/demo/a.webp?v=9',
+    );
+  });
+
+  it('keeps video playback on CDN even on rostami.club', () => {
+    vi.stubGlobal('window', {
+      location: { origin: 'https://rostami.club', hostname: 'rostami.club' },
+    });
+    expect(
+      resolveFamilyMediaPlaybackUrl('/media/family/demo/demo-video.mp4'),
+    ).toBe('https://cdn.rostami.app/media/family/demo/demo-video.mp4');
   });
 });
 

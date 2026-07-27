@@ -6,16 +6,15 @@ import { useEffect, useRef } from 'react';
 import {
   feedBrowserCacheKey,
   mergeBrandingFromFeed,
-  readFeedBrowserCache,
   writeFeedBrowserCache,
 } from '@/lib/family/browserCache';
-import { getFeed, getPostJumpContext } from '@/lib/family/api';
+import { getFeed, getFeedUnreadSummary, getPostJumpContext } from '@/lib/family/api';
+import { readFeedCache, type FeedCachePage } from '@/lib/family/feedCache';
 import { reconcileDiskCacheWithCurrent, latestPostIdFromPages } from '@/lib/family/feedMerge';
 import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
 import { familyFeedSwr } from '@/lib/family/swr';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
 import type { FamilyBranding, FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
-import type { FeedCachePage } from '@/lib/family/feedCache';
 
 const FEED_PAGE_SIZE = 15;
 const JUMP_WINDOW_SIZE = 24;
@@ -40,6 +39,24 @@ function persistFeedPages(
   if (!pages?.length) return;
   const revision = pages[0]?.meta?.feed_revision ?? null;
   void writeFeedBrowserCache(scope, viewerKey, pages as FeedCachePage[], revision);
+}
+
+/** Fetch tip /feed only when server revision or tip id diverged from local cache. */
+async function shouldRefreshFeedTip(
+  localTipId: number,
+  localRevision: number | null,
+): Promise<boolean> {
+  try {
+    const res = await getFeedUnreadSummary(localTipId);
+    const serverLatest = res.data.latest_post_id;
+    const serverRev = res.data.feed_revision ?? null;
+    if (serverLatest !== localTipId) return true;
+    if (serverRev != null && localRevision != null && serverRev !== localRevision) return true;
+    return false;
+  } catch {
+    // Keep disk paint; FeedView tip sync / realtime can recover.
+    return false;
+  }
 }
 
 export function useFamilyFeed(
@@ -69,64 +86,108 @@ export function useFamilyFeed(
     {
       fallbackData,
       ...familyFeedSwr,
-      // Without SSR/cache seed, fetch immediately; otherwise wait for deferred soft sync.
-      revalidateOnMount: !fallbackData,
+      // Network is gated by IndexedDB hydrate + revision check below.
+      revalidateOnMount: false,
     },
   );
 
-  // Optional single tip refresh after paint (SSR seed) — one /feed, not full infinite revalidate.
-  useEffect(() => {
-    if (!initialPage || isRealtimeConfigured()) return;
-    const timer = window.setTimeout(() => {
-      void mutate(
-        async (pages) => {
-          if (!pages?.length) return pages;
-          const fresh = (await getFeed(null, FEED_PAGE_SIZE)) as FeedPage;
-          return [fresh, ...pages.slice(1)];
-        },
-        { revalidate: false },
-      );
-    }, 12_000);
-    return () => window.clearTimeout(timer);
-  }, [initialPage, mutate, scope, viewerKey]);
-
+  // IndexedDB-first paint, then lightweight revision check — skip /feed when unchanged.
   useEffect(() => {
     if (hydratedFromDiskRef.current) return;
     hydratedFromDiskRef.current = true;
 
     let cancelled = false;
-    const expectedRevision = initialPage?.meta?.feed_revision ?? null;
-    void readFeedBrowserCache(scope, viewerKey, expectedRevision).then((cached) => {
-      if (cancelled || !cached?.length) return;
 
-      void mutate(
-        (current) => {
-          const network = current as FeedPage[] | undefined;
-          if (!network?.length) return cached;
+    void (async () => {
+      const record = await readFeedCache(scope, viewerKey);
+      if (cancelled) return;
 
-          const networkTipId = latestPostIdFromPages(network);
-          const diskTipId = latestPostIdFromPages(cached);
+      const cached = record?.pages?.length ? (record.pages as FeedPage[]) : null;
+      const diskRevision = record?.revision ?? null;
 
-          // Never downgrade the tip page to an older IndexedDB snapshot.
-          if (diskTipId > networkTipId) {
+      if (cached) {
+        await mutate(
+          (current) => {
+            const network = current as FeedPage[] | undefined;
+            if (!network?.length) return cached;
+
+            const networkTipId = latestPostIdFromPages(network);
+            const diskTipId = latestPostIdFromPages(cached);
+
+            if (diskTipId > networkTipId) {
+              return reconcileDiskCacheWithCurrent(network, cached);
+            }
+            if (diskTipId < networkTipId) {
+              if (network.length >= cached.length) return network;
+              const tip = network[0];
+              return tip ? [tip, ...cached.slice(1)] : network;
+            }
+
             return reconcileDiskCacheWithCurrent(network, cached);
-          }
-          if (diskTipId < networkTipId) {
-            if (network.length >= cached.length) return network;
-            const tip = network[0];
-            return tip ? [tip, ...cached.slice(1)] : network;
-          }
+          },
+          { revalidate: false },
+        );
+      } else if (!initialPage) {
+        await mutate(
+          async () => [(await getFeed(null, FEED_PAGE_SIZE)) as FeedPage],
+          { revalidate: false },
+        );
+        return;
+      }
 
-          return reconcileDiskCacheWithCurrent(network, cached);
+      if (cancelled) return;
+
+      const localTipId =
+        (cached ? latestPostIdFromPages(cached) : 0) ||
+        (initialPage ? latestPostIdFromPages([initialPage]) : 0);
+      const localRevision =
+        diskRevision ?? initialPage?.meta?.feed_revision ?? null;
+
+      if (localTipId <= 0) return;
+
+      const needsRefresh = await shouldRefreshFeedTip(localTipId, localRevision);
+      if (cancelled || !needsRefresh) return;
+
+      await mutate(
+        async (pages) => {
+          const fresh = (await getFeed(null, FEED_PAGE_SIZE)) as FeedPage;
+          if (!pages?.length) return [fresh];
+          return [fresh, ...pages.slice(1)];
         },
         { revalidate: false },
       );
-    });
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [initialPage?.meta?.feed_revision, mutate, scope, viewerKey]);
+  }, [initialPage, mutate, scope, viewerKey]);
+
+  // Without realtime, rare deferred check — still revision-gated (no blind /feed).
+  useEffect(() => {
+    if (!initialPage || isRealtimeConfigured()) return;
+    const timer = window.setTimeout(() => {
+      const tipId =
+        latestPostIdFromPages((data as FeedPage[] | undefined) ?? [initialPage]) || 0;
+      const revision =
+        (data as FeedPage[] | undefined)?.[0]?.meta?.feed_revision ??
+        initialPage.meta?.feed_revision ??
+        null;
+      if (tipId <= 0) return;
+      void shouldRefreshFeedTip(tipId, revision).then((needs) => {
+        if (!needs) return;
+        void mutate(
+          async (pages) => {
+            if (!pages?.length) return pages;
+            const fresh = (await getFeed(null, FEED_PAGE_SIZE)) as FeedPage;
+            return [fresh, ...pages.slice(1)];
+          },
+          { revalidate: false },
+        );
+      });
+    }, 12_000);
+    return () => window.clearTimeout(timer);
+  }, [data, initialPage, mutate, scope, viewerKey]);
 
   useEffect(() => {
     if (!data?.length) return;

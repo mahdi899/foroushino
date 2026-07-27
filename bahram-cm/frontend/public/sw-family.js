@@ -1,4 +1,5 @@
-const CACHE = 'bahram-family-v10';
+const CACHE = 'bahram-family-v11';
+const MEDIA_IMAGE_CACHE = 'bahram-family-media-v1';
 const PRECACHE = ['/family-manifest.webmanifest', '/pwa/icon/192', '/pwa/icon/512', '/apple-icon'];
 
 /**
@@ -56,9 +57,30 @@ function isStaticFamilyAsset(url) {
   );
 }
 
-/** Video/voice Range requests must not pass through the SW (breaks metadata + decode). */
+/** Video/voice Range streams — never intercept (breaks metadata + decode). */
 function isFamilyMediaStream(url) {
   return url.pathname.startsWith('/media/family/') || url.pathname.startsWith('/media/site/');
+}
+
+/** Image/poster GETs without Range — safe to cache-first for messenger scroll-back. */
+function isFamilyMediaImageGet(request, url) {
+  if (!isFamilyMediaStream(url)) return false;
+  if (request.headers.has('range')) return false;
+  const path = url.pathname.toLowerCase();
+  if (/\.(?:webp|jpe?g|png|gif|avif|svg)$/i.test(path)) return true;
+  const accept = (request.headers.get('accept') || '').toLowerCase();
+  return accept.includes('image/') && !accept.includes('video/');
+}
+
+async function cacheFirstMediaImage(request) {
+  const cache = await caches.open(MEDIA_IMAGE_CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response && response.ok) {
+    void cache.put(request, response.clone());
+  }
+  return response;
 }
 
 self.addEventListener('install', (event) => {
@@ -79,7 +101,11 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith('bahram-family-') && key !== CACHE)
+            .filter(
+              (key) =>
+                (key.startsWith('bahram-family-') && key !== CACHE && key !== MEDIA_IMAGE_CACHE) ||
+                (key.startsWith('bahram-family-media-') && key !== MEDIA_IMAGE_CACHE),
+            )
             .map((key) => caches.delete(key)),
         ),
       )
@@ -174,6 +200,9 @@ self.addEventListener('fetch', (event) => {
   if (isNextRuntimeRequest(url) || isApiRequest(url)) return;
 
   if (isFamilyMediaStream(url)) {
+    if (isFamilyMediaImageGet(event.request, url)) {
+      event.respondWith(cacheFirstMediaImage(event.request));
+    }
     return;
   }
 

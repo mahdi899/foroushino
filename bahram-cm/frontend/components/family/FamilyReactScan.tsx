@@ -25,21 +25,27 @@ export function FamilyReactScan() {
     if (!enabled) return;
 
     let cancelled = false;
-    void import('react-scan').then(({ scan }) => {
-      if (cancelled) return;
-      scan({
-        enabled: true,
-        showToolbar: true,
-        animationSpeed: 'fast',
+    // webpackIgnore: keep react-scan out of production webpack graphs (Turbopack is fine either way).
+    const mod = 'react-scan';
+    void import(/* webpackIgnore: true */ mod)
+      .then((m: { scan?: (opts: Record<string, unknown>) => void }) => {
+        if (cancelled || typeof m.scan !== 'function') return;
+        m.scan({
+          enabled: true,
+          showToolbar: true,
+          animationSpeed: 'fast',
+        });
+        // eslint-disable-next-line no-console
+        console.info(
+          '%c[family] React Scan ON',
+          'color:#e11d48;font-weight:700',
+          '\n  Profiler ritual: DevTools → Profiler → enable "Why did this render?"',
+          '\n  Then: scroll, publish, pin-jump → familyDebug.snapshot()',
+        );
+      })
+      .catch(() => {
+        /* optional dev dependency */
       });
-      // eslint-disable-next-line no-console
-      console.info(
-        '%c[family] React Scan ON',
-        'color:#e11d48;font-weight:700',
-        '\n  Profiler ritual: DevTools → Profiler → enable "Why did this render?"',
-        '\n  Then: scroll, publish, pin-jump → familyDebug.snapshot()',
-      );
-    });
 
     return () => {
       cancelled = true;

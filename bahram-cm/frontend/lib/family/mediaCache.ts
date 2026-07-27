@@ -6,8 +6,8 @@ import {
   resolveFamilyMediaPlaybackUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 
-/** Browser Cache API retention after a media item is viewed. */
-export const FAMILY_MEDIA_CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+/** Browser Cache API retention after a media item is viewed — versioned URLs (?v=) invalidate. */
+export const FAMILY_MEDIA_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 const CACHE_NAME = 'family-media-v5';
 const CACHED_AT_HEADER = 'X-Family-Media-Cached-At';
@@ -234,8 +234,11 @@ export function rememberFamilyMediaView(
   const canonical = resolveFamilyMediaPlaybackUrl(url) ?? url;
   if (!canonical || canonical.includes('/storage/media/')) return;
 
-  // Images already stream from CDN via <img> — prefetch would hit legacy /storage paths.
-  if (kind === 'image') return;
+  // Images/posters: persist immediately so scroll-back / reload reuse Cache API.
+  if (kind === 'image') {
+    void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType, 'image');
+    return;
+  }
 
   const persist = () => {
     void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType, kind);

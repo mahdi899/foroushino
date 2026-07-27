@@ -821,6 +821,7 @@ class BotAdminPanelService
 
         if (in_array(mb_strtolower($raw), ['/null', 'null', 'none', 'پاک', 'حذف'], true)) {
             $bot->setReportsGroupChatId(null);
+            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
             ]);
@@ -866,6 +867,7 @@ class BotAdminPanelService
         }
 
         $bot->setReportsGroupChatId($raw);
+        \App\Jobs\PushTelegramHostSyncJob::bootstrap();
 
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],

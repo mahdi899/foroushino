@@ -38,7 +38,7 @@ describe('extractFamilyPostMediaUrls', () => {
             id: 11,
             type: 'video',
             url: 'https://cdn.example/media/family/b.mp4',
-            poster_url: '/media/family/b_thumb.jpg',
+            poster_url: '/media/family/b_preview.webp',
             duration: 12,
             width: 720,
             height: 1280,
@@ -52,7 +52,7 @@ describe('extractFamilyPostMediaUrls', () => {
 
     const urls = extractFamilyPostMediaUrls(post);
     expect(urls.some((u) => u.includes('a.webp'))).toBe(true);
-    expect(urls.some((u) => u.includes('b_thumb.jpg'))).toBe(true);
+    expect(urls.some((u) => u.includes('b_preview.webp'))).toBe(true);
     expect(urls.some((u) => u.includes('b.mp4'))).toBe(false);
   });
 });

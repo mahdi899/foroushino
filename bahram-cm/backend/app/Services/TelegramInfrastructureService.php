@@ -104,7 +104,21 @@ class TelegramInfrastructureService
 
     public function hostPushUrl(): string
     {
-        return $this->hostAppBaseUrl().self::HOST_PUSH_ENTRY;
+        // When Iran cannot reach the external host directly (firewall), set
+        // TELEGRAM_HOST_PUSH_URL to the Cloudflare Worker /host-sync relay
+        // (HTTPS) or to the same host-sync.php over plain HTTP if only :443
+        // is blocked (common from some Iranian origins).
+        $override = trim((string) config('telegram_bot.host_push_url', ''));
+        if ($override !== '') {
+            return rtrim($override, '/');
+        }
+
+        $url = $this->hostAppBaseUrl().self::HOST_PUSH_ENTRY;
+        if (filter_var(config('telegram_bot.host_push_force_http', false), FILTER_VALIDATE_BOOLEAN)) {
+            $url = (string) preg_replace('#^https://#i', 'http://', $url);
+        }
+
+        return $url;
     }
 
     public function panelBaseUrl(): string

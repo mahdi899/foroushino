@@ -5,13 +5,14 @@ export const familySwrDefaults = {
   dedupingInterval: 10_000,
 } as const;
 
-/** Feed: restore from SSR/IndexedDB; avoid refetch fighting first paint. */
+/** Feed: restore from SSR/IndexedDB; network only when revision/tip diverges. */
 export const familyFeedSwr = {
   ...familySwrDefaults,
   revalidateOnFocus: false,
   revalidateOnMount: false,
-  revalidateFirstPage: true,
+  revalidateFirstPage: false,
   revalidateAll: false,
+  revalidateIfStale: false,
   dedupingInterval: 15_000,
 } as const;
 

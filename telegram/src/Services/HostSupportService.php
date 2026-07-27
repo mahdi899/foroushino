@@ -57,24 +57,11 @@ final class HostSupportService
     }
 
     /**
-     * Reads the cached reports group chat id and, if it's still empty (e.g.
-     * a fresh install that never got a bootstrap push yet), tries a single
-     * bootstrap refresh from Iran before giving up. Cheap even when Iran is
-     * down: SyncClient fails fast once the circuit is open, no timeout wait.
+     * Local reports-group id only — never block the user on an Iran bootstrap pull.
+     * Mirror is filled by Iran→host push (or optional config.php override).
      */
     private function refreshedReportsGroupChatId(): ?string
     {
-        $reportsChat = $this->cache->reportsGroupChatId();
-        if ($reportsChat !== null && $reportsChat !== '') {
-            return $reportsChat;
-        }
-
-        try {
-            $this->cache->refreshBootstrap();
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] support bootstrap refresh failed: '.$e->getMessage());
-        }
-
         return $this->cache->reportsGroupChatId();
     }
 

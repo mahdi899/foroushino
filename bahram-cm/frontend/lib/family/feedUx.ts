@@ -5,7 +5,7 @@
  */
 
 /** Virtual rows mounted outside viewport (DOM cost vs scroll smoothness). */
-export const FAMILY_FEED_VIRTUAL_OVERSCAN = 6;
+export const FAMILY_FEED_VIRTUAL_OVERSCAN = 8;
 
 /** @deprecated Use {@link familyFeedTopSentinelRootMargin} — IO only accepts px/% not CSS min(). */
 export const FAMILY_FEED_TOP_SENTINEL_ROOT_MARGIN = '900px 0px 0px 0px';

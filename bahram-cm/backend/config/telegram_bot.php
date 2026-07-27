@@ -69,6 +69,16 @@ return [
      */
     'host_api_proxy_url' => rtrim((string) env('TELEGRAM_HOST_API_PROXY_URL', 'https://bahram.rahai.online/bahram'), '/'),
 
+    /**
+     * Optional override for Iran → host-sync.php pushes. Use the Cloudflare
+     * Worker relay when the origin server cannot open bahram.rahai.online:
+     * https://<worker>/host-sync
+     * Or set host_push_force_http when only HTTPS (:443) is blocked.
+     */
+    'host_push_url' => rtrim((string) env('TELEGRAM_HOST_PUSH_URL', ''), '/'),
+
+    'host_push_force_http' => (bool) env('TELEGRAM_HOST_PUSH_FORCE_HTTP', false),
+
     'webhook' => [
         'base_url' => rtrim((string) env('TELEGRAM_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost:8010')), '/'),
         'path_pattern' => 'api/v1/integrations/telegram/{botKey}/webhook',

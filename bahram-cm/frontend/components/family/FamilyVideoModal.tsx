@@ -22,6 +22,7 @@ function readCoarsePointer(): boolean {
 export function FamilyVideoModal({
   open,
   url,
+  posterUrl = null,
   mediaId,
   postId,
   durationHint,
@@ -30,6 +31,8 @@ export function FamilyVideoModal({
 }: {
   open: boolean;
   url: string;
+  /** Tiny CDN poster — fills black gap until the first decoded frame. */
+  posterUrl?: string | null;
   mediaId: number;
   postId: number;
   durationHint?: number | null;
@@ -264,6 +267,16 @@ export function FamilyVideoModal({
           style={stageStyle}
           onClick={(e) => e.stopPropagation()}
         >
+          {isBuffering && !playbackError && posterUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={posterUrl}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover scale-[1.06] blur-md"
+            />
+          ) : null}
+
           {isBuffering && !playbackError ? (
             <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/35 pointer-events-none">
               <Loader2 className="h-10 w-10 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />
@@ -291,6 +304,7 @@ export function FamilyVideoModal({
               playsInline
               controls
               preload="metadata"
+              poster={posterUrl || undefined}
               controlsList={coarsePointer ? 'nofullscreen' : undefined}
               disablePictureInPicture
               className="family-video-modal__player"

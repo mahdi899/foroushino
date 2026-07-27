@@ -18,6 +18,8 @@ TELEGRAM_API_ORIGIN = "https://api.telegram.org"
 WEBHOOK_PATH_PREFIX = "/api/v1/integrations/telegram/"
 PROXY_ORIGIN_VALUE = "Cloudflare-Worker"
 DEDUPE_TTL_SECONDS = "120"
+# Iran cannot reach bahram.rahai.online — host pushes go Worker → this URL.
+HOST_SYNC_UPSTREAM = "https://bahram.rahai.online/rostam/telegram/public/host-sync.php"
 
 # Secrets (wrangler secret put — never commit):
 #   PROXY_SHARED_TOKEN — same as Laravel PROXY_SHARED_TOKEN / panel token

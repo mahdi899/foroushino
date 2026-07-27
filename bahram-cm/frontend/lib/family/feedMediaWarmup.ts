@@ -3,6 +3,7 @@ import {
   resolveFamilyMediaPosterUrl,
   resolveFamilyMediaUrl,
 } from '@/lib/family/mediaPlaybackUrl';
+import { hasFamilyMediaBeenSeen, markFamilyMediaSeen } from '@/lib/family/seenFamilyMedia';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
 
 const warmedUrls = new Set<string>();
@@ -22,14 +23,17 @@ function drainQueue(): void {
       inFlight -= 1;
       drainQueue();
     };
-    img.onload = done;
+    img.onload = () => {
+      markFamilyMediaSeen(url);
+      done();
+    };
     img.onerror = done;
     img.src = url;
   }
 }
 
 function enqueueWarmUrl(url: string | null | undefined): void {
-  if (!url || warmedUrls.has(url)) return;
+  if (!url || warmedUrls.has(url) || hasFamilyMediaBeenSeen(url)) return;
   warmedUrls.add(url);
   queue.push(url);
   drainQueue();
@@ -41,7 +45,7 @@ export function warmupUrls(urls: (string | null | undefined)[]): void {
   if (typeof window === 'undefined') return;
   const priority: string[] = [];
   for (const url of urls) {
-    if (!url || warmedUrls.has(url)) continue;
+    if (!url || warmedUrls.has(url) || hasFamilyMediaBeenSeen(url)) continue;
     warmedUrls.add(url);
     priority.push(url);
   }
@@ -57,9 +61,14 @@ function mediaUrlsFromBlock(block: FamilyPostBlock): string[] {
   const media = block.media;
   if (!media) return urls;
 
-  if (block.type === 'image' && media.url) {
-    const full = resolveFamilyMediaUrl(media.url);
-    if (full) urls.push(full);
+  if (block.type === 'image') {
+    // Warm tiny LQIP first, then full CDN image — never club/blob proxies.
+    const poster = resolveFamilyMediaPosterUrl(media.poster_url);
+    if (poster) urls.push(poster);
+    if (media.url) {
+      const full = resolveFamilyMediaUrl(media.url);
+      if (full) urls.push(full);
+    }
   }
 
   if (block.type === 'video') {

@@ -7,6 +7,7 @@ import { useFamilyFeedMediaInView } from '@/hooks/useFamilyFeedMediaInView';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
 import { resolveFamilyMediaPlaybackUrl, resolveFamilyMediaPosterUrl } from '@/lib/family/mediaPlaybackUrl';
+import { hasFamilyMediaBeenSeen, markFamilyMediaSeen } from '@/lib/family/seenFamilyMedia';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
 const DOUBLE_TAP_MS = 320;
@@ -22,9 +23,11 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
   const streamUrl = resolveFamilyMediaPlaybackUrl(media.url);
   const downloadUrl = streamUrl ?? media.url;
+  // Tiny blur poster only — never load the full video just for a feed preview.
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
-  const showFramePreview = !posterUrl && Boolean(streamUrl);
-  const shouldLoadPreview = useFamilyFeedMediaInView(containerRef, Boolean(streamUrl));
+  const seenPoster = hasFamilyMediaBeenSeen(posterUrl);
+  const inView = useFamilyFeedMediaInView(containerRef, Boolean(streamUrl) && !seenPoster);
+  const shouldLoadPreview = seenPoster || inView;
 
   const openPlayer = () => {
     if (!streamUrl) return;
@@ -78,7 +81,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   }
 
   const isPortrait = Boolean(media.width && media.height && media.height > media.width);
-  const showPoster = shouldLoadPreview && !posterError && (posterUrl || showFramePreview);
+  const showPoster = shouldLoadPreview && posterUrl && !posterError;
   const videoAspectStyle =
     media.width && media.height
       ? { aspectRatio: `${media.width} / ${media.height}` }
@@ -94,7 +97,13 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         )}
         style={videoAspectStyle}
       >
-        {showPoster && posterUrl ? (
+        {/* Soft placeholder so the cell is never a flat black void while poster loads. */}
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-[#1a2830] via-[#132028] to-[#0c1418]"
+          aria-hidden
+        />
+
+        {showPoster ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={posterUrl}
@@ -102,39 +111,20 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             decoding="async"
             fetchPriority="high"
             className={cn(
-              'pointer-events-none h-full w-full object-cover transition-opacity duration-150 ease-out',
+              'pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.08] blur-md transition-opacity duration-200 ease-out',
               posterLoaded ? 'opacity-100' : 'opacity-0',
             )}
-            onLoad={() => setPosterLoaded(true)}
-            onError={() => setPosterError(true)}
-            aria-hidden
-          />
-        ) : showPoster ? (
-          <video
-            src={streamUrl}
-            playsInline
-            muted
-            preload="metadata"
-            onLoadedMetadata={(e) => {
-              const video = e.currentTarget;
-              try {
-                if (video.duration > 0.15) video.currentTime = 0.1;
-              } catch {
-                /* seek unsupported — first frame is fine */
-              }
+            onLoad={() => {
+              markFamilyMediaSeen(posterUrl);
+              setPosterLoaded(true);
             }}
-            onLoadedData={() => setPosterLoaded(true)}
             onError={() => setPosterError(true)}
-            className={cn(
-              'pointer-events-none h-full w-full object-cover transition-opacity duration-150 ease-out',
-              posterLoaded ? 'opacity-100' : 'opacity-0',
-            )}
             aria-hidden
           />
         ) : null}
 
         {posterError && downloadUrl && (
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/35 px-3 backdrop-blur-md">
+          <span className="absolute inset-0 z-[3] flex flex-col items-center justify-center gap-2 bg-black/35 px-3 backdrop-blur-md">
             <span className="text-xs text-bone/75">پیش‌نمایش ویدیو در دسترس نیست</span>
             <FamilyMediaDownloadButton
               url={downloadUrl}
@@ -186,6 +176,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       <FamilyVideoModal
         open={modalOpen}
         url={streamUrl ?? media.url}
+        posterUrl={posterUrl}
         mediaId={media.id}
         postId={postId}
         durationHint={media.duration}

@@ -27,7 +27,7 @@ final class BackgroundIranRelay
         foreach ($this->queue->popBatch($this->maxPerRun) as $item) {
             $id = $item['id'];
             try {
-                $result = $this->live->processUpdate($item['update']);
+                $result = $this->live->processUpdate($item['update'], 8, true);
                 if (! empty($result['ok']) || ! isset($result['ok'])) {
                     $this->queue->delete($id);
 
@@ -42,19 +42,9 @@ final class BackgroundIranRelay
         $this->queue->pruneOld();
     }
 
-    /** Skip relay when the shared circuit is open — avoids an 8s sync-meta probe per webhook. */
+    /** Skip relay when the shared circuit is open — no sync-meta probe (saves a round-trip per webhook). */
     public function iranReachable(): bool
     {
-        if ((new IranCircuitBreaker)->isOpen()) {
-            return false;
-        }
-
-        try {
-            $this->sync->call('sync-meta', [], 3);
-
-            return true;
-        } catch (\Throwable) {
-            return false;
-        }
+        return ! (new IranCircuitBreaker)->isOpen();
     }
 }

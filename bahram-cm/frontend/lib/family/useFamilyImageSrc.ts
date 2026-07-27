@@ -11,12 +11,9 @@ export type FamilyImageSrcState = {
 };
 
 /**
- * CDN-first, synchronous: the feed <img> src is always the CDN stream URL —
- * never a `blob:` object URL built from a client-side Cache API round trip.
- * That proxy-fetch-then-blob path is what caused visible feed lag (extra
- * network hop through the club host + decode of a full-size fetch response
- * before the pixel could show). The browser's own HTTP cache on the CDN
- * origin now does the "already loaded → instant" job a messenger needs.
+ * CDN-first fallback, same-origin on family host: the feed <img> src prefers the
+ * club `/media/family` proxy so the service worker can cache-first images.
+ * Never a `blob:` object URL — that proxy-fetch-then-blob path caused feed lag.
  */
 export function useFamilyImageSrc(
   url: string | null | undefined,

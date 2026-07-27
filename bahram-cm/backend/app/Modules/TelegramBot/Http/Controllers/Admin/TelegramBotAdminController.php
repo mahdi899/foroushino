@@ -71,6 +71,7 @@ class TelegramBotAdminController
             $reportsChatId = $data['support_group_chat_id'] ?? $data['reports_chat_id'] ?? null;
             $bot->setReportsGroupChatId(filled($reportsChatId) ? (string) $reportsChatId : null);
             unset($data['support_group_chat_id'], $data['reports_chat_id']);
+            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
         }
 
         if (array_key_exists('bot_token_input', $data)) {

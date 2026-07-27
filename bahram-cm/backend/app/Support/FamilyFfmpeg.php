@@ -82,7 +82,8 @@ final class FamilyFfmpeg
             '-ss', (string) $atSeconds,
             '-i', $videoPath,
             '-frames:v', '1',
-            '-q:v', '3',
+            '-q:v', '5',
+            '-vf', 'scale=min(720\,iw):-2',
             $thumbPath,
         ]);
         $process->setTimeout(60);
@@ -98,6 +99,59 @@ final class FamilyFfmpeg
         }
 
         return is_file($thumbPath);
+    }
+
+    /**
+     * Frame → tiny blurred WebP LQIP (~5KB) for feed/story posters.
+     * Falls back to the mid-size JPEG frame when GD/WebP is unavailable.
+     * Caller must unlink the returned absolute `path` after uploading.
+     *
+     * @return array{path: string, relative: string}|null Absolute temp path + relative storage key.
+     */
+    public static function extractBlurPreview(
+        string $videoPath,
+        string $storagePath,
+        float $atSeconds = 0.5,
+    ): ?array {
+        $tmpBase = sys_get_temp_dir().DIRECTORY_SEPARATOR.'family-vthumb-'.uniqid('', true);
+        $framePath = "{$tmpBase}.jpg";
+        $previewPath = "{$tmpBase}_preview.webp";
+
+        try {
+            if (! self::extractThumbnail($videoPath, $framePath, $atSeconds)) {
+                return null;
+            }
+
+            $relative = FamilyBlurPreview::relativePathFor($storagePath);
+
+            if (FamilyBlurPreview::generateFromPath($framePath, $previewPath) && is_file($previewPath)) {
+                @unlink($framePath);
+
+                return ['path' => $previewPath, 'relative' => $relative];
+            }
+
+            // GD missing — keep a modest JPEG frame rather than no poster.
+            if (is_file($previewPath)) {
+                @unlink($previewPath);
+            }
+
+            $jpgRelative = preg_replace('/\.[^.]+$/', '', $storagePath).'_thumb.jpg';
+
+            return ['path' => $framePath, 'relative' => $jpgRelative];
+        } catch (\Throwable $e) {
+            Log::warning('family.ffmpeg_blur_preview_failed', [
+                'video' => $videoPath,
+                'error' => $e->getMessage(),
+            ]);
+
+            foreach ([$framePath, $previewPath] as $path) {
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
+
+            return null;
+        }
     }
 
     /**

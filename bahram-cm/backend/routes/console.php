@@ -16,6 +16,11 @@ Schedule::command('telegram:cleanup')->hourly()->onOneServer();
 Schedule::command('telegram:reconcile-webhook')->everyTwoMinutes()->onOneServer();
 Schedule::command('telegram:host-push-retry')->everyThreeMinutes()->onOneServer();
 Schedule::command('telegram:host-sync-accounts --skip-catalog --limit=2000')->everyTenMinutes()->onOneServer();
+// Heal host bootstrap (reports group, messages, flags) without blasting all accounts.
+Schedule::call(static fn () => \App\Jobs\PushTelegramHostSyncJob::bootstrap())
+    ->name('telegram-host-push-bootstrap')
+    ->hourly()
+    ->onOneServer();
 Schedule::command('telegram:health-check')->hourly()->onOneServer();
 Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServer();
 

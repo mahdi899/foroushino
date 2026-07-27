@@ -29,13 +29,13 @@ class ProcessFamilyVideoJob implements ShouldQueue
         }
 
         $updates = ['status' => FamilyMediaStatus::Ready];
+        $previewTempPath = null;
 
         if ($media->storage_path && FamilyFfmpeg::available()) {
             $disk = Storage::disk($media->disk);
             $localTmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'family-vid-'.uniqid('', true);
             $ext = pathinfo($media->storage_path, PATHINFO_EXTENSION) ?: 'mp4';
             $localVideo = "{$localTmp}.{$ext}";
-            $localThumb = "{$localTmp}.jpg";
 
             try {
                 $stream = $disk->readStream($media->storage_path);
@@ -58,17 +58,22 @@ class ProcessFamilyVideoJob implements ShouldQueue
                         $updates['height'] = $probe['height'];
                     }
 
-                    if (FamilyFfmpeg::extractThumbnail($localVideo, $localThumb)) {
-                        $thumbRelative = preg_replace('/\.[^.]+$/', '', $media->storage_path).'_thumb.jpg';
-                        $disk->put($thumbRelative, file_get_contents($localThumb));
-                        $updates['thumbnail_path'] = $thumbRelative;
+                    $preview = FamilyFfmpeg::extractBlurPreview($localVideo, $media->storage_path);
+                    if ($preview !== null) {
+                        $previewTempPath = $preview['path'];
+                        $bytes = file_get_contents($preview['path']);
+                        if ($bytes !== false && $bytes !== '') {
+                            $disk->put($preview['relative'], $bytes);
+                            $updates['thumbnail_path'] = $preview['relative'];
+                        }
                     }
                 }
             } finally {
-                foreach ([$localVideo, $localThumb] as $path) {
-                    if (is_file($path)) {
-                        @unlink($path);
-                    }
+                if (is_file($localVideo)) {
+                    @unlink($localVideo);
+                }
+                if ($previewTempPath && is_file($previewTempPath)) {
+                    @unlink($previewTempPath);
                 }
             }
         }
@@ -76,7 +81,12 @@ class ProcessFamilyVideoJob implements ShouldQueue
         $media->update($updates);
         $fresh = $media->fresh();
 
-        if ($this->isRemoteDisk($fresh->disk)) {
+        if ($fresh && ! $fresh->thumbnail_path) {
+            GenerateFamilyThumbnailJob::dispatch($fresh->id)
+                ->onQueue(config('family.queues.media', 'family-media'));
+        }
+
+        if ($fresh && $this->isRemoteDisk($fresh->disk)) {
             FamilyMediaStorage::purgeLocalPaths($fresh->storage_path, $fresh->thumbnail_path);
         }
 

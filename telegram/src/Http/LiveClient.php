@@ -16,17 +16,21 @@ final class LiveClient
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function live(string $path, array $payload, ?int $timeoutSeconds = null): array
+    private function live(string $path, array $payload, ?int $timeoutSeconds = null, bool $allowRetry = true): array
     {
         return $timeoutSeconds === null
-            ? $this->sync->call('live/'.$path, $payload)
-            : $this->sync->call('live/'.$path, $payload, $timeoutSeconds);
+            ? $this->sync->call('live/'.$path, $payload, 8, $allowRetry)
+            : $this->sync->call('live/'.$path, $payload, $timeoutSeconds, $allowRetry);
     }
 
-    /** @param array<string, mixed> $update */
-    public function processUpdate(array $update): array
+    /**
+     * @param  array<string, mixed>  $update
+     * @return array<string, mixed>
+     */
+    public function processUpdate(array $update, int $timeoutSeconds = 8, bool $allowRetry = false): array
     {
-        return $this->live('process-update', ['update' => $update]);
+        // UI relay (admin) must not double-wait on retry; bg drain can pass allowRetry=true.
+        return $this->live('process-update', ['update' => $update], $timeoutSeconds, $allowRetry);
     }
 
     /** @return array<string, mixed> */

@@ -4,6 +4,8 @@
  * Dumb relay only (no bot token on the proxy):
  *  1. Inbound  — Telegram webhook → Laravel
  *  2. Outbound — Laravel → api.telegram.org (Bearer PROXY_SHARED_TOKEN)
+ *  3. Host sync — Laravel (Iran) → telegram/host-sync.php when Iran
+ *     cannot reach bahram.rahai.online directly (Bearer host_sync_secret)
  *
  * Secrets: PROXY_SHARED_TOKEN
  * Webhook secret is validated on Laravel; Worker forwards it as-is.
@@ -27,6 +29,11 @@ async function handleRequest(request, env, ctx) {
 
   if (isTelegramApiProxyPath(url.pathname)) {
     return handleTelegramApiProxy(request, env, url);
+  }
+
+  // Iran → external host app (host-sync.php) via Worker when direct path is blocked.
+  if (url.pathname === '/host-sync' || url.pathname === '/host-sync/') {
+    return handleHostSyncProxy(request, env);
   }
 
   if (request.method !== 'POST') {
@@ -94,6 +101,58 @@ async function handleRequest(request, env, ctx) {
   return new Response(responseBody, {
     status: backendResponse.status,
     headers: { 'Content-Type': backendResponse.headers.get('Content-Type') || 'application/json' },
+  });
+}
+
+/**
+ * Forward Iran host-push requests to the external telegram/ app.
+ * Auth is the host_sync_secret Bearer (validated by host-sync.php) — Worker
+ * only bridges the network path Iran cannot open directly.
+ */
+async function handleHostSyncProxy(request, env) {
+  if (request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  const upstream = (env.HOST_SYNC_UPSTREAM || '').replace(/\/+$/, '');
+  if (!upstream) {
+    return new Response('Worker Misconfigured: HOST_SYNC_UPSTREAM', { status: 500 });
+  }
+
+  const auth = request.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ') || auth.length < 20) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  const forwardHeaders = new Headers();
+  forwardHeaders.set('Content-Type', request.headers.get('Content-Type') || 'application/json');
+  forwardHeaders.set('Accept', 'application/json');
+  forwardHeaders.set('Authorization', auth);
+  const origin = request.headers.get('X-Proxy-Origin');
+  if (origin) {
+    forwardHeaders.set('X-Proxy-Origin', origin);
+  }
+
+  const body = await request.arrayBuffer();
+
+  let upstreamResponse;
+  try {
+    upstreamResponse = await fetch(upstream, {
+      method: 'POST',
+      headers: forwardHeaders,
+      body,
+    });
+  } catch (error) {
+    console.error('bahram-telegram-bridge host-sync upstream failed', error);
+
+    return new Response('Host Sync Unreachable', { status: 502 });
+  }
+
+  return new Response(await upstreamResponse.text(), {
+    status: upstreamResponse.status,
+    headers: {
+      'Content-Type': upstreamResponse.headers.get('Content-Type') || 'application/json',
+    },
   });
 }
 

@@ -137,21 +137,20 @@ final class MessageHandler
                 return;
             }
 
-            // Any other admin-only button: keep the local state as-is so the
-            // next press retries the relay once Iran is reachable again.
+            // Leave admin panel so the next «پنل ادمین» can retry cleanly.
+            $this->conversations->set($telegramUserId, 'idle', []);
             $this->api->sendMessage(
                 $chatId,
                 TelegramCustomEmoji::tag('warning')
                 .' پنل ادمین فعلاً به سرور اصلی وصل نمی‌شود. لطفاً چند لحظه دیگر دوباره تلاش کنید.',
+                ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
             );
 
             return;
         }
 
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
-            // Local cache first — instant reply. Iran sync happens in the
-            // background after the reply is sent (see HostBackgroundSync in
-            // webhook.php), so button presses never block on a network call.
+            // Local cache first — instant reply. Account mirror is Iran→host push.
             $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
 
             return;

@@ -85,7 +85,7 @@ final class InboundSyncHandler
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{ok: bool, action: string, defer: bool}
+     * @return array{ok: bool, action?: string, error?: string, defer: bool}
      */
     private function handleRefreshSync(string $action, array $body): array
     {
@@ -97,15 +97,16 @@ final class InboundSyncHandler
         $hasCatalog = is_array($body['catalog'] ?? null);
 
         if (! $hasBootstrap && ! $hasCatalog) {
-            // Backward-compat: old-format push with no embedded data (e.g.
-            // during a rolling deploy) — fall back to the legacy pull.
-            match ($action) {
-                'refresh_bootstrap' => $this->refreshBootstrap($cache),
-                'refresh_catalog' => $this->refreshCatalog($cache),
-                default => $this->refreshAll($cache),
-            };
+            // Push must embed data. Do not pull Iran from host-sync (blocks /
+            // double-hop). Iran should re-push with payload.
+            error_log('[telegram-host] refresh sync ignored — no embedded bootstrap/catalog for '.$action);
 
-            return ['ok' => true, 'action' => $action, 'defer' => false];
+            return [
+                'ok' => false,
+                'error' => 'missing_embedded_payload',
+                'action' => $action,
+                'defer' => false,
+            ];
         }
 
         if ($hasBootstrap) {

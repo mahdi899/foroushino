@@ -6,7 +6,13 @@ import { useFamilyFeedMediaInView } from '@/hooks/useFamilyFeedMediaInView';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
 import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
-import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
+import {
+  resolveFamilyMediaDownloadUrl,
+  resolveFamilyMediaPosterUrl,
+  resolveFamilyMediaUrl,
+} from '@/lib/family/mediaPlaybackUrl';
+import { hasFamilyMediaBeenSeen, markFamilyMediaSeen } from '@/lib/family/seenFamilyMedia';
+import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
 /** Always reserve height so the virtualizer never measures a collapsed 0-tall image row. */
@@ -37,15 +43,28 @@ export function ImageBlock({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [lqipReady, setLqipReady] = useState(false);
 
+  // Same-origin (or CDN) stream URL — never a blob: object URL.
   const { src: imageUrl, resolved } = useFamilyImageSrc(media.url, media.id);
-  const shouldLoad = useFamilyFeedMediaInView(rootRef, resolved && Boolean(imageUrl));
-  const downloadUrl = resolveFamilyMediaUrl(media.url) ?? media.url;
+  const lqipUrl = resolveFamilyMediaPosterUrl(media.poster_url);
+  const seenInSession =
+    hasFamilyMediaBeenSeen(imageUrl) || hasFamilyMediaBeenSeen(lqipUrl);
+  const inView = useFamilyFeedMediaInView(rootRef, resolved && Boolean(imageUrl) && !seenInSession);
+  const shouldLoad = seenInSession || inView;
+  const downloadUrl = resolveFamilyMediaDownloadUrl(media.url) ?? media.url;
 
   useEffect(() => {
+    if (hasFamilyMediaBeenSeen(imageUrl)) {
+      setLoaded(true);
+      setError(false);
+      setLqipReady(true);
+      return;
+    }
     setLoaded(false);
     setError(false);
-  }, [imageUrl]);
+    setLqipReady(hasFamilyMediaBeenSeen(lqipUrl));
+  }, [imageUrl, lqipUrl]);
 
   if (resolved && !imageUrl) {
     return <div className={cn('aspect-square w-full', roundedClass, className)} style={aspectStyle(media)} />;
@@ -98,6 +117,26 @@ export function ImageBlock({
         )}
         style={containerStyle}
       >
+        {shouldLoad && lqipUrl && !error && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`lqip-${lqipUrl}`}
+            src={lqipUrl}
+            alt=""
+            decoding="async"
+            aria-hidden
+            onLoad={() => {
+              markFamilyMediaSeen(lqipUrl);
+              setLqipReady(true);
+            }}
+            className={cn(
+              'pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.12] blur-2xl transition-opacity duration-200',
+              loaded || !lqipReady ? 'opacity-0' : 'opacity-100',
+              fillCell ? 'object-cover' : 'object-contain',
+            )}
+          />
+        )}
+
         {shouldLoad && imageUrl && !error && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -106,7 +145,11 @@ export function ImageBlock({
             alt=""
             decoding="async"
             fetchPriority="high"
-            onLoad={() => setLoaded(true)}
+            onLoad={() => {
+              markFamilyMediaSeen(imageUrl);
+              rememberFamilyMediaView(imageUrl, media.id, 'image', media.mime_type);
+              setLoaded(true);
+            }}
             onError={() => setError(true)}
             className={cn(
               'absolute inset-0 h-full w-full transition-opacity duration-150 ease-out',

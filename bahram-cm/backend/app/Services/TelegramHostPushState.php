@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -36,9 +37,12 @@ class TelegramHostPushState
 
     public function clear(): void
     {
-        $group = $this->settings->group(self::GROUP);
-        unset($group[self::KEY]);
-        $this->settings->updateGroup(self::GROUP, $group);
+        // SettingService::updateGroup only upserts keys present in the payload —
+        // unsetting a key in PHP does not delete the DB row. Delete explicitly.
+        Setting::query()
+            ->where('group', self::GROUP)
+            ->where('key', self::KEY)
+            ->delete();
     }
 
     public function pendingAction(): ?string

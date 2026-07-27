@@ -12,7 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 
-/** Generates a still poster for video media when ProcessFamilyVideoJob did not. */
+/** Generates a tiny blurred poster for video media when ProcessFamilyVideoJob did not. */
 class GenerateFamilyThumbnailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -40,7 +40,7 @@ class GenerateFamilyThumbnailJob implements ShouldQueue
         $localTmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'family-thumb-'.uniqid('', true);
         $ext = pathinfo($media->storage_path, PATHINFO_EXTENSION) ?: 'mp4';
         $localVideo = "{$localTmp}.{$ext}";
-        $localThumb = "{$localTmp}.jpg";
+        $previewTempPath = null;
 
         try {
             $stream = $disk->readStream($media->storage_path);
@@ -51,19 +51,32 @@ class GenerateFamilyThumbnailJob implements ShouldQueue
                 }
             }
 
-            if (is_file($localVideo) && FamilyFfmpeg::extractThumbnail($localVideo, $localThumb)) {
-                $thumbRelative = preg_replace('/\.[^.]+$/', '', $media->storage_path).'_thumb.jpg';
-                $disk->put($thumbRelative, file_get_contents($localThumb));
-                $media->update([
-                    'thumbnail_path' => $thumbRelative,
-                    'status' => FamilyMediaStatus::Ready,
-                ]);
+            if (! is_file($localVideo)) {
+                return;
             }
+
+            $preview = FamilyFfmpeg::extractBlurPreview($localVideo, $media->storage_path);
+            if ($preview === null) {
+                return;
+            }
+
+            $previewTempPath = $preview['path'];
+            $bytes = file_get_contents($preview['path']);
+            if ($bytes === false || $bytes === '') {
+                return;
+            }
+
+            $disk->put($preview['relative'], $bytes);
+            $media->update([
+                'thumbnail_path' => $preview['relative'],
+                'status' => FamilyMediaStatus::Ready,
+            ]);
         } finally {
-            foreach ([$localVideo, $localThumb] as $path) {
-                if (is_file($path)) {
-                    @unlink($path);
-                }
+            if (is_file($localVideo)) {
+                @unlink($localVideo);
+            }
+            if ($previewTempPath && is_file($previewTempPath)) {
+                @unlink($previewTempPath);
             }
         }
     }
