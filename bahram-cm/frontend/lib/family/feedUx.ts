@@ -22,8 +22,8 @@ export const FAMILY_FEED_MEDIA_ROOT_MARGIN = '720px 0px 480px 0px';
 /** In-feed media: start decode well before visible so fast scroll never shows an empty box. */
 export function familyFeedMediaRootMargin(viewportHeightPx: number): string {
   const h = Math.max(viewportHeightPx, 0);
-  const top = Math.round(Math.min(h * 1.2, 1600));
-  const bottom = Math.round(Math.min(h * 0.6, 900));
+  const top = Math.round(Math.min(h * 0.8, 1100));
+  const bottom = Math.round(Math.min(h * 0.4, 600));
   return `${top}px 0px ${bottom}px 0px`;
 }
 
@@ -34,15 +34,18 @@ export const FAMILY_FEED_HISTORY_PREFETCH_SCROLL_PX = 1200;
 export const FAMILY_FEED_HISTORY_PREFETCH_COOLDOWN_MS = 4_000;
 
 /**
- * Window around scroll anchor for image/poster warmup — wide enough that a fast
- * fling always has ~10 posts of media already warm ahead of the visible viewport
- * (Telegram-like: media is ready before the message scrolls in, never after).
+ * Window around scroll anchor for image/poster warmup — kept modest so the
+ * warmup queue never competes hard with scroll rendering on mid/low-end
+ * phones (Telegram-like: media should be ready before it scrolls in, but not
+ * at the cost of many concurrent decodes causing jank).
  */
-export const FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE = 6;
-export const FAMILY_FEED_MEDIA_WARM_POSTS_AFTER = 4;
+export const FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE = 3;
+export const FAMILY_FEED_MEDIA_WARM_POSTS_AFTER = 2;
 
-/** Max parallel CDN image warmups (HTTP cache); keep low on mobile networks. */
-export const FAMILY_FEED_MEDIA_WARM_MAX_CONCURRENT = 4;
+/** Max parallel CDN image warmups (HTTP cache); keep low on mobile networks —
+ * too many concurrent decodes was causing visible scroll jank on mid/low-end
+ * phones, so this stays conservative even though it's the main lag lever. */
+export const FAMILY_FEED_MEDIA_WARM_MAX_CONCURRENT = 2;
 
 /**
  * Posts at feed tip to warm once after boot (visible conversation).
