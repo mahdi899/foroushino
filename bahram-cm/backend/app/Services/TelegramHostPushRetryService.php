@@ -25,10 +25,10 @@ class TelegramHostPushRetryService
         }
 
         $ok = match ($action) {
-            'refresh_bootstrap' => $this->push->runAction('refresh_bootstrap'),
-            'refresh_catalog' => $this->push->runAction('refresh_catalog'),
-            'refresh_all' => $this->push->runAction('refresh_all'),
-            default => $this->push->runAction('refresh_all'),
+            'refresh_bootstrap' => $this->push->refreshBootstrap(),
+            'refresh_catalog' => $this->push->refreshCatalog(),
+            'refresh_all' => $this->push->refreshAll(),
+            default => $this->push->refreshAll(),
         };
         if ($ok) {
             $this->state->clear();

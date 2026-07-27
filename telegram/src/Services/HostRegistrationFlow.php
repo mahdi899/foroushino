@@ -6,9 +6,11 @@ namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
+use TelegramHost\Account\PendingMobileAccess;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Support\MobileNormalizer;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
@@ -24,6 +26,7 @@ final class HostRegistrationFlow
         private readonly MainMenu $mainMenu,
         private readonly SyncCache $cache,
         private readonly AccountSyncCoordinator $accountSync,
+        private readonly ?PendingMobileAccess $pendingMobileAccess = null,
     ) {}
 
     /**
@@ -76,8 +79,21 @@ final class HostRegistrationFlow
             return;
         }
 
-        $phone = trim((string) ($contact['phone_number'] ?? ''));
+        $rawPhone = trim((string) ($contact['phone_number'] ?? ''));
         $contactUserId = (int) ($contact['user_id'] ?? 0);
+
+        // Telegram delivers Iranian numbers as "989xxxxxxxxx" (no leading
+        // "0"/"+"). Normalize to the canonical "09xxxxxxxxx" local format —
+        // the same format Iran stores/keys by — before it's used for the
+        // pending-access lookup below, sent to Iran, or stored locally.
+        $phone = MobileNormalizer::normalizeOrOriginal($rawPhone);
+
+        // Access already purchased on the website (before this /start) may
+        // have been pre-provisioned by Iran, keyed by mobile — merge it in
+        // right away, from local DB only, regardless of whether Iran is
+        // reachable for the registration call below. This is what makes
+        // "دسترسی به محض استارت" work even when Iran is briefly unreachable.
+        $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
         try {
             $response = $this->sync->call('registration/contact', [
@@ -105,6 +121,26 @@ final class HostRegistrationFlow
             'registration_ask_name_offline',
             'شماره شما ثبت شد. لطفاً نام و نام خانوادگی خود را بفرستید تا ادامه دهیم.',
         ), ['reply_markup' => ['remove_keyboard' => true]]);
+    }
+
+    private function mergePendingAccessByMobile(int $telegramUserId, string $mobile): void
+    {
+        if ($mobile === '' || $this->pendingMobileAccess === null) {
+            return;
+        }
+
+        try {
+            $pending = $this->pendingMobileAccess->get($mobile);
+            if ($pending !== null && $pending['owned_product_ids'] !== []) {
+                $this->accounts->mergeOwnedProductIds(
+                    $telegramUserId,
+                    $pending['owned_product_ids'],
+                    $pending['display_name'],
+                );
+            }
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] pending mobile access merge: '.$e->getMessage());
+        }
     }
 
     private function showMainMenu(int $chatId, int $telegramUserId): void

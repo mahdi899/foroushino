@@ -15,27 +15,62 @@ class TelegramHostPushService
 {
     public const PUSH_ORIGIN = 'Main-Server';
 
-    public function __construct(private readonly TelegramHostPushState $pushState) {}
+    public function __construct(
+        private readonly TelegramHostPushState $pushState,
+        private readonly TelegramHostPayloadBuilder $payloadBuilder,
+    ) {}
 
+    /**
+     * Refresh actions embed the actual data in the push itself — the host
+     * used to call back to Iran (`SyncClient::call('bootstrap')`) to fetch
+     * it after acking the push, which turned a single push into two network
+     * hops and, whenever that callback timed out, produced a malformed
+     * (double-JSON) 500 response on the host and left its cache stale. See
+     * `telegram/src/Http/InboundSyncHandler.php`.
+     */
     public function refreshBootstrap(): bool
     {
-        return $this->runAction('refresh_bootstrap');
+        return $this->runAction('refresh_bootstrap', ['bootstrap' => $this->payloadBuilder->bootstrapPayload()]);
     }
 
     public function refreshCatalog(): bool
     {
-        return $this->runAction('refresh_catalog');
+        return $this->runAction('refresh_catalog', ['catalog' => $this->payloadBuilder->catalogPayload()]);
     }
 
     public function refreshAll(): bool
     {
-        return $this->runAction('refresh_all');
+        return $this->runAction('refresh_all', [
+            'bootstrap' => $this->payloadBuilder->bootstrapPayload(),
+            'catalog' => $this->payloadBuilder->catalogPayload(),
+        ]);
     }
 
     /** @param  array<string, mixed>  $account */
     public function pushAccount(array $account): bool
     {
         return $this->runAction('push_account', ['account' => $account]);
+    }
+
+    /**
+     * Pre-provisions access on the host for a buyer who purchased on the
+     * website but has never started this bot — keyed by mobile number so
+     * the host can grant access the instant they finally do /start (see
+     * PendingMobileAccess + HostRegistrationFlow::contact() on the host).
+     *
+     * @param  list<int>  $ownedProductIds
+     */
+    public function pushMobileAccess(string $mobile, array $ownedProductIds, ?string $displayName = null): bool
+    {
+        if (trim($mobile) === '' || $ownedProductIds === []) {
+            return false;
+        }
+
+        return $this->runAction('push_mobile_access', [
+            'mobile' => $mobile,
+            'owned_product_ids' => array_values($ownedProductIds),
+            'display_name' => $displayName,
+        ]);
     }
 
     /**
@@ -73,11 +108,7 @@ class TelegramHostPushService
      */
     public function runAction(string $action, array $extra = []): bool
     {
-        if ($action === 'push_account' || $action === 'notify_user') {
-            $result = $this->request($action, $extra);
-        } else {
-            $result = $this->request($action);
-        }
+        $result = $this->request($action, $extra);
 
         if ($result !== null && ($result['ok'] ?? false)) {
             $this->pushState->clear();

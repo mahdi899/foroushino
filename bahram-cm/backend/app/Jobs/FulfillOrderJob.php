@@ -193,6 +193,13 @@ class FulfillOrderJob implements ShouldQueue
                         $hostNotified = true;
                     }
                 }
+
+                // Buyer has never started the production bot — pre-provision
+                // their access on the host by mobile number so it's ready the
+                // instant they do /start, instead of waiting on a reconcile.
+                if ($telegramAccounts->isEmpty() && $order->user !== null) {
+                    $hostSync->queuePushMobileAccess($order->user);
+                }
             }
 
             if (! $usesHost || ! $hostNotified) {

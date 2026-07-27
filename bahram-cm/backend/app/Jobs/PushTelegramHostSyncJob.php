@@ -29,9 +29,9 @@ class PushTelegramHostSyncJob implements ShouldQueue
     public function handle(TelegramHostPushService $push): void
     {
         $ok = match ($this->action) {
-            'refresh_bootstrap' => $push->runAction('refresh_bootstrap'),
-            'refresh_catalog' => $push->runAction('refresh_catalog'),
-            'refresh_all' => $push->runAction('refresh_all'),
+            'refresh_bootstrap' => $push->refreshBootstrap(),
+            'refresh_catalog' => $push->refreshCatalog(),
+            'refresh_all' => $push->refreshAll(),
             'notify_user' => $push->runAction('notify_user', [
                 'telegram_user_id' => (int) ($this->extra['telegram_user_id'] ?? 0),
                 'text' => (string) ($this->extra['text'] ?? ''),
@@ -41,7 +41,12 @@ class PushTelegramHostSyncJob implements ShouldQueue
                 'account' => (array) ($this->extra['account'] ?? []),
                 'notification' => (array) ($this->extra['notification'] ?? []),
             ]),
-            default => $push->runAction('refresh_all'),
+            'push_mobile_access' => $push->pushMobileAccess(
+                (string) ($this->extra['mobile'] ?? ''),
+                array_map('intval', (array) ($this->extra['owned_product_ids'] ?? [])),
+                $this->extra['display_name'] ?? null,
+            ),
+            default => $push->refreshAll(),
         };
 
         if (! $ok) {
@@ -76,6 +81,16 @@ class PushTelegramHostSyncJob implements ShouldQueue
             'telegram_user_id' => $telegramUserId,
             'text' => $text,
             'options' => $options,
+        ]);
+    }
+
+    /** @param  list<int>  $ownedProductIds */
+    public static function mobileAccess(string $mobile, array $ownedProductIds, ?string $displayName = null): void
+    {
+        self::dispatch('push_mobile_access', [
+            'mobile' => $mobile,
+            'owned_product_ids' => $ownedProductIds,
+            'display_name' => $displayName,
         ]);
     }
 }

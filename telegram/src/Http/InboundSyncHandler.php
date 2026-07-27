@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace TelegramHost\Http;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\PendingMobileAccess;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Db\Connection;
+use TelegramHost\Services\WebhookRegisterFromPull;
 use TelegramHost\Support\AesGcmCipher;
 use TelegramHost\Support\HmacVerifier;
 use TelegramHost\Telegram\BotApiClient;
@@ -56,12 +58,88 @@ final class InboundSyncHandler
             }
         }
 
+        // Bootstrap/catalog refreshes now carry the actual data in the push
+        // itself (see App\Services\TelegramHostPayloadBuilder on Iran) — no
+        // network call back to Iran is needed, so these run synchronously,
+        // right here, instead of via the deferred/fastcgi_finish_request path.
+        // That old path made a push into two network hops and, whenever the
+        // callback timed out, produced a malformed 500 response and left the
+        // host's cache stale.
+        if (in_array($action, ['refresh_bootstrap', 'refresh_catalog', 'refresh_all'], true)) {
+            return $this->handleRefreshSync($action, $body);
+        }
+
+        // Pre-provisioned access for a buyer who bought on the website but
+        // has never started this bot — see TelegramHostAccountSync on Iran
+        // and PendingMobileAccess/HostRegistrationFlow::contact() on the host.
+        if ($action === 'push_mobile_access') {
+            return $this->handlePushMobileAccess($body);
+        }
+
         return [
             'ok' => true,
             'action' => $action,
             'defer' => true,
             'payload' => $body,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{ok: bool, action: string, defer: bool}
+     */
+    private function handleRefreshSync(string $action, array $body): array
+    {
+        $pdo = Connection::get($this->config);
+        $sync = new SyncClient($this->config);
+        $cache = new SyncCache($pdo, $sync, $this->config);
+
+        $hasBootstrap = is_array($body['bootstrap'] ?? null);
+        $hasCatalog = is_array($body['catalog'] ?? null);
+
+        if (! $hasBootstrap && ! $hasCatalog) {
+            // Backward-compat: old-format push with no embedded data (e.g.
+            // during a rolling deploy) — fall back to the legacy pull.
+            match ($action) {
+                'refresh_bootstrap' => $this->refreshBootstrap($cache),
+                'refresh_catalog' => $this->refreshCatalog($cache),
+                default => $this->refreshAll($cache),
+            };
+
+            return ['ok' => true, 'action' => $action, 'defer' => false];
+        }
+
+        if ($hasBootstrap) {
+            $bootstrap = (array) $body['bootstrap'];
+            (new WebhookRegisterFromPull($this->config))->processIfRequested($bootstrap, $sync);
+            $cache->storeBootstrapOnly($bootstrap);
+        }
+
+        if ($hasCatalog) {
+            $cache->storeCatalogOnly((array) $body['catalog']);
+        }
+
+        return ['ok' => true, 'action' => $action, 'defer' => false];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{ok: bool, action: string, defer: bool}
+     */
+    private function handlePushMobileAccess(array $body): array
+    {
+        $mobile = trim((string) ($body['mobile'] ?? ''));
+        if ($mobile === '') {
+            return ['ok' => false, 'action' => 'push_mobile_access', 'defer' => false];
+        }
+
+        $ownedProductIds = array_values(array_map('intval', (array) ($body['owned_product_ids'] ?? [])));
+        $displayName = trim((string) ($body['display_name'] ?? ''));
+
+        $pdo = Connection::get($this->config);
+        (new PendingMobileAccess($pdo))->store($mobile, $ownedProductIds, $displayName !== '' ? $displayName : null);
+
+        return ['ok' => true, 'action' => 'push_mobile_access', 'defer' => false];
     }
 
     /** Run heavy sync after HTTP response was flushed to Iran. */

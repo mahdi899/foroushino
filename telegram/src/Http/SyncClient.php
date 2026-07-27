@@ -61,6 +61,25 @@ final class SyncClient
 
             return $result;
         } catch (\Throwable $e) {
+            // One quick retry for transient network blips (connect/timeout,
+            // TLS reset, DNS hiccup) before giving up — this is exactly the
+            // class of failure users saw as "checkout unavailable" for a
+            // momentary Iran/host connectivity dip that a single retry a
+            // couple hundred ms later would have sailed through. Real
+            // outages (Iran genuinely down) still fail fast on the retry and
+            // open the circuit breaker as before.
+            if ($this->isTransientNetworkError($e)) {
+                try {
+                    usleep(300_000);
+                    $result = $this->doCall($path, $payload, $timeoutSeconds);
+                    $this->breaker->recordSuccess();
+
+                    return $result;
+                } catch (\Throwable $retryError) {
+                    $e = $retryError;
+                }
+            }
+
             $outcome = $this->breaker->recordFailure();
 
             throw new IranSyncFailureException(
@@ -71,6 +90,19 @@ final class SyncClient
                 previous: $e,
             );
         }
+    }
+
+    private function isTransientNetworkError(\Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'timed out')
+            || str_contains($message, 'timeout')
+            || str_contains($message, 'could not resolve')
+            || str_contains($message, 'connection refused')
+            || str_contains($message, 'connection reset')
+            || str_contains($message, 'ssl')
+            || str_contains($message, 'curl error');
     }
 
     /**

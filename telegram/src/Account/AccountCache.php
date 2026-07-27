@@ -145,6 +145,45 @@ final class AccountCache
         ]);
     }
 
+    /**
+     * Merges pre-provisioned access (pushed from Iran by mobile number,
+     * before this user ever started the bot) into the row created moments
+     * earlier by {@see storePendingContact()}/{@see storeLocalOnlyRegistration()}.
+     * Only adds to owned_product_ids — never overwrites identity/verification
+     * fields, which still come from the normal Iran registration/reconcile flow.
+     *
+     * @param  list<int>  $ownedProductIds
+     */
+    public function mergeOwnedProductIds(int $telegramUserId, array $ownedProductIds, ?string $displayNameHint = null): void
+    {
+        if ($ownedProductIds === []) {
+            return;
+        }
+
+        $existing = $this->get($telegramUserId);
+        $current = $existing !== null ? $this->decodeIntList((string) ($existing['owned_product_ids'] ?? '[]')) : [];
+        $merged = array_values(array_unique(array_merge($current, $ownedProductIds)));
+        $ownedJson = json_encode($merged, JSON_UNESCAPED_UNICODE);
+
+        $hasDisplayName = $existing !== null && trim((string) ($existing['display_name'] ?? '')) !== '';
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO telegram_accounts_cache (telegram_user_id, display_name, owned_product_ids, is_bot_admin, updated_at)
+             VALUES (:id, :name, :owned, 0, NOW())
+             ON DUPLICATE KEY UPDATE
+                owned_product_ids = :owned2,
+                display_name = CASE WHEN display_name IS NULL OR display_name = "" THEN :name2 ELSE display_name END,
+                updated_at = NOW()',
+        );
+        $stmt->execute([
+            'id' => $telegramUserId,
+            'name' => $hasDisplayName ? null : $displayNameHint,
+            'owned' => $ownedJson,
+            'owned2' => $ownedJson,
+            'name2' => $displayNameHint,
+        ]);
+    }
+
     public function isVerified(int $telegramUserId): bool
     {
         $account = $this->get($telegramUserId);

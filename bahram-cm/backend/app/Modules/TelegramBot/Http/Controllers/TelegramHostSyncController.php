@@ -4,24 +4,15 @@ namespace App\Modules\TelegramBot\Http\Controllers;
 
 use App\Enums\OtpPurpose;
 use App\Models\DiscountCode;
-use App\Models\Product;
 use App\Models\Seminar;
-use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Models\TelegramBot;
-use App\Modules\TelegramBot\Models\TelegramRequiredChat;
-use App\Modules\TelegramBot\Models\TelegramSupportCategory;
 use App\Modules\TelegramBot\Services\AccountLinkService;
-use App\Modules\TelegramBot\Services\BotMessageCatalog;
-use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
-use App\Modules\TelegramBot\Services\TelegramCheckoutService;
-use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
-use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
-use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Modules\TelegramBot\Services\TelegramUserSyncService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
 use App\Services\TelegramHostAccountSnapshotService;
 use App\Services\TelegramHostCatalogRevision;
+use App\Services\TelegramHostPayloadBuilder;
 use App\Services\TelegramHostRegistrationService;
 use App\Services\TelegramInfrastructureService;
 use App\Support\AesGcmCipher;
@@ -45,77 +36,21 @@ use Illuminate\Support\Facades\Log;
 class TelegramHostSyncController
 {
     public function __construct(
-        private readonly BotMessageCatalog $messages,
-        private readonly TelegramProductCatalogService $products,
-        private readonly TelegramSeminarCatalogService $seminars,
         private readonly OtpService $otp,
         private readonly TelegramUserSyncService $userSync,
         private readonly AccountLinkService $accountLinks,
-        private readonly TelegramCheckoutService $checkout,
-        private readonly TelegramCatalogMediaService $catalogMedia,
         private readonly TelegramInfrastructureService $infrastructure,
         private readonly TelegramHostCatalogRevision $catalogRevision,
         private readonly TelegramHostAccountSnapshotService $accountSnapshots,
         private readonly TelegramHostRegistrationService $hostRegistration,
+        private readonly TelegramHostPayloadBuilder $payloadBuilder,
     ) {}
 
     public function bootstrap(Request $request): JsonResponse
     {
         $bot = $this->productionBot();
 
-        $messages = collect(BotMessageCatalog::defaults())
-            ->mapWithKeys(fn (array $default, string $key) => [$key => $this->messages->get($bot, $key)])
-            ->all();
-
-        $requiredChats = TelegramRequiredChat::query()
-            ->where('telegram_bot_id', $bot->id)
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get(['id', 'chat_id', 'title', 'invite_link', 'is_required'])
-            ->toArray();
-
-        $features = [];
-        foreach (BotFeatureFlag::cases() as $flag) {
-            $features[$flag->value] = $bot->featureEnabled($flag);
-        }
-
-        $supportCategories = TelegramSupportCategory::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get(['key', 'title_fa', 'default_topic_id', 'sort_order'])
-            ->map(fn (TelegramSupportCategory $c) => [
-                'key' => $c->key,
-                'title_fa' => $c->title_fa,
-                'default_topic_id' => $c->default_topic_id,
-                'sort_order' => $c->sort_order,
-            ])
-            ->values()
-            ->all();
-
-        return $this->encryptedResponse($request, array_merge([
-            'bot' => [
-                'id' => $bot->id,
-                'key' => $bot->key,
-                'features' => $features,
-                'is_active' => (bool) $bot->is_active,
-                'reports_group_chat_id' => $bot->reportsGroupChatId(),
-            ],
-            'messages' => $messages,
-            'required_chats' => $requiredChats,
-            'support_categories' => $supportCategories,
-            'checkout' => [
-                'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
-                'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),
-            ],
-            'site_urls' => [
-                'identity' => TelegramSiteUrl::identityPage(),
-                'family' => TelegramSiteUrl::familyHome(),
-                'sat' => TelegramSiteUrl::satPage(),
-                'referral_panel' => TelegramSiteUrl::page('panel/referrals'),
-            ],
-            'synced_at' => now()->toIso8601String(),
-            'catalog_revision' => $this->catalogRevision->current(),
-        ], $this->infrastructure->pendingHostWebhookBootstrapExtra()));
+        return $this->encryptedResponse($request, $this->payloadBuilder->bootstrapPayload($bot));
     }
 
     public function syncMeta(Request $request): JsonResponse
@@ -139,45 +74,7 @@ class TelegramHostSyncController
 
     public function catalog(Request $request): JsonResponse
     {
-        $courses = $this->products->listPublicCourses()->map(function (Product $p) {
-            $photo = $this->catalogMedia->productPhoto($p);
-
-            return [
-                'id' => $p->id,
-                'slug' => $p->slug,
-                'title' => $p->title,
-                'price' => $p->price,
-                'sale_price' => $p->sale_price,
-                'photo' => $photo,
-            ];
-        })->values();
-
-        $seminars = $this->seminars->listUpcoming()->map(function (Seminar $s) {
-            $s->loadMissing('product');
-            $photo = $this->catalogMedia->seminarPhoto($s);
-            $product = $s->product;
-            $base = (int) ($s->price ?: $product?->price ?: 0);
-            $saleRaw = $s->sale_price ?? $product?->sale_price;
-            $sale = $saleRaw !== null ? (int) $saleRaw : null;
-
-            return [
-                'id' => $s->id,
-                'product_id' => $s->product_id,
-                'title' => $s->title,
-                'date' => $s->date?->toIso8601String(),
-                'location' => $s->location,
-                'capacity_hint' => $s->capacity,
-                'price' => $base,
-                'sale_price' => $sale,
-                'photo' => $photo,
-            ];
-        })->values();
-
-        return $this->encryptedResponse($request, [
-            'courses' => $courses,
-            'seminars' => $seminars,
-            'synced_at' => now()->toIso8601String(),
-        ]);
+        return $this->encryptedResponse($request, $this->payloadBuilder->catalogPayload());
     }
 
     public function otpRequest(Request $request): JsonResponse

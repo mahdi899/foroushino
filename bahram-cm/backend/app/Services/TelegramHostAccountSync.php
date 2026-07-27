@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\PushTelegramHostSyncJob;
 use App\Models\Order;
+use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 
@@ -88,6 +89,37 @@ class TelegramHostAccountSync
      *
      * @param  array<string, mixed>  $options
      */
+    /**
+     * Pre-provisions access on the host for a buyer who has no
+     * production-bot `TelegramAccount` yet (bought on the website, never
+     * started the bot). Keyed by mobile — see PushTelegramHostSyncJob and
+     * TelegramHostPushService::pushMobileAccess() on Iran, PendingMobileAccess
+     * + HostRegistrationFlow::contact() on the host.
+     */
+    public function queuePushMobileAccess(User $user): void
+    {
+        $mobile = trim((string) $user->mobile);
+        if ($mobile === '') {
+            return;
+        }
+
+        $ownedProductIds = Order::query()
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['paid', 'fulfilled'])
+            ->pluck('product_id')
+            ->filter()
+            ->unique()
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($ownedProductIds === []) {
+            return;
+        }
+
+        PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, $user->name ?? null);
+    }
+
     public function pushPaidOrderNotification(TelegramAccount $account, string $text, array $options = []): bool
     {
         $account->loadMissing('bot');

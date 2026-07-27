@@ -99,6 +99,16 @@ CREATE TABLE IF NOT EXISTS pending_iran_updates (
     INDEX idx_pending_iran_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Access pushed from Iran by mobile number, before the buyer ever starts the
+-- bot (e.g. bought a course/seminar on the website only). Merged into
+-- telegram_accounts_cache the moment the user shares their phone at /start.
+CREATE TABLE IF NOT EXISTS telegram_pending_access_by_mobile (
+    mobile VARCHAR(20) NOT NULL PRIMARY KEY,
+    owned_product_ids TEXT NULL,
+    display_name VARCHAR(191) NULL,
+    updated_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Local support threads (user ↔ reports group) — no Iran dependency.
 CREATE TABLE IF NOT EXISTS support_message_maps (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

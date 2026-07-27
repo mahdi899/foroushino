@@ -117,8 +117,12 @@ final class PurchaseFlow
         if (! empty($result['offline'])) {
             $this->api->sendMessage($chatId, $this->cache->message(
                 'payment_retry_soon',
-                'لطفاً چند دقیقه دیگر دوباره دکمه پرداخت را بزنید.',
-            ));
+                'اتصال به سرور پرداخت لحظه‌ای برقرار نشد. با دکمه زیر دوباره تلاش کنید.',
+            ), [
+                'reply_markup' => [
+                    'inline_keyboard' => [[InlineButtons::callback('تلاش دوباره', 'pay:zp:'.$productId, 'money', 'success')]],
+                ],
+            ]);
 
             return;
         }
@@ -154,8 +158,12 @@ final class PurchaseFlow
         if (! empty($result['offline'])) {
             $this->api->sendMessage($chatId, $this->cache->message(
                 'payment_retry_soon',
-                'لطفاً چند دقیقه دیگر دوباره «کارت به کارت» را انتخاب کنید.',
-            ));
+                'اتصال به سرور لحظه‌ای برقرار نشد. با دکمه زیر دوباره تلاش کنید.',
+            ), [
+                'reply_markup' => [
+                    'inline_keyboard' => [[InlineButtons::callback('تلاش دوباره', 'pay:c2c:'.$productId, 'cash', 'success')]],
+                ],
+            ]);
 
             return;
         }
