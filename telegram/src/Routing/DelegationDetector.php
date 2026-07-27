@@ -10,9 +10,8 @@ use TelegramHost\Conversation\ConversationRepository;
 /**
  * Decides which updates should be relayed to Iran in the background (never blocks the user).
  *
- * Support runs locally on the host. Admin panel still needs Iran, but only when
- * the user is already inside admin_panel / admin_waiting_input — not for every
- * admin menu press (that caused 8s timeouts on every button).
+ * Support + SAT form + discount preview run locally. Admin panel shell is local;
+ * only admin_panel / C2C receipt states sync-relay for live data.
  */
 final class DelegationDetector
 {
@@ -21,7 +20,6 @@ final class DelegationDetector
         'waiting_for_terms',
         'waiting_for_mobile',
         'confirming_registration',
-        'filling_sat_application',
         'waiting_for_card_to_card_receipt',
         'admin_panel',
         'admin_waiting_input',
@@ -78,7 +76,7 @@ final class DelegationDetector
     }
 
     /**
-     * Synchronous live relay — only when Iran must answer immediately (OTP/C2C/admin panel).
+     * Synchronous live relay — only when Iran must answer immediately (admin panel / C2C).
      *
      * @param array<string, mixed> $update
      */
@@ -94,7 +92,14 @@ final class DelegationDetector
         }
 
         $conversation = $this->conversations->get($telegramUserId);
-        if (in_array($conversation['state'], ['admin_panel', 'admin_waiting_input', 'waiting_for_card_to_card_receipt', 'filling_sat_application'], true)) {
+        // Exit admin locally — do not block on Iran for «خروج».
+        $text = trim((string) ($update['message']['text'] ?? ''));
+        if (in_array($conversation['state'], ['admin_panel', 'admin_waiting_input'], true)
+            && in_array($text, ['خروج از پنل ادمین', '❌ خروج از پنل ادمین'], true)) {
+            return false;
+        }
+
+        if (in_array($conversation['state'], ['admin_panel', 'admin_waiting_input', 'waiting_for_card_to_card_receipt'], true)) {
             return true;
         }
 

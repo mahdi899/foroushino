@@ -44,9 +44,9 @@ final class ResilientLiveClient
     }
 
     /** @return array<string, mixed> */
-    public function satOpen(int $chatId, int $telegramUserId): array
+    public function satSubmit(int $chatId, int $telegramUserId, array $draft): array
     {
-        return $this->invoke($chatId, $telegramUserId, 'بخش سات', fn () => $this->live->satOpen($telegramUserId, $chatId));
+        return $this->invoke($chatId, $telegramUserId, 'ثبت درخواست سات', fn () => $this->live->satSubmit($telegramUserId, $draft));
     }
 
     /** @return array<string, mixed> */

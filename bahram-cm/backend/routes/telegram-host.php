@@ -45,8 +45,10 @@ Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle
             Route::post('/referral/summary', [TelegramHostLiveController::class, 'referralSummary']);
             Route::post('/family/summary', [TelegramHostLiveController::class, 'familySummary']);
             Route::post('/sat/open', [TelegramHostLiveController::class, 'satOpen']);
+            Route::post('/sat/submit', [TelegramHostLiveController::class, 'satSubmit'])->middleware('throttle:30,1');
             Route::post('/support/prepare', [TelegramHostLiveController::class, 'supportPrepare']);
             Route::post('/support/send', [TelegramHostLiveController::class, 'supportSend'])->middleware('throttle:30,1');
             Route::post('/support/try-reply', [TelegramHostLiveController::class, 'supportTryReply'])->middleware('throttle:30,1');
+            Route::post('/support/sync-ticket', [TelegramHostLiveController::class, 'supportSyncTicket'])->middleware('throttle:60,1');
         });
     });

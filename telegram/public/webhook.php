@@ -110,9 +110,13 @@ try {
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $accountSync, $pendingMobileAccess);
     $membership = new MembershipGate($cache, $api, $membershipCache);
-    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
-    $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo);
+    $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
+    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview);
+    $ticketSync = new \TelegramHost\Queue\PendingTicketSync($pdo);
+    $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync);
     $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $purchaseFlow, $siteBaseUrl);
+    $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
+    $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
 
     $messageHandler = new MessageHandler(
         $api,
@@ -128,6 +132,8 @@ try {
         $support,
         $iranSync,
         $referenceChannel,
+        $satFlow,
+        $adminShell,
         $siteBaseUrl
     );
 
@@ -170,6 +176,12 @@ try {
         $iranRelay->drain();
     } catch (\Throwable $e) {
         error_log('[telegram-host] iran relay: '.$e->getMessage());
+    }
+
+    try {
+        (new \TelegramHost\Queue\BackgroundTicketSync($ticketSync, $liveClient))->drain();
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] ticket sync: '.$e->getMessage());
     }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());

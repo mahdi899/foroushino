@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DiscountCode;
 use App\Models\Product;
 use App\Models\Seminar;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
@@ -14,6 +15,7 @@ use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
+use App\Services\DiscountService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -36,6 +38,7 @@ class TelegramHostPayloadBuilder
         private readonly TelegramCheckoutService $checkout,
         private readonly TelegramInfrastructureService $infrastructure,
         private readonly TelegramHostCatalogRevision $catalogRevision,
+        private readonly DiscountService $discounts,
     ) {}
 
     public function productionBot(): ?TelegramBot
@@ -160,8 +163,44 @@ class TelegramHostPayloadBuilder
         return [
             'courses' => $courses,
             'seminars' => $seminars,
+            'discount_codes' => $this->discountCodesPayload(),
             'synced_at' => now()->toIso8601String(),
         ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function discountCodesPayload(): array
+    {
+        return DiscountCode::query()
+            ->where('is_active', true)
+            ->with(['products:id'])
+            ->orderByDesc('id')
+            ->limit(500)
+            ->get()
+            ->map(function (DiscountCode $code): array {
+                return [
+                    'code' => strtoupper((string) $code->code),
+                    'discount_type' => $code->discount_type instanceof \BackedEnum
+                        ? $code->discount_type->value
+                        : (string) $code->discount_type,
+                    'discount_value' => (int) $code->discount_value,
+                    'max_discount_amount' => $code->max_discount_amount,
+                    'min_order_amount' => $code->min_order_amount,
+                    'starts_at' => $code->starts_at?->toIso8601String(),
+                    'ends_at' => $code->ends_at?->toIso8601String(),
+                    'max_uses' => $code->max_uses,
+                    'uses_reserved' => $this->discounts->reservedUsageCount((int) $code->id),
+                    'max_uses_per_user' => $code->max_uses_per_user,
+                    'restriction' => $code->restriction instanceof \BackedEnum
+                        ? $code->restriction->value
+                        : (string) $code->restriction,
+                    'requires_link' => (bool) $code->requires_link,
+                    'is_active' => (bool) $code->is_active,
+                    'product_ids' => $code->products->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function referenceChannelInviteUrl(TelegramBot $bot): ?string

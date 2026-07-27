@@ -261,6 +261,55 @@ class TelegramHostLiveController
         ]);
     }
 
+    public function satSubmit(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $account = $this->resolveAccount($request);
+
+        if ($account === null) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+        }
+
+        $draft = [
+            'name' => (string) ($payload['name'] ?? ''),
+            'city' => array_key_exists('city', $payload) ? $payload['city'] : null,
+            'age' => array_key_exists('age', $payload) ? $payload['age'] : null,
+        ];
+
+        $result = $this->satFlow->submitFromHost($account, $draft);
+
+        return $this->jsonResponse($result, ! empty($result['ok']) ? 200 : 422);
+    }
+
+    public function supportSyncTicket(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $account = $this->resolveAccount($request);
+        $category = trim((string) ($payload['category'] ?? 'other'));
+        $text = trim((string) ($payload['text'] ?? ''));
+        $hasMedia = ! empty($payload['has_media']);
+
+        if ($account === null) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
+        }
+
+        try {
+            $ticket = $this->supportTickets->openOrContinue(
+                $account,
+                $category,
+                SupportTicketBridgeService::CATEGORY_LABELS[$category] ?? 'پشتیبانی تلگرام',
+            );
+            $body = $text !== '' ? $text : ($hasMedia ? '[رسانه]' : '[پیام خالی]');
+            $this->supportTickets->appendUserMessage($ticket, $body);
+        } catch (Throwable $e) {
+            Log::channel('telegram')->warning('supportSyncTicket failed', ['error' => $e->getMessage()]);
+
+            return $this->jsonResponse(['ok' => false, 'message' => 'ثبت تیکت ناموفق بود.'], 500);
+        }
+
+        return $this->jsonResponse(['ok' => true, 'ticket_id' => $ticket->id]);
+    }
+
     public function supportPrepare(Request $request): JsonResponse
     {
         $payload = $this->hostPayload($request);

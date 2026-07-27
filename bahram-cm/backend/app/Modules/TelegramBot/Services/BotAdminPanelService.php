@@ -3390,6 +3390,7 @@ class BotAdminPanelService
             ['reply_markup' => $this->adminMenuMarkup($actor)],
         );
         $this->renderDiscountsList($client, $chatId, 0);
+        \App\Jobs\PushTelegramHostSyncJob::catalog();
     }
 
     private function isDiscountNullCommand(string $input): bool

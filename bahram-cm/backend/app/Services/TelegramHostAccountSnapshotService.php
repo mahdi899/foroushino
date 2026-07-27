@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Enums\Family\FamilyPostStatus;
+use App\Enums\SatApplicationStatus;
 use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
 use App\Models\FamilyPostView;
 use App\Models\Product;
+use App\Models\SatApplication;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\TelegramAdminUserStatsService;
@@ -96,6 +98,44 @@ class TelegramHostAccountSnapshotService
             'referral' => $this->referralPayload($account),
             'family' => $this->familyPayload($account),
             'owned_presents' => $presents,
+            'sat' => $this->satPayload($account),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function satPayload(TelegramAccount $account): array
+    {
+        if (! $account->user_id) {
+            return ['has_application' => false];
+        }
+
+        $app = SatApplication::query()
+            ->where('user_id', $account->user_id)
+            ->latest('id')
+            ->first();
+
+        if ($app === null) {
+            return ['has_application' => false];
+        }
+
+        $status = $app->status instanceof SatApplicationStatus
+            ? $app->status
+            : SatApplicationStatus::tryFrom((string) $app->status);
+
+        $label = match ($status) {
+            SatApplicationStatus::Received => 'دریافت شد',
+            SatApplicationStatus::Reviewing => 'در حال بررسی',
+            SatApplicationStatus::Accepted => 'پذیرفته شد',
+            SatApplicationStatus::Rejected => 'رد شده',
+            default => (string) ($app->status ?? 'نامشخص'),
+        };
+
+        return [
+            'has_application' => true,
+            'status' => $status?->value ?? (string) $app->status,
+            'status_label' => $label,
+            'text' => TelegramCustomEmoji::tag('bell').' <b>درخواست سات</b>'
+                ."\nوضعیت: {$label}",
         ];
     }
 

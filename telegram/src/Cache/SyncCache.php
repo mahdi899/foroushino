@@ -107,7 +107,92 @@ final class SyncCache
     public function storeCatalogOnly(array $catalog): void
     {
         $this->storeCatalog((array) ($catalog['courses'] ?? []), (array) ($catalog['seminars'] ?? []));
+        $this->storeDiscountCodes((array) ($catalog['discount_codes'] ?? []));
         $this->touchSyncMeta('catalog');
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findDiscountCode(string $normalizedCode): ?array
+    {
+        $this->ensureDiscountSchema();
+        $stmt = $this->pdo->prepare('SELECT * FROM discount_codes_cache WHERE code = :code LIMIT 1');
+        $stmt->execute(['code' => strtoupper(trim($normalizedCode))]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
+    }
+
+    /** @param list<array<string, mixed>> $codes */
+    private function storeDiscountCodes(array $codes): void
+    {
+        $this->ensureDiscountSchema();
+        $this->pdo->exec('DELETE FROM discount_codes_cache');
+        if ($codes === []) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO discount_codes_cache (
+                code, discount_type, discount_value, max_discount_amount, min_order_amount,
+                starts_at, ends_at, max_uses, uses_reserved, max_uses_per_user,
+                restriction, requires_link, is_active, product_ids_json, synced_at
+             ) VALUES (
+                :code, :type, :value, :max_disc, :min_order,
+                :starts, :ends, :max_uses, :uses_reserved, :max_per_user,
+                :restriction, :requires_link, :is_active, :product_ids, NOW()
+             )',
+        );
+
+        foreach ($codes as $code) {
+            $normalized = strtoupper(trim((string) ($code['code'] ?? '')));
+            if ($normalized === '') {
+                continue;
+            }
+            $stmt->execute([
+                'code' => $normalized,
+                'type' => (string) ($code['discount_type'] ?? 'percent'),
+                'value' => (int) ($code['discount_value'] ?? 0),
+                'max_disc' => $code['max_discount_amount'] ?? null,
+                'min_order' => $code['min_order_amount'] ?? null,
+                'starts' => $this->toMysqlDateTime($code['starts_at'] ?? null),
+                'ends' => $this->toMysqlDateTime($code['ends_at'] ?? null),
+                'max_uses' => $code['max_uses'] ?? null,
+                'uses_reserved' => (int) ($code['uses_reserved'] ?? 0),
+                'max_per_user' => $code['max_uses_per_user'] ?? null,
+                'restriction' => (string) ($code['restriction'] ?? 'all'),
+                'requires_link' => ! empty($code['requires_link']) ? 1 : 0,
+                'is_active' => ! empty($code['is_active']) ? 1 : 0,
+                'product_ids' => json_encode(array_values(array_map('intval', (array) ($code['product_ids'] ?? []))), JSON_UNESCAPED_UNICODE),
+            ]);
+        }
+    }
+
+    private function ensureDiscountSchema(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS discount_codes_cache (
+                code VARCHAR(64) NOT NULL PRIMARY KEY,
+                discount_type VARCHAR(32) NOT NULL DEFAULT \'percent\',
+                discount_value INT NOT NULL DEFAULT 0,
+                max_discount_amount INT NULL,
+                min_order_amount INT NULL,
+                starts_at DATETIME NULL,
+                ends_at DATETIME NULL,
+                max_uses INT NULL,
+                uses_reserved INT NOT NULL DEFAULT 0,
+                max_uses_per_user INT NULL,
+                restriction VARCHAR(64) NOT NULL DEFAULT \'all\',
+                requires_link TINYINT(1) NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                product_ids_json TEXT NULL,
+                synced_at DATETIME NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+        );
+        $ready = true;
     }
 
     public function message(string $key, string $fallback = ''): string

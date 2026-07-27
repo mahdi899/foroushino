@@ -108,6 +108,10 @@ class DiscountService
                 DiscountCode::query()
                     ->whereKey($order->discount_code_id)
                     ->increment('uses_count');
+                try {
+                    \App\Jobs\PushTelegramHostSyncJob::catalog();
+                } catch (\Throwable) {
+                }
             }
         });
     }
@@ -274,7 +278,7 @@ class DiscountService
         }
     }
 
-    private function reservedUsageCount(int $discountCodeId): int
+    public function reservedUsageCount(int $discountCodeId): int
     {
         $paidUses = DiscountCodeUsage::query()
             ->where('discount_code_id', $discountCodeId)

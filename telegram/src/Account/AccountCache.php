@@ -25,16 +25,17 @@ final class AccountCache
     /** @param array<string, mixed> $account */
     public function store(int $telegramUserId, array $account): void
     {
+        $this->ensureSatColumn();
         $snapshot = is_array($account['snapshot'] ?? null) ? $account['snapshot'] : null;
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO telegram_accounts_cache (
                 telegram_user_id, user_id, mobile, mobile_verified_at, display_name, is_bot_admin,
-                snapshot_revision, owned_product_ids, profile_json, referral_json, family_json, owned_presents_json,
+                snapshot_revision, owned_product_ids, profile_json, referral_json, family_json, owned_presents_json, sat_json,
                 snapshot_synced_at, updated_at
              ) VALUES (
                 :id, :user_id, :mobile, :verified_at, :display_name, :is_admin,
-                :snap_rev, :owned, :profile, :referral, :family, :presents,
+                :snap_rev, :owned, :profile, :referral, :family, :presents, :sat,
                 :snap_at, NOW()
              )
              ON DUPLICATE KEY UPDATE
@@ -49,6 +50,7 @@ final class AccountCache
                 referral_json = COALESCE(:referral2, referral_json),
                 family_json = COALESCE(:family2, family_json),
                 owned_presents_json = COALESCE(:presents2, owned_presents_json),
+                sat_json = COALESCE(:sat2, sat_json),
                 snapshot_synced_at = COALESCE(:snap_at2, snapshot_synced_at),
                 updated_at = NOW()',
         );
@@ -58,6 +60,7 @@ final class AccountCache
         $referralJson = null;
         $familyJson = null;
         $presentsJson = null;
+        $satJson = null;
         $snapRev = null;
         $snapAt = null;
 
@@ -68,6 +71,7 @@ final class AccountCache
             $referralJson = json_encode($snapshot['referral'] ?? null, JSON_UNESCAPED_UNICODE);
             $familyJson = json_encode($snapshot['family'] ?? null, JSON_UNESCAPED_UNICODE);
             $presentsJson = json_encode($snapshot['owned_presents'] ?? [], JSON_UNESCAPED_UNICODE);
+            $satJson = json_encode($snapshot['sat'] ?? null, JSON_UNESCAPED_UNICODE);
             $snapAt = date('Y-m-d H:i:s');
         }
 
@@ -84,6 +88,7 @@ final class AccountCache
             'referral' => $referralJson,
             'family' => $familyJson,
             'presents' => $presentsJson,
+            'sat' => $satJson,
             'snap_at' => $snapAt,
         ];
 
@@ -99,8 +104,41 @@ final class AccountCache
             'referral2' => $referralJson,
             'family2' => $familyJson,
             'presents2' => $presentsJson,
+            'sat2' => $satJson,
             'snap_at2' => $snapAt,
         ]));
+    }
+
+    /** @return array<string, mixed>|null */
+    public function satSnapshot(int $telegramUserId): ?array
+    {
+        $this->ensureSatColumn();
+        $stmt = $this->pdo->prepare('SELECT sat_json FROM telegram_accounts_cache WHERE telegram_user_id = :id');
+        $stmt->execute(['id' => $telegramUserId]);
+        $raw = $stmt->fetchColumn();
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private function ensureSatColumn(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        try {
+            $columns = $this->pdo->query('SHOW COLUMNS FROM telegram_accounts_cache')->fetchAll(\PDO::FETCH_COLUMN);
+            $existing = is_array($columns) ? array_map('strval', $columns) : [];
+            if (! in_array('sat_json', $existing, true)) {
+                $this->pdo->exec('ALTER TABLE telegram_accounts_cache ADD COLUMN sat_json MEDIUMTEXT NULL');
+            }
+        } catch (\Throwable) {
+        }
+        $ready = true;
     }
 
     /**

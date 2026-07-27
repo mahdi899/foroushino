@@ -19,6 +19,7 @@ final class PurchaseFlow
         private readonly SyncCache $cache,
         private readonly ConversationRepository $conversations,
         private readonly MainMenu $mainMenu,
+        private readonly HostDiscountPreview $discounts,
     ) {}
 
     public function applyDiscountCode(int $chatId, int $telegramUserId, string $code): void
@@ -42,15 +43,9 @@ final class PurchaseFlow
             return;
         }
 
-        $preview = $this->live->discountPreview($chatId, $telegramUserId, $productId, $code);
-        if (! empty($preview['offline'])) {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'discount_check_deferred',
-                'الان بررسی کد تخفیف ممکن نیست. «بدون کد تخفیف» را بزنید یا چند دقیقه بعد دوباره کد را بفرستید.',
-            ));
-
-            return;
-        }
+        // Local preview (incl. capacity via uses_reserved) — no Iran / no typing.
+        // Iran re-validates authoritatively when starting the payment gateway.
+        $preview = $this->discounts->preview($code, $productId);
         if (empty($preview['ok'])) {
             $this->api->sendMessage($chatId, ((string) ($preview['message'] ?? 'کد تخفیف معتبر نیست.'))."\n\nدوباره کد را بفرستید یا «بدون کد تخفیف» را بزنید.");
 

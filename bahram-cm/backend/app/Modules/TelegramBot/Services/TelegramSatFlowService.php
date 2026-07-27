@@ -264,6 +264,53 @@ class TelegramSatFlowService
     }
 
     /**
+     * Host-side final submit — creates SatApplication without Telegram delivery.
+     *
+     * @param  array{name?: string, city?: ?string, age?: ?int}  $draft
+     * @return array{ok: bool, message?: string}
+     */
+    public function submitFromHost(TelegramAccount $account, array $draft): array
+    {
+        if (! $account->user_id) {
+            return ['ok' => false, 'message' => 'حساب شما به سایت متصل نیست. دوباره /start کنید.'];
+        }
+
+        if (SatApplication::query()->where('user_id', $account->user_id)->exists()) {
+            return ['ok' => false, 'message' => 'شما قبلاً درخواست سات ثبت کرده‌اید.'];
+        }
+
+        $name = trim((string) ($draft['name'] ?? ''));
+        if (mb_strlen($name) < 3) {
+            $name = trim((string) ($account->display_name ?? 'کاربر'));
+        }
+
+        $age = array_key_exists('age', $draft) && $draft['age'] !== null && $draft['age'] !== ''
+            ? (int) $draft['age']
+            : null;
+
+        $application = SatApplication::query()->create([
+            'user_id' => $account->user_id,
+            'name' => $name,
+            'mobile' => $account->mobile,
+            'city' => $draft['city'] ?? null,
+            'age' => $age,
+            'status' => SatApplicationStatus::Received,
+            'submitted_at' => now(),
+        ]);
+
+        $this->adminTelegram->notifySatApplicationSubmitted($application->loadMissing('user'));
+
+        try {
+            \App\Jobs\PushTelegramHostSyncJob::account(
+                app(\App\Services\TelegramHostAccountSnapshotService::class)->accountPayload($account->fresh(['user', 'bot'])),
+            );
+        } catch (\Throwable) {
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
      * @return array{text: string, options: array<string, mixed>}
      */
     private function buildExistingStatusPayload(

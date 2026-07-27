@@ -7,6 +7,7 @@ namespace TelegramHost\Services;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
+use TelegramHost\Queue\PendingTicketSync;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
@@ -42,6 +43,7 @@ final class HostSupportService
         private readonly AccountCache $accounts,
         private readonly MainMenu $mainMenu,
         private readonly \PDO $pdo,
+        private readonly ?PendingTicketSync $ticketSync = null,
     ) {}
 
     public function prepare(int $telegramUserId, string $category): void
@@ -162,6 +164,14 @@ final class HostSupportService
                     'forward_message_id' => $sourceMessageId,
                 ]);
             }
+
+            $this->ticketSync?->push([
+                'telegram_user_id' => $telegramUserId,
+                'category' => $category,
+                'text' => $text,
+                'has_media' => $hasMedia,
+                'message_id' => $sourceMessageId,
+            ]);
         } catch (\Throwable $e) {
             error_log('[telegram-host] support forward failed (category='.$category.', user='.$telegramUserId.'): '.$e->getMessage());
             $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی به گروه گزارشات ناموفق بود. لطفاً دوباره از منو «پشتیبانی» را بزنید.');

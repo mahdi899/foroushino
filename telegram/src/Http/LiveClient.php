@@ -112,6 +112,23 @@ final class LiveClient
         ]);
     }
 
+    /**
+     * @param  array{name: string, city?: mixed, age?: mixed}  $draft
+     * @return array<string, mixed>
+     */
+    public function satSubmit(int $telegramUserId, array $draft): array
+    {
+        return $this->live('sat/submit', array_merge([
+            'telegram_user_id' => $telegramUserId,
+        ], $draft), 10);
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function supportSyncTicket(array $payload): array
+    {
+        return $this->live('support/sync-ticket', $payload, 8, false);
+    }
+
     /** @return array<string, mixed> */
     public function capacityCheck(int $seminarId): array
     {

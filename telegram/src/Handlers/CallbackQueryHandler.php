@@ -13,6 +13,7 @@ use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
+use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
 
@@ -54,6 +55,24 @@ final class CallbackQueryHandler
 
         if (str_starts_with($data, 'support:cat:')) {
             $this->handleSupportCategory($chatId, $telegramUserId, substr($data, strlen('support:cat:')));
+
+            return;
+        }
+
+        if ($data === 'support:cancel') {
+            $this->conversations->set($telegramUserId, 'idle', []);
+            $this->api->sendMessage($chatId, 'پشتیبانی لغو شد.', [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
+            return;
+        }
+
+        if ($data === 'sat:cancel') {
+            $this->conversations->set($telegramUserId, 'idle', []);
+            $this->api->sendMessage($chatId, 'ثبت درخواست سات لغو شد.', [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
 
             return;
         }
@@ -144,12 +163,18 @@ final class CallbackQueryHandler
             $category = 'other';
         }
 
-        // Legacy inline buttons still work; same local prepare path (no Iran).
+        // Entirely local — no Iran prepare call.
         $this->support->prepare($telegramUserId, $category);
         $this->api->sendMessage($chatId, $this->cache->message(
             'support_write_prompt',
             'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو» بفرستید.',
-        ));
+        ), [
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [InlineButtons::callback('لغو', 'support:cancel', 'cross', 'danger')],
+                ],
+            ],
+        ]);
     }
 
     private function handleBuy(int $chatId, int $telegramUserId, int $productId): void

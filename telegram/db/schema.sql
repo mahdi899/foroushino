@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS telegram_accounts_cache (
     referral_json MEDIUMTEXT NULL,
     family_json MEDIUMTEXT NULL,
     owned_presents_json MEDIUMTEXT NULL,
+    sat_json MEDIUMTEXT NULL,
     snapshot_synced_at DATETIME NULL,
     updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -100,6 +101,34 @@ CREATE TABLE IF NOT EXISTS pending_iran_updates (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     INDEX idx_pending_iran_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pending_ticket_sync (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    payload_json MEDIUMTEXT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_pending_ticket_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS discount_codes_cache (
+    code VARCHAR(64) NOT NULL PRIMARY KEY,
+    discount_type VARCHAR(32) NOT NULL DEFAULT 'percent',
+    discount_value INT NOT NULL DEFAULT 0,
+    max_discount_amount INT NULL,
+    min_order_amount INT NULL,
+    starts_at DATETIME NULL,
+    ends_at DATETIME NULL,
+    max_uses INT NULL,
+    uses_reserved INT NOT NULL DEFAULT 0,
+    max_uses_per_user INT NULL,
+    restriction VARCHAR(64) NOT NULL DEFAULT 'all',
+    requires_link TINYINT(1) NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    product_ids_json TEXT NULL,
+    synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Access pushed from Iran by mobile number, before the buyer ever starts the

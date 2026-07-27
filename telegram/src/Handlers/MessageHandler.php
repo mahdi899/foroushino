@@ -10,7 +10,9 @@ use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Routing\IranSyncRelay;
+use TelegramHost\Services\HostAdminShell;
 use TelegramHost\Services\HostRegistrationFlow;
+use TelegramHost\Services\HostSatFlow;
 use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
@@ -36,6 +38,8 @@ final class MessageHandler
         private readonly HostSupportService $support,
         private readonly IranSyncRelay $iranSync,
         private readonly ReferenceChannelFlow $referenceChannel,
+        private readonly HostSatFlow $satFlow,
+        private readonly HostAdminShell $adminShell,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -109,6 +113,20 @@ final class MessageHandler
             return;
         }
 
+        if ($conversation['state'] === 'filling_sat_application') {
+            if ($this->satFlow->handleText($chatId, $telegramUserId, $text)) {
+                return;
+            }
+            // Menu button exited SAT — fall through to menu handler below if needed.
+            if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
+                $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
+
+                return;
+            }
+
+            return;
+        }
+
         if ($conversation['state'] === 'waiting_for_card_to_card_receipt') {
             $this->api->sendMessage($chatId, $this->cache->message(
                 'c2c_receipt_received',
@@ -119,27 +137,20 @@ final class MessageHandler
         }
 
         if (in_array($conversation['state'], ['admin_panel', 'admin_waiting_input'], true)) {
-            // Reaching MessageHandler at all while in this state means the
-            // synchronous relay to Iran (see DelegationDetector +
-            // IranSyncRelay) just failed — Iran normally answers every
-            // admin-panel keystroke directly and the host never gets here.
-            if ($this->isAdminExitText($text)) {
-                $this->conversations->set($telegramUserId, 'idle', []);
-                $this->sendMainMenu($chatId, $telegramUserId);
+            if ($this->adminShell->isExitText($text)) {
+                $this->adminShell->exitToMain($chatId, $telegramUserId);
 
                 return;
             }
 
             if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
-                // User gave up on the panel and tapped a normal menu button —
-                // let them out locally instead of leaving them stuck.
                 $this->conversations->set($telegramUserId, 'idle', []);
                 $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
 
                 return;
             }
 
-            // Leave admin panel so the next «پنل ادمین» can retry cleanly.
+            // Sync relay to Iran failed — unlock locally.
             $this->conversations->set($telegramUserId, 'idle', []);
             $this->api->sendMessage(
                 $chatId,
@@ -208,59 +219,31 @@ final class MessageHandler
         match ($action) {
             MainMenu::ACTION_COURSES => $this->sendCourseList($chatId, $telegramUserId),
             MainMenu::ACTION_SEMINARS => $this->sendSeminarList($chatId, $telegramUserId),
-            MainMenu::ACTION_SAT => $this->openSat($chatId, $telegramUserId),
+            MainMenu::ACTION_SAT => $this->satFlow->open($chatId, $telegramUserId),
             MainMenu::ACTION_CHANNEL => $this->referenceChannel->open($chatId, $telegramUserId),
             MainMenu::ACTION_FAMILY => $this->sendFamily($chatId, $telegramUserId),
             MainMenu::ACTION_REFERRAL => $this->sendReferral($chatId, $telegramUserId),
-            MainMenu::ACTION_SUPPORT => $this->openSupportHub($chatId, $telegramUserId),
+            MainMenu::ACTION_SUPPORT => $this->openSupportHub($chatId),
             MainMenu::ACTION_ACCOUNT => $this->sendAccount($chatId, $telegramUserId),
-            MainMenu::ACTION_ADMIN => $this->openAdminPanel($chatId, $telegramUserId, $text),
+            MainMenu::ACTION_ADMIN => $this->openAdminShell($chatId, $telegramUserId, $text),
             default => $this->sendMainMenu($chatId, $telegramUserId),
         };
     }
 
-    private function openAdminPanel(int $chatId, int $telegramUserId, string $text): void
+    private function openAdminShell(int $chatId, int $telegramUserId, string $text): void
     {
-        if (! $this->accounts->isBotAdmin($telegramUserId)) {
-            $this->sendMainMenu($chatId, $telegramUserId);
-
-            return;
-        }
-
-        $update = [
+        $this->adminShell->open($chatId, $telegramUserId);
+        // Background: mirror admin_panel state on Iran without blocking the user.
+        $this->iranSync->enqueue([
             'update_id' => 0,
             'message' => [
                 'message_id' => 0,
                 'date' => time(),
                 'chat' => ['id' => $chatId, 'type' => 'private'],
                 'from' => ['id' => $telegramUserId],
-                'text' => $text,
+                'text' => $text !== '' ? $text : 'پنل ادمین',
             ],
-        ];
-
-        if ($this->iranSync->tryRelay($chatId, $telegramUserId, $update)) {
-            // Iran now owns this conversation server-side. Mirror that
-            // locally so DelegationDetector forwards every subsequent
-            // admin-panel keystroke to Iran instead of the host trying (and
-            // failing) to interpret admin-only button labels itself — that
-            // gap was the actual reason the admin panel "stopped working"
-            // after the first button press.
-            $this->conversations->set($telegramUserId, 'admin_panel', []);
-
-            return;
-        }
-
-        $this->api->sendMessage(
-            $chatId,
-            TelegramCustomEmoji::tag('warning')
-            .' پنل ادمین فعلاً به سرور اصلی وصل نمی‌شود. منوی عادی از کش محلی کار می‌کند؛ بعد از وصل شدن دوباره «پنل ادمین» را بزنید.',
-            ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
-        );
-    }
-
-    private function isAdminExitText(string $text): bool
-    {
-        return in_array(trim($text), ['خروج از پنل ادمین', '❌ خروج از پنل ادمین'], true);
+        ]);
     }
 
     private function sendMainMenu(int $chatId, int $telegramUserId): void
@@ -351,39 +334,6 @@ final class MessageHandler
         }
     }
 
-    private function openSat(int $chatId, int $telegramUserId): void
-    {
-        $result = $this->live->satOpen($chatId, $telegramUserId);
-        if (! empty($result['state'])) {
-            $this->conversations->set($telegramUserId, (string) $result['state'], (array) ($result['context'] ?? []));
-        }
-
-        if (empty($result['ok'])) {
-            if (! empty($result['offline'])) {
-                $url = $this->cache->siteUrl('sat', $this->siteBaseUrl.'/sat');
-                $this->api->sendMessage($chatId, $this->cache->message(
-                    'sat_use_site',
-                    'فرم سات را از طریق لینک زیر تکمیل کنید:',
-                ), [
-                    'reply_markup' => ['inline_keyboard' => [[InlineButtons::url('ثبت‌نام سات', $url, 'bell', 'primary')]]],
-                ]);
-
-                return;
-            }
-            $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'بخش سات در دسترس نیست.'));
-
-            return;
-        }
-
-        if (! empty($result['text'])) {
-            $options = (array) ($result['options'] ?? []);
-            if (! isset($options['parse_mode'])) {
-                $options['parse_mode'] = 'HTML';
-            }
-            $this->api->sendMessage($chatId, (string) $result['text'], $options);
-        }
-    }
-
     private function sendFamily(int $chatId, int $telegramUserId): void
     {
         $result = $this->accounts->familyResponse($telegramUserId);
@@ -434,14 +384,19 @@ final class MessageHandler
         ]);
     }
 
-    private function openSupportHub(int $chatId, int $telegramUserId): void
+    private function openSupportHub(int $chatId): void
     {
-        // One-tap: skip category hub — user writes immediately (category = other).
-        $this->support->prepare($telegramUserId, 'other');
-        $this->api->sendMessage($chatId, $this->cache->message(
-            'support_write_prompt',
-            'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو» بفرستید.',
-        ));
+        // Categories from host message cache — no Iran round-trip.
+        $this->api->sendMessage($chatId, $this->cache->message('support_prompt', 'دسته پشتیبانی را انتخاب کنید:'), [
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [[InlineButtons::callback($this->cache->message('support_category_purchase', 'خرید و پرداخت'), 'support:cat:purchase', 'cart', 'primary')]],
+                    [[InlineButtons::callback($this->cache->message('support_category_campaign_course', 'دوره کمپین‌نویسی'), 'support:cat:campaign_course', 'graduation')]],
+                    [[InlineButtons::callback($this->cache->message('support_category_sat', 'سات'), 'support:cat:sat', 'bell')]],
+                    [[InlineButtons::callback($this->cache->message('support_category_other', 'سایر'), 'support:cat:other', 'chat')]],
+                ],
+            ],
+        ]);
     }
 
     private function sendAccount(int $chatId, int $telegramUserId): void
