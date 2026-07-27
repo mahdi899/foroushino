@@ -130,6 +130,45 @@ final class TelegramSiteUrl
         return self::page('panel/identity-verification');
     }
 
+    /**
+     * Deep-link into the production Telegram bot with an optional start payload.
+     */
+    public static function botStartDeepLink(?string $payload = null): ?string
+    {
+        $username = trim((string) (
+            config('telegram.bots.production.username')
+            ?? data_get(config('telegram.links'), 'bot_username')
+            ?? ''
+        ));
+
+        if ($username === '') {
+            $bot = \App\Modules\TelegramBot\Models\TelegramBot::query()
+                ->where('key', 'production')
+                ->value('username');
+            $username = trim((string) $bot);
+        }
+
+        $username = ltrim($username, '@');
+        if ($username === '') {
+            $fallback = trim((string) data_get(config('telegram.links'), 'telegram_bot', ''));
+            if (preg_match('#t\.me/([A-Za-z0-9_]+)#', $fallback, $m)) {
+                $username = $m[1];
+            }
+        }
+
+        if ($username === '') {
+            return null;
+        }
+
+        $url = 'https://t.me/'.$username;
+        $payload = trim((string) $payload);
+        if ($payload !== '') {
+            $url .= '?start='.rawurlencode($payload);
+        }
+
+        return $url;
+    }
+
     public static function telegramLoginPage(?string $token = null): ?string
     {
         $path = 'panel';

@@ -183,6 +183,18 @@ final class BotApiClient
         return is_array($result['result'] ?? null) ? $result['result'] : [];
     }
 
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function createChatInviteLink(int|string $chatId, array $options = []): array
+    {
+        $params = array_merge(['chat_id' => $chatId], $options);
+        $result = $this->call('createChatInviteLink', $params, true);
+
+        return is_array($result['result'] ?? null) ? $result['result'] : [];
+    }
+
     /** @param array<string, mixed> $decoded */
     private function resultOf(array $decoded): array
     {

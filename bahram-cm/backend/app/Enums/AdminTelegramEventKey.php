@@ -20,6 +20,7 @@ enum AdminTelegramEventKey: string
     case StudentFirstLogin = 'student_first_login';
     case ProfileUpdated = 'profile_updated';
     case SatApplicationSubmitted = 'sat_application_submitted';
+    case DestinationMemberLeft = 'destination_member_left';
 
     public function label(): string
     {
@@ -40,6 +41,7 @@ enum AdminTelegramEventKey: string
             self::StudentFirstLogin => 'اولین ورود دانشجو',
             self::ProfileUpdated => 'به‌روزرسانی پروفایل',
             self::SatApplicationSubmitted => 'درخواست سات جدید',
+            self::DestinationMemberLeft => 'لفت از مقاصد / کانال مرجع',
         };
     }
 
@@ -62,6 +64,7 @@ enum AdminTelegramEventKey: string
             self::StudentFirstLogin => 'وقتی دانشجو برای اولین بار وارد پنل می‌شود',
             self::ProfileUpdated => 'وقتی دانشجو پروفایل خود را ویرایش می‌کند',
             self::SatApplicationSubmitted => 'وقتی دانشجو درخواست سات ثبت می‌کند',
+            self::DestinationMemberLeft => 'وقتی جاب روزانه تشخیص دهد کاربر از گروه مرجع/مقاصد خارج شده',
         };
     }
 
@@ -84,6 +87,7 @@ enum AdminTelegramEventKey: string
             self::StudentFirstLogin => '🎉',
             self::ProfileUpdated => '✏️',
             self::SatApplicationSubmitted => '🎓',
+            self::DestinationMemberLeft => '🚪',
         };
     }
 
@@ -100,7 +104,7 @@ enum AdminTelegramEventKey: string
             self::ProfileCompleted => AdminTelegramEventCategory::Commerce,
             self::TicketCreated, self::TicketStudentReply, self::TicketAdminReply => AdminTelegramEventCategory::Support,
             self::StudentRegistered, self::StudentFirstLogin, self::ProfileUpdated,
-            self::SatApplicationSubmitted => AdminTelegramEventCategory::Users,
+            self::SatApplicationSubmitted, self::DestinationMemberLeft => AdminTelegramEventCategory::Users,
         };
     }
 

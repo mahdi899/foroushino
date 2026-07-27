@@ -49,7 +49,9 @@ class OrderService
         $this->purchaseGuard->assertCanPurchase($authenticatedUser, $phone, $product);
         $this->assertSeminarPurchaseAllowed($product, $userId, $phone);
 
-        $pricing = app(SeminarAttendeeCoursePricing::class)->quote($product, $authenticatedUser, $phone);
+        $pricing = $product->isReferenceChannelProduct()
+            ? app(ReferenceChannelPricingService::class)->quoteForProduct($product, $authenticatedUser, $phone)
+            : app(SeminarAttendeeCoursePricing::class)->quote($product, $authenticatedUser, $phone);
         $amount = (int) $pricing['amount'];
         $finalAmount = (int) $pricing['final_amount'];
         $saleDiscount = max($amount - $finalAmount, 0);

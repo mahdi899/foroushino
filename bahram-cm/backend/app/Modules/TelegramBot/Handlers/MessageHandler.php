@@ -20,6 +20,7 @@ use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
+use App\Modules\TelegramBot\Services\TelegramReferenceChannelPresenter;
 use App\Modules\TelegramBot\Services\TelegramUserDestinationsService;
 use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
 use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
@@ -51,6 +52,7 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly TelegramSatFlowService $satFlow,
         private readonly TelegramAdminUserStatsService $userStats,
         private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
+        private readonly TelegramReferenceChannelPresenter $referenceChannelPresenter,
         private readonly TelegramUserDestinationsService $userDestinations,
         private readonly BotMessageCatalog $messages,
         private readonly TelegramOutboundMessenger $outbound,
@@ -123,6 +125,15 @@ class MessageHandler implements UpdateHandlerInterface
                 $this->conversations->mergeContext($conversation, ['start_payload' => $payload]);
             }
             $this->registration->start($bot, $account, $conversation);
+
+            $normalizedPayload = strtolower(ltrim($payload, " \t=_-"));
+            if (
+                in_array($normalizedPayload, ['reference', 'refch', 'reference_channel'], true)
+                && filled($account->mobile_verified_at)
+                && $account->user_id
+            ) {
+                $this->sendReferenceChannel($bot, $chatId, $account);
+            }
 
             return;
         }
@@ -520,14 +531,11 @@ class MessageHandler implements UpdateHandlerInterface
 
     private function sendReferenceChannel(TelegramBot $bot, int $chatId, TelegramAccount $account): void
     {
-        $pricing = app(\App\Services\SeminarAttendeeCoursePricing::class);
-        $product = \App\Models\Product::query()
-            ->where('slug', \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG)
-            ->where('is_active', true)
-            ->first();
+        $channel = $this->referenceChannelPresenter->resolvePublishedChannel();
+        $product = $channel?->product;
 
-        if ($product !== null && $this->courseAccessPresenter->owns($account, $product)) {
-            $view = $this->courseAccessPresenter->present($bot, $account, $product);
+        if ($channel !== null && $product !== null && $this->referenceChannelPresenter->owns($account, $product)) {
+            $view = $this->referenceChannelPresenter->presentOwned($bot, $account, $channel);
             $this->outbound->reply($bot, $chatId, $view['text'], $view['options'], sync: true);
 
             return;
@@ -553,7 +561,7 @@ class MessageHandler implements UpdateHandlerInterface
             $descKeyboard !== [] ? ['reply_markup' => ['inline_keyboard' => $descKeyboard]] : [],
         );
 
-        if ($product === null) {
+        if ($channel === null || $product === null || ! $product->is_active) {
             $this->outbound->reply(
                 $bot,
                 $chatId,
@@ -565,10 +573,21 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        $priceKey = $pricing->userHasSeminar($account->user, $account->mobile)
-            ? 'reference_channel_price_seminar'
-            : 'reference_channel_price_full';
-        $this->replyHtml($bot, $chatId, $this->messages->get($bot, $priceKey));
+        $quote = $this->referenceChannelPresenter->quote($channel, $account);
+        $listPrice = (int) $quote['amount'];
+        $finalPrice = (int) $quote['final_amount'];
+
+        if ($quote['seminar_off']) {
+            $priceText = TelegramCustomEmoji::tag('gift')." <b>چون در سمینار حضور داشتید</b>\n\n"
+                .TelegramCustomEmoji::tag('money').' قیمت: <s>'.number_format($listPrice).' تومان</s>'."\n"
+                .TelegramCustomEmoji::tag('fire').' با تخفیف سمینار: <b>'.number_format($finalPrice).' تومان</b>';
+        } else {
+            $priceText = TelegramCustomEmoji::tag('cart')." <b>دسترسی به کانال مرجع</b>\n\n"
+                .TelegramCustomEmoji::tag('money').' قیمت: <b>'.number_format($listPrice).' تومان</b>'."\n\n"
+                .'اگر در سمینار شرکت کرده باشید، تخفیف ویژه روی حسابتان اعمال می‌شود.';
+        }
+
+        $this->replyHtml($bot, $chatId, $priceText);
         $this->purchaseFlow->proceedToPaymentMethods($bot, $account, $chatId, (int) $product->id, null);
     }
 

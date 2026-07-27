@@ -103,7 +103,7 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
   {
     href: '/admin/telegram/logs',
     label: 'لاگ‌ها',
-    description: 'آپدیت‌های ناموفق و delivery log',
+    description: 'آپدیت‌های ناموفق، delivery و لفت از مقاصد',
     icon: 'ScrollText',
     tone: 'amber',
     permission: 'telegram.logs.view',

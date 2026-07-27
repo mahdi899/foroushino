@@ -20,9 +20,31 @@ class TelegramProductCatalogService
         return $this->publicTelegramQuery()
             ->where(function ($query): void {
                 $query->whereNull('type')
-                    ->orWhereNotIn('type', [Product::TYPE_EVENT, ProductType::Event->value]);
+                    ->orWhereNotIn('type', [
+                        Product::TYPE_EVENT,
+                        ProductType::Event->value,
+                        Product::TYPE_REFERENCE_CHANNEL,
+                        ProductType::ReferenceChannel->value,
+                    ]);
             })
             ->whereDoesntHave('seminar')
+            ->whereDoesntHave('referenceChannel')
+            ->get();
+    }
+
+    /** @return Collection<int, Product> */
+    public function listPublicReferenceChannels(): Collection
+    {
+        return Product::query()
+            ->where('is_active', true)
+            ->where('show_in_telegram', true)
+            ->where('telegram_list_visibility', 'public')
+            ->where(function ($query): void {
+                $query->where('type', Product::TYPE_REFERENCE_CHANNEL)
+                    ->orWhereHas('referenceChannel', fn ($q) => $q->where('status', 'published'));
+            })
+            ->orderBy('telegram_sort_order')
+            ->orderByDesc('id')
             ->get();
     }
 
@@ -52,9 +74,12 @@ class TelegramProductCatalogService
                 $q->where('show_in_telegram', true)
                     ->orWhereHas('seminar', function ($seminar): void {
                         $seminar->where('status', 'published');
+                    })
+                    ->orWhereHas('referenceChannel', function ($channel): void {
+                        $channel->where('status', 'published');
                     });
             })
-            ->with('seminar')
+            ->with(['seminar', 'referenceChannel'])
             ->first();
     }
 }

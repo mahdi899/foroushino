@@ -19,6 +19,7 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
   const [capacity, setCapacity] = useState(String(seminar.capacity ?? ''));
   const [status, setStatus] = useState(seminar.status ?? 'draft');
   const [promoEnabled, setPromoEnabled] = useState(seminar.promo_enabled);
+  const [referenceDiscount, setReferenceDiscount] = useState(String(seminar.reference_discount_amount ?? 0));
   const [bannerAvailable, setBannerAvailable] = useState(seminar.banner_available ?? '');
   const [bannerAvailableMobile, setBannerAvailableMobile] = useState(
     seminar.banner_available_mobile ?? '',
@@ -45,6 +46,7 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
       capacity: parsedCapacity,
       status,
       promo_enabled: promoEnabled,
+      reference_discount_amount: referenceDiscount.trim() ? Number(referenceDiscount) : 0,
       banner_available: bannerAvailable || null,
       banner_available_mobile: bannerAvailableMobile || null,
       banner_full: bannerFull || null,
@@ -104,6 +106,21 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
           />
         </label>
       </div>
+
+      <label>
+        <span className="field-label">تخفیف کانال مرجع (تومان)</span>
+        <input
+          type="number"
+          min={0}
+          value={referenceDiscount}
+          onChange={(e) => setReferenceDiscount(e.target.value)}
+          className="field-input"
+          placeholder="مثلاً ۲۰۰۰۰۰۰۰"
+        />
+        <span className="mt-1 block text-caption text-text-muted">
+          اگر خریدار این سمینار را داشته باشد، این مبلغ از قیمت کانال مرجع کم می‌شود. در صورت چند سمینار، بیشترین تخفیف اعمال می‌شود (نه جمع).
+        </span>
+      </label>
 
       <div className="grid gap-4 md:grid-cols-2">
         <label>

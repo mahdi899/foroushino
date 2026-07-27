@@ -11,7 +11,9 @@ use App\Models\IdentityVerificationAttempt;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\Identity\IdentityVerificationProviderRegistry;
+use App\Services\Identity\IdentityDailyLimitService;
 use App\Services\SmsService;
+use App\Support\IdentityVerificationMessages;
 use App\Support\NationalCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +25,7 @@ class VerifyMobileOwnership
         private readonly IdentityVerificationProviderRegistry $registry,
         private readonly LockMobileOwnershipVerification $lock,
         private readonly SmsService $sms,
+        private readonly IdentityDailyLimitService $dailyLimits,
     ) {}
 
     /**
@@ -55,6 +58,8 @@ class VerifyMobileOwnership
                     'ownership' => ['تطبیق شماره موقتاً قفل شده است. با پشتیبانی تماس بگیرید.'],
                 ]);
             }
+
+            $this->dailyLimits->assertNotMismatchLocked($user);
 
             $nationalCode = NationalCode::decrypt($profile->national_code_encrypted);
             $mobile = $user->mobile;
@@ -117,8 +122,10 @@ class VerifyMobileOwnership
                 $profile->ownership_failed_attempts = (int) $profile->ownership_failed_attempts + 1;
                 $profile->save();
 
+                $this->dailyLimits->recordMismatch($user);
+
                 $maxAttempts = (int) config('bahram.identity.ownership_max_attempts', 3);
-                if ($profile->ownership_failed_attempts >= $maxAttempts) {
+                if ($profile->ownership_failed_attempts >= $maxAttempts || $this->dailyLimits->isMismatchLocked($user)) {
                     ($this->lock)($user, $profile);
                     $this->sms->sendEvent(
                         SmsEventKey::OwnershipVerificationLocked,
@@ -130,12 +137,13 @@ class VerifyMobileOwnership
                     $profile->syncVerificationLevel();
                 }
 
-                return [
-                    'profile' => $profile->fresh(),
-                    'result' => $result->normalized_result,
-                    'attempt' => $attempt,
-                    'used_fallback' => $outcome['used_fallback'],
-                ];
+                throw ValidationException::withMessages([
+                    'identity' => [
+                        $this->dailyLimits->isMismatchLocked($user)
+                            ? IdentityVerificationMessages::IDENTITY_MISMATCH_LOCKED
+                            : IdentityVerificationMessages::IDENTITY_MISMATCH,
+                    ],
+                ]);
             }
 
             // Technical failures do not increment mismatch attempts.

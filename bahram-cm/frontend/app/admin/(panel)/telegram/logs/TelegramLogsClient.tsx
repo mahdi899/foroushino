@@ -6,21 +6,29 @@ import { Badge, Table } from '../../ui';
 import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
 import { AdminUnderlineTabBar } from '@/components/admin/layout/AdminTabBar';
 import { retryFailedTelegramUpdatesAction } from '../actions';
-import type { TelegramDeliveryLogView, TelegramUpdateLogView } from '@/lib/admin/telegram.types';
+import type {
+  TelegramDeliveryLogView,
+  TelegramDestinationLeaveEventView,
+  TelegramUpdateLogView,
+} from '@/lib/admin/telegram.types';
 import { toFa } from '@/lib/utils';
 
-type Tab = 'updates' | 'delivery';
+type Tab = 'updates' | 'delivery' | 'leaves';
 
 export function TelegramLogsClient({
   updates,
   updatesMeta,
   deliveryLogs,
   deliveryMeta,
+  leaveEvents,
+  leaveMeta,
 }: {
   updates: TelegramUpdateLogView[];
   updatesMeta: { total: number };
   deliveryLogs: TelegramDeliveryLogView[];
   deliveryMeta: { total: number };
+  leaveEvents: TelegramDestinationLeaveEventView[];
+  leaveMeta: { total: number };
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('updates');
@@ -41,6 +49,7 @@ export function TelegramLogsClient({
         tabs={[
           { id: 'updates', label: `آپدیت‌ها (${toFa(updatesMeta.total)})` },
           { id: 'delivery', label: `Delivery (${toFa(deliveryMeta.total)})` },
+          { id: 'leaves', label: `لفت‌ها (${toFa(leaveMeta.total)})` },
         ]}
         active={tab}
         onChange={(id) => setTab(id as Tab)}
@@ -72,7 +81,9 @@ export function TelegramLogsClient({
             </Table>
           )}
         </AdminContentPanel>
-      ) : (
+      ) : null}
+
+      {tab === 'delivery' ? (
         <AdminContentPanel title="Delivery logs" summary={<span>{toFa(deliveryMeta.total)} رکورد</span>}>
           {deliveryLogs.length === 0 ? (
             <p className="py-6 text-center text-small text-text-muted">لاگ delivery ثبت نشده.</p>
@@ -89,7 +100,37 @@ export function TelegramLogsClient({
             </Table>
           )}
         </AdminContentPanel>
-      )}
+      ) : null}
+
+      {tab === 'leaves' ? (
+        <AdminContentPanel
+          title="لفت از مقاصد / مرجع"
+          summary={<span>{toFa(leaveMeta.total)} رکورد</span>}
+        >
+          {leaveEvents.length === 0 ? (
+            <p className="py-6 text-center text-small text-text-muted">لفتی ثبت نشده.</p>
+          ) : (
+            <Table head={['کاربر', 'موبایل', 'مقصد', 'وضعیت', 'آزادسازی', 'زمان']}>
+              {leaveEvents.map((e) => (
+                <tr key={e.id}>
+                  <td className="px-4 py-3">{e.user_name ?? `user#${e.user_id}`}</td>
+                  <td className="px-4 py-3 text-text-muted dir-ltr text-left">{e.user_mobile ?? '—'}</td>
+                  <td className="px-4 py-3 text-text-muted">{e.destination_title ?? `#${e.telegram_destination_id}`}</td>
+                  <td className="px-4 py-3"><Badge tone="warning">{e.previous_status ?? 'left'}</Badge></td>
+                  <td className="px-4 py-3">
+                    <Badge tone={e.account_released ? 'success' : 'danger'}>
+                      {e.account_released ? 'بله' : 'خیر'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">
+                    {e.detected_at ? new Date(e.detected_at).toLocaleString('fa-IR') : '—'}
+                  </td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </AdminContentPanel>
+      ) : null}
 
       {msg ? <p className="text-small text-text-muted">{msg}</p> : null}
     </div>

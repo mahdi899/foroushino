@@ -133,6 +133,8 @@ return [
         'national_card_max_mb' => 8,
         'submit_cooldown_seconds' => 60,
         'ownership_max_attempts' => 3,
+        'max_submits_per_day' => 2,
+        'identity_mismatch_max_attempts' => 3,
         'video_prompts' => [
             'سلام؛ من دانشجوی آکادمی بهرام رستمی هستم و این ویدیو را برای تأیید هویت حساب کاربری‌ام در پنل آکادمی ضبط می‌کنم.',
             'بنام خدا؛ اینجانب مالک این حساب در آکادمی بهرام رستمی هستم و این ویدیوی سلفی را صرفاً جهت احراز هویت ضبط کرده‌ام.',

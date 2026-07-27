@@ -42,7 +42,13 @@ class PaymentReceiptTokenService
     }
 
     /**
-     * @return array{status: string, order_number: ?string, product_slug: ?string}|null
+     * @return array{
+     *     status: string,
+     *     order_number: ?string,
+     *     product_slug: ?string,
+     *     product_type: ?string,
+     *     is_reference_channel: bool
+     * }|null
      */
     public function resolve(string $token): ?array
     {
@@ -78,7 +84,13 @@ class PaymentReceiptTokenService
 
         $orderId = (int) ($payload['oid'] ?? 0);
         if ($orderId <= 0) {
-            return ['status' => $status, 'order_number' => null, 'product_slug' => null];
+            return [
+                'status' => $status,
+                'order_number' => null,
+                'product_slug' => null,
+                'product_type' => null,
+                'is_reference_channel' => false,
+            ];
         }
 
         $order = Order::query()->with('product')->find($orderId);
@@ -86,10 +98,15 @@ class PaymentReceiptTokenService
             return null;
         }
 
+        $product = $order->product;
+        $isReference = $product?->isReferenceChannelProduct() ?? false;
+
         return [
             'status' => $status,
             'order_number' => $order->order_number,
-            'product_slug' => $order->product?->slug,
+            'product_slug' => $product?->slug,
+            'product_type' => $product?->type,
+            'is_reference_channel' => $isReference,
         ];
     }
 

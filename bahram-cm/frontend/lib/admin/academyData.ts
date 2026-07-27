@@ -13,6 +13,8 @@ import type {
   AdminVerifiedBankAccount,
   AdminSeminar,
   AdminSeminarDetail,
+  AdminReferenceChannel,
+  AdminReferenceChannelDetail,
   AdminSmsLog,
   AdminStudent,
   AdminStudentDetail,
@@ -88,6 +90,35 @@ export async function getSeminar(id: number): Promise<AdminSeminarDetail | null>
     return res.data;
   } catch {
     return null;
+  }
+}
+
+export async function getReferenceChannels() {
+  try {
+    const res = await adminFetch<{ data: AdminReferenceChannel[] }>('/reference-channels');
+    return { items: res.data, error: null as string | null };
+  } catch (e) {
+    return { items: [] as AdminReferenceChannel[], error: errorMessage(e) };
+  }
+}
+
+export async function getReferenceChannel(id: number): Promise<AdminReferenceChannelDetail | null> {
+  try {
+    const res = await adminFetch<{ data: AdminReferenceChannelDetail }>(`/reference-channels/${id}`);
+    return res.data;
+  } catch {
+    return null;
+  }
+}
+
+export async function getReferenceDestinationOptions() {
+  try {
+    const res = await adminFetch<{ data: { id: number; title: string; chat_id: string; username: string | null }[] }>(
+      '/reference-channels/destination-options',
+    );
+    return { items: res.data, error: null as string | null };
+  } catch (e) {
+    return { items: [] as { id: number; title: string; chat_id: string; username: string | null }[], error: errorMessage(e) };
   }
 }
 

@@ -9,6 +9,8 @@ use App\Models\MiniCourse;
 use App\Models\MiniCourseEnrollment;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ReferenceChannel;
+use App\Models\ReferenceChannelEntitlement;
 use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\User;
@@ -38,7 +40,33 @@ class PurchaseGuardService
             return true;
         }
 
+        if ($this->hasReferenceChannelEntitlement($product, $userId, $phone)) {
+            return true;
+        }
+
         return $this->isRegisteredSeminarAttendee($product, $userId, $phone);
+    }
+
+    private function hasReferenceChannelEntitlement(Product $product, ?int $userId, ?string $phone): bool
+    {
+        $channel = ReferenceChannel::query()->where('product_id', $product->id)->first();
+        if (! $channel) {
+            return false;
+        }
+
+        $userIds = array_values(array_filter(array_unique([
+            $userId,
+            $phone ? User::query()->where('mobile', $phone)->value('id') : null,
+        ])));
+
+        if ($userIds === []) {
+            return false;
+        }
+
+        return ReferenceChannelEntitlement::query()
+            ->where('reference_channel_id', $channel->id)
+            ->whereIn('user_id', $userIds)
+            ->exists();
     }
 
     private function hasMiniCourseEnrollment(Product $product, ?int $userId): bool

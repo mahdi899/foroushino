@@ -6,7 +6,8 @@ export type AdminProductType =
   | 'course_spotplayer'
   | 'manual_service'
   | 'event'
-  | 'mini_course';
+  | 'mini_course'
+  | 'reference_channel';
 
 export interface AdminProduct {
   id: number;

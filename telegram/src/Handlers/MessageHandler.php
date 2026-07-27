@@ -11,6 +11,7 @@ use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Routing\IranSyncRelay;
 use TelegramHost\Services\HostAdminShell;
+use TelegramHost\Services\HostDestinationsFlow;
 use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\HostSatFlow;
 use TelegramHost\Services\HostSupportService;
@@ -40,6 +41,7 @@ final class MessageHandler
         private readonly ReferenceChannelFlow $referenceChannel,
         private readonly HostSatFlow $satFlow,
         private readonly HostAdminShell $adminShell,
+        private readonly HostDestinationsFlow $destinationsFlow,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -187,6 +189,11 @@ final class MessageHandler
     {
         if ($this->accounts->isVerified($telegramUserId)) {
             $this->sendMainMenu($chatId, $telegramUserId);
+
+            $normalized = strtolower(ltrim((string) $startPayload, " \t=_-"));
+            if (in_array($normalized, ['reference', 'refch', 'reference_channel'], true)) {
+                $this->referenceChannel->open($chatId, $telegramUserId);
+            }
 
             return;
         }
@@ -401,12 +408,7 @@ final class MessageHandler
 
     private function sendAccount(int $chatId, int $telegramUserId): void
     {
-        $result = $this->accounts->profileResponse($telegramUserId);
-        if ($result !== null && ! empty($result['ok'])) {
-            $this->api->sendMessage($chatId, (string) $result['text'], (array) ($result['options'] ?? [
-                'parse_mode' => 'HTML',
-            ]));
-
+        if ($this->destinationsFlow->sendAccount($chatId, $telegramUserId)) {
             return;
         }
 

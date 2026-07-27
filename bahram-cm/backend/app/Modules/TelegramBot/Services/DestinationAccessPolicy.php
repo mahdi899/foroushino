@@ -3,6 +3,9 @@
 namespace App\Modules\TelegramBot\Services;
 
 use App\Models\CourseAccess;
+use App\Models\Product;
+use App\Models\ReferenceChannel;
+use App\Models\ReferenceChannelEntitlement;
 use App\Services\Sat\SatParticipantAccessService;
 use App\Modules\TelegramBot\Models\TelegramAccessDenial;
 use App\Modules\TelegramBot\Models\TelegramAccessGrant;
@@ -70,14 +73,43 @@ class DestinationAccessPolicy
     private function matchesRequirement(TelegramDestinationRequirement $req, int $userId): bool
     {
         return match ($req->requirement_type) {
-            'product', 'active_course_access' => CourseAccess::query()
-                ->where('user_id', $userId)
-                ->where('product_id', (int) $req->requirement_value)
-                ->where('status', 'active')
-                ->exists(),
+            'product', 'active_course_access' => $this->matchesProductAccess($userId, (int) $req->requirement_value),
             'sat_membership' => app(SatParticipantAccessService::class)->hasOpenedAccessByUserId($userId),
             'manual_grant' => true,
             default => false,
         };
+    }
+
+    private function matchesProductAccess(int $userId, int $productId): bool
+    {
+        if ($productId <= 0) {
+            return false;
+        }
+
+        if (CourseAccess::query()
+            ->where('user_id', $userId)
+            ->where('product_id', $productId)
+            ->where('status', 'active')
+            ->exists()) {
+            return true;
+        }
+
+        $channel = ReferenceChannel::query()->where('product_id', $productId)->first();
+        if ($channel === null) {
+            $product = Product::query()->find($productId);
+            if ($product === null || ! $product->isReferenceChannelProduct()) {
+                return false;
+            }
+            $channel = $product->referenceChannel;
+        }
+
+        if ($channel === null) {
+            return false;
+        }
+
+        return ReferenceChannelEntitlement::query()
+            ->where('reference_channel_id', $channel->id)
+            ->where('user_id', $userId)
+            ->exists();
     }
 }

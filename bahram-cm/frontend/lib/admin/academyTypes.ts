@@ -126,6 +126,7 @@ export type AdminSeminar = {
   cover_image: string | null;
   cover_image_mobile: string | null;
   promo_enabled: boolean;
+  reference_discount_amount?: number;
   product_id: number | null;
   product_slug: string | null;
   attendees_count: number;
@@ -141,6 +142,33 @@ export type AdminSeminarDetail = AdminSeminar & {
   attendees: { id: number; user_id: number; name: string | null; mobile: string | null; attendance_status: string }[];
   assets: { id: number; title: string; type: string; is_downloadable: boolean; external_url?: string | null }[];
   certificates: { id: number; user_name: string | null; certificate_number: string; issued_at: string | null }[];
+};
+
+export type AdminReferenceChannel = {
+  id: number;
+  title: string;
+  slug: string;
+  status: string | null;
+  price: number;
+  product_id: number | null;
+  product_slug: string | null;
+  telegram_destination_id: number | null;
+  telegram_destination_title: string | null;
+  cover_image: string | null;
+  entitlements_count: number;
+};
+
+export type AdminReferenceChannelDetail = AdminReferenceChannel & {
+  description: string | null;
+  entitlements: {
+    id: number;
+    user_id: number;
+    name: string | null;
+    mobile: string | null;
+    source: string;
+    order_id: number | null;
+    created_at: string | null;
+  }[];
 };
 
 export type AdminReferralConversion = {

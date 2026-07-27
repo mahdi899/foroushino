@@ -4,6 +4,7 @@ namespace App\Modules\TelegramBot;
 
 use App\Modules\TelegramBot\Clients\FakeTelegramBotClient;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
+use App\Modules\TelegramBot\Console\TelegramAuditDestinationMembershipsCommand;
 use App\Modules\TelegramBot\Console\TelegramCleanupCommand;
 use App\Modules\TelegramBot\Console\TelegramHealthCheckCommand;
 use App\Modules\TelegramBot\Console\TelegramPollCommand;
@@ -62,6 +63,7 @@ class TelegramBotServiceProvider extends ServiceProvider
                 TelegramCleanupCommand::class,
                 TelegramSyncBotsCommand::class,
                 TelegramPollCommand::class,
+                TelegramAuditDestinationMembershipsCommand::class,
             ]);
 
             return;

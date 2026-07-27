@@ -25,6 +25,8 @@ class Product extends Model
 
     public const TYPE_EVENT = ProductType::Event->value;
 
+    public const TYPE_REFERENCE_CHANNEL = ProductType::ReferenceChannel->value;
+
     protected $fillable = [
         'title',
         'slug',
@@ -113,6 +115,11 @@ class Product extends Model
         return $this->hasOne(Seminar::class);
     }
 
+    public function referenceChannel(): HasOne
+    {
+        return $this->hasOne(ReferenceChannel::class);
+    }
+
     public function isSeminarProduct(): bool
     {
         if ($this->type === self::TYPE_EVENT) {
@@ -124,6 +131,19 @@ class Product extends Model
         }
 
         return $this->seminar()->exists();
+    }
+
+    public function isReferenceChannelProduct(): bool
+    {
+        if ($this->type === self::TYPE_REFERENCE_CHANNEL) {
+            return true;
+        }
+
+        if ($this->relationLoaded('referenceChannel')) {
+            return $this->referenceChannel !== null;
+        }
+
+        return $this->referenceChannel()->exists();
     }
 
     public function isMiniCourseProduct(): bool

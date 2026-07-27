@@ -300,6 +300,7 @@ class AdminTelegramLogService
             AdminTelegramEventKey::StudentFirstLogin,
             AdminTelegramEventKey::ProfileUpdated => $this->userLines($context['user'] ?? null),
             AdminTelegramEventKey::SatApplicationSubmitted => $this->satLines($context['application'] ?? null),
+            AdminTelegramEventKey::DestinationMemberLeft => $this->destinationLeaveLines($context),
         };
 
         $lines = array_merge($lines, $body);
@@ -436,6 +437,20 @@ class AdminTelegramLogService
             $this->field('شهر', $application->city ?? '—'),
             $this->field('سن', $application->age !== null ? (string) $application->age : '—', true),
             $this->field('وضعیت', $application->status->value ?? (string) $application->status, true),
+        ];
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function destinationLeaveLines(array $context): array
+    {
+        return [
+            $this->field('کاربر', (string) ($context['user_name'] ?? '—')),
+            $this->field('موبایل', (string) ($context['mobile'] ?? '—'), true),
+            $this->field('مقصد', (string) ($context['destination_title'] ?? '—')),
+            $this->field('شناسه مقصد', isset($context['destination_id']) ? (string) $context['destination_id'] : '—', true),
+            $this->field('تلگرام', isset($context['telegram_user_id']) ? (string) $context['telegram_user_id'] : '—', true),
+            $this->field('وضعیت', (string) ($context['status'] ?? 'left'), true),
+            $this->field('آزادسازی اکانت', (string) ($context['account_released'] ?? '—')),
         ];
     }
 

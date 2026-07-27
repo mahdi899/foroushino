@@ -117,6 +117,8 @@ try {
     $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $purchaseFlow, $siteBaseUrl);
     $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
+    $membershipSync = new \TelegramHost\Queue\PendingMembershipSync($pdo);
+    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl);
 
     $messageHandler = new MessageHandler(
         $api,
@@ -134,6 +136,7 @@ try {
         $referenceChannel,
         $satFlow,
         $adminShell,
+        $destinationsFlow,
         $siteBaseUrl
     );
 
@@ -182,6 +185,12 @@ try {
         (new \TelegramHost\Queue\BackgroundTicketSync($ticketSync, $liveClient))->drain();
     } catch (\Throwable $e) {
         error_log('[telegram-host] ticket sync: '.$e->getMessage());
+    }
+
+    try {
+        (new \TelegramHost\Queue\BackgroundMembershipSync($membershipSync, $liveClient))->drain();
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] membership sync: '.$e->getMessage());
     }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());

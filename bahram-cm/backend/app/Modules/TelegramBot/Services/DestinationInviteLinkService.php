@@ -8,6 +8,7 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramDestination;
 use App\Modules\TelegramBot\Models\TelegramDestinationInviteLink;
+use App\Modules\TelegramBot\Models\TelegramDestinationMembership;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -66,7 +67,19 @@ class DestinationInviteLinkService
             return null;
         }
 
-        if ($account !== null && $this->isGroupMember($bot, $destination, (int) $account->telegram_user_id)) {
+        $synced = $this->freshSyncedMembership((int) $user->id, (int) $destination->id);
+        if ($synced === true) {
+            return [
+                'status' => 'member',
+                'invite_url' => null,
+                'mode' => $destination->usesPerUserInvites() ? 'per_user' : 'shared',
+            ];
+        }
+
+        if ($synced === null
+            && $account !== null
+            && $this->isGroupMember($bot, $destination, (int) $account->telegram_user_id)
+        ) {
             return [
                 'status' => 'member',
                 'invite_url' => null,
@@ -153,6 +166,21 @@ class DestinationInviteLinkService
         } catch (Throwable) {
             return false;
         }
+    }
+
+    /** @return bool|null true/false when a fresh host sync exists; null = fall back to Telegram API */
+    private function freshSyncedMembership(int $userId, int $destinationId): ?bool
+    {
+        $row = TelegramDestinationMembership::query()
+            ->where('user_id', $userId)
+            ->where('telegram_destination_id', $destinationId)
+            ->first();
+
+        if ($row === null || ! $row->isFresh(24)) {
+            return null;
+        }
+
+        return (bool) $row->is_member;
     }
 
     private function resolvePerUserInviteUrl(

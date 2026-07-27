@@ -208,6 +208,7 @@ class SeminarAdminController extends Controller
             'banner_full' => ['nullable', 'string', 'max:500'],
             'banner_full_mobile' => ['nullable', 'string', 'max:500'],
             'promo_enabled' => ['nullable', 'boolean'],
+            'reference_discount_amount' => ['nullable', 'integer', 'min:0'],
         ];
 
         $data = $request->validate($rules);
@@ -247,6 +248,7 @@ class SeminarAdminController extends Controller
             'cover_image' => $s->cover_image,
             'cover_image_mobile' => $s->cover_image_mobile,
             'promo_enabled' => (bool) $s->promo_enabled,
+            'reference_discount_amount' => (int) ($s->reference_discount_amount ?? 0),
             'product_id' => $s->product_id,
             'product_slug' => $s->purchaseSlug(),
             'attendees_count' => $s->attendees_count ?? $s->registeredCount(),

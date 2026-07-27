@@ -96,7 +96,7 @@ export function IdentityVerificationWizard({
         <p className="mt-2 text-sm leading-relaxed text-text">
           {status === 'approved'
             ? 'هویت شما تأیید شده است.'
-            : 'پرونده شما در صف بررسی است و فعلاً قابل ویرایش نیست.'}
+            : 'منتظر تأیید کارشناسان باشید. پس از تأیید، از طریق پیامک مطلع می‌شوید و پرونده فعلاً قابل ویرایش نیست.'}
         </p>
       </div>
     );
@@ -202,8 +202,21 @@ export function IdentityVerificationWizard({
       }
       setSubmitted(true);
       router.refresh();
-      router.push('/panel/profile');
     });
+  }
+
+  if (submitted) {
+    return (
+      <div className="card space-y-3 p-6">
+        <p className="text-base font-semibold text-text">درخواست شما ثبت شد</p>
+        <p className="text-sm leading-relaxed text-text">
+          منتظر تأیید کارشناسان باشید. پس از بررسی و تأیید، از طریق پیامک و پنل مطلع می‌شوید.
+        </p>
+        <p className="text-sm text-text-muted">
+          بعد از تأیید هویت می‌توانید از بخش «کانال مرجع» لینک عضویت ربات را دریافت کنید.
+        </p>
+      </div>
+    );
   }
 
   const showSelfieHandoff = step === 2 && isPhone === false;

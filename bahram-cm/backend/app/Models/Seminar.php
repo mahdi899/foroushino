@@ -33,6 +33,7 @@ class Seminar extends Model
         'banner_full',
         'banner_full_mobile',
         'promo_enabled',
+        'reference_discount_amount',
     ];
 
     protected $casts = [
@@ -41,6 +42,7 @@ class Seminar extends Model
         'sale_price' => 'integer',
         'capacity' => 'integer',
         'promo_enabled' => 'boolean',
+        'reference_discount_amount' => 'integer',
     ];
 
     protected static function booted(): void

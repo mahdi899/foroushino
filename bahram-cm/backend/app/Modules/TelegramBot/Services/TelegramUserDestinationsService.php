@@ -324,7 +324,7 @@ class TelegramUserDestinationsService
 
         $lines = [
             TelegramCustomEmoji::tag('pin').' <b>گروه پشتیبانی سات</b>',
-            'دسترسی شما فعال شد. برای عضویت از لینک زیر استفاده کنید.',
+            'دسترسی شما فعال شد. برای عضویت از دکمه زیر استفاده کنید.',
             '──────────────',
         ];
 
@@ -344,7 +344,6 @@ class TelegramUserDestinationsService
 
         $lines = [
             TelegramCustomEmoji::tag('pin').' <b>گروه‌های پشتیبانی شما</b>',
-            'ربات لینک عضویت را مستقیم برای شما می‌سازد. فقط با اکانت تلگرام خودتان درخواست بدهید.',
             '──────────────',
         ];
 
@@ -380,15 +379,8 @@ class TelegramUserDestinationsService
             return $lines;
         }
 
-        if ($item['mode'] === 'per_user') {
-            $lines[] = '  '.TelegramCustomEmoji::tag('lock').' لینک اختصاصی شما (بعد از عضویت حذف می‌شود):';
-        } else {
-            $lines[] = '  '.TelegramCustomEmoji::tag('lock').' لینک عضویت (فقط اکانت شما تأیید می‌شود):';
-        }
-
-        if (filled($item['invite_url'])) {
-            $lines[] = '  <a href="'.TelegramHtml::escape((string) $item['invite_url']).'">'.TelegramHtml::escape((string) $item['invite_url']).'</a>';
-        }
+        // Never put raw invite URLs in message text — glass buttons carry the link.
+        $lines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
 
         return $lines;
     }

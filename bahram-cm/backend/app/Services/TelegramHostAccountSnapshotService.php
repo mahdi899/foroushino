@@ -16,7 +16,6 @@ use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
-use App\Modules\TelegramBot\Services\TelegramUserDestinationsService;
 use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
@@ -40,7 +39,6 @@ class TelegramHostAccountSnapshotService
         private readonly TelegramCourseAccessPresenter $access,
         private readonly TelegramCatalogMediaService $catalogMedia,
         private readonly TelegramAdminUserStatsService $userStats,
-        private readonly TelegramUserDestinationsService $userDestinations,
         private readonly ReferralService $referrals,
         private readonly FamilyAccessService $familyAccess,
         private readonly FamilyAssignmentService $familyAssignment,
@@ -83,7 +81,19 @@ class TelegramHostAccountSnapshotService
             if ($product === null) {
                 continue;
             }
-            $view = $this->access->present($bot, $account, $product);
+
+            if ($product->isReferenceChannelProduct()) {
+                $channel = $product->referenceChannel
+                    ?? \App\Models\ReferenceChannel::query()->where('product_id', $product->id)->first();
+                if ($channel === null) {
+                    continue;
+                }
+                $view = app(\App\Modules\TelegramBot\Services\TelegramReferenceChannelPresenter::class)
+                    ->presentOwned($bot, $account, $channel);
+            } else {
+                $view = $this->access->present($bot, $account, $product);
+            }
+
             $presents[(string) $productId] = [
                 'text' => $view['text'],
                 'options' => $view['options'],
@@ -134,6 +144,8 @@ class TelegramHostAccountSnapshotService
             'has_application' => true,
             'status' => $status?->value ?? (string) $app->status,
             'status_label' => $label,
+            'access_opened' => app(\App\Services\Sat\SatParticipantAccessService::class)
+                ->hasOpenedAccessByUserId((int) $account->user_id),
             'text' => TelegramCustomEmoji::tag('bell').' <b>درخواست سات</b>'
                 ."\nوضعیت: {$label}",
         ];
@@ -163,6 +175,12 @@ class TelegramHostAccountSnapshotService
             }
         }
 
+        foreach ($this->catalog->listPublicReferenceChannels() as $product) {
+            if ($this->access->owns($account, $product)) {
+                $ids[] = (int) $product->id;
+            }
+        }
+
         return array_values(array_unique($ids));
     }
 
@@ -176,29 +194,27 @@ class TelegramHostAccountSnapshotService
         }
 
         $text = $this->userStats->formatProfileText($account);
-        $destinationSection = $this->userDestinations->formatAccountSection($bot, $account);
-        if ($destinationSection !== null) {
-            $text .= "\n\n".$destinationSection;
-        }
+        // Destinations / invite buttons are built on the foreign host (live membership).
+        // Keep snapshot free of raw invite URLs.
+
+        $account->loadMissing('user.identityProfile');
+        $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
+        $pricing = app(SeminarAttendeeCoursePricing::class);
 
         $keyboard = [];
-        foreach ($this->userDestinations->keyboardRows($bot, $account) as $row) {
-            $keyboard[] = $row;
-        }
-        foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
-            $keyboard[] = $row;
+        if ($verificationLevel < 2) {
+            foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
+                $keyboard[] = $row;
+            }
         }
         foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل دانشجو', TelegramSiteUrl::studentPanel(), 'success', 'graduation') as $row) {
             $keyboard[] = $row;
         }
 
-        $account->loadMissing('user.identityProfile');
-        $pricing = app(SeminarAttendeeCoursePricing::class);
-
         return [
             'ok' => true,
             'text' => $text,
-            'verification_level' => (int) ($account->user?->identityProfile?->verification_level ?? 0),
+            'verification_level' => $verificationLevel,
             'has_seminar' => $pricing->userHasSeminar($account->user, $account->mobile),
             'options' => array_filter([
                 'parse_mode' => 'HTML',

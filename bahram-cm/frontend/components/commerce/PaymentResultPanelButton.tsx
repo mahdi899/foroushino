@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Radio } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,19 +10,32 @@ import { loginFromPaymentReceiptAction } from "@/lib/checkout/actions";
 type Props = {
   receiptToken: string;
   isLoggedIn: boolean;
+  href?: string;
+  label?: string;
+  variant?: "primary" | "secondary";
 };
 
-export function PaymentResultPanelButton({ receiptToken, isLoggedIn }: Props) {
+export function PaymentResultPanelButton({
+  receiptToken,
+  isLoggedIn,
+  href = "/panel",
+  label = "ورود به پنل کاربری",
+  variant = "primary",
+}: Props) {
   const router = useRouter();
   const auth = useStudentAuthOptional();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const alreadyLoggedIn = isLoggedIn || (auth?.isLoggedIn ?? false);
+  const className =
+    variant === "primary"
+      ? "payment-result-card__primary neon-btn-primary inline-flex h-12 min-h-12 items-center justify-center gap-2 rounded-pill px-7 text-sm font-semibold md:text-body"
+      : "payment-result-card__secondary inline-flex h-12 min-h-12 items-center justify-center gap-2 rounded-pill border px-7 text-sm font-semibold md:text-body";
 
   async function enterPanel() {
     if (alreadyLoggedIn) {
-      router.push("/panel");
+      router.push(href);
       return;
     }
 
@@ -42,16 +55,14 @@ export function PaymentResultPanelButton({ receiptToken, isLoggedIn }: Props) {
     }
 
     auth?.markLoggedIn();
-    router.push("/panel");
+    router.push(href);
   }
 
   if (alreadyLoggedIn) {
     return (
-      <Link
-        href="/panel"
-        className="payment-result-card__primary neon-btn-primary inline-flex h-12 min-h-12 items-center justify-center rounded-pill px-7 text-sm font-semibold md:text-body"
-      >
-        ورود به پنل کاربری
+      <Link href={href} className={className}>
+        {href.includes("reference-channel") ? <Radio className="h-4 w-4" aria-hidden /> : null}
+        {label}
       </Link>
     );
   }
@@ -62,15 +73,18 @@ export function PaymentResultPanelButton({ receiptToken, isLoggedIn }: Props) {
         type="button"
         onClick={() => void enterPanel()}
         disabled={busy}
-        className="payment-result-card__primary neon-btn-primary inline-flex h-12 min-h-12 items-center justify-center gap-2 rounded-pill px-7 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 md:text-body"
+        className={`${className} disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {busy ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            در حال ورود به پنل…
+            در حال ورود…
           </>
         ) : (
-          "ورود به پنل کاربری"
+          <>
+            {href.includes("reference-channel") ? <Radio className="h-4 w-4" aria-hidden /> : null}
+            {label}
+          </>
         )}
       </button>
       {error ? (

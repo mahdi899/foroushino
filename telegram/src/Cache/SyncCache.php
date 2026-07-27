@@ -87,6 +87,7 @@ final class SyncCache
         $this->storeFeatureFlags($flags);
         $this->storeRequiredChats((array) ($bootstrap['required_chats'] ?? []));
         $this->storeSupportCategories((array) ($bootstrap['support_categories'] ?? []));
+        $this->storeDestinations((array) ($bootstrap['destinations'] ?? []));
         $revision = trim((string) ($bootstrap['catalog_revision'] ?? ''));
         if ($revision !== '') {
             $this->storeMessages(['__catalog_revision' => $revision]);
@@ -106,8 +107,30 @@ final class SyncCache
     /** @param array<string, mixed> $catalog */
     public function storeCatalogOnly(array $catalog): void
     {
-        $this->storeCatalog((array) ($catalog['courses'] ?? []), (array) ($catalog['seminars'] ?? []));
+        $courses = (array) ($catalog['courses'] ?? []);
+        $referenceChannels = (array) ($catalog['reference_channels'] ?? []);
+        foreach ($referenceChannels as $channel) {
+            $productId = (int) ($channel['product_id'] ?? $channel['id'] ?? 0);
+            if ($productId <= 0) {
+                continue;
+            }
+            $courses[] = [
+                'id' => $productId,
+                'slug' => (string) ($channel['slug'] ?? ''),
+                'title' => (string) ($channel['title'] ?? ''),
+                'price' => $channel['price'] ?? null,
+                'sale_price' => $channel['sale_price'] ?? null,
+                'photo' => $channel['photo'] ?? null,
+                'product_type' => 'reference_channel',
+            ];
+        }
+
+        $this->storeCatalog($courses, (array) ($catalog['seminars'] ?? []));
+        $this->storeReferenceChannelMeta($referenceChannels);
         $this->storeDiscountCodes((array) ($catalog['discount_codes'] ?? []));
+        if (array_key_exists('destinations', $catalog)) {
+            $this->storeDestinations((array) ($catalog['destinations'] ?? []));
+        }
         $this->touchSyncMeta('catalog');
     }
 
@@ -120,6 +143,105 @@ final class SyncCache
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         return is_array($row) ? $row : null;
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function destinations(): array
+    {
+        $this->ensureDestinationsSchema();
+        try {
+            $rows = $this->pdo->query(
+                'SELECT * FROM destinations_cache ORDER BY id ASC',
+            )->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $productIds = json_decode((string) ($row['product_ids_json'] ?? '[]'), true);
+            $productTitles = json_decode((string) ($row['product_titles_json'] ?? '[]'), true);
+            $out[] = [
+                'id' => (int) ($row['id'] ?? 0),
+                'title' => (string) ($row['title'] ?? ''),
+                'chat_id' => (string) ($row['chat_id'] ?? ''),
+                'invite_mode' => (string) ($row['invite_mode'] ?? 'shared'),
+                'shared_invite_url' => $row['shared_invite_url'] !== null && $row['shared_invite_url'] !== ''
+                    ? (string) $row['shared_invite_url']
+                    : null,
+                'product_ids' => is_array($productIds)
+                    ? array_values(array_map('intval', $productIds))
+                    : [],
+                'product_titles' => is_array($productTitles)
+                    ? array_values(array_map('strval', $productTitles))
+                    : [],
+                'sat_membership' => ! empty($row['sat_membership']),
+            ];
+        }
+
+        return $out;
+    }
+
+    /** @param list<array<string, mixed>> $destinations */
+    private function storeDestinations(array $destinations): void
+    {
+        $this->ensureDestinationsSchema();
+        $this->pdo->exec('DELETE FROM destinations_cache');
+        if ($destinations === []) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO destinations_cache (
+                id, title, chat_id, invite_mode, shared_invite_url,
+                product_ids_json, product_titles_json, sat_membership, synced_at
+             ) VALUES (
+                :id, :title, :chat_id, :invite_mode, :shared_url,
+                :product_ids, :product_titles, :sat_membership, NOW()
+             )',
+        );
+
+        foreach ($destinations as $destination) {
+            $id = (int) ($destination['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $stmt->execute([
+                'id' => $id,
+                'title' => (string) ($destination['title'] ?? ''),
+                'chat_id' => (string) ($destination['chat_id'] ?? ''),
+                'invite_mode' => (string) ($destination['invite_mode'] ?? 'shared'),
+                'shared_url' => $destination['shared_invite_url'] ?? null,
+                'product_ids' => json_encode(array_values(array_map('intval', (array) ($destination['product_ids'] ?? []))), JSON_UNESCAPED_UNICODE),
+                'product_titles' => json_encode(array_values(array_map('strval', (array) ($destination['product_titles'] ?? []))), JSON_UNESCAPED_UNICODE),
+                'sat_membership' => ! empty($destination['sat_membership']) ? 1 : 0,
+            ]);
+        }
+    }
+
+    private function ensureDestinationsSchema(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        $this->pdo->exec(
+            'CREATE TABLE IF NOT EXISTS destinations_cache (
+                id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL DEFAULT \'\',
+                chat_id VARCHAR(64) NOT NULL DEFAULT \'\',
+                invite_mode VARCHAR(32) NOT NULL DEFAULT \'shared\',
+                shared_invite_url TEXT NULL,
+                product_ids_json TEXT NULL,
+                product_titles_json TEXT NULL,
+                sat_membership TINYINT(1) NOT NULL DEFAULT 0,
+                synced_at DATETIME NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
+        );
+        $ready = true;
     }
 
     /** @param list<array<string, mixed>> $codes */
@@ -435,12 +557,15 @@ final class SyncCache
      */
     private function storeCatalog(array $courses, array $seminars): void
     {
+        $this->ensureCatalogProductTypeColumn();
+        $this->ensureSeminarDiscountColumn();
+
         $this->pdo->exec('DELETE FROM catalog_products');
         $this->pdo->exec('DELETE FROM catalog_seminars');
 
         $courseStmt = $this->pdo->prepare(
-            'INSERT INTO catalog_products (id, slug, title, price, sale_price, photo_url, synced_at)
-             VALUES (:id, :slug, :title, :price, :sale_price, :photo_url, NOW())',
+            'INSERT INTO catalog_products (id, slug, title, price, sale_price, photo_url, product_type, synced_at)
+             VALUES (:id, :slug, :title, :price, :sale_price, :photo_url, :product_type, NOW())',
         );
         foreach ($courses as $course) {
             $courseStmt->execute([
@@ -450,12 +575,13 @@ final class SyncCache
                 'price' => $course['price'] ?? null,
                 'sale_price' => $course['sale_price'] ?? null,
                 'photo_url' => $course['photo'] ?? null,
+                'product_type' => (string) ($course['product_type'] ?? 'course'),
             ]);
         }
 
         $seminarStmt = $this->pdo->prepare(
-            'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, price, sale_price, photo_url, synced_at)
-             VALUES (:id, :product_id, :title, :date, :location, :capacity_hint, :price, :sale_price, :photo_url, NOW())',
+            'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, price, sale_price, photo_url, reference_discount_amount, synced_at)
+             VALUES (:id, :product_id, :title, :date, :location, :capacity_hint, :price, :sale_price, :photo_url, :reference_discount_amount, NOW())',
         );
         foreach ($seminars as $seminar) {
             $seminarStmt->execute([
@@ -468,8 +594,80 @@ final class SyncCache
                 'price' => $seminar['price'] ?? null,
                 'sale_price' => $seminar['sale_price'] ?? null,
                 'photo_url' => $seminar['photo'] ?? null,
+                'reference_discount_amount' => (int) ($seminar['reference_discount_amount'] ?? 0),
             ]);
         }
+    }
+
+    /** @param list<array<string, mixed>> $channels */
+    private function storeReferenceChannelMeta(array $channels): void
+    {
+        $primary = $channels[0] ?? null;
+        if (! is_array($primary)) {
+            $this->storeMessages([
+                '__reference_channel_product_id' => '',
+                '__reference_channel_title' => '',
+            ]);
+
+            return;
+        }
+
+        $this->storeMessages([
+            '__reference_channel_product_id' => (string) (int) ($primary['product_id'] ?? 0),
+            '__reference_channel_title' => (string) ($primary['title'] ?? ''),
+        ]);
+    }
+
+    private function ensureCatalogProductTypeColumn(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        try {
+            $this->pdo->exec('ALTER TABLE catalog_products ADD COLUMN product_type VARCHAR(64) NULL');
+        } catch (\Throwable) {
+            // column already exists
+        }
+        $ready = true;
+    }
+
+    private function ensureSeminarDiscountColumn(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        try {
+            $this->pdo->exec('ALTER TABLE catalog_seminars ADD COLUMN reference_discount_amount BIGINT NOT NULL DEFAULT 0');
+        } catch (\Throwable) {
+            // column already exists
+        }
+        $ready = true;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findReferenceChannelProduct(): ?array
+    {
+        $productId = (int) $this->message('__reference_channel_product_id', '0');
+        if ($productId > 0) {
+            $found = $this->findProduct($productId);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        foreach ($this->courses() as $course) {
+            if ((string) ($course['product_type'] ?? '') === 'reference_channel') {
+                return $course;
+            }
+            $slug = (string) ($course['slug'] ?? '');
+            if (str_starts_with($slug, 'reference-')) {
+                return $course;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -129,6 +129,18 @@ final class LiveClient
         return $this->live('support/sync-ticket', $payload, 8, false);
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return array<string, mixed>
+     */
+    public function destinationMembershipSync(int $telegramUserId, array $items): array
+    {
+        return $this->live('destination-membership/sync', [
+            'telegram_user_id' => $telegramUserId,
+            'items' => $items,
+        ], 8, false);
+    }
+
     /** @return array<string, mixed> */
     public function capacityCheck(int $seminarId): array
     {

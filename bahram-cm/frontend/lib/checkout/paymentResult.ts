@@ -11,6 +11,8 @@ export type VerifiedPaymentResult = {
   status: PaymentResultStatus;
   order_number: string | null;
   product_slug: string | null;
+  product_type?: string | null;
+  is_reference_channel?: boolean;
 };
 
 export async function getVerifiedPaymentResult(

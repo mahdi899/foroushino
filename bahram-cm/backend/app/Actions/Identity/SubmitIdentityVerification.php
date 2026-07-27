@@ -12,6 +12,7 @@ use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\Identity\IdentityArtifactStorage;
+use App\Services\Identity\IdentityDailyLimitService;
 use App\Services\Identity\IdentityVerificationProviderRegistry;
 use App\Services\SmsService;
 use App\Support\IdentityVerificationMessages;
@@ -31,7 +32,7 @@ class SubmitIdentityVerification
         private readonly IdentityArtifactStorage $storage,
         private readonly SmsService $sms,
         private readonly IdentityVerificationProviderRegistry $registry,
-        private readonly ApproveIdentityVerification $approve,
+        private readonly IdentityDailyLimitService $dailyLimits,
     ) {}
 
     /**
@@ -50,6 +51,8 @@ class SubmitIdentityVerification
      */
     public function __invoke(User $user, array $data): IdentityVerificationSubmission
     {
+        $this->dailyLimits->assertCanSubmit($user);
+
         $cooldownKey = 'identity-submit-cooldown:'.$user->id;
         $cooldown = (int) config('bahram.identity.submit_cooldown_seconds', 60);
         if (Cache::has($cooldownKey)) {
@@ -67,7 +70,7 @@ class SubmitIdentityVerification
 
         $hash = NationalCode::hash($nationalCode);
 
-        return DB::transaction(function () use ($user, $data, $nationalCode, $hash, $cooldownKey, $cooldown) {
+        $submission = DB::transaction(function () use ($user, $data, $nationalCode, $hash, $cooldownKey, $cooldown) {
             $profile = ($this->ensureProfile)($user);
             /** @var UserIdentityProfile $profile */
             $profile = UserIdentityProfile::query()->whereKey($profile->id)->lockForUpdate()->firstOrFail();
@@ -136,36 +139,41 @@ class SubmitIdentityVerification
 
             $submission = $this->applyRegistryLookup($submission, $nationalCode, $data);
 
-            Cache::put($cooldownKey, true, $cooldown);
-
-            try {
-                $this->sms->sendEvent(
-                    SmsEventKey::IdentityVerificationSubmitted,
-                    (string) $user->mobile,
-                    ['{name}' => $user->name ?: $data['first_name']],
-                    $user->id,
-                );
-            } catch (\Throwable $e) {
-                report($e);
+            if ($submission->registry_match_status === 'mismatched') {
+                $submission->update(['status' => IdentityVerificationStatus::NeedsCorrection]);
+                $profile->forceFill([
+                    'identity_status' => IdentityVerificationStatus::NeedsCorrection,
+                ])->save();
             }
 
-            if ($submission->registry_match_status === 'matched') {
+            Cache::put($cooldownKey, true, $cooldown);
+
+            if ($submission->registry_match_status !== 'mismatched') {
                 try {
-                    $submission = ($this->approve)(null, $submission, 'تأیید خودکار — تطابق با استعلام مشخصات هویتی (PersonInfo).');
-                } catch (Throwable $e) {
+                    $this->sms->sendEvent(
+                        SmsEventKey::IdentityVerificationSubmitted,
+                        (string) $user->mobile,
+                        ['{name}' => $user->name ?: $data['first_name']],
+                        $user->id,
+                    );
+                } catch (\Throwable $e) {
                     report($e);
                 }
             }
 
+            // Always wait for expert review — no auto-approve on PersonInfo match.
+
             return $submission->load('artifacts');
         });
+
+        if ($submission->registry_match_status === 'mismatched') {
+            $this->dailyLimits->throwMismatch($user);
+        }
+
+        return $submission;
     }
 
     /**
-     * Looks up the national code via the PersonInfo (civil registry) capability and
-     * compares the returned name against the user-submitted name. Stores a snapshot
-     * on the submission for the admin review UI regardless of outcome.
-     *
      * @param  array{first_name: string, last_name: string, ...}  $data
      */
     private function applyRegistryLookup(

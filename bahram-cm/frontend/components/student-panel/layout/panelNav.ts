@@ -8,6 +8,7 @@ import {
   Bell,
   User as UserIcon,
   Receipt,
+  Radio,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export const PANEL_NAV_ITEMS: PanelNavItem[] = [
   { href: '/panel', label: 'خانه', shortLabel: 'خانه', icon: Home, exact: true },
   { href: '/panel/courses', label: 'دوره کمپین‌نویسی', shortLabel: 'کمپین', icon: BookOpen },
   { href: '/panel/seminars', label: 'سمینارهای من', shortLabel: 'سمینار', icon: CalendarDays },
+  { href: '/panel/reference-channel', label: 'کانال مرجع', shortLabel: 'مرجع', icon: Radio },
   { href: '/panel/referrals', label: 'باشگاه مشتریان', shortLabel: 'باشگاه', icon: Gift },
   { href: '/panel/sat', label: 'سات', shortLabel: 'سات', icon: Briefcase },
   { href: '/panel/support', label: 'پشتیبانی', shortLabel: 'پشتیبانی', icon: LifeBuoy },

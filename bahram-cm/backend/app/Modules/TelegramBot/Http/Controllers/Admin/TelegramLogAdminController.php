@@ -5,6 +5,7 @@ namespace App\Modules\TelegramBot\Http\Controllers\Admin;
 use App\Modules\TelegramBot\Enums\UpdateStatus;
 use App\Modules\TelegramBot\Http\Controllers\Admin\Concerns\AuthorizesTelegramAdmin;
 use App\Modules\TelegramBot\Jobs\ProcessTelegramUpdateJob;
+use App\Modules\TelegramBot\Models\TelegramDestinationLeaveEvent;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
 use App\Modules\TelegramBot\Repositories\TelegramUpdateRepository;
@@ -103,6 +104,34 @@ class TelegramLogAdminController
             'error_message' => $row->error_message,
             'created_at' => $row->created_at,
         ]);
+    }
+
+    public function leaveEvents(Request $request): JsonResponse
+    {
+        $this->authorizeTelegram($request, 'telegram.logs.view');
+
+        $paginator = TelegramDestinationLeaveEvent::query()
+            ->with([
+                'user:id,name,mobile',
+                'destination:id,title,telegram_bot_id',
+            ])
+            ->orderByDesc('detected_at')
+            ->paginate(min(max((int) $request->input('per_page', 50), 1), 100));
+
+        return $this->paginatedResponse($paginator, function (TelegramDestinationLeaveEvent $event) {
+            return [
+                'id' => $event->id,
+                'user_id' => $event->user_id,
+                'user_name' => $event->user?->name,
+                'user_mobile' => $event->user?->mobile,
+                'telegram_destination_id' => $event->telegram_destination_id,
+                'destination_title' => $event->destination?->title,
+                'telegram_user_id' => $event->telegram_user_id,
+                'previous_status' => $event->previous_status,
+                'account_released' => (bool) $event->account_released,
+                'detected_at' => $event->detected_at?->toIso8601String(),
+            ];
+        });
     }
 
     private function updatePayload(TelegramUpdate $update, bool $detailed = false): array

@@ -4,6 +4,8 @@ namespace App\Modules\TelegramBot\Http\Controllers;
 
 use App\Modules\TelegramBot\Http\Controllers\Concerns\ResolvesHostTelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramAccount;
+use App\Modules\TelegramBot\Models\TelegramDestinationMembership;
+use Illuminate\Support\Carbon;
 use App\Models\FamilyPost;
 use App\Models\FamilyPostView;
 use App\Models\FamilyMembership;
@@ -308,6 +310,47 @@ class TelegramHostLiveController
         }
 
         return $this->jsonResponse(['ok' => true, 'ticket_id' => $ticket->id]);
+    }
+
+    public function destinationMembershipSync(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $account = $this->resolveAccount($request);
+
+        if ($account === null || ! $account->user_id) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
+        }
+
+        $items = (array) ($payload['items'] ?? []);
+        $synced = 0;
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $destinationId = (int) ($item['destination_id'] ?? 0);
+            if ($destinationId <= 0) {
+                continue;
+            }
+
+            $checkedAt = isset($item['checked_at'])
+                ? Carbon::parse((string) $item['checked_at'])
+                : now();
+
+            TelegramDestinationMembership::query()->updateOrCreate(
+                [
+                    'user_id' => (int) $account->user_id,
+                    'telegram_destination_id' => $destinationId,
+                ],
+                [
+                    'is_member' => ! empty($item['is_member']),
+                    'checked_at' => $checkedAt,
+                ],
+            );
+            $synced++;
+        }
+
+        return $this->jsonResponse(['ok' => true, 'synced' => $synced]);
     }
 
     public function supportPrepare(Request $request): JsonResponse

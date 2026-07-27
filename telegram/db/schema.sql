@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS catalog_products (
     price BIGINT NULL,
     sale_price BIGINT NULL,
     photo_url VARCHAR(512) NULL,
+    product_type VARCHAR(64) NULL,
     synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS catalog_seminars (
     price BIGINT NULL,
     sale_price BIGINT NULL,
     photo_url VARCHAR(512) NULL,
+    reference_discount_amount BIGINT NOT NULL DEFAULT 0,
     synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -129,6 +131,28 @@ CREATE TABLE IF NOT EXISTS discount_codes_cache (
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     product_ids_json TEXT NULL,
     synced_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS destinations_cache (
+    id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL DEFAULT '',
+    chat_id VARCHAR(64) NOT NULL DEFAULT '',
+    invite_mode VARCHAR(32) NOT NULL DEFAULT 'shared',
+    shared_invite_url TEXT NULL,
+    product_ids_json TEXT NULL,
+    product_titles_json TEXT NULL,
+    sat_membership TINYINT(1) NOT NULL DEFAULT 0,
+    synced_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pending_membership_sync (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    payload_json MEDIUMTEXT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_pending_membership_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Access pushed from Iran by mobile number, before the buyer ever starts the

@@ -23,6 +23,7 @@ Schedule::call(static fn () => \App\Jobs\PushTelegramHostSyncJob::bootstrap())
     ->onOneServer();
 Schedule::command('telegram:health-check')->hourly()->onOneServer();
 Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServer();
+Schedule::command('telegram:audit-destination-memberships')->dailyAt('04:00')->onOneServer();
 
 Schedule::command('chatbot:purge-old')->dailyAt('03:00');
 Schedule::command('backup:database')->everyFiveMinutes();

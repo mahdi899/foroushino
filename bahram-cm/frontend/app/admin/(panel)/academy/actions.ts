@@ -444,3 +444,41 @@ export async function fetchPendingTicketsCount(): Promise<number> {
     return 0;
   }
 }
+
+// Reference channels
+export async function createReferenceChannel(input: {
+  title: string;
+  description?: string;
+  status?: string;
+  price: number;
+  telegram_destination_id?: number | null;
+  cover_image?: string | null;
+}) {
+  try {
+    const res = await adminFetch<{ data: { id: number } }>('/reference-channels', { method: 'POST', body: input });
+    revalidateAcademy();
+    return { ok: true as const, id: res.data.id };
+  } catch (e) {
+    return actionError(e, 'ایجاد کانال مرجع ناموفق بود.');
+  }
+}
+
+export async function updateReferenceChannel(id: number, input: Record<string, unknown>) {
+  try {
+    await adminFetch(`/reference-channels/${id}`, { method: 'PATCH', body: input });
+    revalidateAcademy();
+    return { ok: true as const };
+  } catch (e) {
+    return actionError(e, 'ذخیره کانال مرجع ناموفق بود.');
+  }
+}
+
+export async function addReferenceChannelEntitlement(id: number, input: { mobile: string; name?: string }) {
+  try {
+    await adminFetch(`/reference-channels/${id}/entitlements`, { method: 'POST', body: input });
+    revalidateAcademy();
+    return { ok: true as const };
+  } catch (e) {
+    return actionError(e, 'افزودن دسترسی ناموفق بود.');
+  }
+}

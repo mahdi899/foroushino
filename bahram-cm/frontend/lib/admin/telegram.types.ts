@@ -251,3 +251,16 @@ export type TelegramDeliveryLogView = {
   error_message: string | null;
   created_at: string;
 };
+
+export type TelegramDestinationLeaveEventView = {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  user_mobile: string | null;
+  telegram_destination_id: number;
+  destination_title: string | null;
+  telegram_user_id: number | null;
+  previous_status: string | null;
+  account_released: boolean;
+  detected_at: string | null;
+};

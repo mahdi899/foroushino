@@ -95,12 +95,33 @@ export default async function PaymentResultPage({
                 tone={COPY[verified.status].tone}
                 eyebrow={COPY[verified.status].eyebrow}
                 title={COPY[verified.status].title}
-                body={COPY[verified.status].body}
+                body={
+                  verified.status === "success" && verified.is_reference_channel
+                    ? "پرداخت ثبت شد. برای عضویت در کانال مرجع، احراز هویت را کامل کنید."
+                    : COPY[verified.status].body
+                }
                 icon={COPY[verified.status].icon}
                 orderNumber={verified.order_number}
               >
                 {verified.status === "success" ? (
-                  <PaymentResultPanelButton receiptToken={token!} isLoggedIn={Boolean(student)} />
+                  <div className="flex w-full flex-col items-center gap-3">
+                    {verified.is_reference_channel ? (
+                      <PaymentResultPanelButton
+                        receiptToken={token!}
+                        isLoggedIn={Boolean(student)}
+                        href="/panel/reference-channel"
+                        label="عضویت در مرجع"
+                        variant="primary"
+                      />
+                    ) : null}
+                    <PaymentResultPanelButton
+                      receiptToken={token!}
+                      isLoggedIn={Boolean(student)}
+                      href="/panel"
+                      label="ورود به پنل کاربری"
+                      variant={verified.is_reference_channel ? "secondary" : "primary"}
+                    />
+                  </div>
                 ) : (
                   <>
                     <Link

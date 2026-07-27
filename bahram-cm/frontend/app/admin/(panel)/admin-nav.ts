@@ -64,6 +64,7 @@ export const adminNav: {
       },
       { href: '/admin/academy/course-accesses', label: 'دسترسی دوره‌ها', icon: 'KeyRound', permission: 'students.manage' },
       { href: '/admin/academy/seminars', label: 'سمینارها', icon: 'CalendarDays', matchPrefix: true },
+      { href: '/admin/academy/reference-channels', label: 'کانال مرجع', icon: 'Radio', matchPrefix: true },
       { href: '/admin/academy/mini-courses', label: 'مینی‌دوره‌ها', icon: 'PlayCircle', matchPrefix: true, permission: 'content.view' },
       { href: '/admin/academy/referrals', label: 'معرفی و کش‌بک', icon: 'Gift', permission: 'finance.view' },
       { href: '/admin/academy/cashback-payouts', label: 'واریز کش‌بک', icon: 'Wallet', permission: 'finance.view' },

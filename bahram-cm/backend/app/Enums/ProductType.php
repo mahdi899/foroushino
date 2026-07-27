@@ -8,6 +8,7 @@ enum ProductType: string
     case ManualService = 'manual_service';
     case Event = 'event';
     case MiniCourse = 'mini_course';
+    case ReferenceChannel = 'reference_channel';
 
     /** Legacy values kept for backward compatibility with existing products. */
     case Normal = 'normal';

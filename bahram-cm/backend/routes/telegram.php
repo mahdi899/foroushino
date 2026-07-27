@@ -105,6 +105,7 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
         Route::get('/updates/{update}', [TelegramLogAdminController::class, 'showUpdate']);
         Route::post('/updates/retry-failed', [TelegramLogAdminController::class, 'retryFailed']);
         Route::get('/delivery-logs', [TelegramLogAdminController::class, 'deliveryLogs']);
+        Route::get('/destination-leave-events', [TelegramLogAdminController::class, 'leaveEvents']);
     });
 });
 

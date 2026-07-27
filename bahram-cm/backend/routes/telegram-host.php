@@ -50,5 +50,6 @@ Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle
             Route::post('/support/send', [TelegramHostLiveController::class, 'supportSend'])->middleware('throttle:30,1');
             Route::post('/support/try-reply', [TelegramHostLiveController::class, 'supportTryReply'])->middleware('throttle:30,1');
             Route::post('/support/sync-ticket', [TelegramHostLiveController::class, 'supportSyncTicket'])->middleware('throttle:60,1');
+            Route::post('/destination-membership/sync', [TelegramHostLiveController::class, 'destinationMembershipSync'])->middleware('throttle:60,1');
         });
     });

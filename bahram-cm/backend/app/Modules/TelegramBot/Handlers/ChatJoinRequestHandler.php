@@ -6,6 +6,7 @@ use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramDestination;
+use App\Modules\TelegramBot\Models\TelegramDestinationMembership;
 use App\Modules\TelegramBot\Models\TelegramJoinRequest;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Services\DestinationAccessPolicy;
@@ -69,6 +70,18 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
             $client->approveChatJoinRequest($chatId, $telegramUserId);
             if ($destination && $account) {
                 $this->inviteLinks->revokeAfterSuccessfulJoin($bot, $destination, $account);
+                if ($account->user_id) {
+                    TelegramDestinationMembership::query()->updateOrCreate(
+                        [
+                            'user_id' => (int) $account->user_id,
+                            'telegram_destination_id' => $destination->id,
+                        ],
+                        [
+                            'is_member' => true,
+                            'checked_at' => now(),
+                        ],
+                    );
+                }
             }
             if ($account) {
                 $client->sendMessage($telegramUserId, '✅ درخواست عضویت شما تأیید شد.');

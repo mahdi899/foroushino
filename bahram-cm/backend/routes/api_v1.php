@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\Admin\RoleAdminController;
 use App\Http\Controllers\Api\V1\Admin\SatApplicationAdminController;
 use App\Http\Controllers\Api\V1\Admin\SatIntegrationAdminController;
 use App\Http\Controllers\Api\V1\Admin\SeminarAdminController;
+use App\Http\Controllers\Api\V1\Admin\ReferenceChannelAdminController;
 use App\Http\Controllers\Api\V1\Admin\SmsAdminController;
 use App\Http\Controllers\Api\V1\Admin\SmsCenterConfigController;
 use App\Http\Controllers\Api\V1\Admin\StudentController as AdminStudentController;
@@ -83,6 +84,7 @@ use App\Http\Controllers\Api\V1\Student\ReferralController as StudentReferralCon
 use App\Http\Controllers\Api\V1\Student\SatApplicationController as StudentSatApplicationController;
 use App\Http\Controllers\Api\V1\Student\SeminarAssetDownloadController;
 use App\Http\Controllers\Api\V1\Student\SeminarController as StudentSeminarController;
+use App\Http\Controllers\Api\V1\Student\ReferenceChannelController as StudentReferenceChannelController;
 use App\Http\Controllers\Api\V1\Student\SpotPlayerSessionController as StudentSpotPlayerSessionController;
 use App\Http\Controllers\Api\V1\Student\TelegramDestinationController as StudentTelegramDestinationController;
 use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketController;
@@ -201,6 +203,9 @@ Route::prefix('student')->group(function () {
         Route::get('seminars', [StudentSeminarController::class, 'index']);
         // Bind by id (panel links use numeric ids); model route key is slug for public pages.
         Route::get('seminars/{seminar:id}', [StudentSeminarController::class, 'show'])->whereNumber('seminar');
+
+        Route::get('reference-channels', [StudentReferenceChannelController::class, 'index']);
+        Route::get('reference-channels/{channel:id}', [StudentReferenceChannelController::class, 'show'])->whereNumber('channel');
 
         Route::get('referrals', [StudentReferralController::class, 'show']);
 
@@ -467,6 +472,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('seminars/{seminar:id}/assets', [SeminarAdminController::class, 'uploadAsset'])->whereNumber('seminar');
     Route::delete('seminars/{seminar:id}/assets/{asset}', [SeminarAdminController::class, 'deleteAsset'])->whereNumber(['seminar', 'asset']);
     Route::post('seminars/{seminar:id}/certificates', [SeminarAdminController::class, 'issueCertificate'])->whereNumber('seminar');
+
+    Route::get('reference-channels', [ReferenceChannelAdminController::class, 'index']);
+    Route::post('reference-channels', [ReferenceChannelAdminController::class, 'store']);
+    Route::get('reference-channels/destination-options', [ReferenceChannelAdminController::class, 'destinationsOptions']);
+    Route::get('reference-channels/{id}', [ReferenceChannelAdminController::class, 'show'])->whereNumber('id');
+    Route::patch('reference-channels/{id}', [ReferenceChannelAdminController::class, 'update'])->whereNumber('id');
+    Route::post('reference-channels/{id}/entitlements', [ReferenceChannelAdminController::class, 'addEntitlement'])->whereNumber('id');
 
     Route::get('referrals', [ReferralAdminController::class, 'index']);
     Route::get('referral-codes', [ReferralAdminController::class, 'codes']);

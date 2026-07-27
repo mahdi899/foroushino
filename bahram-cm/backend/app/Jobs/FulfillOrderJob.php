@@ -8,6 +8,8 @@ use App\Enums\SpotplayerLicenseStatus;
 use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ReferenceChannel;
+use App\Models\ReferenceChannelEntitlement;
 use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\SpotplayerLicense;
@@ -96,10 +98,11 @@ class FulfillOrderJob implements ShouldQueue
         DB::transaction(function () use ($order, $userId, $licenseResponse, $referrals, $discounts) {
             if ($userId) {
                 $courseAccess = null;
-                $order->loadMissing('product.seminar');
+                $order->loadMissing(['product.seminar', 'product.referenceChannel']);
                 $isSeminarProduct = $order->product?->isSeminarProduct() ?? false;
+                $isReferenceChannelProduct = $order->product?->isReferenceChannelProduct() ?? false;
 
-                if ($order->product_id && ! $isSeminarProduct) {
+                if ($order->product_id && ! $isSeminarProduct && ! $isReferenceChannelProduct) {
                     $courseAccess = CourseAccess::query()->firstOrCreate(
                         ['user_id' => $userId, 'product_id' => $order->product_id],
                         [
@@ -118,6 +121,10 @@ class FulfillOrderJob implements ShouldQueue
 
                 if ($isSeminarProduct) {
                     $this->registerSeminarAttendee($order, $userId);
+                }
+
+                if ($isReferenceChannelProduct) {
+                    $this->registerReferenceChannelEntitlement($order, $userId);
                 }
 
                 if ($licenseResponse) {
@@ -177,21 +184,34 @@ class FulfillOrderJob implements ShouldQueue
             .'محصول: '.($order->product?->title ?? '—');
 
         $identityUrl = \App\Modules\TelegramBot\Support\TelegramSiteUrl::identityPage();
-        if ($order->product?->slug === \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG) {
+        $botStartUrl = \App\Modules\TelegramBot\Support\TelegramSiteUrl::botStartDeepLink('reference');
+        $isReferencePurchase = $order->product?->isReferenceChannelProduct() ?? false;
+        $isLegacyCampaign = $order->product?->slug === \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG;
+
+        if ($isReferencePurchase) {
+            $orderPaidText .= "\n\n"
+                .'قدم بعدی: احراز هویت سطح ۲، سپس ربات تلگرام را استارت کنید و «کانال مرجع» را بزنید.'."\n"
+                .'بعد از تأیید هویت، لینک عضویت گروه مرجع برایتان فعال می‌شود.';
+        } elseif ($isLegacyCampaign) {
             $orderPaidText .= "\n\n"
                 .'قدم بعدی: احراز هویت سطح ۲.'."\n"
                 .'بعد از تأیید، لینک مقاصد برایتان در بخش «کانال مرجع» فعال می‌شود.';
         }
 
         $notifyOptions = [];
-        if ($identityUrl && $order->product?->slug === \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG) {
-            $keyboard = [];
+        $keyboard = [];
+        if ($identityUrl && ($isReferencePurchase || $isLegacyCampaign)) {
             foreach (\App\Modules\TelegramBot\Support\TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
                 $keyboard[] = $row;
             }
-            if ($keyboard !== []) {
-                $notifyOptions['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+        if ($botStartUrl && $isReferencePurchase) {
+            foreach (\App\Modules\TelegramBot\Support\TelegramSiteUrl::urlKeyboardRow('استارت ربات — کانال مرجع', $botStartUrl, 'primary', 'channel') as $row) {
+                $keyboard[] = $row;
             }
+        }
+        if ($keyboard !== []) {
+            $notifyOptions['reply_markup'] = ['inline_keyboard' => $keyboard];
         }
 
         $usesHost = app(TelegramInfrastructureService::class)->usesHostBridge();
@@ -352,6 +372,29 @@ class FulfillOrderJob implements ShouldQueue
         SeminarAttendee::query()->firstOrCreate(
             ['seminar_id' => $seminar->id, 'user_id' => $userId],
             ['attendance_status' => 'registered']
+        );
+    }
+
+    private function registerReferenceChannelEntitlement(Order $order, int $userId): void
+    {
+        $channel = ReferenceChannel::query()
+            ->where('product_id', $order->product_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $channel) {
+            return;
+        }
+
+        ReferenceChannelEntitlement::query()->firstOrCreate(
+            [
+                'reference_channel_id' => $channel->id,
+                'user_id' => $userId,
+            ],
+            [
+                'order_id' => $order->id,
+                'source' => 'purchase',
+            ]
         );
     }
 }

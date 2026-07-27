@@ -11,6 +11,7 @@ import type {
   TelegramBroadcastView,
   TelegramDeliveryLogView,
   TelegramDestinationView,
+  TelegramDestinationLeaveEventView,
   TelegramHealthSnapshot,
   TelegramInfrastructureView,
   TelegramOperatorView,
@@ -179,6 +180,17 @@ export async function loadTelegramUpdates(query?: ListQuery): Promise<{ items: T
 export async function loadTelegramDeliveryLogs(query?: ListQuery): Promise<{ items: TelegramDeliveryLogView[]; meta: PaginatedMeta }> {
   try {
     const res = await adminFetch<{ data: TelegramDeliveryLogView[]; meta: PaginatedMeta }>('/panel/telegram/delivery-logs', { query: buildQuery(query) });
+    return { items: res.data ?? [], meta: res.meta ?? { current_page: 1, last_page: 1, total: 0 } };
+  } catch {
+    return { items: [], meta: { current_page: 1, last_page: 1, total: 0 } };
+  }
+}
+
+export async function loadTelegramDestinationLeaveEvents(query?: ListQuery): Promise<{ items: TelegramDestinationLeaveEventView[]; meta: PaginatedMeta }> {
+  try {
+    const res = await adminFetch<{ data: TelegramDestinationLeaveEventView[]; meta: PaginatedMeta }>('/panel/telegram/destination-leave-events', {
+      query: buildQuery(query),
+    });
     return { items: res.data ?? [], meta: res.meta ?? { current_page: 1, last_page: 1, total: 0 } };
   } catch {
     return { items: [], meta: { current_page: 1, last_page: 1, total: 0 } };

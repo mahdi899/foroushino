@@ -338,6 +338,31 @@ final class AccountCache
 
     public function hasSeminarOnAccount(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): bool
     {
+        return $this->maxReferenceDiscount($telegramUserId, $cache) > 0
+            || $this->legacyHasSeminarFlag($telegramUserId, $cache);
+    }
+
+    public function maxReferenceDiscount(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): int
+    {
+        $max = 0;
+        foreach ($cache->seminars() as $seminar) {
+            $productId = (int) ($seminar['product_id'] ?? 0);
+            $discount = (int) ($seminar['reference_discount_amount'] ?? 0);
+            if ($productId > 0 && $discount > 0 && $this->ownsProduct($telegramUserId, $productId)) {
+                $max = max($max, $discount);
+            }
+        }
+
+        if ($max > 0) {
+            return $max;
+        }
+
+        // Fallback: any seminar ownership without configured discount amounts.
+        return $this->legacyHasSeminarFlag($telegramUserId, $cache) ? 0 : 0;
+    }
+
+    private function legacyHasSeminarFlag(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): bool
+    {
         $account = $this->get($telegramUserId);
         if ($account === null) {
             return false;

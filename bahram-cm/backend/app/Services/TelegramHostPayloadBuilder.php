@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\DiscountCode;
 use App\Models\Product;
+use App\Models\ReferenceChannel;
 use App\Models\Seminar;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Models\TelegramDestination;
 use App\Modules\TelegramBot\Models\TelegramRequiredChat;
 use App\Modules\TelegramBot\Models\TelegramSupportCategory;
 use App\Modules\TelegramBot\Services\BotMessageCatalog;
@@ -107,6 +109,7 @@ class TelegramHostPayloadBuilder
             'messages' => $messages,
             'required_chats' => $requiredChats,
             'support_categories' => $supportCategories,
+            'destinations' => $this->destinationsPayload($bot),
             'checkout' => [
                 'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
                 'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),
@@ -136,8 +139,33 @@ class TelegramHostPayloadBuilder
                 'price' => $p->price,
                 'sale_price' => $p->sale_price,
                 'photo' => $photo,
+                'product_type' => $p->type,
             ];
         })->values();
+
+        $referenceChannels = ReferenceChannel::query()
+            ->where('status', 'published')
+            ->whereNotNull('product_id')
+            ->with('product')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (ReferenceChannel $channel) {
+                $product = $channel->product;
+                $photo = $product ? $this->catalogMedia->productPhoto($product) : null;
+
+                return [
+                    'id' => $channel->id,
+                    'product_id' => $channel->product_id,
+                    'slug' => $product?->slug ?? ('reference-'.$channel->slug),
+                    'title' => $channel->title,
+                    'price' => (int) $channel->price,
+                    'sale_price' => null,
+                    'photo' => $photo,
+                    'description' => $channel->description,
+                    'product_type' => Product::TYPE_REFERENCE_CHANNEL,
+                ];
+            })
+            ->values();
 
         $seminars = $this->seminars->listUpcoming()->map(function (Seminar $s) {
             $s->loadMissing('product');
@@ -153,17 +181,22 @@ class TelegramHostPayloadBuilder
                 'title' => $s->title,
                 'date' => $s->date?->toIso8601String(),
                 'location' => $s->location,
-                'capacity_hint' => $s->capacity,
+                'capacity_hint' => $s->remainingSeats(),
                 'price' => $base,
                 'sale_price' => $sale,
                 'photo' => $photo,
+                'reference_discount_amount' => (int) ($s->reference_discount_amount ?? 0),
             ];
         })->values();
 
+        $bot = $this->productionBot();
+
         return [
             'courses' => $courses,
+            'reference_channels' => $referenceChannels,
             'seminars' => $seminars,
             'discount_codes' => $this->discountCodesPayload(),
+            'destinations' => $bot !== null ? $this->destinationsPayload($bot) : [],
             'synced_at' => now()->toIso8601String(),
         ];
     }
@@ -197,6 +230,68 @@ class TelegramHostPayloadBuilder
                     'requires_link' => (bool) $code->requires_link,
                     'is_active' => (bool) $code->is_active,
                     'product_ids' => $code->products->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Destinations for the foreign host — membership checks run there via Bot API.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function destinationsPayload(TelegramBot $bot): array
+    {
+        return TelegramDestination::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('is_active', true)
+            ->with('requirements')
+            ->orderBy('id')
+            ->get()
+            ->map(function (TelegramDestination $destination): array {
+                $productIds = $destination->requirements
+                    ->filter(fn ($req) => in_array($req->requirement_type, ['product', 'active_course_access'], true))
+                    ->map(fn ($req) => (int) $req->requirement_value)
+                    ->filter(fn (int $id) => $id > 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $productTitles = $productIds === []
+                    ? []
+                    : Product::query()
+                        ->whereIn('id', $productIds)
+                        ->pluck('title')
+                        ->map(fn ($t) => (string) $t)
+                        ->all();
+
+                $satMembership = $destination->requirements
+                    ->contains(fn ($req) => $req->requirement_type === 'sat_membership');
+
+                if ($satMembership && $productTitles === []) {
+                    $productTitles = ['عضویت فعال سات'];
+                }
+
+                $perUser = $destination->usesPerUserInvites();
+                $sharedUrl = null;
+                if (! $perUser) {
+                    if (filled($destination->join_request_url)) {
+                        $sharedUrl = (string) $destination->join_request_url;
+                    } elseif (filled($destination->username)) {
+                        $sharedUrl = 'https://t.me/'.ltrim((string) $destination->username, '@');
+                    }
+                }
+
+                return [
+                    'id' => (int) $destination->id,
+                    'title' => (string) $destination->title,
+                    'chat_id' => (string) $destination->chat_id,
+                    'invite_mode' => $perUser ? 'per_user' : 'shared',
+                    'shared_invite_url' => $sharedUrl,
+                    'product_ids' => $productIds,
+                    'product_titles' => $productTitles,
+                    'sat_membership' => $satMembership,
                 ];
             })
             ->values()
