@@ -1,7 +1,6 @@
 'use client';
 
 import { useActionState, useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, KeyRound, Loader2, ShieldCheck, X } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
@@ -239,21 +238,15 @@ export function StudentLoginForm({
       </div>
 
       <div className={cn('px-5 py-4', isFamilyPage ? '' : 'border-t border-bone/6')}>
-        <AnimatePresence mode="wait">
-          {step === 'mobile' ? (
-            <motion.form
-              key="mobile"
-              initial={{ opacity: 0, x: 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.18 }}
-              action={sendOtp}
-              onSubmit={(e) => {
-                setPhoneTouched(true);
-                if (!phoneValid) e.preventDefault();
-              }}
-              className="space-y-3"
-            >
+        {step === 'mobile' ? (
+          <form
+            action={sendOtp}
+            onSubmit={(e) => {
+              setPhoneTouched(true);
+              if (!phoneValid) e.preventDefault();
+            }}
+            className="space-y-3"
+          >
               <label className="block">
                 <span className={cn('font-medium', isFamilyPage ? 'text-xs text-bone/55' : 'panel-text-meta text-mist')}>
                   شماره موبایل
@@ -269,6 +262,12 @@ export function StudentLoginForm({
                   onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
                   onBlur={() => setPhoneTouched(true)}
                   onFocus={(e) => {
+                    // Popup modal already pins the card above the keyboard via
+                    // `useVisualViewportBox`'s `keyboardInset` padding — an extra
+                    // `scrollIntoView` here fought that layout and caused the
+                    // laggy jump/scroll on mobile. Only the full-page variant
+                    // (which lives in a plain scrollable shell) still needs it.
+                    if (!isPage) return;
                     const target = e.currentTarget;
                     window.setTimeout(() => {
                       target.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -306,18 +305,11 @@ export function StudentLoginForm({
                 <KeyRound className="h-3 w-3" />
                 ورود با رمز عبور
               </button>
-            </motion.form>
+            </form>
           ) : null}
 
           {step === 'otp' ? (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, x: 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.18 }}
-              className="space-y-3.5"
-            >
+            <div className="space-y-3.5">
               <form ref={resendFormRef} action={sendOtp} className="hidden" aria-hidden>
                 <input type="hidden" name="mobile" value={mobile} />
               </form>
@@ -398,19 +390,11 @@ export function StudentLoginForm({
                   </button>
                 )}
               </p>
-            </motion.div>
+            </div>
           ) : null}
 
           {step === 'password' ? (
-            <motion.form
-              key="password"
-              initial={{ opacity: 0, x: 8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.18 }}
-              onSubmit={handlePasswordSubmit}
-              className="space-y-3"
-            >
+            <form onSubmit={handlePasswordSubmit} className="space-y-3">
               <input type="hidden" name="redirect_to" value={redirectTo} />
               {isFamily ? <input type="hidden" name="auth_context" value="family" /> : null}
               {passwordSecurity.honeypotField}
@@ -474,9 +458,8 @@ export function StudentLoginForm({
               >
                 ورود با کد یک‌بارمصرف
               </button>
-            </motion.form>
+            </form>
           ) : null}
-        </AnimatePresence>
       </div>
     </div>
   );

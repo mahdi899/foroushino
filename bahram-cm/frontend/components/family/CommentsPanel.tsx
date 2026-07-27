@@ -18,6 +18,10 @@ type CommentsPanelProps = {
   variant?: 'inline' | 'page';
   hideTitle?: boolean;
   className?: string;
+  /** Mobile keyboard inset (px) from the panel's visualViewport tracking — used to
+   * drop the safe-area padding under the composer while the keyboard is open, so
+   * the input sits flush above it instead of leaving a gap (Telegram-like). */
+  keyboardInset?: number;
 };
 
 const TEXTAREA_MAX_PX = 120;
@@ -63,8 +67,10 @@ export function CommentsPanel({
   variant = 'inline',
   hideTitle = false,
   className,
+  keyboardInset = 0,
 }: CommentsPanelProps) {
   useFamilyDebugRender(`CommentsPanel:${postId}`);
+  const keyboardOpen = keyboardInset > 40;
   const { comments, isLoading, error: loadError, submitting, submit, loadMore, loadingMore, hasMore } =
     useFamilyComments(postId, true);
   const [value, setValue] = useState('');
@@ -215,6 +221,7 @@ export function CommentsPanel({
       className={cn(
         'family-glass-bar family-comment-composer shrink-0 p-3 sm:p-4',
         isPage && 'family-comment-composer--page',
+        isPage && keyboardOpen && 'family-comment-composer--keyboard',
       )}
       dir="rtl"
     >
@@ -227,6 +234,7 @@ export function CommentsPanel({
       className={cn(
         'family-comments-panel flex min-h-0 min-w-0 flex-col overflow-x-hidden',
         variant === 'inline' && 'border-t border-[var(--family-border-subtle)]',
+        isPage && keyboardOpen && 'family-comments-panel--keyboard',
         className,
       )}
     >
@@ -241,6 +249,7 @@ export function CommentsPanel({
         className={cn(
           'family-feed-scroll family-comments-list min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain',
           isPage ? 'flex flex-1 flex-col px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
+          isPage && keyboardOpen && 'family-comments-list--keyboard',
         )}
       >
         {isLoading ? (
@@ -278,7 +287,12 @@ export function CommentsPanel({
             {orderedComments.map((comment) => (
               <CommentRow key={comment.id} comment={comment} avatarSize={avatarSize} />
             ))}
-            <div ref={bottomRef} aria-hidden className="h-px shrink-0 scroll-mt-2" style={{ scrollMarginBottom: '0.5rem' }} />
+            <div
+              ref={bottomRef}
+              aria-hidden
+              className="h-px shrink-0 scroll-mt-2"
+              style={{ scrollMarginBottom: keyboardOpen ? 0 : '0.5rem' }}
+            />
           </ul>
         )}
       </div>

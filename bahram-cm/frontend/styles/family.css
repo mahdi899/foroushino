@@ -649,8 +649,19 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
+/* Keyboard is open: the composer already sits flush against it (visualViewport
+   shrinks the panel), so the home-indicator safe-area inset would just add a
+   visible empty strip above the keyboard — drop it while typing, Telegram-style. */
+.family-comment-composer--page.family-comment-composer--keyboard {
+  padding-bottom: 0.5rem;
+}
+
 .family-comments-list .family-comments-thread {
   margin-top: auto;
+}
+
+.family-comments-list.family-comments-list--keyboard .family-comments-thread {
+  padding-bottom: 0;
 }
 
 .family-voice-wave {

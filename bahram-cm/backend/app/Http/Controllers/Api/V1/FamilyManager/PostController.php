@@ -189,10 +189,9 @@ class PostController extends Controller
             return ApiResponse::error('media_not_ready', $e->getMessage(), 422);
         }
 
-        if ($published->is_important) {
-            // Important-post broadcast handled asynchronously in production via a queued job
-            // fan-out over home-family members; kept out of the request cycle intentionally.
-        }
+        // Important-post fan-out (in-app + real device push, ~20k members) is
+        // dispatched from FamilyPostPublisher::publish() on the queue — see
+        // DispatchFamilyPostPushJob — so it never blocks this request.
 
         return ApiResponse::success(FamilyManagerPostPresenter::present($published));
     }

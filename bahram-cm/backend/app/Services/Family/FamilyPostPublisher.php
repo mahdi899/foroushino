@@ -8,6 +8,7 @@ use App\Enums\Family\FamilyPostBlockType;
 use App\Enums\Family\FamilyPostStatus;
 use App\Enums\Family\FamilyPostType;
 use App\Events\FamilyFeedUpdated;
+use App\Jobs\Family\DispatchFamilyPostPushJob;
 use App\Models\FamilyAction;
 use App\Models\FamilyMedia;
 use App\Models\FamilyPost;
@@ -137,6 +138,14 @@ class FamilyPostPublisher
             SafeBroadcast::optionally(
                 fn () => broadcast(new FamilyFeedUpdated($fresh)),
             );
+
+            // Important posts fan out to every member they're visible to — kept
+            // entirely on the queue (in-app + real device push) so publishing
+            // stays instant regardless of family size. See
+            // DispatchFamilyPostPushJob for the chunked/parallel fan-out.
+            if ($fresh->is_important) {
+                DispatchFamilyPostPushJob::dispatch($fresh->id);
+            }
         }
 
         return $fresh ?? $post;

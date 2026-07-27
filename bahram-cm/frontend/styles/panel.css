@@ -1,6 +1,6 @@
 /* ============================================================
  * Bahram Student Panel — scoped to .panel-root only.
- * Dark mode — Telegram-inspired blue glass (scoped to .panel-root).
+ * Dark mode — brand teal/green glass (scoped to .panel-root).
  * ============================================================ */
 
 .panel-root {
@@ -49,43 +49,43 @@
 
 .panel-root[data-panel-theme='dark'] {
   color-scheme: dark;
-  --panel-glass-bg: rgba(24, 35, 48, 0.72);
-  --panel-glass-bg-strong: rgba(15, 22, 33, 0.9);
+  --panel-glass-bg: rgba(12, 28, 32, 0.72);
+  --panel-glass-bg-strong: rgba(8, 18, 22, 0.9);
   --panel-glass-border: rgba(255, 255, 255, 0.09);
   --panel-glass-highlight: rgba(255, 255, 255, 0.07);
 
-  --color-bg: #0e1621;
-  --color-surface: rgba(23, 33, 43, 0.82);
-  --color-surface-soft: #17212b;
-  --color-primary: #2aabee;
-  --color-primary-dark: #1c7db5;
-  --color-primary-soft: rgba(42, 171, 238, 0.16);
-  --color-accent: #2aabee;
-  --color-accent-bright: #64b5ef;
-  --color-accent-soft: rgba(42, 171, 238, 0.14);
+  --color-bg: #061014;
+  --color-surface: rgba(12, 21, 25, 0.82);
+  --color-surface-soft: #0c1519;
+  --color-primary: #25a0a6;
+  --color-primary-dark: #006f75;
+  --color-primary-soft: rgba(37, 160, 166, 0.16);
+  --color-accent: #25a0a6;
+  --color-accent-bright: #4ec4c9;
+  --color-accent-soft: rgba(37, 160, 166, 0.14);
   --color-gold: #e8b84a;
   --color-gold-soft: rgba(232, 184, 74, 0.12);
   --color-text: #f4f8fb;
-  --color-text-muted: #8b9bab;
-  --color-text-subtle: #708499;
+  --color-text-muted: #8ba3a6;
+  --color-text-subtle: #6f8a8e;
   --color-border: rgba(255, 255, 255, 0.08);
-  --color-scrim: rgba(5, 10, 16, 0.78);
+  --color-scrim: rgba(5, 10, 11, 0.78);
   --shadow-soft:
     0 8px 32px rgba(0, 0, 0, 0.38),
     inset 0 1px 0 var(--panel-glass-highlight);
-  --shadow-glow: 0 0 28px rgba(42, 171, 238, 0.2);
+  --shadow-glow: 0 0 28px rgba(37, 160, 166, 0.2);
 
-  --color-emerald: #2aabee;
-  --color-emerald-glow: #64b5ef;
-  --color-emerald-deep: #121a24;
-  --color-charcoal: #17212b;
-  --color-charcoal-2: #1e2c3a;
+  --color-emerald: #25a0a6;
+  --color-emerald-glow: #4ec4c9;
+  --color-emerald-deep: #0a1a1c;
+  --color-charcoal: #0c1519;
+  --color-charcoal-2: #111c22;
 
   background-color: var(--color-bg);
   background-image:
-    radial-gradient(ellipse 120% 85% at 100% -20%, rgba(42, 171, 238, 0.16), transparent 52%),
-    radial-gradient(ellipse 90% 70% at 0% 105%, rgba(86, 148, 233, 0.12), transparent 50%),
-    linear-gradient(165deg, #0e1621 0%, #0b131a 48%, #0a1018 100%);
+    radial-gradient(ellipse 120% 85% at 100% -20%, rgba(37, 160, 166, 0.16), transparent 52%),
+    radial-gradient(ellipse 90% 70% at 0% 105%, rgba(0, 140, 150, 0.12), transparent 50%),
+    linear-gradient(165deg, #061014 0%, #050f12 48%, #040c0e 100%);
 }
 
 /* Base Utilities */
@@ -330,9 +330,9 @@
   justify-content: center;
   width: 1.25rem;
   height: 1.25rem;
-  color: #1d9bf0;
+  color: #008c96;
   transform: translate(22%, 22%);
-  filter: drop-shadow(0 1px 3px rgba(29, 155, 240, 0.45)) drop-shadow(0 1px 2px rgba(0, 59, 64, 0.2));
+  filter: drop-shadow(0 1px 3px rgba(0, 140, 150, 0.45)) drop-shadow(0 1px 2px rgba(0, 59, 64, 0.2));
   pointer-events: none;
   line-height: 0;
 }
@@ -2754,7 +2754,7 @@
 
 .panel-theme-toggle-thumb-dark {
   transform: translateX(24px);
-  background: linear-gradient(145deg, #2aabee, #1c7db5);
+  background: linear-gradient(145deg, #25a0a6, #006f75);
   color: #fff;
 }
 
@@ -2802,9 +2802,9 @@
 }
 
 .panel-root[data-panel-theme='dark'] .panel-nav-item[data-active='true'] {
-  background: rgba(42, 171, 238, 0.16);
+  background: rgba(37, 160, 166, 0.16);
   color: var(--color-accent-bright);
-  box-shadow: inset 0 0 0 1px rgba(42, 171, 238, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(37, 160, 166, 0.22);
 }
 
 .panel-root[data-panel-theme='dark'] .panel-nav-item:not([data-active='true']):hover {
@@ -2813,14 +2813,14 @@
 }
 
 .panel-root[data-panel-theme='dark'] .btn-primary {
-  background: linear-gradient(145deg, #2aabee 0%, #1f8ecf 52%, #2aabee 100%);
+  background: linear-gradient(145deg, #25a0a6 0%, #008c96 52%, #25a0a6 100%);
   background-size: 200% 100%;
-  box-shadow: 0 8px 24px -6px rgba(42, 171, 238, 0.5);
+  box-shadow: 0 8px 24px -6px rgba(37, 160, 166, 0.5);
 }
 
 .panel-root[data-panel-theme='dark'] .btn-primary:hover:not(:disabled) {
   background-position: 100% 0;
-  box-shadow: 0 12px 32px -6px rgba(42, 171, 238, 0.55), var(--shadow-glow);
+  box-shadow: 0 12px 32px -6px rgba(37, 160, 166, 0.55), var(--shadow-glow);
 }
 
 .panel-root[data-panel-theme='dark'] .site-bottom-nav.admin-bottom-nav,
@@ -2835,8 +2835,8 @@
 .panel-root[data-panel-theme='dark'] .site-bottom-nav__icon-shell--active {
   color: #fff;
   border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  background: linear-gradient(145deg, #2aabee 0%, #1f8ecf 55%, #2aabee 100%);
-  box-shadow: 0 4px 16px -4px rgba(42, 171, 238, 0.55);
+  background: linear-gradient(145deg, #25a0a6 0%, #008c96 55%, #25a0a6 100%);
+  box-shadow: 0 4px 16px -4px rgba(37, 160, 166, 0.55);
 }
 
 .panel-glass {
@@ -2929,7 +2929,7 @@
   border-color: color-mix(in srgb, var(--color-accent) 35%, var(--panel-glass-border));
   box-shadow:
     0 16px 44px rgba(0, 0, 0, 0.38),
-    0 0 28px rgba(42, 171, 238, 0.12),
+    0 0 28px rgba(37, 160, 166, 0.12),
     inset 0 1px 0 var(--panel-glass-highlight);
   transform: translateY(-2px);
 }
@@ -3371,22 +3371,22 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
-/* Dark mode — Telegram blue feature cards */
+/* Dark mode — brand teal feature cards */
 .panel-root[data-panel-theme='dark'] .panel-feature-card--teal {
   background:
-    radial-gradient(ellipse 100% 80% at 92% 8%, rgba(42, 171, 238, 0.45) 0%, transparent 54%),
-    radial-gradient(ellipse 85% 70% at 8% 94%, rgba(28, 125, 181, 0.35) 0%, transparent 50%),
-    linear-gradient(152deg, #1c7db5 0%, #2aabee 42%, #1f8ecf 68%, #121a24 100%);
+    radial-gradient(ellipse 100% 80% at 92% 8%, rgba(37, 160, 166, 0.45) 0%, transparent 54%),
+    radial-gradient(ellipse 85% 70% at 8% 94%, rgba(0, 111, 117, 0.35) 0%, transparent 50%),
+    linear-gradient(152deg, #006f75 0%, #25a0a6 42%, #008c96 68%, #0a1a1c 100%);
   box-shadow:
-    0 0 0 1px rgba(42, 171, 238, 0.3),
-    0 12px 32px rgba(42, 171, 238, 0.22),
+    0 0 0 1px rgba(37, 160, 166, 0.3),
+    0 12px 32px rgba(37, 160, 166, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .panel-root[data-panel-theme='dark'] .panel-feature-card--teal:hover {
   box-shadow:
-    0 0 0 1px rgba(42, 171, 238, 0.45),
-    0 18px 40px rgba(42, 171, 238, 0.32),
+    0 0 0 1px rgba(37, 160, 166, 0.45),
+    0 18px 40px rgba(37, 160, 166, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transform: translateY(-3px) scale(1.01);
 }
@@ -3411,19 +3411,19 @@
 
 .panel-root[data-panel-theme='dark'] .panel-feature-card--sat {
   background:
-    radial-gradient(ellipse 98% 78% at 90% 10%, rgba(100, 181, 239, 0.42) 0%, transparent 52%),
-    radial-gradient(ellipse 82% 68% at 8% 92%, rgba(28, 125, 181, 0.38) 0%, transparent 48%),
-    linear-gradient(152deg, #121a24 0%, #1c7db5 32%, #2aabee 54%, #1f8ecf 78%, #0e1621 100%);
+    radial-gradient(ellipse 98% 78% at 90% 10%, rgba(78, 196, 201, 0.42) 0%, transparent 52%),
+    radial-gradient(ellipse 82% 68% at 8% 92%, rgba(0, 111, 117, 0.38) 0%, transparent 48%),
+    linear-gradient(152deg, #0a1a1c 0%, #006f75 32%, #25a0a6 54%, #008c96 78%, #061014 100%);
   box-shadow:
-    0 0 0 1px rgba(42, 171, 238, 0.28),
-    0 12px 32px rgba(42, 171, 238, 0.2),
+    0 0 0 1px rgba(37, 160, 166, 0.28),
+    0 12px 32px rgba(37, 160, 166, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .panel-root[data-panel-theme='dark'] .panel-feature-card--sat:hover {
   box-shadow:
-    0 0 0 1px rgba(42, 171, 238, 0.42),
-    0 18px 40px rgba(42, 171, 238, 0.3),
+    0 0 0 1px rgba(37, 160, 166, 0.42),
+    0 18px 40px rgba(37, 160, 166, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transform: translateY(-3px) scale(1.01);
 }
@@ -6561,19 +6561,22 @@
 
 .panel-root[data-panel-theme='dark'] .panel-page-header--support::before {
   background:
-    radial-gradient(ellipse 65% 85% at 0% -15%, rgba(42, 171, 238, 0.22) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 75% at 100% -10%, rgba(86, 148, 233, 0.16) 0%, transparent 68%),
+    radial-gradient(ellipse 65% 85% at 0% -15%, rgba(37, 160, 166, 0.22) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 75% at 100% -10%, rgba(0, 140, 150, 0.16) 0%, transparent 68%),
     linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 100%);
 }
 
 .panel-root[data-panel-theme='dark'] .panel-page-header--support .panel-page-header__icon {
-  background: linear-gradient(145deg, #2aabee 0%, #1c7db5 100%);
-  box-shadow: 0 8px 22px rgba(42, 171, 238, 0.35);
+  background: linear-gradient(145deg, #25a0a6 0%, #006f75 100%);
+  box-shadow: 0 8px 22px rgba(37, 160, 166, 0.35);
 }
 
-.panel-root[data-panel-theme='dark'] .panel-quick-contact-card__icon--telegram,
-.panel-root[data-panel-theme='dark'] .panel-support-card__icon--ticket {
+.panel-root[data-panel-theme='dark'] .panel-quick-contact-card__icon--telegram {
   background: linear-gradient(145deg, #38bdf8 0%, #229ed9 100%);
+}
+
+.panel-root[data-panel-theme='dark'] .panel-support-card__icon--ticket {
+  background: linear-gradient(145deg, #25a0a6 0%, #006f75 100%);
 }
 
 .panel-root[data-panel-theme='dark'] .panel-quick-contact-card__icon--whatsapp {

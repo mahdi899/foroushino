@@ -41,8 +41,21 @@ export function readVisualViewportBox(): VisualViewportBox {
   return { offsetTop, height, keyboardInset };
 }
 
+export type UseVisualViewportBoxOptions = {
+  /**
+   * Whether to also re-sync on visualViewport `scroll` events. Modals that
+   * only need the keyboard inset (not live scroll-position tracking) should
+   * disable this — reacting to every `scroll` tick during the keyboard's
+   * open/close animation causes constant re-layout ("thrashing") on mobile.
+   */
+  watchScroll?: boolean;
+};
+
 /** Track mobile keyboard / browser chrome via Visual Viewport (family PWA). */
-export function useVisualViewportBox(enabled = true): VisualViewportBox {
+export function useVisualViewportBox(
+  enabled = true,
+  { watchScroll = true }: UseVisualViewportBoxOptions = {},
+): VisualViewportBox {
   const [box, setBox] = useState<VisualViewportBox>(() =>
     enabled ? readVisualViewportBox() : { offsetTop: 0, height: 0, keyboardInset: 0 },
   );
@@ -67,18 +80,18 @@ export function useVisualViewportBox(enabled = true): VisualViewportBox {
     sync();
     const vv = window.visualViewport;
     vv?.addEventListener('resize', sync);
-    vv?.addEventListener('scroll', sync);
+    if (watchScroll) vv?.addEventListener('scroll', sync);
     window.addEventListener('resize', sync);
     window.addEventListener('focusin', sync);
     window.addEventListener('focusout', sync);
     return () => {
       vv?.removeEventListener('resize', sync);
-      vv?.removeEventListener('scroll', sync);
+      if (watchScroll) vv?.removeEventListener('scroll', sync);
       window.removeEventListener('resize', sync);
       window.removeEventListener('focusin', sync);
       window.removeEventListener('focusout', sync);
     };
-  }, [enabled]);
+  }, [enabled, watchScroll]);
 
   return box;
 }

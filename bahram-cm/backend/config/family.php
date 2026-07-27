@@ -104,4 +104,14 @@ return [
         'low' => 'family-low',
     ],
 
+    'push' => [
+        // Members processed per DB chunk while fanning out an important-post
+        // push (in-app recipient insert + push subscription lookup).
+        'membership_chunk_size' => (int) env('FAMILY_PUSH_MEMBERSHIP_CHUNK_SIZE', 500),
+        // Subscriptions per queued SendFamilyPushBatchJob — kept small so many
+        // batches run in parallel across Horizon workers instead of one job
+        // looping serially over every subscriber.
+        'batch_size' => (int) env('FAMILY_PUSH_BATCH_SIZE', 200),
+    ],
+
 ];

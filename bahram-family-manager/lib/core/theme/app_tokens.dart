@@ -62,7 +62,7 @@ class AppShadows {
 
   static List<BoxShadow> get soft => [
         BoxShadow(
-          color: const Color(0xFF1D3A52).withValues(alpha: 0.06),
+          color: const Color(0xFF003B40).withValues(alpha: 0.06),
           blurRadius: 24,
           offset: const Offset(0, 8),
         ),
@@ -70,7 +70,7 @@ class AppShadows {
 
   static List<BoxShadow> get primaryGlow => [
         BoxShadow(
-          color: const Color(0xFF3390EC).withValues(alpha: 0.22),
+          color: const Color(0xFF008C96).withValues(alpha: 0.22),
           blurRadius: 16,
           offset: const Offset(0, 4),
         ),
@@ -78,7 +78,7 @@ class AppShadows {
 
   static List<BoxShadow> get panelGlow => [
         BoxShadow(
-          color: const Color(0xFF3390EC).withValues(alpha: 0.16),
+          color: const Color(0xFF008C96).withValues(alpha: 0.16),
           blurRadius: 28,
           offset: const Offset(0, 10),
         ),
@@ -91,7 +91,7 @@ class AppGradients {
   static const primary = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF3390EC), Color(0xFF5EB3F6)],
+    colors: [Color(0xFF008C96), Color(0xFF25A0A6)],
   );
 
   static LinearGradient iconShell({bool active = false}) {
@@ -100,8 +100,8 @@ class AppGradients {
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        const Color(0xFF5EB3F6).withValues(alpha: 0.12),
-        const Color(0xFF3390EC).withValues(alpha: 0.08),
+        const Color(0xFF25A0A6).withValues(alpha: 0.12),
+        const Color(0xFF008C96).withValues(alpha: 0.08),
       ],
     );
   }

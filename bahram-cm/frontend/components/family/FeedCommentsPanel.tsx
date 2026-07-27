@@ -106,6 +106,7 @@ export function FeedCommentsPanel({
         variant="page"
         hideTitle
         className="min-h-0 flex-1"
+        keyboardInset={mobile ? viewport.keyboardInset : 0}
       />
     </div>
   );

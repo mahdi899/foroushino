@@ -23,8 +23,14 @@ class FamilyPostBlockResource extends JsonResource
             'media' => $media ? [
                 'id' => $media->id,
                 'type' => $media->type?->value ?? $media->type,
-                'url' => FamilyMediaUrl::fromPath($media->storage_path, $media->disk),
-                'poster_url' => FamilyMediaUrl::fromPath($media->thumbnail_path, $media->disk),
+                'url' => FamilyMediaUrl::withCacheBuster(
+                    FamilyMediaUrl::fromPath($media->storage_path, $media->disk),
+                    $media->updated_at?->getTimestamp(),
+                ),
+                'poster_url' => FamilyMediaUrl::withCacheBuster(
+                    FamilyMediaUrl::fromPath($media->thumbnail_path, $media->disk),
+                    $media->updated_at?->getTimestamp(),
+                ),
                 'duration' => $media->duration,
                 'width' => $media->width,
                 'height' => $media->height,

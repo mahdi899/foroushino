@@ -188,6 +188,19 @@ function FeedPostCard({
   const actions = post.actions ?? [];
   const reduceMotion = useReducedMotion();
   const reactionBarRef = useRef<ReactionBarHandle>(null);
+  // Most virtualized rows mount with animateEnter=false (already-loaded history) —
+  // skip Framer Motion's VisualElement entirely for those so scrolling only ever
+  // pays for a plain <article>, not per-row motion bookkeeping. Only freshly
+  // published posts (animateEnter=true) get the enter animation.
+  const shouldAnimate = animateEnter && !reduceMotion;
+  const ArticleTag = shouldAnimate ? motion.article : 'article';
+  const articleMotionProps = shouldAnimate
+    ? {
+        initial: familyMotion.postEnter(0).initial,
+        animate: familyMotion.postEnter(0).animate,
+        transition: familyMotion.postEnter(0).transition,
+      }
+    : {};
 
   const openCommentsPanel = useCallback(() => {
     if (previewMode) {
@@ -227,12 +240,10 @@ function FeedPostCard({
   );
 
   return (
-    <motion.article
+    <ArticleTag
       id={anchorId}
       className={cn('family-feed-post scroll-mt-3', compact && 'family-feed-post--compact')}
-      initial={animateEnter && !reduceMotion ? familyMotion.postEnter(0).initial : false}
-      animate={familyMotion.postEnter(0).animate}
-      transition={familyMotion.postEnter(0).transition}
+      {...articleMotionProps}
     >
       <div
         className={cn(
@@ -321,7 +332,7 @@ function FeedPostCard({
           </button>
         ) : null}
       </div>
-    </motion.article>
+    </ArticleTag>
   );
 }
 

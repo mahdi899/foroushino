@@ -38,16 +38,17 @@ export const FAMILY_FEED_HISTORY_PREFETCH_COOLDOWN_MS = 4_000;
  * fling always has ~10 posts of media already warm ahead of the visible viewport
  * (Telegram-like: media is ready before the message scrolls in, never after).
  */
-export const FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE = 6;
-export const FAMILY_FEED_MEDIA_WARM_POSTS_AFTER = 4;
+export const FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE = 7;
+export const FAMILY_FEED_MEDIA_WARM_POSTS_AFTER = 3;
 
 /** Max parallel CDN image warmups (HTTP cache); keep low on mobile networks. */
-export const FAMILY_FEED_MEDIA_WARM_MAX_CONCURRENT = 4;
+export const FAMILY_FEED_MEDIA_WARM_MAX_CONCURRENT = 6;
 
 /**
  * Posts at feed tip to warm once after boot (visible conversation).
- * Kept small so the first paint isn't blocked on a big warm batch — the
- * scroll-anchored window (before/after above) keeps loading more as the
- * user scrolls, Telegram-style, rather than warming everything up front.
+ * Telegram-like: always keep ~7-10 posts decoded and ready in the background
+ * so a normal scroll never outruns what's already warm — the scroll-anchored
+ * window (before/after above) keeps extending this as the user scrolls,
+ * rather than warming the whole history up front.
  */
-export const FAMILY_FEED_INITIAL_WARM_POST_COUNT = 5;
+export const FAMILY_FEED_INITIAL_WARM_POST_COUNT = 10;

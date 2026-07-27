@@ -4,6 +4,7 @@ namespace App\Services\Family;
 
 use App\Enums\InAppNotificationType;
 use App\Events\FamilyNotificationCreated;
+use App\Jobs\Family\SendFamilyUserPushJob;
 use App\Models\User;
 use App\Services\InAppNotificationService;
 use App\Support\SafeBroadcast;
@@ -40,14 +41,25 @@ class FamilyNotificationService
 
     public function bahramReplied(User $user): void
     {
+        $title = 'بهرام به نظرت پاسخ داد';
+        $body = 'پاسخ بهرام را در خانواده ببین.';
+
         $this->notify(
             $user,
-            'بهرام به نظرت پاسخ داد',
-            'پاسخ بهرام را در خانواده ببین.',
+            $title,
+            $body,
             InAppNotificationType::FamilyBahramReplied,
             '/family',
             'مشاهده پاسخ',
         );
+
+        // Real device push (badge/toast above only covers the open tab) — queued
+        // so this single-user send never blocks the reply request.
+        SendFamilyUserPushJob::dispatch($user->id, [
+            'title' => $title,
+            'body' => $body,
+            'tag' => 'family-bahram-replied',
+        ]);
     }
 
     public function actionFollowUp(User $user, string $message): void
