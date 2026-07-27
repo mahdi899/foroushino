@@ -135,10 +135,11 @@ final class BotApiClient
     public function sendChatAction(int|string $chatId, string $action = 'typing'): void
     {
         try {
+            // Short timeout — typing must never stall the webhook waiting on Telegram.
             $this->call('sendChatAction', [
                 'chat_id' => $chatId,
                 'action' => $action,
-            ]);
+            ], false, 2);
         } catch (\Throwable) {
             // Non-critical — never block Iran calls if typing fails.
         }
@@ -192,21 +193,22 @@ final class BotApiClient
      * @param array<string, mixed> $params
      * @return array<string, mixed>
      */
-    private function call(string $method, array $params, bool $return = false): array
+    private function call(string $method, array $params, bool $return = false, int $timeoutSeconds = 8): array
     {
         if (self::$handle === null) {
             self::$handle = curl_init();
         }
         $ch = self::$handle;
 
+        $timeout = max(1, $timeoutSeconds);
         curl_setopt_array($ch, [
             CURLOPT_URL => "https://api.telegram.org/bot{$this->token}/{$method}",
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($params, JSON_UNESCAPED_UNICODE),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => min(3, $timeout),
+            CURLOPT_TIMEOUT => $timeout,
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_FORBID_REUSE => false,

@@ -105,6 +105,18 @@ final class HostSupportService
             return;
         }
 
+        // Ack first so the user is never blocked on forward/identity Telegram RTTs.
+        $this->conversations->set($telegramUserId, 'idle', []);
+        $ack = $this->api->sendMessageResult(
+            $chatId,
+            $this->cache->message('support_message_received', 'پیام شما برای پشتیبانی ارسال شد.'),
+            [
+                'parse_mode' => 'HTML',
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ],
+        );
+        $ackId = (int) ($ack['message_id'] ?? 0);
+
         $topicId = $this->cache->supportTopicId($category);
         $forwardOptions = [];
         if ($topicId !== null && $topicId > 0) {
@@ -138,35 +150,21 @@ final class HostSupportService
                     'forward_message_id' => $forwardMessageId,
                 ]);
             }
+
+            if ($ackId > 0 && $idMessageId > 0) {
+                $this->storeMap([
+                    'direction' => 'support_to_user',
+                    'source_chat_id' => (string) $reportsChat,
+                    'source_message_id' => $idMessageId,
+                    'target_chat_id' => (string) $chatId,
+                    'target_message_id' => $ackId,
+                    'target_thread_id' => $topicId,
+                    'forward_message_id' => $sourceMessageId,
+                ]);
+            }
         } catch (\Throwable $e) {
             error_log('[telegram-host] support forward failed (category='.$category.', user='.$telegramUserId.'): '.$e->getMessage());
-            $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی ناموفق بود. لطفاً دوباره تلاش کنید.');
-
-            return;
-        }
-
-        // Leave support mode after one message — menu works again immediately.
-        $this->conversations->set($telegramUserId, 'idle', []);
-
-        $ack = $this->api->sendMessageResult(
-            $chatId,
-            $this->cache->message('support_message_received', 'پیام شما برای پشتیبانی ارسال شد.'),
-            [
-                'parse_mode' => 'HTML',
-                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-            ],
-        );
-        $ackId = (int) ($ack['message_id'] ?? 0);
-        if ($ackId > 0 && isset($idMessageId) && $idMessageId > 0) {
-            $this->storeMap([
-                'direction' => 'support_to_user',
-                'source_chat_id' => (string) $reportsChat,
-                'source_message_id' => $idMessageId,
-                'target_chat_id' => (string) $chatId,
-                'target_message_id' => $ackId,
-                'target_thread_id' => $topicId ?? null,
-                'forward_message_id' => $sourceMessageId,
-            ]);
+            $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی به گروه گزارشات ناموفق بود. لطفاً دوباره از منو «پشتیبانی» را بزنید.');
         }
     }
 

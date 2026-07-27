@@ -43,18 +43,6 @@ final class ResilientLiveClient
         return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت کارت‌به‌کارت', fn () => $this->live->checkoutC2c($telegramUserId, $chatId, $productId, $coupon));
     }
 
-    /** @param array<string, mixed> $message */
-    public function supportTryReply(int $chatId, int $telegramUserId, array $message): array
-    {
-        return $this->invoke($chatId, $telegramUserId, 'پاسخ پشتیبانی', fn () => $this->live->supportTryReply($telegramUserId, $message));
-    }
-
-    /** @return array<string, mixed> */
-    public function supportPrepare(int $chatId, int $telegramUserId, string $category): array
-    {
-        return $this->invoke($chatId, $telegramUserId, 'شروع گفتگوی پشتیبانی', fn () => $this->live->supportPrepare($telegramUserId, $category));
-    }
-
     /** @return array<string, mixed> */
     public function satOpen(int $chatId, int $telegramUserId): array
     {

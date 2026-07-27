@@ -55,8 +55,19 @@ try {
 
     if ($senderId > 0) {
         $limiter = new RateLimiter($pdo);
-        if ($limiter->tooManyRequests($senderId)) {
-            // Silently drop — Telegram already got its 200 OK, no retries triggered.
+        $limit = $limiter->check($senderId);
+        if ($limit['limited']) {
+            if ($limit['should_notify']) {
+                try {
+                    $api = new BotApiClient((string) $config['bot_token']);
+                    $api->sendMessage(
+                        $senderId,
+                        '⏱ به دلیل ارسال پیام زیاد، تا ۱ دقیقه محدود شدید. لطفاً کمی صبر کنید.',
+                    );
+                } catch (\Throwable $e) {
+                    error_log('[telegram-host] rate-limit notice failed: '.$e->getMessage());
+                }
+            }
             exit;
         }
     }

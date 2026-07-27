@@ -141,10 +141,10 @@ final class CallbackQueryHandler
     private function handleSupportCategory(int $chatId, int $telegramUserId, string $category): void
     {
         if (! in_array($category, ['purchase', 'campaign_course', 'sat', 'other'], true)) {
-            return;
+            $category = 'other';
         }
 
-        // Entirely local — no Iran prepare call.
+        // Legacy inline buttons still work; same local prepare path (no Iran).
         $this->support->prepare($telegramUserId, $category);
         $this->api->sendMessage($chatId, $this->cache->message(
             'support_write_prompt',

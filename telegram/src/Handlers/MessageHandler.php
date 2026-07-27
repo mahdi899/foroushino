@@ -210,7 +210,7 @@ final class MessageHandler
             MainMenu::ACTION_CHANNEL => $this->sendReferenceChannel($chatId),
             MainMenu::ACTION_FAMILY => $this->sendFamily($chatId, $telegramUserId),
             MainMenu::ACTION_REFERRAL => $this->sendReferral($chatId, $telegramUserId),
-            MainMenu::ACTION_SUPPORT => $this->openSupportHub($chatId),
+            MainMenu::ACTION_SUPPORT => $this->openSupportHub($chatId, $telegramUserId),
             MainMenu::ACTION_ACCOUNT => $this->sendAccount($chatId, $telegramUserId),
             MainMenu::ACTION_ADMIN => $this->openAdminPanel($chatId, $telegramUserId, $text),
             default => $this->sendMainMenu($chatId, $telegramUserId),
@@ -441,18 +441,14 @@ final class MessageHandler
         ]);
     }
 
-    private function openSupportHub(int $chatId): void
+    private function openSupportHub(int $chatId, int $telegramUserId): void
     {
-        $this->api->sendMessage($chatId, $this->cache->message('support_prompt', 'دسته پشتیبانی را انتخاب کنید:'), [
-            'reply_markup' => [
-                'inline_keyboard' => [
-                    [[InlineButtons::callback($this->cache->message('support_category_purchase', 'خرید و پرداخت'), 'support:cat:purchase', 'cart', 'primary')]],
-                    [[InlineButtons::callback($this->cache->message('support_category_campaign_course', 'دوره کمپین‌نویسی'), 'support:cat:campaign_course', 'graduation')]],
-                    [[InlineButtons::callback($this->cache->message('support_category_sat', 'سات'), 'support:cat:sat', 'bell')]],
-                    [[InlineButtons::callback($this->cache->message('support_category_other', 'سایر'), 'support:cat:other', 'chat')]],
-                ],
-            ],
-        ]);
+        // One-tap: skip category hub — user writes immediately (category = other).
+        $this->support->prepare($telegramUserId, 'other');
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'support_write_prompt',
+            'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو» بفرستید.',
+        ));
     }
 
     private function sendAccount(int $chatId, int $telegramUserId): void

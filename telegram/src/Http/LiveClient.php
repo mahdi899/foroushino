@@ -6,7 +6,8 @@ namespace TelegramHost\Http;
 
 /**
  * Live calls to the main server — purchase, discount, ownership, profile,
- * support, referral, family, SAT, and full update delegation for admin/groups.
+ * referral, family, SAT, and full update delegation for admin/groups.
+ * Support runs locally on the host (HostSupportService) — no Iran live path.
  */
 final class LiveClient
 {
@@ -108,40 +109,6 @@ final class LiveClient
         return $this->live('sat/open', [
             'telegram_user_id' => $telegramUserId,
             'chat_id' => $chatId,
-        ]);
-    }
-
-    /** @return array<string, mixed> */
-    public function supportPrepare(int $telegramUserId, string $category): array
-    {
-        return $this->live('support/prepare', [
-            'telegram_user_id' => $telegramUserId,
-            'category' => $category,
-        ]);
-    }
-
-    /**
-     * @param array<string, mixed> $message
-     * @return array<string, mixed>
-     */
-    public function supportTryReply(int $telegramUserId, array $message): array
-    {
-        return $this->live('support/try-reply', [
-            'telegram_user_id' => $telegramUserId,
-            'message' => $message,
-        ]);
-    }
-
-    /** @return array<string, mixed> */
-    public function supportSend(int $telegramUserId, int $chatId, string $category, string $text, int $messageId, bool $hasMedia = false): array
-    {
-        return $this->live('support/send', [
-            'telegram_user_id' => $telegramUserId,
-            'chat_id' => $chatId,
-            'category' => $category,
-            'text' => $text,
-            'message_id' => $messageId,
-            'has_media' => $hasMedia,
         ]);
     }
 

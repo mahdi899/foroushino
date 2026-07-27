@@ -75,10 +75,13 @@ CREATE TABLE IF NOT EXISTS sync_meta (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Flood guard for public/webhook.php (see src/Security/RateLimiter.php).
+-- 20 hits / 30s window → blocked_until = now + 60 with a user-facing notice.
 CREATE TABLE IF NOT EXISTS rate_limits (
     telegram_user_id BIGINT NOT NULL PRIMARY KEY,
     window_start INT NOT NULL,
-    hits INT NOT NULL DEFAULT 1
+    hits INT NOT NULL DEFAULT 1,
+    blocked_until INT NOT NULL DEFAULT 0,
+    last_notice_at INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS membership_cache (
