@@ -35,6 +35,25 @@ function storyMediaSrc(media: FamilyStoryMedia | null | undefined): string | nul
   return resolveFamilyMediaUrl(media.url);
 }
 
+function storyPreviewSrc(media: FamilyStoryMedia | null | undefined): string | null {
+  if (!media?.preview_url) return null;
+  return resolveFamilyMediaUrl(media.preview_url);
+}
+
+/** CDN + same-origin + raw API URL — local demo files often only exist on /storage. */
+function storyImageCandidates(media: FamilyStoryMedia | null | undefined): string[] {
+  if (!media?.url) return [];
+  const out: string[] = [];
+  const push = (url: string | null | undefined) => {
+    const trimmed = url?.trim();
+    if (trimmed && !out.includes(trimmed)) out.push(trimmed);
+  };
+  for (const c of resolveFamilyMediaPlaybackCandidates(media.url, media.id)) push(c);
+  push(resolveFamilyMediaUrl(media.url));
+  push(media.url);
+  return out;
+}
+
 export function StoryViewer({
   open,
   onClose,
@@ -55,6 +74,8 @@ export function StoryViewer({
   const [videoSlideState, setVideoSlideState] = useState<VideoSlideState>('loading');
   const [videoSrcIndex, setVideoSrcIndex] = useState(0);
   const [imageReady, setImageReady] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const advanceTimerRef = useRef<number | null>(null);
   const progressRafRef = useRef<number | null>(null);
@@ -92,6 +113,8 @@ export function StoryViewer({
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
     setImageReady(false);
+    setPreviewReady(false);
+    setImageError(false);
     recordedViewsRef.current = new Set();
     getStories()
       .then((res) => setStories(res.data))
@@ -99,21 +122,22 @@ export function StoryViewer({
       .finally(() => setLoading(false));
   }, [open]);
 
-  // Preload upcoming stories' media in the background (Telegram-like) so
-  // there's never a black flash while a slide's own media loads — by the
-  // time the user reaches it, the browser already has it cached.
+  // Prefetch upcoming previews first (tiny), then full image URLs.
   useEffect(() => {
     if (!open || stories.length === 0) return;
     const from = Math.max(0, index);
     const upcoming = stories.slice(from, from + 4);
-    const urls = upcoming
+    const previewUrls = upcoming
+      .map((story) => storyPreviewSrc(story.media))
+      .filter((url): url is string => Boolean(url));
+    const fullUrls = upcoming
       .map((story) => {
         const media = story.media;
         if (!media || isStoryVideo(media)) return null;
         return resolveFamilyMediaUrl(media.url);
       })
       .filter((url): url is string => Boolean(url));
-    warmupUrls(urls);
+    warmupUrls([...previewUrls, ...fullUrls]);
   }, [open, stories, index]);
 
   const finish = useCallback(() => {
@@ -135,6 +159,8 @@ export function StoryViewer({
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
     setImageReady(false);
+    setPreviewReady(false);
+    setImageError(false);
   }, [finish, index, stories.length]);
 
   const goPrev = useCallback(() => {
@@ -145,6 +171,8 @@ export function StoryViewer({
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
     setImageReady(false);
+    setPreviewReady(false);
+    setImageError(false);
   }, []);
 
   const clearSlideTimers = useCallback(() => {
@@ -246,6 +274,7 @@ export function StoryViewer({
   const current = stories[index];
   const currentMedia = current?.media ?? null;
   const currentSrc = storyMediaSrc(currentMedia);
+  const currentPreviewSrc = storyPreviewSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
   const videoCandidates = currentSrc
     ? resolveFamilyMediaPlaybackCandidates(currentSrc, currentMedia?.id)
@@ -492,14 +521,23 @@ export function StoryViewer({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !currentSrc || currentIsVideo) {
+    if (!open || !currentMedia || currentIsVideo) {
       setImageReady(false);
       return;
     }
 
+    const candidates = storyImageCandidates(currentMedia);
+    if (candidates.length === 0) {
+      setImageReady(false);
+      setImageError(true);
+      return;
+    }
+
     setImageReady(false);
+    setImageError(false);
     let cancelled = false;
     let ro: ResizeObserver | null = null;
+    let candidateIndex = 0;
     const probe = new Image();
     probe.decoding = 'async';
 
@@ -510,6 +548,7 @@ export function StoryViewer({
       if (!canvas || !host) return false;
       const w = Math.max(1, host.clientWidth);
       const h = Math.max(1, host.clientHeight);
+      if (w < 2 || h < 2) return false;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -528,6 +567,7 @@ export function StoryViewer({
       const dh = probe.naturalHeight * scale;
       ctx.drawImage(probe, (w - dw) / 2, (h - dh) / 2, dw, dh);
       setImageReady(true);
+      setImageError(false);
       return true;
     };
 
@@ -546,13 +586,24 @@ export function StoryViewer({
       if (!cancelled) requestAnimationFrame(paintWhenReady);
     };
 
-    probe.onload = () => {
-      if (!cancelled) paintWhenReady();
+    const tryCandidate = (index: number) => {
+      if (cancelled) return;
+      if (index >= candidates.length) {
+        setImageReady(false);
+        setImageError(true);
+        return;
+      }
+      candidateIndex = index;
+      probe.onload = () => {
+        if (!cancelled) paintWhenReady();
+      };
+      probe.onerror = () => {
+        if (!cancelled) tryCandidate(candidateIndex + 1);
+      };
+      probe.src = candidates[index]!;
     };
-    probe.onerror = () => {
-      if (!cancelled) setImageReady(false);
-    };
-    probe.src = currentSrc;
+
+    tryCandidate(0);
 
     return () => {
       cancelled = true;
@@ -560,7 +611,7 @@ export function StoryViewer({
       probe.onload = null;
       probe.onerror = null;
     };
-  }, [open, current?.id, currentSrc, currentIsVideo]);
+  }, [open, current?.id, currentMedia, currentIsVideo]);
 
   const blockStoryContextMenu = useCallback((e: SyntheticEvent) => {
     e.preventDefault();
@@ -687,6 +738,25 @@ export function StoryViewer({
                 )}
                 {!loading && currentSrc && currentMedia && (
                   <>
+                    {currentPreviewSrc ? (
+                      // Tiny LQIP — stretched + CSS blur until full media paints.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={`preview-${current.id}`}
+                        src={currentPreviewSrc}
+                        alt=""
+                        aria-hidden
+                        draggable={false}
+                        onLoad={() => setPreviewReady(true)}
+                        onError={() => setPreviewReady(false)}
+                        className={cn(
+                          'pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover scale-[1.12] blur-2xl transition-opacity duration-300',
+                          (currentIsVideo ? videoSlideState === 'playing' : imageReady) || !previewReady
+                            ? 'opacity-0'
+                            : 'opacity-100',
+                        )}
+                      />
+                    ) : null}
                     {currentIsVideo ? (
                       <>
                         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -694,7 +764,10 @@ export function StoryViewer({
                           ref={setVideoEl}
                           key={`${current.id}:${activeVideoSrc}`}
                           src={activeVideoSrc}
-                          className="family-story-frame__media pointer-events-none absolute inset-0 h-full w-full object-cover"
+                          className={cn(
+                            'family-story-frame__media pointer-events-none absolute inset-0 z-[2] h-full w-full object-cover transition-opacity duration-300',
+                            videoSlideState === 'playing' ? 'opacity-100' : 'opacity-0',
+                          )}
                           playsInline
                           muted
                           autoPlay
@@ -706,7 +779,7 @@ export function StoryViewer({
                           onContextMenu={blockStoryContextMenu}
                           onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
                         />
-                        {videoSlideState === 'loading' && (
+                        {videoSlideState === 'loading' && !previewReady && (
                           <div className="absolute inset-0 z-[18] flex items-center justify-center bg-black/40">
                             <Loader2 className="h-9 w-9 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />
                           </div>
@@ -740,10 +813,27 @@ export function StoryViewer({
                         aria-label={current.caption?.trim() || 'استوری تصویری'}
                         role="img"
                         className={cn(
-                          'family-story-frame__media-canvas pointer-events-none absolute inset-0 h-full w-full',
-                          !imageReady && 'opacity-0',
+                          'family-story-frame__media-canvas pointer-events-none absolute inset-0 z-[2] h-full w-full transition-opacity duration-300',
+                          imageReady ? 'opacity-100' : 'opacity-0',
                         )}
                       />
+                    )}
+                    {!currentIsVideo && imageError && (
+                      <div className="absolute inset-0 z-[18] flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center text-white/90">
+                        <p className="text-sm">بارگذاری تصویر استوری ممکن نشد.</p>
+                        <button
+                          type="button"
+                          className="rounded-full bg-white/15 px-4 py-2 text-sm backdrop-blur-sm transition hover:bg-white/25"
+                          onClick={goNext}
+                        >
+                          استوری بعدی
+                        </button>
+                      </div>
+                    )}
+                    {!currentIsVideo && !imageReady && !previewReady && !imageError && (
+                      <div className="absolute inset-0 z-[18] flex items-center justify-center">
+                        <Loader2 className="h-9 w-9 animate-spin text-white/85" aria-hidden />
+                      </div>
                     )}
                     <div
                       className="family-story-touch-shield"
@@ -753,7 +843,7 @@ export function StoryViewer({
                       onPointerUp={onStoryPointerEnd}
                       onPointerCancel={onStoryPointerEnd}
                     />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
+                    <div className="pointer-events-none absolute inset-0 z-[5] bg-gradient-to-b from-black/45 via-transparent to-black/55" />
                     {current.caption && (
                       <p className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10 text-center text-sm leading-relaxed text-white/95 drop-shadow-md">
                         {current.caption}

@@ -73,6 +73,14 @@ describe('resolveFamilyMediaPlaybackUrl', () => {
     );
   });
 
+  it('keeps local absolute /storage URLs (dev demo files)', () => {
+    expect(
+      resolveFamilyMediaPlaybackUrl(
+        'http://localhost:3000/storage/media/family/demo/demo-story-vertical.webp',
+      ),
+    ).toBe('http://localhost:3000/storage/media/family/demo/demo-story-vertical.webp');
+  });
+
   it('keeps cdn.rostami.app URLs on the download host', () => {
     expect(
       resolveFamilyMediaPlaybackUrl(

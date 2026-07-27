@@ -7,6 +7,7 @@ use App\Enums\Family\FamilyMediaType;
 use App\Models\FamilyMedia;
 use App\Services\Family\FamilyImageProcessor;
 use App\Services\Family\FamilyMediaSettingsService;
+use App\Support\FamilyBlurPreview;
 use App\Support\FamilyMediaStorage;
 use App\Support\FamilyMediaPath;
 use App\Support\DirectoryListingGuard;
@@ -170,6 +171,12 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                         }
                     }
                 }
+
+                $previewPath = $this->storeBlurPreview($target, $uploadAbsolute, $storagePath);
+                if ($previewPath !== null) {
+                    $updates['thumbnail_path'] = $previewPath;
+                }
+
                 $media->update($updates);
                 CleanupFamilyTemporaryMediaJob::dispatch($media->id)
                     ->onQueue(config('family.queues.media', 'family-media'));
@@ -190,6 +197,40 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
             ]);
 
             throw $e;
+        }
+    }
+
+    /** Tiny LQIP WebP for image stories/feed — stored beside the canonical object. */
+    private function storeBlurPreview(
+        \Illuminate\Contracts\Filesystem\Filesystem $target,
+        string $sourceAbsolute,
+        string $storagePath,
+    ): ?string {
+        if (! is_file($sourceAbsolute)) {
+            return null;
+        }
+
+        $tmpPreview = sys_get_temp_dir().DIRECTORY_SEPARATOR.'family-preview-'.uniqid('', true).'.webp';
+        try {
+            if (! FamilyBlurPreview::generateFromPath($sourceAbsolute, $tmpPreview)) {
+                return null;
+            }
+
+            $previewRelative = FamilyBlurPreview::relativePathFor($storagePath);
+            $bytes = file_get_contents($tmpPreview);
+            if ($bytes === false || $bytes === '') {
+                return null;
+            }
+
+            $target->put($previewRelative, $bytes);
+
+            return $previewRelative;
+        } catch (\Throwable) {
+            return null;
+        } finally {
+            if (is_file($tmpPreview)) {
+                @unlink($tmpPreview);
+            }
         }
     }
 }

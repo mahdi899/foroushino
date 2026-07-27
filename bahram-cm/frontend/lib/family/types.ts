@@ -157,6 +157,8 @@ export interface FamilyStoryMedia {
   id: number;
   type: string;
   url: string | null;
+  /** Tiny (~5KB) blurred WebP / video poster — shown before full media. */
+  preview_url?: string | null;
   width: number | null;
   height: number | null;
   duration: number | null;

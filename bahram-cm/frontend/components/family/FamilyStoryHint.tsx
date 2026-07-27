@@ -56,15 +56,16 @@ export function FamilyStoryHint({
           if (cancelled) return;
           const urls = res.data
             .slice(0, 3)
-            .map((story) => {
+            .flatMap((story) => {
               const media = story.media;
-              if (!media) return null;
+              if (!media) return [];
+              const preview = media.preview_url ? resolveFamilyMediaUrl(media.preview_url) : null;
               const type = (media.type ?? '').toLowerCase();
               const mime = (media.mime_type ?? '').toLowerCase();
-              if (type === 'video' || mime.startsWith('video/')) return null;
-              return resolveFamilyMediaUrl(media.url);
-            })
-            .filter((url): url is string => Boolean(url));
+              const isVideo = type === 'video' || mime.startsWith('video/');
+              const full = !isVideo ? resolveFamilyMediaUrl(media.url) : null;
+              return [preview, full].filter((url): url is string => Boolean(url));
+            });
           warmupUrls(urls);
         })
         .catch(() => {});

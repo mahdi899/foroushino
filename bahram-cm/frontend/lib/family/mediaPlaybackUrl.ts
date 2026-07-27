@@ -106,15 +106,21 @@ function rewriteKnownMediaUrl(trimmed: string): string | null {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     try {
       const parsed = new URL(trimmed);
+      // Local absolute /storage or /media URLs are already reachable in dev
+      // (Laravel public disk / Next proxy). Rewriting them to production CDN
+      // 404s for files that only exist locally (e.g. seeded demo stories).
+      if (
+        isLocalOrigin(parsed.hostname) &&
+        (parsed.pathname.startsWith('/storage/') || parsed.pathname.startsWith('/media/'))
+      ) {
+        return trimmed;
+      }
       const mediaPath = familyMediaPathname(parsed.pathname);
       if (mediaPath) {
         return toPlaybackHostUrl(mediaPath, parsed.search);
       }
       if (parsed.pathname.startsWith('/storage/')) {
         return toPlaybackHostUrl(cdnPathFromStorageRef(parsed.pathname), parsed.search);
-      }
-      if (isLocalOrigin(parsed.hostname) && parsed.pathname.startsWith('/media/')) {
-        return toPlaybackHostUrl(parsed.pathname, parsed.search);
       }
       // Legacy API may still emit club/app proxy URLs without /media path normalization.
       if (isFamilyMediaProxyHost(parsed.hostname) && mediaPath === null) {

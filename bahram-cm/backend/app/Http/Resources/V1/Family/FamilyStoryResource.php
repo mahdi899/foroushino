@@ -28,6 +28,7 @@ class FamilyStoryResource extends JsonResource
                 'id' => $media->id,
                 'type' => $media->type?->value ?? $media->type,
                 'url' => FamilyMediaUrl::fromPath($media->storage_path, $media->disk),
+                'preview_url' => FamilyMediaUrl::fromPath($media->thumbnail_path, $media->disk),
                 'width' => $media->width,
                 'height' => $media->height,
                 'duration' => $media->duration,
