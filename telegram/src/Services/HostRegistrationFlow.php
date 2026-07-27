@@ -88,6 +88,14 @@ final class HostRegistrationFlow
         // pending-access lookup below, sent to Iran, or stored locally.
         $phone = MobileNormalizer::normalizeOrOriginal($rawPhone);
 
+        // Immediate ACK — Iran round-trip can take a few seconds (geo +
+        // encrypt + DB). Without this the chat looks frozen and users think
+        // the bot is dead.
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'registration_verifying',
+            "⏳ شماره دریافت شد.\nدر حال احراز هویت و دریافت اطلاعات شما از سرور…",
+        ), ['reply_markup' => ['remove_keyboard' => true]]);
+
         // Access already purchased on the website (before this /start) may
         // have been pre-provisioned by Iran, keyed by mobile — merge it in
         // right away, from local DB only, regardless of whether Iran is
@@ -96,11 +104,13 @@ final class HostRegistrationFlow
         $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
         try {
+            // No SyncClient retry here: a second multi-second hang after the
+            // ACK still feels broken. Prefer the offline-name path quickly.
             $response = $this->sync->call('registration/contact', [
                 'telegram_user_id' => $telegramUserId,
                 'phone' => $phone,
                 'contact_user_id' => $contactUserId,
-            ], self::REGISTRATION_TIMEOUT_SECONDS);
+            ], self::REGISTRATION_TIMEOUT_SECONDS, allowRetry: false);
             $this->apply($chatId, $telegramUserId, $response);
 
             return;
@@ -120,7 +130,7 @@ final class HostRegistrationFlow
         $this->api->sendMessage($chatId, $this->cache->message(
             'registration_ask_name_offline',
             'شماره شما ثبت شد. لطفاً نام و نام خانوادگی خود را بفرستید تا ادامه دهیم.',
-        ), ['reply_markup' => ['remove_keyboard' => true]]);
+        ));
     }
 
     private function mergePendingAccessByMobile(int $telegramUserId, string $mobile): void
@@ -153,11 +163,16 @@ final class HostRegistrationFlow
 
     public function name(int $chatId, int $telegramUserId, string $name): void
     {
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'registration_syncing',
+            '⏳ در حال تکمیل ثبت‌نام و همگام‌سازی اطلاعات شما…',
+        ));
+
         try {
             $response = $this->sync->call('registration/name', [
                 'telegram_user_id' => $telegramUserId,
                 'name' => $name,
-            ], self::REGISTRATION_TIMEOUT_SECONDS);
+            ], self::REGISTRATION_TIMEOUT_SECONDS, allowRetry: false);
             $this->apply($chatId, $telegramUserId, $response);
 
             return;
@@ -195,13 +210,18 @@ final class HostRegistrationFlow
 
     public function verifyOtp(int $chatId, int $telegramUserId, string $mobile, string $code, string $displayName = ''): void
     {
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'registration_verifying_otp',
+            '⏳ در حال تایید کد و دریافت اطلاعات حساب…',
+        ));
+
         try {
             $response = $this->sync->call('otp/verify', [
                 'telegram_user_id' => $telegramUserId,
                 'mobile' => $mobile,
                 'code' => $code,
                 'display_name' => $displayName,
-            ]);
+            ], self::REGISTRATION_TIMEOUT_SECONDS, allowRetry: false);
             if (empty($response['ok'])) {
                 $this->api->sendMessage($chatId, (string) ($response['message'] ?? 'کد نامعتبر است.'));
 

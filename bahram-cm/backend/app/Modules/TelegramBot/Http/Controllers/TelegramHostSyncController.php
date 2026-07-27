@@ -127,13 +127,7 @@ class TelegramHostSyncController
 
         return $this->encryptedResponse($request, [
             'ok' => true,
-            'account' => [
-                'telegram_user_id' => $telegramUserId,
-                'user_id' => $sync['user']->id,
-                'mobile' => $sync['account']->mobile,
-                'display_name' => $sync['account']->display_name,
-                'is_bot_admin' => (bool) $sync['account']->is_bot_admin,
-            ],
+            'account' => $this->accountSnapshots->accountPayload($sync['account']->fresh(['user', 'bot'])),
             'summary_lines' => $sync['lines'],
         ]);
     }

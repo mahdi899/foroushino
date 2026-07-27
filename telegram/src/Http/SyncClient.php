@@ -38,7 +38,7 @@ final class SyncClient
      * occasional GC/load spikes pushed real responses just past a 4s cutoff,
      * making healthy-but-slightly-slow calls look like outages.
      */
-    public function call(string $path, array $payload = [], int $timeoutSeconds = 8): array
+    public function call(string $path, array $payload = [], int $timeoutSeconds = 8, bool $allowRetry = true): array
     {
         if ($this->breaker->isOpen()) {
             // Fail fast — no network attempt, and critically no recordFailure()
@@ -68,7 +68,9 @@ final class SyncClient
             // couple hundred ms later would have sailed through. Real
             // outages (Iran genuinely down) still fail fast on the retry and
             // open the circuit breaker as before.
-            if ($this->isTransientNetworkError($e)) {
+            // Registration paths pass allowRetry=false so a dead Iran fails
+            // into the offline local flow instead of doubling the wait.
+            if ($allowRetry && $this->isTransientNetworkError($e)) {
                 try {
                     usleep(300_000);
                     $result = $this->doCall($path, $payload, $timeoutSeconds);
@@ -124,8 +126,11 @@ final class SyncClient
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $encrypted,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => min(4, $timeoutSeconds),
-            CURLOPT_TIMEOUT => max(6, $timeoutSeconds),
+            // Respect the caller timeout exactly — previously max(6, …) could
+            // stretch a short registration budget and leave the chat hanging
+            // after the "verifying…" ACK for longer than intended.
+            CURLOPT_CONNECTTIMEOUT => max(1, min(3, $timeoutSeconds)),
+            CURLOPT_TIMEOUT => max(1, $timeoutSeconds),
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_HTTPHEADER => array_merge([
