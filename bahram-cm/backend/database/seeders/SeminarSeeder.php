@@ -53,6 +53,7 @@ HTML,
                 'banner_full' => '/storage/media/site/seminar-promo-desktop-full.webp',
                 'banner_full_mobile' => '/storage/media/site/seminar-promo-mobile-full.webp',
                 'promo_enabled' => true,
+                'reference_discount_amount' => 29_800_000,
             ],
         );
 

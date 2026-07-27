@@ -19,6 +19,8 @@ class ReferenceChannel extends Model
         'slug',
         'description',
         'status',
+        'show_in_panel',
+        'show_in_telegram',
         'price',
         'product_id',
         'telegram_destination_id',
@@ -28,6 +30,8 @@ class ReferenceChannel extends Model
     protected $casts = [
         'price' => 'integer',
         'telegram_destination_id' => 'integer',
+        'show_in_panel' => 'boolean',
+        'show_in_telegram' => 'boolean',
     ];
 
     protected static function booted(): void

@@ -11,7 +11,9 @@ export function CreateReferenceChannelForm({ destinations }: { destinations: Des
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('30000000');
-  const [status, setStatus] = useState('draft');
+  const [status, setStatus] = useState('published');
+  const [showInPanel, setShowInPanel] = useState(true);
+  const [showInTelegram, setShowInTelegram] = useState(true);
   const [destinationId, setDestinationId] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -23,6 +25,8 @@ export function CreateReferenceChannelForm({ destinations }: { destinations: Des
     const res = await createReferenceChannel({
       title,
       status,
+      show_in_panel: showInPanel,
+      show_in_telegram: showInTelegram,
       price: Number(price) || 0,
       telegram_destination_id: destinationId ? Number(destinationId) : null,
     });
@@ -63,6 +67,24 @@ export function CreateReferenceChannelForm({ destinations }: { destinations: Des
             </option>
           ))}
         </select>
+      </label>
+      <label className="flex items-end gap-2 pb-2">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          checked={showInPanel}
+          onChange={(e) => setShowInPanel(e.target.checked)}
+        />
+        <span className="text-sm text-text">پنل دانشجو</span>
+      </label>
+      <label className="flex items-end gap-2 pb-2">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-border"
+          checked={showInTelegram}
+          onChange={(e) => setShowInTelegram(e.target.checked)}
+        />
+        <span className="text-sm text-text">ربات تلگرام</span>
       </label>
       {error ? <p className="text-sm text-danger md:col-span-2 lg:col-span-4">{error}</p> : null}
       <div className="md:col-span-2 lg:col-span-4">

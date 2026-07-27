@@ -123,12 +123,20 @@ class ReferenceChannelAdminController extends Controller
             'title' => [$partial ? 'sometimes' : 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'status' => ['nullable', 'string', 'in:draft,published'],
+            'show_in_panel' => ['sometimes', 'boolean'],
+            'show_in_telegram' => ['sometimes', 'boolean'],
             'price' => [$partial ? 'sometimes' : 'required', 'integer', 'min:0'],
             'telegram_destination_id' => ['nullable', 'integer', 'exists:telegram_destinations,id'],
             'cover_image' => ['nullable', 'string', 'max:500'],
         ];
 
         $data = $request->validate($rules);
+
+        foreach (['show_in_panel', 'show_in_telegram'] as $flag) {
+            if (array_key_exists($flag, $data)) {
+                $data[$flag] = (bool) $data[$flag];
+            }
+        }
 
         if (array_key_exists('cover_image', $data) && filled($data['cover_image'])) {
             $data['cover_image'] = MediaUrl::reference($data['cover_image']) ?? $data['cover_image'];
@@ -173,6 +181,8 @@ class ReferenceChannelAdminController extends Controller
             'title' => $c->title,
             'slug' => $c->slug,
             'status' => $c->status,
+            'show_in_panel' => (bool) ($c->show_in_panel ?? true),
+            'show_in_telegram' => (bool) ($c->show_in_telegram ?? true),
             'price' => $c->price,
             'product_id' => $c->product_id,
             'product_slug' => $c->product?->slug,

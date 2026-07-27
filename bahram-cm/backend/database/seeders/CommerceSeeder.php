@@ -229,6 +229,8 @@ HTML,
                 'title' => 'کانال مرجع آکادمی بهرام',
                 'description' => '<p>دسترسی به گروه مرجع و منابع اختصاصی آکادمی.</p>',
                 'status' => 'published',
+                'show_in_panel' => true,
+                'show_in_telegram' => true,
                 'price' => 30_000_000,
             ],
         );

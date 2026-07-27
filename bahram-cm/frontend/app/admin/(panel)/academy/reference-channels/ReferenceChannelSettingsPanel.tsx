@@ -20,6 +20,8 @@ export function ReferenceChannelSettingsPanel({
   const [description, setDescription] = useState(channel.description ?? '');
   const [price, setPrice] = useState(String(channel.price ?? ''));
   const [status, setStatus] = useState(channel.status ?? 'draft');
+  const [showInPanel, setShowInPanel] = useState(channel.show_in_panel ?? true);
+  const [showInTelegram, setShowInTelegram] = useState(channel.show_in_telegram ?? true);
   const [destinationId, setDestinationId] = useState(String(channel.telegram_destination_id ?? ''));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -36,6 +38,8 @@ export function ReferenceChannelSettingsPanel({
       description: description || null,
       price: Number(price) || 0,
       status,
+      show_in_panel: showInPanel,
+      show_in_telegram: showInTelegram,
       telegram_destination_id: destinationId ? Number(destinationId) : null,
     });
 
@@ -53,11 +57,16 @@ export function ReferenceChannelSettingsPanel({
       <div>
         <h2 className="text-h3 text-primary-dark">تنظیمات فروش</h2>
         <p className="mt-1 text-small text-text-muted">
-          قیمت پایه، وضعیت انتشار و مقصد تلگرام. تخفیف سمینار روی خود سمینار تنظیم می‌شود.
+          قیمت پایه، وضعیت انتشار و محل نمایش. تخفیف سمینار روی خود سمینار تنظیم می‌شود
+          (مثلاً ۲۹٬۸۰۰٬۰۰۰ تا قیمت نهایی ۲۰۰ هزار شود).
         </p>
         {channel.product_slug ? (
           <p className="mt-2 text-sm text-text-muted">
             محصول لینک‌شده: <code>{channel.product_slug}</code> · قیمت فعلی {formatToman(channel.price)}
+            {' · '}
+            <a className="text-primary underline" href={`/purchase/${channel.product_slug}`}>
+              صفحه خرید
+            </a>
           </p>
         ) : null}
       </div>
@@ -95,6 +104,35 @@ export function ReferenceChannelSettingsPanel({
               </option>
             ))}
           </select>
+        </label>
+      </div>
+
+      <div className="grid gap-3 rounded-lg border border-border/70 bg-surface-soft/40 p-4 sm:grid-cols-2">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 rounded border-border"
+            checked={showInPanel}
+            onChange={(e) => setShowInPanel(e.target.checked)}
+          />
+          <span>
+            <span className="block text-sm font-medium text-text">نمایش در پنل دانشجو</span>
+            <span className="mt-0.5 block text-caption text-text-muted">
+              کارت خرید با قیمت شخصی‌سازی‌شده در /panel/reference-channel
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 rounded border-border"
+            checked={showInTelegram}
+            onChange={(e) => setShowInTelegram(e.target.checked)}
+          />
+          <span>
+            <span className="block text-sm font-medium text-text">نمایش در ربات تلگرام</span>
+            <span className="mt-0.5 block text-caption text-text-muted">فروش از منوی «کانال مرجع» ربات</span>
+          </span>
         </label>
       </div>
 

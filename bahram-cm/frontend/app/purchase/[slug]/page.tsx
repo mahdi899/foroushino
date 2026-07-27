@@ -29,6 +29,9 @@ function purchaseProductImageAlt(product: ProductDetail): string {
 }
 
 function purchaseBackLink(product: ProductDetail): { href: string; label: string } {
+  if (product.type === 'reference_channel') {
+    return { href: '/panel/reference-channel', label: 'بازگشت به کانال مرجع' };
+  }
   if (product.landing_href) {
     const isMiniCourse = product.type === 'mini_course';
     return {
@@ -147,11 +150,16 @@ export default async function PurchasePage({
                         {
                           slug: product.slug,
                           title: product.title,
-                          price: product.price,
+                          price: product.reference_pricing?.amount ?? product.price,
                           effective_price: product.effective_price,
                         },
                       ]}
                     />
+                    {product.reference_pricing?.seminar_off ? (
+                      <p className="mt-3 text-caption text-emerald">
+                        تخفیف شرکت در سمینار روی این محصول اعمال شده است.
+                      </p>
+                    ) : null}
 
                   {alreadyPurchased ? (
                     <div className="mt-auto space-y-4 pt-6">

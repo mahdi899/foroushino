@@ -115,10 +115,11 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
           value={referenceDiscount}
           onChange={(e) => setReferenceDiscount(e.target.value)}
           className="field-input"
-          placeholder="مثلاً ۲۰۰۰۰۰۰۰"
+          placeholder="مثلاً ۲۹۸۰۰۰۰۰"
         />
         <span className="mt-1 block text-caption text-text-muted">
-          اگر خریدار این سمینار را داشته باشد، این مبلغ از قیمت کانال مرجع کم می‌شود. در صورت چند سمینار، بیشترین تخفیف اعمال می‌شود (نه جمع).
+          این مبلغ از قیمت کانال مرجع کم می‌شود. برای لیست ۳۰ میلیون و نهایی ۲۰۰ هزار، مقدار ۲۹٬۸۰۰٬۰۰۰
+          بگذارید. در صورت چند سمینار، بیشترین تخفیف اعمال می‌شود (نه جمع).
         </span>
       </label>
 

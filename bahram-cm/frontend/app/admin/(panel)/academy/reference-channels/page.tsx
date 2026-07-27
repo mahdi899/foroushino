@@ -47,7 +47,7 @@ export default async function ReferenceChannelsPage() {
         <AdminContentPanel title="فهرست کانال‌های مرجع">
           {channels.length > 0 ? (
             <Table
-              head={['عنوان', 'قیمت', 'مقصد', 'دسترسی‌ها', 'وضعیت', 'عملیات']}
+              head={['عنوان', 'قیمت', 'نمایش', 'مقصد', 'دسترسی‌ها', 'وضعیت', 'عملیات']}
               mobile={channels.map((c) => (
                 <AdminTableCard
                   key={c.id}
@@ -59,6 +59,15 @@ export default async function ReferenceChannelsPage() {
                   }
                   fields={[
                     { label: 'قیمت', value: formatToman(c.price) },
+                    {
+                      label: 'نمایش',
+                      value: [
+                        c.show_in_panel !== false ? 'پنل' : null,
+                        c.show_in_telegram !== false ? 'تلگرام' : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || 'خاموش',
+                    },
                     { label: 'مقصد', value: c.telegram_destination_title ?? 'بدون مقصد' },
                     { label: 'دسترسی‌ها', value: c.entitlements_count.toLocaleString('fa-IR') },
                   ]}
@@ -70,6 +79,12 @@ export default async function ReferenceChannelsPage() {
                 <tr key={c.id}>
                   <td>{c.title}</td>
                   <td>{formatToman(c.price)}</td>
+                  <td>
+                    <span className="flex flex-wrap gap-1">
+                      {c.show_in_panel !== false ? <Badge tone="success">پنل</Badge> : null}
+                      {c.show_in_telegram !== false ? <Badge tone="accent">تلگرام</Badge> : null}
+                    </span>
+                  </td>
                   <td>{c.telegram_destination_title ?? '—'}</td>
                   <td>{c.entitlements_count.toLocaleString('fa-IR')}</td>
                   <td>{c.status === 'published' ? <Badge tone="success">منتشر</Badge> : <Badge>پیش‌نویس</Badge>}</td>

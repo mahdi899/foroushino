@@ -27,6 +27,12 @@ export type ProductDetail = ProductListItem & {
   meta_title: string | null;
   meta_description: string | null;
   already_purchased?: boolean;
+  reference_pricing?: {
+    amount: number;
+    final_amount: number;
+    seminar_discount: number;
+    seminar_off: boolean;
+  } | null;
   seminar?: {
     capacity: number | null;
     attendees_count: number;

@@ -138,6 +138,41 @@ class ReferenceChannelPurchaseTest extends TestCase
         $response->assertUnprocessable();
     }
 
+    public function test_student_offer_lists_buyable_channel_with_seminar_quote(): void
+    {
+        $user = User::factory()->create(['mobile' => '09121110006']);
+        $channel = $this->makeChannel(30_000_000);
+        $seminar = $this->makeSeminar('زعفرانیه', 29_800_000);
+        SeminarAttendee::create([
+            'seminar_id' => $seminar->id,
+            'user_id' => $user->id,
+            'attendance_status' => 'registered',
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/api/v1/student/reference-channels/offer');
+
+        $response->assertOk();
+        $payload = $response->json('data');
+        $this->assertIsArray($payload);
+        $this->assertCount(1, $payload);
+        $this->assertSame(30_000_000, $payload[0]['amount']);
+        $this->assertSame(200_000, $payload[0]['final_amount']);
+        $this->assertTrue($payload[0]['seminar_off']);
+        $this->assertSame('/purchase/'.$channel->fresh()->product?->slug, $payload[0]['purchase_path']);
+    }
+
+    public function test_student_offer_hides_channel_when_show_in_panel_false(): void
+    {
+        $user = User::factory()->create(['mobile' => '09121110007']);
+        $channel = $this->makeChannel(30_000_000);
+        $channel->update(['show_in_panel' => false]);
+
+        $response = $this->actingAs($user)->getJson('/api/v1/student/reference-channels/offer');
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('data'));
+    }
+
     private function makeChannel(int $price): ReferenceChannel
     {
         $product = Product::create([
@@ -154,6 +189,8 @@ class ReferenceChannelPurchaseTest extends TestCase
             'title' => 'کانال مرجع',
             'slug' => 'main-'.uniqid(),
             'status' => 'published',
+            'show_in_panel' => true,
+            'show_in_telegram' => true,
             'price' => $price,
             'product_id' => $product->id,
         ]);
