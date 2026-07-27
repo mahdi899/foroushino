@@ -10,6 +10,7 @@ import type {
   AdminReferralCode,
   AdminReferralConversion,
   AdminSatApplication,
+  AdminVerifiedBankAccount,
   AdminSeminar,
   AdminSeminarDetail,
   AdminSmsLog,
@@ -98,6 +99,17 @@ export async function getReferralConversions(params: { status?: string; page?: n
     return { items: res.data, meta: res.meta, error: null as string | null };
   } catch (e) {
     return { items: [] as AdminReferralConversion[], meta: null, error: errorMessage(e) };
+  }
+}
+
+export async function getVerifiedBankAccounts(params: { status?: string; page?: number } = {}) {
+  try {
+    const res = await adminFetch<{ data: AdminVerifiedBankAccount[]; meta: PageMeta }>('/verified-bank-accounts', {
+      query: { status: params.status ?? 'pending', page: params.page },
+    });
+    return { items: res.data, meta: res.meta, error: null as string | null };
+  } catch (e) {
+    return { items: [] as AdminVerifiedBankAccount[], meta: null, error: errorMessage(e) };
   }
 }
 

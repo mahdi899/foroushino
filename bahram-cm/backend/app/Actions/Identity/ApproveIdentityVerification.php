@@ -25,8 +25,11 @@ class ApproveIdentityVerification
         private readonly InAppNotificationService $notifications,
     ) {}
 
+    /**
+     * @param  ?User  $actor  Null indicates a system auto-approval (e.g. PersonInfo name match).
+     */
     public function __invoke(
-        User $actor,
+        ?User $actor,
         IdentityVerificationSubmission $submission,
         ?string $note = null,
     ): IdentityVerificationSubmission {
@@ -51,7 +54,7 @@ class ApproveIdentityVerification
 
             IdentityVerificationReview::query()->create([
                 'submission_id' => $submission->id,
-                'reviewer_id' => $actor->id,
+                'reviewer_id' => $actor?->id,
                 'action' => IdentityReviewAction::Approve,
                 'reviewer_note' => $note,
             ]);
@@ -62,9 +65,11 @@ class ApproveIdentityVerification
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $useRegistryNames = filled($submission->registry_first_name) && filled($submission->registry_last_name);
+
             $profile->fill([
-                'first_name' => $submission->first_name,
-                'last_name' => $submission->last_name,
+                'first_name' => $useRegistryNames ? $submission->registry_first_name : $submission->first_name,
+                'last_name' => $useRegistryNames ? $submission->registry_last_name : $submission->last_name,
                 'national_code_encrypted' => $submission->national_code_encrypted,
                 'national_code_hash' => $submission->national_code_hash,
                 'date_of_birth' => $submission->date_of_birth,
@@ -72,7 +77,7 @@ class ApproveIdentityVerification
                 'city' => $submission->city,
                 'identity_status' => IdentityVerificationStatus::Approved,
                 'identity_verified_at' => now(),
-                'identity_verified_by' => $actor->id,
+                'identity_verified_by' => $actor?->id,
             ]);
             $profile->save();
             $profile->syncVerificationLevel();

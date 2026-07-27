@@ -1,13 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import {
-  getCachedFamilyMediaObjectUrl,
-  getFamilyMediaBlobUrl,
-  readFamilyMediaBlob,
-} from '@/lib/family/mediaCache';
-import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
-import { tryBuildImagePreviewBlob } from '@/lib/family/mediaPreview';
+import { useMemo } from 'react';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 
 export type FamilyImageSrcState = {
@@ -17,65 +10,27 @@ export type FamilyImageSrcState = {
   resolved: boolean;
 };
 
-/** Prefer a warm local blob; fall back to CDN stream URL after a quick cache check. */
+/**
+ * CDN-first, synchronous: the feed <img> src is always the CDN stream URL —
+ * never a `blob:` object URL built from a client-side Cache API round trip.
+ * That proxy-fetch-then-blob path is what caused visible feed lag (extra
+ * network hop through the club host + decode of a full-size fetch response
+ * before the pixel could show). The browser's own HTTP cache on the CDN
+ * origin now does the "already loaded → instant" job a messenger needs.
+ */
 export function useFamilyImageSrc(
   url: string | null | undefined,
-  mediaId: number,
+  _mediaId: number,
 ): FamilyImageSrcState {
   const streamUrl = useMemo(() => resolveFamilyMediaUrl(url), [url]);
-  const [state, setState] = useState<FamilyImageSrcState>({
-    src: null,
-    previewSrc: null,
-    fromCache: false,
-    resolved: !streamUrl,
-  });
 
-  useEffect(() => {
-    if (!streamUrl) {
-      setState({ src: null, previewSrc: null, fromCache: false, resolved: true });
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      const cached = await getCachedFamilyMediaObjectUrl(streamUrl, mediaId);
-      if (cancelled) return;
-
-      if (cached) {
-        setState({ src: cached, previewSrc: null, fromCache: true, resolved: true });
-        return;
-      }
-
-      const previewBlob = await readFamilyMediaBlob('preview', mediaId, streamUrl);
-      if (cancelled) return;
-
-      const previewSrc = previewBlob
-        ? getFamilyMediaBlobUrl(`preview:${mediaId}:${streamUrl}`, previewBlob)
-        : null;
-
-      setState({
-        src: streamUrl,
-        previewSrc,
-        fromCache: false,
-        resolved: true,
-      });
-
-      void enqueueFamilyMediaLoad('preview', mediaId, () =>
-        tryBuildImagePreviewBlob(mediaId, streamUrl),
-      ).then((blob) => {
-        if (cancelled || !blob) return;
-        const built = getFamilyMediaBlobUrl(`preview:${mediaId}:${streamUrl}`, blob);
-        setState((prev) =>
-          prev.src === streamUrl && !prev.fromCache ? { ...prev, previewSrc: built } : prev,
-        );
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [mediaId, streamUrl]);
-
-  return state;
+  return useMemo(
+    () => ({
+      src: streamUrl,
+      previewSrc: null,
+      fromCache: false,
+      resolved: true,
+    }),
+    [streamUrl],
+  );
 }

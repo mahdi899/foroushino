@@ -42,11 +42,17 @@ class IdentityProviderSeeder extends Seeder
             [
                 'slug' => ApiIrShahkarProvider::SLUG,
                 'label' => 'API.ir شاهکار',
-                'capabilities' => [IdentityCapability::MobileNationalCodeMatch->value],
+                'capabilities' => [
+                    IdentityCapability::MobileNationalCodeMatch->value,
+                    IdentityCapability::CardNationalCodeMatch->value,
+                    IdentityCapability::PersonInfoInquiry->value,
+                ],
                 'is_enabled' => false,
                 'settings' => [
-                    'base_url' => '',
-                    'verify_path' => '/api/shahkar',
+                    'base_url' => 'https://s.api.ir',
+                    'shahkar_path' => '/api/sw1/ShahkarLite',
+                    'person_info_path' => '/api/sw1/PersonInfo',
+                    'card_match_path' => '/api/sw1/CardMatch',
                     'timeout' => 20,
                 ],
             ],
@@ -129,8 +135,19 @@ class IdentityProviderSeeder extends Seeder
             ],
         );
 
+        // Primary api.ir CardMatch (disabled until credentials); fallback U-ID financial.
         IdentityVerificationRoute::query()->updateOrCreate(
             ['capability' => IdentityCapability::CardNationalCodeMatch->value],
+            [
+                'primary_provider' => ApiIrShahkarProvider::SLUG,
+                'fallback_provider' => UidFinancialVerificationProvider::SLUG,
+                'is_active' => true,
+            ],
+        );
+
+        // api.ir has no IBAN product — stays on U-ID financial only.
+        IdentityVerificationRoute::query()->updateOrCreate(
+            ['capability' => IdentityCapability::IbanNationalCodeMatch->value],
             [
                 'primary_provider' => UidFinancialVerificationProvider::SLUG,
                 'fallback_provider' => null,
@@ -139,9 +156,9 @@ class IdentityProviderSeeder extends Seeder
         );
 
         IdentityVerificationRoute::query()->updateOrCreate(
-            ['capability' => IdentityCapability::IbanNationalCodeMatch->value],
+            ['capability' => IdentityCapability::PersonInfoInquiry->value],
             [
-                'primary_provider' => UidFinancialVerificationProvider::SLUG,
+                'primary_provider' => ApiIrShahkarProvider::SLUG,
                 'fallback_provider' => null,
                 'is_active' => true,
             ],

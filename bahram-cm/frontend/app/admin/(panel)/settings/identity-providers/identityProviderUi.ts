@@ -106,6 +106,11 @@ const CAPABILITY_UI: Record<string, CapabilityUiConfig> = {
     gradient: 'from-sky-500 to-indigo-600',
     soft: 'bg-sky-500/8',
   },
+  PERSON_INFO_INQUIRY: {
+    icon: Users,
+    gradient: 'from-fuchsia-500 to-purple-600',
+    soft: 'bg-fuchsia-500/8',
+  },
 };
 
 const DEFAULT_PROVIDER_UI: ProviderUiConfig = {

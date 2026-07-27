@@ -8,6 +8,7 @@ use App\Enums\OwnershipVerificationResult;
 use App\Models\IdentityVerificationAttempt;
 use App\Models\User;
 use App\Models\VerifiedBankAccount;
+use App\Services\Identity\Contracts\FinancialOwnershipVerificationProvider;
 use App\Services\Identity\IdentityVerificationProviderRegistry;
 use App\Services\ReferralService;
 use App\Support\JalaliDate;
@@ -61,12 +62,11 @@ class VerifyBankAccount
 
             $jalaliBirthDate = JalaliDate::format($birthDate);
             $summary = $this->referrals->summary($user);
-            $minBalance = (int) config('bahram.withdrawal.min_balance_for_verification', 100_000);
             $fee = (int) config('bahram.withdrawal.verification_fee', 7_000);
 
-            if ($summary['payable_amount'] < $minBalance) {
+            if ($summary['payable_amount'] <= 0) {
                 throw ValidationException::withMessages([
-                    'balance' => ['برای احراز کارت بانکی، حداقل '.number_format($minBalance).' تومان موجودی قابل برداشت لازم است.'],
+                    'balance' => ['ثبت کارت بانکی فقط پس از داشتن موجودی قابل‌برداشت از همکاری در فروش امکان‌پذیر است.'],
                 ]);
             }
 
@@ -104,18 +104,45 @@ class VerifyBankAccount
                 }
             }
 
-            $providerOutcome = null;
-            $attempt = null;
-            $capability = null;
+            $capability = $cardDigits !== ''
+                ? IdentityCapability::CardNationalCodeMatch
+                : IdentityCapability::IbanNationalCodeMatch;
+
+            $hasDefault = VerifiedBankAccount::query()
+                ->where('user_id', $user->id)
+                ->where('is_default', true)
+                ->exists();
+
+            // Whole feature is administratively off (no financial provider configured
+            // for this capability) — fall back to manual admin approval instead of
+            // rejecting the user outright.
+            if (! $this->anyFinancialProviderConfigured()) {
+                $account = new VerifiedBankAccount([
+                    'user_id' => $user->id,
+                    'holder_name' => $holderName,
+                    // Fee is charged only once an admin approves the pending account.
+                    'verification_fee' => 0,
+                    'provider' => null,
+                    'status' => 'pending',
+                    'is_default' => ! $hasDefault,
+                ]);
+                $account->setCardNumber($cardDigits !== '' ? $cardDigits : null);
+                $account->setIban($ibanNormalized !== '' ? $ibanNormalized : null);
+                $account->save();
+
+                return [
+                    'account' => $account->fresh(),
+                    'result' => OwnershipVerificationResult::Pending,
+                    'attempt' => null,
+                ];
+            }
 
             if ($cardDigits !== '') {
-                $capability = IdentityCapability::CardNationalCodeMatch;
                 $providerOutcome = $this->registry->resolveForCapability(
                     $capability,
                     fn ($provider) => $provider->verifyCard($cardDigits, $nationalCode, $jalaliBirthDate),
                 );
             } else {
-                $capability = IdentityCapability::IbanNationalCodeMatch;
                 $providerOutcome = $this->registry->resolveForCapability(
                     $capability,
                     fn ($provider) => $provider->verifyIban($ibanNormalized, $nationalCode, $jalaliBirthDate),
@@ -149,7 +176,7 @@ class VerifyBankAccount
 
             if ($result->normalized_result !== OwnershipVerificationResult::Matched) {
                 $message = match ($result->normalized_result) {
-                    OwnershipVerificationResult::Mismatched => 'شماره کارت یا شبا با اطلاعات هویتی شما مطابقت ندارد.',
+                    OwnershipVerificationResult::Mismatched => 'شماره کارت یا شبا با اطلاعات هویتی شما (کد ملی و تاریخ تولد) مطابقت ندارد.',
                     OwnershipVerificationResult::RateLimited => 'تعداد درخواست‌ها بیش از حد است. کمی بعد تلاش کنید.',
                     default => 'سرویس تطبیق موقتاً در دسترس نیست. بعداً تلاش کنید.',
                 };
@@ -163,7 +190,7 @@ class VerifyBankAccount
             $resolvedHolder = $holderName;
             $resolvedIban = $ibanNormalized !== '' ? $ibanNormalized : null;
 
-            if ($cardDigits !== '') {
+            if ($cardDigits !== '' && $provider instanceof FinancialOwnershipVerificationProvider) {
                 $inquiry = $provider->inquireCard($cardDigits);
                 if ($inquiry) {
                     $resolvedIban ??= is_string($inquiry['iban'] ?? null) ? $inquiry['iban'] : null;
@@ -174,17 +201,13 @@ class VerifyBankAccount
                 }
             }
 
-            $hasDefault = VerifiedBankAccount::query()
-                ->where('user_id', $user->id)
-                ->where('is_default', true)
-                ->exists();
-
             $account = new VerifiedBankAccount([
                 'user_id' => $user->id,
                 'bank_name' => $bankName,
                 'holder_name' => $resolvedHolder,
                 'verification_fee' => $fee,
                 'provider' => $provider->slug(),
+                'status' => 'verified',
                 'verified_at' => now(),
                 'is_default' => ! $hasDefault,
             ]);
@@ -198,5 +221,16 @@ class VerifyBankAccount
                 'attempt' => $attempt,
             ];
         });
+    }
+
+    private function anyFinancialProviderConfigured(): bool
+    {
+        foreach ($this->registry->all() as $provider) {
+            if ($provider instanceof FinancialOwnershipVerificationProvider && $provider->isConfigured()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

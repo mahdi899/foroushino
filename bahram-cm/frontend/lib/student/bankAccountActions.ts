@@ -11,11 +11,11 @@ export type VerifiedBankAccount = {
   bank_name: string | null;
   holder_name: string | null;
   is_default: boolean;
+  status: 'pending' | 'verified' | 'rejected';
   verified_at: string | null;
 };
 
 export type BankAccountRules = {
-  min_balance_for_verification: number;
   verification_fee: number;
 };
 
@@ -36,7 +36,7 @@ export async function getBankAccountRulesAction(): Promise<BankAccountRules> {
     const res = await studentFetch<{ data: BankAccountRules }>('/verified-bank-accounts/rules');
     return res.data;
   } catch {
-    return { min_balance_for_verification: 100_000, verification_fee: 7_000 };
+    return { verification_fee: 7_000 };
   }
 }
 

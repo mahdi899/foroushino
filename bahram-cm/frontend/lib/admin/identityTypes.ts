@@ -22,6 +22,17 @@ export type IdentityVerificationListItem = {
   reviewed_at?: string | null;
   ownership_locked?: boolean;
   verification_level?: number;
+  registry_match_status?: 'matched' | 'mismatched' | 'unavailable' | null;
+};
+
+export type IdentityRegistrySnapshot = {
+  match_status: 'matched' | 'mismatched' | 'unavailable' | null;
+  first_name: string | null;
+  last_name: string | null;
+  father_name: string | null;
+  gender: string | null;
+  alive: boolean | null;
+  checked_at: string | null;
 };
 
 export type IdentityArtifact = {
@@ -56,6 +67,7 @@ export type IdentityVerificationDetail = IdentityVerificationListItem & {
   mobile_ownership_status?: string | null;
   ownership_failed_attempts?: number;
   ownership_locked_at?: string | null;
+  registry?: IdentityRegistrySnapshot;
 };
 
 export type IdentityDashboardStats = {
@@ -117,4 +129,7 @@ export const CAPABILITY_LABELS: Record<string, string> = {
   FACE_LIVENESS: 'زنده‌بودن چهره',
   FACE_MATCH: 'تطبیق چهره',
   MOBILE_NATIONAL_CODE_MATCH: 'تطبیق موبایل و کد ملی',
+  CARD_NATIONAL_CODE_MATCH: 'تطبیق کارت بانکی و کد ملی',
+  IBAN_NATIONAL_CODE_MATCH: 'تطبیق شبا و کد ملی',
+  PERSON_INFO_INQUIRY: 'استعلام مشخصات هویتی',
 };

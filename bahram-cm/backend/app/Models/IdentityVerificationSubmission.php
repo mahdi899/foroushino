@@ -27,6 +27,13 @@ class IdentityVerificationSubmission extends Model
         'required_corrections',
         'provider_route',
         'provider_slug',
+        'registry_first_name',
+        'registry_last_name',
+        'registry_father_name',
+        'registry_gender',
+        'registry_alive',
+        'registry_match_status',
+        'registry_checked_at',
         'submitted_at',
         'reviewed_at',
     ];
@@ -43,6 +50,8 @@ class IdentityVerificationSubmission extends Model
             'status' => IdentityVerificationStatus::class,
             'date_of_birth' => 'date',
             'required_corrections' => 'array',
+            'registry_alive' => 'boolean',
+            'registry_checked_at' => 'datetime',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
         ];

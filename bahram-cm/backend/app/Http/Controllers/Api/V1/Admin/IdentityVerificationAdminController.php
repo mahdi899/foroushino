@@ -95,6 +95,15 @@ class IdentityVerificationAdminController extends Controller
             'national_code_masked' => NationalCode::mask($national),
             'expected_video_text' => $submission->expected_video_text,
             'required_corrections' => $submission->required_corrections,
+            'registry' => [
+                'match_status' => $submission->registry_match_status,
+                'first_name' => $submission->registry_first_name,
+                'last_name' => $submission->registry_last_name,
+                'father_name' => $submission->registry_father_name,
+                'gender' => $submission->registry_gender,
+                'alive' => $submission->registry_alive,
+                'checked_at' => $submission->registry_checked_at?->toIso8601String(),
+            ],
             'artifacts' => $submission->artifacts->map(fn ($a) => [
                 'id' => $a->id,
                 'uuid' => $a->uuid,
@@ -339,6 +348,7 @@ class IdentityVerificationAdminController extends Controller
             'mobile_masked' => SensitiveData::maskMobile($s->user?->mobile),
             'user_mobile_masked' => SensitiveData::maskMobile($s->user?->mobile),
             'ownership_locked' => $s->identityProfile?->mobile_ownership_status?->value === 'locked',
+            'registry_match_status' => $s->registry_match_status,
         ];
     }
 }

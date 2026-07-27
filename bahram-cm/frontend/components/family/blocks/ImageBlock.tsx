@@ -38,7 +38,7 @@ export function ImageBlock({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  const { src: imageUrl, previewSrc, fromCache, resolved } = useFamilyImageSrc(media.url, media.id);
+  const { src: imageUrl, resolved } = useFamilyImageSrc(media.url, media.id);
   const shouldLoad = useFamilyFeedMediaInView(rootRef, resolved && Boolean(imageUrl));
   const downloadUrl = resolveFamilyMediaUrl(media.url) ?? media.url;
 
@@ -47,16 +47,11 @@ export function ImageBlock({
     setError(false);
   }, [imageUrl]);
 
-  useEffect(() => {
-    if (fromCache) setLoaded(true);
-  }, [fromCache]);
-
   if (resolved && !imageUrl) {
     return <div className={cn('aspect-square w-full', roundedClass, className)} style={aspectStyle(media)} />;
   }
 
   const containerStyle = fillCell ? undefined : aspectStyle(media);
-  const showTinyPreview = Boolean(previewSrc && !loaded && !error && !fromCache);
 
   const openLightbox = () => {
     if (manageLightboxExternally && onOpenLightbox) {
@@ -68,7 +63,7 @@ export function ImageBlock({
 
   const retryLoad = () => {
     setError(false);
-    setLoaded(fromCache);
+    setLoaded(false);
   };
 
   const handleActivate = () => {
@@ -103,20 +98,6 @@ export function ImageBlock({
         )}
         style={containerStyle}
       >
-        {shouldLoad && showTinyPreview && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewSrc ?? undefined}
-            alt=""
-            decoding="async"
-            aria-hidden
-            className={cn(
-              'absolute inset-0 h-full w-full object-cover blur-md scale-[1.03] saturate-[0.92]',
-              fillCell ? 'object-cover' : 'object-contain',
-            )}
-          />
-        )}
-
         {shouldLoad && imageUrl && !error && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -129,7 +110,7 @@ export function ImageBlock({
             onError={() => setError(true)}
             className={cn(
               'absolute inset-0 h-full w-full transition-opacity duration-150 ease-out',
-              loaded || fromCache ? 'opacity-100' : 'opacity-0',
+              loaded ? 'opacity-100' : 'opacity-0',
               fillCell ? 'object-cover' : 'object-contain',
             )}
           />

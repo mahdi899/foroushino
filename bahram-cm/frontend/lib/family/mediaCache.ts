@@ -186,18 +186,6 @@ function guessFilename(url: string): string {
   return 'media';
 }
 
-/** Cached blob URL when fresh — null when streaming from network is required. */
-export async function getCachedFamilyMediaObjectUrl(
-  url: string,
-  mediaId: number,
-): Promise<string | null> {
-  const canonical = resolveFamilyMediaPlaybackUrl(url) ?? url;
-  if (!canonical) return null;
-  const blob = await readFamilyMediaBlob('full', mediaId, canonical);
-  if (!blob) return null;
-  return getFamilyMediaBlobUrl(`view:${mediaId}:${canonical}`, blob);
-}
-
 /** Best-effort cache write; returns blob when fetch succeeds (same-origin / CORS). */
 export async function tryCacheFamilyMediaBlob(
   url: string,

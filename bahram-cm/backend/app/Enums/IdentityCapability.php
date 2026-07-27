@@ -16,4 +16,5 @@ enum IdentityCapability: string
     case MobileNationalCodeMatch = 'MOBILE_NATIONAL_CODE_MATCH';
     case CardNationalCodeMatch = 'CARD_NATIONAL_CODE_MATCH';
     case IbanNationalCodeMatch = 'IBAN_NATIONAL_CODE_MATCH';
+    case PersonInfoInquiry = 'PERSON_INFO_INQUIRY';
 }

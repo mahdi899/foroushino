@@ -60,6 +60,33 @@ export default async function IdentityVerificationDetailPage({
                   <span className="text-caption text-text-muted">بررسی: {formatDate(item.reviewed_at)}</span>
                 ) : null}
               </div>
+
+              {item.registry?.match_status === 'mismatched' ? (
+                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
+                  <p className="mb-2 font-bold">اختلاف نام با استعلام مشخصات هویتی (شاهکار)</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <p className="text-caption text-text-muted">وارد‌شده توسط کاربر</p>
+                      <p className="font-medium text-text">
+                        {item.first_name} {item.last_name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-caption text-text-muted">شاهکار (PersonInfo)</p>
+                      <p className="font-medium text-text">
+                        {item.registry.first_name} {item.registry.last_name}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-caption text-text-muted">
+                    در صورت تأیید این پرونده، نام و نام‌خانوادگی شاهکار در پروفایل ثبت می‌شود.
+                  </p>
+                </div>
+              ) : item.registry?.match_status === 'matched' ? (
+                <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-small text-success">
+                  نام کاربر با استعلام شاهکار مطابقت داشت — این پرونده به‌صورت خودکار تأیید شد.
+                </div>
+              ) : null}
               <dl className="grid gap-3 sm:grid-cols-2 text-small">
                 <div>
                   <dt className="text-text-muted">نام</dt>

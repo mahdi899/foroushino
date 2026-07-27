@@ -34,6 +34,17 @@ export function VerifiedBankAccountsPanel({
     return null;
   }
 
+  if (payableAmount <= 0) {
+    return (
+      <div className="space-y-2">
+        <h3 className="text-sm font-bold text-text">کارت‌های بانکی</h3>
+        <p className="text-sm leading-relaxed text-text-muted">
+          ثبت کارت بانکی فقط پس از داشتن موجودی قابل‌برداشت از همکاری در فروش (معرفی مشتری) امکان‌پذیر است.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -46,8 +57,7 @@ export function VerifiedBankAccountsPanel({
       {accounts.length === 0 ? (
         <p className="text-sm leading-relaxed text-text-muted">
           برای برداشت کش‌بک، ابتدا شماره کارت یا شبا را با سرویس شاهکار تأیید کنید.
-          حداقل موجودی {rules.min_balance_for_verification.toLocaleString('fa-IR')} تومان و کارمزد{' '}
-          {rules.verification_fee.toLocaleString('fa-IR')} تومان برای هر احراز لازم است.
+          کارمزد {rules.verification_fee.toLocaleString('fa-IR')} تومان برای هر احراز لازم است.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -68,6 +78,11 @@ export function VerifiedBankAccountsPanel({
                   </p>
                 ) : null}
                 {account.bank_name ? <p className="text-xs text-text-muted">{account.bank_name}</p> : null}
+                {account.status === 'pending' ? (
+                  <span className="mt-1 inline-block rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-dark">
+                    در انتظار تأیید ادمین
+                  </span>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -134,19 +149,18 @@ function AddBankAccountForm({
     return () => window.clearTimeout(timer);
   }, [onSuccess, state.success]);
 
-  const canVerify =
-    payableAmount >= rules.min_balance_for_verification && payableAmount >= rules.verification_fee;
+  const canVerify = payableAmount >= rules.verification_fee;
 
   return (
     <form action={action} className="panel-form-grid rounded-xl border border-border p-4">
       <p className="panel-form-grid__full text-sm leading-relaxed text-text-muted">
-        اطلاعات هویتی تأییدشده شما (کد ملی و تاریخ تولد) به‌صورت خودکار به سرویس شاهکار ارسال می‌شود.
+        شماره کارت باید به نام خود شما باشد — با کد ملی و تاریخ تولد ثبت‌شده در پروفایل شما تطبیق داده می‌شود.
         کارمزد احراز: <span className="font-semibold text-text">{rules.verification_fee.toLocaleString('fa-IR')} تومان</span>
       </p>
 
       {!canVerify ? (
         <p className="panel-form-grid__full rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-text-muted">
-          برای احراز کارت، حداقل {rules.min_balance_for_verification.toLocaleString('fa-IR')} تومان موجودی قابل برداشت لازم است.
+          موجودی قابل‌برداشت شما کمتر از کارمزد احراز است.
         </p>
       ) : null}
 

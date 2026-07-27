@@ -268,6 +268,17 @@ export async function updateCashbackPayoutStatus(id: number, status: string, adm
   }
 }
 
+// Verified bank accounts (manual approval fallback when no Shahkar/CardMatch provider is active)
+export async function updateVerifiedBankAccountStatus(id: number, status: 'verified' | 'rejected', adminNote?: string) {
+  try {
+    await adminFetch(`/verified-bank-accounts/${id}`, { method: 'PATCH', body: { status, admin_note: adminNote } });
+    revalidateAcademy();
+    return { ok: true as const };
+  } catch (e) {
+    return actionError(e, 'به‌روزرسانی وضعیت کارت بانکی ناموفق بود.');
+  }
+}
+
 // SAT applications
 export async function updateSatApplicationStatus(id: number, status: string, adminNote?: string) {
   try {

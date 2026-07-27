@@ -16,7 +16,7 @@ class VerifiedBankAccountController extends Controller
     {
         $accounts = $request->user()
             ->verifiedBankAccounts()
-            ->whereNotNull('verified_at')
+            ->whereIn('status', ['verified', 'pending'])
             ->orderByDesc('is_default')
             ->orderByDesc('id')
             ->get();
@@ -27,7 +27,6 @@ class VerifiedBankAccountController extends Controller
     public function rules(Request $request): JsonResponse
     {
         return ApiResponse::success([
-            'min_balance_for_verification' => (int) config('bahram.withdrawal.min_balance_for_verification', 100_000),
             'verification_fee' => (int) config('bahram.withdrawal.verification_fee', 7_000),
         ]);
     }
@@ -99,6 +98,7 @@ class VerifiedBankAccountController extends Controller
             'bank_name' => $account->bank_name,
             'holder_name' => $account->holder_name,
             'is_default' => $account->is_default,
+            'status' => $account->status,
             'verified_at' => $account->verified_at?->toIso8601String(),
         ];
     }

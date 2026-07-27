@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\Admin\StudentExportController;
 use App\Http\Controllers\Api\V1\Admin\AuditLogAdminController;
 use App\Http\Controllers\Api\V1\Admin\CashbackPayoutAdminController;
+use App\Http\Controllers\Api\V1\Admin\VerifiedBankAccountAdminController;
 use App\Http\Controllers\Api\V1\Admin\CourseAccessController as AdminCourseAccessController;
 use App\Http\Controllers\Api\V1\Admin\IdentityArtifactController;
 use App\Http\Controllers\Api\V1\Admin\IdentityProviderAdminController;
@@ -474,6 +475,9 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('cashback-payouts', [CashbackPayoutAdminController::class, 'index']);
     Route::get('cashback-payouts/{payout}', [CashbackPayoutAdminController::class, 'show'])->whereNumber('payout');
     Route::patch('cashback-payouts/{payout}', [CashbackPayoutAdminController::class, 'update'])->whereNumber('payout');
+
+    Route::get('verified-bank-accounts', [VerifiedBankAccountAdminController::class, 'index']);
+    Route::patch('verified-bank-accounts/{bankAccount}', [VerifiedBankAccountAdminController::class, 'update'])->whereNumber('bankAccount');
 
     Route::get('sat-applications', [SatApplicationAdminController::class, 'index']);
     Route::patch('sat-applications/{satApplication}', [SatApplicationAdminController::class, 'update'])->whereNumber('satApplication');

@@ -163,6 +163,21 @@ export type AdminReferralCode = {
   clicks_count: number;
 };
 
+export type AdminVerifiedBankAccount = {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  user_mobile: string | null;
+  masked_card_number: string | null;
+  masked_iban: string | null;
+  holder_name: string | null;
+  bank_name: string | null;
+  status: 'pending' | 'verified' | 'rejected';
+  admin_note: string | null;
+  created_at: string | null;
+  admin_reviewed_at: string | null;
+};
+
 export type AdminCashbackPayout = {
   id: number;
   user_name: string | null;

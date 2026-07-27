@@ -3,20 +3,26 @@
 namespace App\Actions\Identity;
 
 use App\Enums\IdentityArtifactType;
+use App\Enums\IdentityCapability;
 use App\Enums\IdentityVerificationStatus;
+use App\Enums\OwnershipVerificationResult;
 use App\Enums\SmsEventKey;
 use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\Identity\IdentityArtifactStorage;
+use App\Services\Identity\IdentityVerificationProviderRegistry;
 use App\Services\SmsService;
 use App\Support\IdentityVerificationMessages;
+use App\Support\JalaliDate;
 use App\Support\NationalCode;
+use App\Support\PersianName;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class SubmitIdentityVerification
 {
@@ -24,6 +30,8 @@ class SubmitIdentityVerification
         private readonly EnsureIdentityProfile $ensureProfile,
         private readonly IdentityArtifactStorage $storage,
         private readonly SmsService $sms,
+        private readonly IdentityVerificationProviderRegistry $registry,
+        private readonly ApproveIdentityVerification $approve,
     ) {}
 
     /**
@@ -126,6 +134,8 @@ class SubmitIdentityVerification
             ]);
             $profile->save();
 
+            $submission = $this->applyRegistryLookup($submission, $nationalCode, $data);
+
             Cache::put($cooldownKey, true, $cooldown);
 
             try {
@@ -139,8 +149,68 @@ class SubmitIdentityVerification
                 report($e);
             }
 
+            if ($submission->registry_match_status === 'matched') {
+                try {
+                    $submission = ($this->approve)(null, $submission, 'تأیید خودکار — تطابق با استعلام مشخصات هویتی (PersonInfo).');
+                } catch (Throwable $e) {
+                    report($e);
+                }
+            }
+
             return $submission->load('artifacts');
         });
+    }
+
+    /**
+     * Looks up the national code via the PersonInfo (civil registry) capability and
+     * compares the returned name against the user-submitted name. Stores a snapshot
+     * on the submission for the admin review UI regardless of outcome.
+     *
+     * @param  array{first_name: string, last_name: string, ...}  $data
+     */
+    private function applyRegistryLookup(
+        IdentityVerificationSubmission $submission,
+        string $nationalCode,
+        array $data,
+    ): IdentityVerificationSubmission {
+        $birthDate = JalaliDate::format(\Illuminate\Support\Carbon::parse($data['date_of_birth']));
+
+        try {
+            $outcome = $this->registry->resolveForCapability(
+                IdentityCapability::PersonInfoInquiry,
+                fn ($provider) => $provider->lookup($nationalCode, $birthDate),
+            );
+            $result = $outcome['result'];
+        } catch (Throwable) {
+            $result = null;
+        }
+
+        if (! $result || $result->isTechnicalFailure()) {
+            $submission->update(['registry_match_status' => 'unavailable', 'registry_checked_at' => now()]);
+
+            return $submission->fresh();
+        }
+
+        if ($result->normalized_result !== OwnershipVerificationResult::Matched || ! $result->hasNames()) {
+            $submission->update(['registry_match_status' => 'unavailable', 'registry_checked_at' => now()]);
+
+            return $submission->fresh();
+        }
+
+        $namesEqual = PersianName::equal($result->first_name, $data['first_name'])
+            && PersianName::equal($result->last_name, $data['last_name']);
+
+        $submission->update([
+            'registry_first_name' => $result->first_name,
+            'registry_last_name' => $result->last_name,
+            'registry_father_name' => $result->father_name,
+            'registry_gender' => $result->gender,
+            'registry_alive' => $result->alive,
+            'registry_match_status' => $namesEqual ? 'matched' : 'mismatched',
+            'registry_checked_at' => now(),
+        ]);
+
+        return $submission->fresh();
     }
 
     /**

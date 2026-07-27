@@ -20,6 +20,7 @@ use App\Services\Identity\DTOs\ProviderConnectionResult;
 use App\Services\Identity\IdentityVerificationProviderRegistry;
 use App\Support\NationalCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -31,13 +32,14 @@ class VerifiedBankAccountTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Queue::fake();
         $this->seed(\Database\Seeders\IdentityProviderSeeder::class);
     }
 
-    public function test_bank_account_verification_requires_minimum_balance(): void
+    public function test_bank_account_verification_requires_payable_balance(): void
     {
         $student = $this->makeLevel2Student();
-        $this->seedApprovedCashback($student, 50_000);
+        // No approved referral cashback yet — payable_amount is 0.
         $this->bindFakeFinancialProvider(OwnershipVerificationResult::Matched);
 
         Sanctum::actingAs($student);
@@ -47,6 +49,39 @@ class VerifiedBankAccountTest extends TestCase
         ])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'bank_verification_failed');
+    }
+
+    public function test_any_payable_balance_above_fee_allows_card_registration(): void
+    {
+        $student = $this->makeLevel2Student();
+        $this->seedApprovedCashback($student, 50_000);
+        $this->bindFakeFinancialProvider(OwnershipVerificationResult::Matched);
+
+        Sanctum::actingAs($student);
+
+        $this->postJson('/api/v1/student/verified-bank-accounts', [
+            'card_number' => '6037991234567890',
+        ])->assertCreated();
+    }
+
+    public function test_no_configured_financial_provider_creates_pending_account_for_admin_review(): void
+    {
+        $student = $this->makeLevel2Student();
+        $this->seedApprovedCashback($student, 150_000);
+
+        // No provider bound/configured — registry has only seeded (disabled) providers.
+        Sanctum::actingAs($student);
+
+        $this->postJson('/api/v1/student/verified-bank-accounts', [
+            'card_number' => '6037991234567890',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'pending');
+
+        $this->assertDatabaseHas('verified_bank_accounts', [
+            'user_id' => $student->id,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_matched_card_is_saved_and_fee_is_deducted_from_payable(): void
@@ -254,6 +289,7 @@ class VerifiedBankAccountTest extends TestCase
         };
 
         $registry = \Mockery::mock(IdentityVerificationProviderRegistry::class);
+        $registry->shouldReceive('all')->andReturn([$fake]);
         $registry->shouldReceive('resolveForCapability')
             ->andReturnUsing(function (IdentityCapability $capability, callable $verifyWith) use ($fake) {
                 $route = IdentityVerificationRoute::query()

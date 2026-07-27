@@ -37,9 +37,13 @@ function ProviderCard({
 }) {
   const router = useRouter();
   const ui = getProviderUi(provider.slug);
+  const isUid = provider.slug.startsWith('uid-');
   const [pending, startTransition] = useTransition();
   const [enabled, setEnabled] = useState(provider.is_enabled);
-  const [apiKey, setApiKey] = useState('');
+  const [apiToken, setApiToken] = useState('');
+  const [businessId, setBusinessId] = useState('');
+  const [businessToken, setBusinessToken] = useState('');
+  const [baseUrl, setBaseUrl] = useState(String(provider.settings?.base_url ?? ''));
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,14 +54,28 @@ function ProviderCard({
       const body: {
         is_enabled: boolean;
         credentials?: Record<string, string>;
+        settings?: Record<string, string>;
       } = { is_enabled: enabled };
-      if (apiKey.trim()) body.credentials = { api_key: apiKey.trim() };
+
+      const credentials: Record<string, string> = {};
+      if (isUid) {
+        if (businessId.trim()) credentials.business_id = businessId.trim();
+        if (businessToken.trim()) credentials.business_token = businessToken.trim();
+      } else if (apiToken.trim()) {
+        credentials.api_token = apiToken.trim();
+      }
+      if (Object.keys(credentials).length) body.credentials = credentials;
+
+      if (baseUrl.trim()) body.settings = { base_url: baseUrl.trim() };
+
       const res = await updateIdentityProviderAction(provider.slug, body);
       if (!res.ok) {
         setError(res.error);
         return;
       }
-      setApiKey('');
+      setApiToken('');
+      setBusinessId('');
+      setBusinessToken('');
       setMessage('ذخیره شد.');
       router.refresh();
     });
@@ -150,20 +168,70 @@ function ProviderCard({
               فعال‌سازی سرویس
             </label>
             <div>
-              <label className="field-label" htmlFor={`key-${provider.slug}`}>
-                کلید API (فقط در صورت تغییر)
+              <label className="field-label" htmlFor={`base-url-${provider.slug}`}>
+                آدرس پایه سرویس (Base URL)
               </label>
               <input
-                id={`key-${provider.slug}`}
-                type="password"
+                id={`base-url-${provider.slug}`}
+                type="text"
                 className="field-input"
                 dir="ltr"
-                placeholder={provider.credentials_configured ? '••••••••' : 'وارد کردن کلید'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="https://s.api.ir"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
                 autoComplete="off"
               />
             </div>
+            {isUid ? (
+              <>
+                <div>
+                  <label className="field-label" htmlFor={`business-id-${provider.slug}`}>
+                    شناسه کسب‌وکار (business_id) — فقط در صورت تغییر
+                  </label>
+                  <input
+                    id={`business-id-${provider.slug}`}
+                    type="password"
+                    className="field-input"
+                    dir="ltr"
+                    placeholder={provider.credentials_configured ? '••••••••' : 'وارد کردن شناسه'}
+                    value={businessId}
+                    onChange={(e) => setBusinessId(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor={`business-token-${provider.slug}`}>
+                    توکن کسب‌وکار (business_token) — فقط در صورت تغییر
+                  </label>
+                  <input
+                    id={`business-token-${provider.slug}`}
+                    type="password"
+                    className="field-input"
+                    dir="ltr"
+                    placeholder={provider.credentials_configured ? '••••••••' : 'وارد کردن توکن'}
+                    value={businessToken}
+                    onChange={(e) => setBusinessToken(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="field-label" htmlFor={`key-${provider.slug}`}>
+                  توکن API (api_token) — فقط در صورت تغییر
+                </label>
+                <input
+                  id={`key-${provider.slug}`}
+                  type="password"
+                  className="field-input"
+                  dir="ltr"
+                  placeholder={provider.credentials_configured ? '••••••••' : 'وارد کردن توکن'}
+                  value={apiToken}
+                  onChange={(e) => setApiToken(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-primary" disabled={pending} onClick={save}>
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

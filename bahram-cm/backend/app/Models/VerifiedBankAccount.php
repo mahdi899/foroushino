@@ -20,6 +20,10 @@ class VerifiedBankAccount extends Model
         'provider',
         'verified_at',
         'is_default',
+        'status',
+        'admin_reviewed_by',
+        'admin_reviewed_at',
+        'admin_note',
     ];
 
     protected $casts = [
@@ -28,6 +32,7 @@ class VerifiedBankAccount extends Model
         'verification_fee' => 'integer',
         'verified_at' => 'datetime',
         'is_default' => 'boolean',
+        'admin_reviewed_at' => 'datetime',
     ];
 
     protected $hidden = [
@@ -38,6 +43,11 @@ class VerifiedBankAccount extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'admin_reviewed_by');
     }
 
     public function payouts(): HasMany

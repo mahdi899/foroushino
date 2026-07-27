@@ -67,6 +67,7 @@ export const adminNav: {
       { href: '/admin/academy/mini-courses', label: 'مینی‌دوره‌ها', icon: 'PlayCircle', matchPrefix: true, permission: 'content.view' },
       { href: '/admin/academy/referrals', label: 'معرفی و کش‌بک', icon: 'Gift', permission: 'finance.view' },
       { href: '/admin/academy/cashback-payouts', label: 'واریز کش‌بک', icon: 'Wallet', permission: 'finance.view' },
+      { href: '/admin/academy/bank-accounts', label: 'تأیید کارت بانکی', icon: 'CreditCard', permission: 'finance.view' },
       { href: '/admin/academy/sat-applications', label: 'درخواست‌های سات', icon: 'GraduationCap', permission: 'sat.view' },
       { href: '/admin/academy/imports', label: 'ورود اطلاعات', icon: 'FileUp', permission: 'students.manage' },
     ],

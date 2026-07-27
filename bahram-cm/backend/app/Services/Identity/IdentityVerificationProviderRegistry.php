@@ -6,7 +6,9 @@ use App\Enums\IdentityCapability;
 use App\Models\IdentityVerificationRoute;
 use App\Services\Identity\Contracts\FinancialOwnershipVerificationProvider;
 use App\Services\Identity\Contracts\MobileOwnershipVerificationProvider;
+use App\Services\Identity\Contracts\PersonInfoVerificationProvider;
 use App\Services\Identity\DTOs\MobileOwnershipVerificationResult;
+use App\Services\Identity\DTOs\PersonInfoResult;
 use App\Services\Identity\Providers\ApiIrShahkarProvider;
 use App\Services\Identity\Providers\HodaProvider;
 use App\Services\Identity\Providers\ManualReviewProvider;
@@ -49,7 +51,7 @@ class IdentityVerificationProviderRegistry
     }
 
     /**
-     * @return array{provider: MobileOwnershipVerificationProvider|FinancialOwnershipVerificationProvider, result: MobileOwnershipVerificationResult, used_fallback: bool, route: ?IdentityVerificationRoute}
+     * @return array{provider: MobileOwnershipVerificationProvider|FinancialOwnershipVerificationProvider|PersonInfoVerificationProvider, result: MobileOwnershipVerificationResult|PersonInfoResult, used_fallback: bool, route: ?IdentityVerificationRoute}
      */
     public function resolveForCapability(
         IdentityCapability $capability,
@@ -67,8 +69,8 @@ class IdentityVerificationProviderRegistry
         $primary = $this->resolveCapabilityProvider($capability, $route->primary_provider);
         $primaryResult = $verifyWith($primary);
 
-        if (! $primaryResult instanceof MobileOwnershipVerificationResult) {
-            throw new RuntimeException('Provider verify callback must return MobileOwnershipVerificationResult.');
+        if (! $primaryResult instanceof MobileOwnershipVerificationResult && ! $primaryResult instanceof PersonInfoResult) {
+            throw new RuntimeException('Provider verify callback must return MobileOwnershipVerificationResult or PersonInfoResult.');
         }
 
         if (! $primaryResult->isTechnicalFailure() || blank($route->fallback_provider)) {
@@ -94,12 +96,24 @@ class IdentityVerificationProviderRegistry
     public function resolveCapabilityProvider(
         IdentityCapability $capability,
         string $slug,
-    ): MobileOwnershipVerificationProvider|FinancialOwnershipVerificationProvider {
+    ): MobileOwnershipVerificationProvider|FinancialOwnershipVerificationProvider|PersonInfoVerificationProvider {
         return match ($capability) {
             IdentityCapability::CardNationalCodeMatch,
             IdentityCapability::IbanNationalCodeMatch => $this->resolveFinancialProvider($slug),
+            IdentityCapability::PersonInfoInquiry => $this->resolvePersonInfoProvider($slug),
             default => $this->resolveMobileProvider($slug),
         };
+    }
+
+    public function resolvePersonInfoProvider(string $slug): PersonInfoVerificationProvider
+    {
+        $provider = $this->resolve($slug);
+
+        if (! $provider instanceof PersonInfoVerificationProvider) {
+            throw new InvalidArgumentException("Provider [{$slug}] does not support PersonInfo lookup.");
+        }
+
+        return $provider;
     }
 
     public function resolveMobileProvider(string $slug): MobileOwnershipVerificationProvider
