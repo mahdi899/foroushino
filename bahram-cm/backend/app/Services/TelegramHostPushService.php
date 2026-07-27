@@ -30,7 +30,12 @@ class TelegramHostPushService
      */
     public function refreshBootstrap(): bool
     {
-        return $this->runAction('refresh_bootstrap', ['bootstrap' => $this->payloadBuilder->bootstrapPayload()]);
+        $bootstrap = $this->buildBootstrapPayloadOrFail();
+        if ($bootstrap === null) {
+            return false;
+        }
+
+        return $this->runAction('refresh_bootstrap', ['bootstrap' => $bootstrap]);
     }
 
     public function refreshCatalog(): bool
@@ -40,10 +45,32 @@ class TelegramHostPushService
 
     public function refreshAll(): bool
     {
+        $bootstrap = $this->buildBootstrapPayloadOrFail();
+        if ($bootstrap === null) {
+            return false;
+        }
+
         return $this->runAction('refresh_all', [
-            'bootstrap' => $this->payloadBuilder->bootstrapPayload(),
+            'bootstrap' => $bootstrap,
             'catalog' => $this->payloadBuilder->catalogPayload(),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>|null null when the production bot isn't
+     *  configured — never push an empty/blank bootstrap over a good one.
+     */
+    private function buildBootstrapPayloadOrFail(): ?array
+    {
+        try {
+            return $this->payloadBuilder->bootstrapPayload();
+        } catch (\RuntimeException $e) {
+            Log::channel('telegram')->error('Telegram host push aborted — refusing to push empty bootstrap.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /** @param  array<string, mixed>  $account */

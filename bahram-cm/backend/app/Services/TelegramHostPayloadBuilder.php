@@ -49,12 +49,19 @@ class TelegramHostPayloadBuilder
         return $bot;
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws \RuntimeException when the production bot is not configured —
+     *  callers (push/pull) must never treat a missing bot as "empty but
+     *  valid" data; that used to silently overwrite the host's cache with a
+     *  blank bootstrap (no messages, no features, no required chats).
+     */
     public function bootstrapPayload(?TelegramBot $bot = null): array
     {
         $bot ??= $this->productionBot();
         if ($bot === null) {
-            return [];
+            throw new \RuntimeException('Telegram host payload builder: production bot not found — refusing to build an empty bootstrap payload.');
         }
 
         $messages = collect(BotMessageCatalog::defaults())
