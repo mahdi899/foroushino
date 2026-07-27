@@ -103,8 +103,19 @@ class TelegramHostAccountSync
             return;
         }
 
-        $ownedProductIds = Order::query()
-            ->where('user_id', $user->id)
+        $ownedProductIds = $this->ownedProductIdsFromOrders($user->id);
+        if ($ownedProductIds === []) {
+            return;
+        }
+
+        PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, $user->name ?? null);
+    }
+
+    /** @return list<int> */
+    private function ownedProductIdsFromOrders(int $userId): array
+    {
+        return Order::query()
+            ->where('user_id', $userId)
             ->whereIn('status', ['paid', 'fulfilled'])
             ->pluck('product_id')
             ->filter()
@@ -112,12 +123,50 @@ class TelegramHostAccountSync
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
+    }
 
-        if ($ownedProductIds === []) {
-            return;
+    /**
+     * One-off backfill for buyers who paid *before* the mobile pre-provisioning
+     * push existed, or whose order was inserted directly (e.g. bulk CSV
+     * import via SeminarOrderImportService) without ever going through
+     * FulfillOrderJob — so they were never queued. Only targets users with
+     * no production-bot TelegramAccount at all (never started the bot).
+     *
+     * @return int Number of users queued
+     */
+    public function queuePushMobileAccessForAllMissing(int $limit = 5000): int
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+        if ($bot === null) {
+            return 0;
         }
 
-        PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, $user->name ?? null);
+        $linkedUserIds = TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
+
+        $buyerUserIds = Order::query()
+            ->whereIn('status', ['paid', 'fulfilled'])
+            ->whereNotNull('user_id')
+            ->whereNotIn('user_id', $linkedUserIds)
+            ->distinct()
+            ->pluck('user_id')
+            ->take(max(1, $limit));
+
+        $queued = 0;
+        User::query()
+            ->whereIn('id', $buyerUserIds)
+            ->whereNotNull('mobile')
+            ->where('mobile', '!=', '')
+            ->chunkById(200, function ($users) use (&$queued): void {
+                foreach ($users as $user) {
+                    $this->queuePushMobileAccess($user);
+                    $queued++;
+                }
+            });
+
+        return $queued;
     }
 
     public function pushPaidOrderNotification(TelegramAccount $account, string $text, array $options = []): bool

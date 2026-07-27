@@ -12,6 +12,7 @@ use App\Modules\TelegramBot\Console\TelegramSyncBotsCommand;
 use App\Modules\TelegramBot\Console\TelegramWebhookDeleteCommand;
 use App\Modules\TelegramBot\Console\TelegramWebhookInfoCommand;
 use App\Modules\TelegramBot\Console\TelegramExportHostDatabaseCommand;
+use App\Modules\TelegramBot\Console\TelegramHostBackfillMobileAccessCommand;
 use App\Modules\TelegramBot\Console\TelegramHostPushRetryCommand;
 use App\Modules\TelegramBot\Console\TelegramHostSyncAccountsCommand;
 use App\Modules\TelegramBot\Console\TelegramWebhookReconcileCommand;
@@ -52,6 +53,7 @@ class TelegramBotServiceProvider extends ServiceProvider
                 TelegramWebhookReconcileCommand::class,
                 TelegramHostPushRetryCommand::class,
                 TelegramHostSyncAccountsCommand::class,
+                TelegramHostBackfillMobileAccessCommand::class,
                 TelegramExportHostDatabaseCommand::class,
                 TelegramWebhookDeleteCommand::class,
                 TelegramWebhookInfoCommand::class,
