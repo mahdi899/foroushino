@@ -259,7 +259,19 @@ class TelegramHostPushService
                 return ['ok' => false, 'error' => 'http_'.$response->status()];
             }
 
-            $decoded = json_decode((string) $response->body(), true);
+            $rawBody = (string) $response->body();
+            // Imunify360 / WAF sometimes returns HTTP 200 with an HTML/JSON denial.
+            if (str_contains($rawBody, 'Imunify360') || str_contains($rawBody, 'Access denied by')) {
+                Log::channel('telegram')->warning('Telegram host push blocked by WAF.', [
+                    'action' => $action,
+                    'host' => $pushUrl,
+                    'body' => mb_substr($rawBody, 0, 300),
+                ]);
+
+                return ['ok' => false, 'error' => 'waf_blocked'];
+            }
+
+            $decoded = json_decode($rawBody, true);
 
             return is_array($decoded) ? $decoded : ['ok' => true];
         } catch (\Throwable $e) {

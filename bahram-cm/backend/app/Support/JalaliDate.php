@@ -105,6 +105,25 @@ final class JalaliDate
         return sprintf('%04d/%02d/%02d', $jy, $jm, $jd);
     }
 
+    /**
+     * Jalali date for external identity APIs (api.ir / U-ID): Latin digits, unpadded Y/M/D.
+     * Example: 1371/1/1 — not Persian digits and not zero-padded months/days.
+     */
+    public static function formatApi(?DateTimeInterface $date = null): string
+    {
+        $date = $date
+            ? Carbon::instance($date)->timezone('Asia/Tehran')
+            : now()->timezone('Asia/Tehran');
+
+        [$jy, $jm, $jd] = self::toJalali(
+            (int) $date->year,
+            (int) $date->month,
+            (int) $date->day,
+        );
+
+        return sprintf('%d/%d/%d', $jy, $jm, $jd);
+    }
+
     /** Persian (Jalali) date + time, e.g. «۳ مرداد ۱۴۰۵ — ۱۹:۴۶». */
     public static function formatDateTime(?DateTimeInterface $date = null): string
     {

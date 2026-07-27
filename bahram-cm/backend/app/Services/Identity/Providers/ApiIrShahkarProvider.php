@@ -16,7 +16,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Throwable;
 
 /**
- * API.ir Shahkar adapter — token auth, configurable base URL.
+ * API.ir Shahkar adapter — Authorization: Bearer only (per s.api.ir docs).
  *
  * Covers three sw1 endpoints:
  *  - ShahkarLite: mobile ↔ national code match
@@ -31,6 +31,8 @@ class ApiIrShahkarProvider implements
     PersonInfoVerificationProvider
 {
     public const SLUG = 'api-ir-shahkar';
+
+    public const DEFAULT_BASE_URL = 'https://s.api.ir';
 
     public function slug(): string
     {
@@ -54,22 +56,19 @@ class ApiIrShahkarProvider implements
             return false;
         }
 
-        $credentials = $config->getCredentials();
-
-        return filled($credentials['api_token'] ?? null)
-            && filled($config->settings['base_url'] ?? null);
+        return filled($this->resolveToken($config));
     }
 
     public function testConnection(): ProviderConnectionResult
     {
         if (! $this->isConfigured()) {
             return ProviderConnectionResult::configurationIncomplete(
-                'api_token و base_url برای سرویس API.ir شاهکار تنظیم نشده‌اند.'
+                'توکن Bearer برای سرویس API.ir شاهکار تنظیم نشده است.'
             );
         }
 
         $config = $this->config();
-        $baseUrl = rtrim((string) $config->settings['base_url'], '/');
+        $baseUrl = $this->baseUrl($config);
 
         try {
             $response = $this->client($config)->get($baseUrl.'/');
@@ -252,11 +251,10 @@ class ApiIrShahkarProvider implements
 
     private function client(IdentityProviderConfig $config): PendingRequest
     {
-        $credentials = $config->getCredentials();
         $settings = $config->settings ?? [];
 
         return \Illuminate\Support\Facades\Http::timeout((int) ($settings['timeout'] ?? 20))
-            ->withToken((string) ($credentials['api_token'] ?? ''))
+            ->withToken($this->resolveToken($config))
             ->acceptJson()
             ->asJson();
     }
@@ -267,7 +265,7 @@ class ApiIrShahkarProvider implements
      */
     private function post(IdentityProviderConfig $config, string $path, array $payload, int $started): array
     {
-        $baseUrl = rtrim((string) $config->settings['base_url'], '/');
+        $baseUrl = $this->baseUrl($config);
 
         try {
             $response = $this->client($config)->post($baseUrl.$path, $payload);
@@ -358,6 +356,29 @@ class ApiIrShahkarProvider implements
     private function config(): ?IdentityProviderConfig
     {
         return IdentityProviderConfig::query()->where('slug', self::SLUG)->first();
+    }
+
+    private function baseUrl(IdentityProviderConfig $config): string
+    {
+        $configured = trim((string) ($config->settings['base_url'] ?? ''));
+
+        return rtrim($configured !== '' ? $configured : self::DEFAULT_BASE_URL, '/');
+    }
+
+    /**
+     * Raw Bearer token only — strips a pasted "Bearer " prefix and accepts legacy api_key.
+     */
+    private function resolveToken(IdentityProviderConfig $config): string
+    {
+        $credentials = $config->getCredentials();
+        $raw = (string) ($credentials['api_token'] ?? $credentials['api_key'] ?? '');
+        $raw = trim($raw);
+
+        if ($raw !== '' && preg_match('/^Bearer\s+/i', $raw) === 1) {
+            $raw = trim((string) preg_replace('/^Bearer\s+/i', '', $raw));
+        }
+
+        return $raw;
     }
 
     private function elapsedMs(int $started): int
