@@ -106,7 +106,7 @@ if [[ -r /proc/meminfo ]]; then
   else
     # devDependencies (e.g. @next/bundle-analyzer) are required for next.config.ts at build time.
     unset NODE_ENV
-    export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}"
+    export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
     if ! npm ci; then npm install --no-audit --no-fund; fi
     export NODE_ENV=production
     npm run build
