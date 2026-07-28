@@ -31,6 +31,7 @@ class ProductTelegramCatalogObserver
             'price',
             'sale_price',
             'slug',
+            'type',
             'telegram_sort_order',
             'telegram_list_visibility',
         ]);

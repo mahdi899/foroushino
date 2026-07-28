@@ -9,7 +9,11 @@ use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Http\SyncClient;
 
-/** After webhook response — refresh local MySQL from Iran when reachable (host → Iran). */
+/**
+ * Optional host→Iran account pull. Not wired into webhook.php (local-first:
+ * Iran push maintains accounts_cache). Kept for diagnose/cron tools that
+ * explicitly want a reconcile.
+ */
 final class HostBackgroundSync
 {
     public function __construct(

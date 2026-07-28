@@ -175,8 +175,15 @@ try {
     http_response_code(200);
     echo 'ok';
 
+    // Flush response to Telegram before Iran drain / support forward work.
+    while (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
     if (function_exists('fastcgi_finish_request')) {
         fastcgi_finish_request();
+    } elseif (function_exists('litespeed_finish_request')) {
+        litespeed_finish_request();
     }
 
     // Account mirror is Iran→host push only — do not pull Iran on every webhook.

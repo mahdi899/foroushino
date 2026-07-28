@@ -10,16 +10,28 @@ namespace TelegramHost\Account;
  */
 final class AccountCache
 {
+    /** @var array<int, array<string, mixed>|null> */
+    private array $rowMemo = [];
+
+    /** @var array<int, array<string, mixed>|false> */
+    private array $ownedPresentsMemo = [];
+
     public function __construct(private readonly \PDO $pdo) {}
 
     /** @return array<string, mixed>|null */
     public function get(int $telegramUserId): ?array
     {
+        if (array_key_exists($telegramUserId, $this->rowMemo)) {
+            return $this->rowMemo[$telegramUserId];
+        }
+
         $stmt = $this->pdo->prepare('SELECT * FROM telegram_accounts_cache WHERE telegram_user_id = :id');
         $stmt->execute(['id' => $telegramUserId]);
         $row = $stmt->fetch();
+        $resolved = $row === false ? null : $row;
+        $this->rowMemo[$telegramUserId] = $resolved;
 
-        return $row === false ? null : $row;
+        return $resolved;
     }
 
     /** @param array<string, mixed> $account */
@@ -107,6 +119,8 @@ final class AccountCache
             'sat2' => $satJson,
             'snap_at2' => $snapAt,
         ]));
+
+        unset($this->rowMemo[$telegramUserId], $this->ownedPresentsMemo[$telegramUserId]);
     }
 
     /** @return array<string, mixed>|null */
@@ -444,13 +458,18 @@ final class AccountCache
     /** @return array<string, mixed>|null */
     public function ownedPresent(int $telegramUserId, int $productId): ?array
     {
-        $account = $this->get($telegramUserId);
-        if ($account === null) {
-            return null;
+        if (! array_key_exists($telegramUserId, $this->ownedPresentsMemo)) {
+            $stmt = $this->pdo->prepare(
+                'SELECT owned_presents_json FROM telegram_accounts_cache WHERE telegram_user_id = :id LIMIT 1',
+            );
+            $stmt->execute(['id' => $telegramUserId]);
+            $raw = $stmt->fetchColumn();
+            $map = is_string($raw) && $raw !== '' ? $this->decodeJsonObject($raw) : null;
+            $this->ownedPresentsMemo[$telegramUserId] = is_array($map) ? $map : false;
         }
 
-        $map = $this->decodeJsonObject($account['owned_presents_json'] ?? null);
-        if (! is_array($map)) {
+        $map = $this->ownedPresentsMemo[$telegramUserId];
+        if ($map === false) {
             return null;
         }
 

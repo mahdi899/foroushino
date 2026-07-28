@@ -579,21 +579,96 @@ final class SyncCache
         }
     }
 
+    /**
+     * Support ticket categories from Iran bootstrap (title_fa + topic + sort).
+     *
+     * @return list<array{key: string, title_fa: string, default_topic_id: int, sort_order: int}>
+     */
+    public function supportCategories(): array
+    {
+        $raw = trim($this->message('__support_categories_json', ''));
+        if ($raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded) && $decoded !== []) {
+                $out = [];
+                foreach ($decoded as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $key = trim((string) ($row['key'] ?? ''));
+                    if ($key === '') {
+                        continue;
+                    }
+                    $out[] = [
+                        'key' => $key,
+                        'title_fa' => (string) ($row['title_fa'] ?? $key),
+                        'default_topic_id' => (int) ($row['default_topic_id'] ?? 0),
+                        'sort_order' => (int) ($row['sort_order'] ?? 0),
+                    ];
+                }
+                if ($out !== []) {
+                    usort($out, static fn (array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
+
+                    return $out;
+                }
+            }
+        }
+
+        // Fallback when bootstrap has not pushed categories yet.
+        $fallback = [];
+        foreach (\TelegramHost\Services\HostSupportService::CATEGORY_LABELS as $key => $title) {
+            $fallback[] = [
+                'key' => $key,
+                'title_fa' => $title,
+                'default_topic_id' => 0,
+                'sort_order' => count($fallback),
+            ];
+        }
+
+        return $fallback;
+    }
+
+    public function isKnownSupportCategory(string $key): bool
+    {
+        foreach ($this->supportCategories() as $category) {
+            if ($category['key'] === $key) {
+                return true;
+            }
+        }
+
+        return isset(\TelegramHost\Services\HostSupportService::CATEGORY_LABELS[$key]);
+    }
+
     /** @param list<array<string, mixed>> $categories */
     private function storeSupportCategories(array $categories): void
     {
         $messages = [];
+        $normalized = [];
         foreach ($categories as $category) {
+            if (! is_array($category)) {
+                continue;
+            }
             $key = trim((string) ($category['key'] ?? ''));
             if ($key === '') {
                 continue;
             }
             $topicId = (int) ($category['default_topic_id'] ?? 0);
+            $title = trim((string) ($category['title_fa'] ?? ''));
+            if ($title === '') {
+                $title = \TelegramHost\Services\HostSupportService::CATEGORY_LABELS[$key] ?? $key;
+            }
+            $sort = (int) ($category['sort_order'] ?? count($normalized));
             $messages['__support_topic_'.$key] = $topicId > 0 ? (string) $topicId : '';
+            $normalized[] = [
+                'key' => $key,
+                'title_fa' => $title,
+                'default_topic_id' => $topicId,
+                'sort_order' => $sort,
+            ];
         }
-        if ($messages !== []) {
-            $this->storeMessages($messages);
-        }
+        usort($normalized, static fn (array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
+        $messages['__support_categories_json'] = json_encode($normalized, JSON_UNESCAPED_UNICODE);
+        $this->storeMessages($messages);
     }
 
     /**

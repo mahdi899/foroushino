@@ -7,12 +7,12 @@ namespace TelegramHost\Account;
 use TelegramHost\Http\SyncClient;
 
 /**
- * Pulls account identity/snapshot from Iran. Safe from webhook (fast account/fetch only).
+ * Pulls account identity/snapshot from Iran. Local-first: verified accounts
+ * with a snapshot rely on Iran→host push — account/fetch only for OTP
+ * reconcile, empty snapshot, or host-only ghost registration.
  */
 final class AccountSyncCoordinator
 {
-    private const REFRESH_INTERVAL_VERIFIED_SECONDS = 180;
-
     /** Avoid hammering Iran when user is unknown and host has no cache row yet. */
     private const RETRY_INTERVAL_UNVERIFIED_SECONDS = 45;
 
@@ -36,12 +36,20 @@ final class AccountSyncCoordinator
         $needsReconcile = $this->accounts->needsIranReconcile($telegramUserId)
             && $this->accounts->secondsSinceUpdate($telegramUserId) >= self::RETRY_INTERVAL_UNVERIFIED_SECONDS;
 
-        if (! $force && ! $needsReconcile && ! $this->accounts->shouldAttemptIranPull(
-            $telegramUserId,
-            self::REFRESH_INTERVAL_VERIFIED_SECONDS,
-            self::RETRY_INTERVAL_UNVERIFIED_SECONDS,
-        )) {
-            return $this->accounts->isVerified($telegramUserId);
+        if (! $force && ! $needsReconcile) {
+            if ($this->accounts->isVerified($telegramUserId)) {
+                $account = $this->accounts->get($telegramUserId);
+                // Push-maintained snapshot — do not poll Iran on every menu tap.
+                if ($account !== null && ! empty($account['profile_json'])) {
+                    return true;
+                }
+            } elseif (! $this->accounts->shouldAttemptIranPull(
+                $telegramUserId,
+                PHP_INT_MAX,
+                self::RETRY_INTERVAL_UNVERIFIED_SECONDS,
+            )) {
+                return false;
+            }
         }
 
         try {

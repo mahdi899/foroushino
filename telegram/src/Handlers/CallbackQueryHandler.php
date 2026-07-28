@@ -180,7 +180,8 @@ final class CallbackQueryHandler
 
     private function handleSupportCategory(int $chatId, int $telegramUserId, string $category): void
     {
-        if (! in_array($category, ['purchase', 'campaign_course', 'sat', 'other'], true)) {
+        $category = trim($category);
+        if (! $this->cache->isKnownSupportCategory($category)) {
             $category = 'other';
         }
 
@@ -262,27 +263,27 @@ final class CallbackQueryHandler
     }
 
     /**
-     * Prefer Iran live present; fall back to host cache. For courses/seminars
-     * (not reference channel), strip any stale level-2 identity gate from cache.
+     * Local MySQL first (owned_presents push). Live Iran only if cache miss —
+     * keeps buy-owned path fast under load. Courses/seminars strip stale L2 gates.
      *
      * @return array<string, mixed>|null
      */
     private function resolveOwnedPresent(int $chatId, int $telegramUserId, int $productId): ?array
     {
-        $live = $this->live->productPresent($chatId, $telegramUserId, $productId);
         $present = null;
-        if (empty($live['offline']) && isset($live['text']) && trim((string) $live['text']) !== '') {
-            $present = [
-                'text' => (string) $live['text'],
-                'options' => (array) ($live['options'] ?? []),
-                'photo' => (string) ($live['photo'] ?? ''),
-            ];
+        $cached = $this->accounts->ownedPresent($telegramUserId, $productId);
+        if ($cached !== null && isset($cached['text']) && trim((string) $cached['text']) !== '') {
+            $present = $cached;
         }
 
         if ($present === null) {
-            $cached = $this->accounts->ownedPresent($telegramUserId, $productId);
-            if ($cached !== null && isset($cached['text'])) {
-                $present = $cached;
+            $live = $this->live->productPresent($chatId, $telegramUserId, $productId);
+            if (empty($live['offline']) && isset($live['text']) && trim((string) $live['text']) !== '') {
+                $present = [
+                    'text' => (string) $live['text'],
+                    'options' => (array) ($live['options'] ?? []),
+                    'photo' => (string) ($live['photo'] ?? ''),
+                ];
             }
         }
 

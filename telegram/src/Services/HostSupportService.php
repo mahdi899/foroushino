@@ -83,7 +83,7 @@ final class HostSupportService
         $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
         $conversation = $this->conversations->get($telegramUserId);
         $category = (string) ($conversation['context']['category'] ?? 'other');
-        if (! isset(self::CATEGORY_LABELS[$category])) {
+        if (! $this->cache->isKnownSupportCategory($category)) {
             $category = 'other';
         }
 
@@ -185,7 +185,7 @@ final class HostSupportService
             throw new \RuntimeException('invalid_support_forward_payload');
         }
 
-        if (! isset(self::CATEGORY_LABELS[$category])) {
+        if (! $this->cache->isKnownSupportCategory($category)) {
             $category = 'other';
         }
 

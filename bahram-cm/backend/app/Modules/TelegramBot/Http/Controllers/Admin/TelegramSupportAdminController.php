@@ -2,6 +2,7 @@
 
 namespace App\Modules\TelegramBot\Http\Controllers\Admin;
 
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Models\User;
 use App\Modules\TelegramBot\Http\Controllers\Admin\Concerns\AuthorizesTelegramAdmin;
 use App\Modules\TelegramBot\Models\TelegramOperatorProfile;
@@ -39,6 +40,7 @@ class TelegramSupportAdminController
         ]);
 
         $category = TelegramSupportCategory::query()->create($data);
+        PushTelegramHostSyncJob::bootstrap();
 
         return response()->json(['data' => $this->categoryPayload($category)], 201);
     }
@@ -56,6 +58,7 @@ class TelegramSupportAdminController
         ]);
 
         $category->update($data);
+        PushTelegramHostSyncJob::bootstrap();
 
         return response()->json(['data' => $this->categoryPayload($category->fresh())]);
     }
@@ -65,6 +68,7 @@ class TelegramSupportAdminController
         $this->authorizeTelegram($request, 'telegram.support.manage');
 
         $category->delete();
+        PushTelegramHostSyncJob::bootstrap();
 
         return response()->json(['data' => ['ok' => true]]);
     }
