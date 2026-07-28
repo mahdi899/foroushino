@@ -26,6 +26,12 @@ class AdminMenuKeyboard
 
     public const MESSAGES = 'پیام‌ها';
 
+    public const REFERENCE_CHANNEL = 'کانال مرجع';
+
+    public const COURSES = 'دوره‌ها';
+
+    public const SEMINARS = 'سمینارها';
+
     public const EXPORT = 'خروجی کاربران';
 
     public const PROFILE = 'پروفایل بات';
@@ -51,6 +57,9 @@ class AdminMenuKeyboard
         self::DISCOUNTS => 'ticket',
         self::TICKETS => 'support',
         self::MESSAGES => 'chat',
+        self::REFERENCE_CHANNEL => 'channel',
+        self::COURSES => 'graduation',
+        self::SEMINARS => 'mic',
         self::EXPORT => 'empty',
         self::PROFILE => 'robot',
         self::SETTINGS => 'tools',
@@ -71,6 +80,9 @@ class AdminMenuKeyboard
         self::DISCOUNTS => ['🎟 کد تخفیف'],
         self::TICKETS => ['🎫 تیکت‌ها'],
         self::MESSAGES => ['💬 پیام‌ها'],
+        self::REFERENCE_CHANNEL => ['📡 کانال مرجع'],
+        self::COURSES => ['🎓 دوره‌ها'],
+        self::SEMINARS => ['🎤 سمینارها'],
         self::EXPORT => ['📤 خروجی کاربران'],
         self::PROFILE => ['🤖 پروفایل بات'],
         self::SETTINGS => ['⚙️ تنظیمات'],
@@ -99,6 +111,9 @@ class AdminMenuKeyboard
             self::DISCOUNTS => BotAdminPermission::Discount,
             self::TICKETS => BotAdminPermission::Tickets,
             self::MESSAGES => BotAdminPermission::Messages,
+            self::REFERENCE_CHANNEL => BotAdminPermission::Messages,
+            self::COURSES => BotAdminPermission::Messages,
+            self::SEMINARS => BotAdminPermission::Messages,
             self::EXPORT => BotAdminPermission::DataExport,
             self::PROFILE => BotAdminPermission::Settings,
             self::SETTINGS => BotAdminPermission::Settings,
@@ -115,12 +130,14 @@ class AdminMenuKeyboard
         $all = [
             [self::USERS, self::ADMINS],
             [self::STATS, self::BROADCAST],
-            [self::TICKETS, self::MESSAGES],
+            [self::REFERENCE_CHANNEL, self::COURSES],
+            [self::SEMINARS, self::MESSAGES],
+            [self::TICKETS, self::DISCOUNTS],
             [self::REQUIRED_CHATS, self::DESTINATIONS],
-            [self::DISCOUNTS, self::EXPORT],
-            [self::PROFILE, self::SETTINGS],
-            [self::EVENTS, self::LOGS],
-            [self::HOME, self::EXIT],
+            [self::EXPORT, self::PROFILE],
+            [self::SETTINGS, self::LOGS],
+            [self::EVENTS, self::HOME],
+            [self::EXIT],
         ];
 
         if ($account === null) {

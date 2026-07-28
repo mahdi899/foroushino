@@ -287,23 +287,14 @@ final class BotApiClient
 
         if (! is_string($raw)) {
             $err = curl_error($ch);
-            if ($return) {
-                return [];
-            }
-            if ($err !== '') {
-                throw new TelegramApiException('Telegram API unreachable: '.$err);
-            }
-
-            return [];
+            throw new TelegramApiException(
+                $err !== '' ? 'Telegram API unreachable: '.$err : 'Telegram API unreachable',
+            );
         }
 
         $decoded = json_decode($raw, true);
         if (! is_array($decoded)) {
-            if ($return) {
-                return [];
-            }
-
-            return [];
+            throw new TelegramApiException('Telegram API returned invalid JSON');
         }
 
         if (($decoded['ok'] ?? false) !== true) {

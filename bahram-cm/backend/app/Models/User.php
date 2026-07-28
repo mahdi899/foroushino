@@ -139,6 +139,11 @@ class User extends Authenticatable
         return $this->hasMany(CourseAccess::class);
     }
 
+    public function referenceChannelEntitlements(): HasMany
+    {
+        return $this->hasMany(ReferenceChannelEntitlement::class);
+    }
+
     public function spotplayerLicenses(): HasMany
     {
         return $this->hasMany(SpotplayerLicense::class);

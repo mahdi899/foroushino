@@ -46,7 +46,14 @@ final class UpdateRouter
             if ($this->delegation->shouldTrySyncRelayToIran($update)) {
                 $telegramUserId = $this->extractTelegramUserId($update);
                 $chatId = $this->extractChatId($update);
-                if ($this->iranSync->tryRelay($chatId, $telegramUserId, $update)) {
+                $timeout = $this->delegation->syncRelayTimeoutSeconds($update);
+                if ($this->iranSync->tryRelay($chatId, $telegramUserId, $update, $timeout)) {
+                    return;
+                }
+
+                // Media admin input is queued for post-response drain — do not
+                // fall through to the local "admin server down" text handler.
+                if ($timeout > 5) {
                     return;
                 }
             }

@@ -33,6 +33,7 @@ use Throwable;
 class BotAdminPanelService
 {
     use BotAdminPanelFeatureHandlers;
+    use BotAdminPanelCatalogHandlers;
 
     private const USERS_PER_PAGE = 8;
 
@@ -117,6 +118,9 @@ class BotAdminPanelService
                 str_starts_with($data, 'admin:b:') => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:tk:') => $this->handleTicketsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:msg:') => $this->handleMessagesCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:ref:') => $this->handleReferenceChannelCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:crs:') => $this->handleCoursesCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:sem:') => $this->handleSeminarsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:ex:') => $this->handleExportCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:rc:') => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:dc:') => $this->handleDiscountsCallback($bot, $account, $client, $chatId, $messageId, $data),
@@ -151,6 +155,23 @@ class BotAdminPanelService
     ): bool {
         if (! $account->isBotAdmin()) {
             return false;
+        }
+
+        // Host opens the admin shell locally and may only background-mirror
+        // admin_panel to Iran. The next reply-keyboard tap can arrive while
+        // Iran is still Idle — treat admin menu labels as panel entry.
+        if (
+            $conversation->state !== ConversationState::AdminPanel
+            && $conversation->state !== ConversationState::AdminWaitingInput
+            && app(AdminMenuKeyboard::class)->isMenuButton($text)
+            && app(AdminMenuKeyboard::class)->normalizeLabel($text) !== AdminMenuKeyboard::EXIT
+        ) {
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $this->handleAdminMenuButton($bot, $account, $chatId, $text);
+
+            return true;
         }
 
         if ($conversation->state === ConversationState::AdminPanel) {
@@ -247,6 +268,19 @@ class BotAdminPanelService
                 'zarinpal_merchant' => $this->onZarinpalMerchantInput($bot, $account, $conversation, $client, $chatId, $text),
                 'zarinpal_merchant_confirm' => $this->onZarinpalMerchantConfirm($bot, $account, $conversation, $client, $chatId, $text),
                 'events_chat_ids' => $this->onEventsChatIdsInput($bot, $account, $conversation, $client, $chatId, $text),
+                'ref_title' => $this->onReferenceChannelFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'title'),
+                'ref_price' => $this->onReferenceChannelFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'price'),
+                'ref_desc' => $this->onReferenceChannelFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'desc'),
+                'crs_title' => $this->onCourseFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'title'),
+                'crs_price' => $this->onCourseFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'price'),
+                'crs_sale' => $this->onCourseFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sale'),
+                'sem_title' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_title'),
+                'sem_price' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_price'),
+                'sem_sale' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_sale'),
+                'sem_cap' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_cap'),
+                'sem_loc' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_loc'),
+                'sem_date' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_date'),
+                'sem_refdisc' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_refdisc'),
                 'profile_name' => $this->onProfileName($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_short' => $this->onProfileShort($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_desc' => $this->onProfileDescription($bot, $account, $conversation, $client, $chatId, $text),
@@ -275,6 +309,9 @@ class BotAdminPanelService
             AdminMenuKeyboard::DISCOUNTS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Discount,
             AdminMenuKeyboard::TICKETS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Tickets,
             AdminMenuKeyboard::MESSAGES => \App\Modules\TelegramBot\Enums\BotAdminPermission::Messages,
+            AdminMenuKeyboard::REFERENCE_CHANNEL => \App\Modules\TelegramBot\Enums\BotAdminPermission::Messages,
+            AdminMenuKeyboard::COURSES => \App\Modules\TelegramBot\Enums\BotAdminPermission::Messages,
+            AdminMenuKeyboard::SEMINARS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Messages,
             AdminMenuKeyboard::EXPORT => \App\Modules\TelegramBot\Enums\BotAdminPermission::DataExport,
             AdminMenuKeyboard::PROFILE, AdminMenuKeyboard::SETTINGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Settings,
             AdminMenuKeyboard::LOGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Stats,
@@ -309,6 +346,9 @@ class BotAdminPanelService
             AdminMenuKeyboard::DISCOUNTS => $this->handleDiscountsCallback($bot, $account, $client, $chatId, 0, 'admin:dc:list'),
             AdminMenuKeyboard::TICKETS => $this->openTicketsSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::MESSAGES => $this->openMessagesSection($bot, $account, $client, $chatId),
+            AdminMenuKeyboard::REFERENCE_CHANNEL => $this->openReferenceChannelSection($bot, $account, $client, $chatId),
+            AdminMenuKeyboard::COURSES => $this->openCoursesSection($bot, $account, $client, $chatId),
+            AdminMenuKeyboard::SEMINARS => $this->openSeminarsSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::EXPORT => $this->openExportSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::PROFILE => $this->handleProfileCallback($bot, $account, $client, $chatId, 0, 'admin:p'),
             AdminMenuKeyboard::SETTINGS => $this->handleSettingsCallback($bot, $account, $client, $chatId, 0, 'admin:s'),
@@ -333,7 +373,7 @@ class BotAdminPanelService
 
         $admin = (array) ($conversation->context['admin'] ?? []);
         $flow = (string) ($admin['flow'] ?? '');
-        if (! in_array($flow, ['profile_photo', 'reference_channel_cover'], true)) {
+        if (! in_array($flow, ['profile_photo', 'reference_channel_cover', 'product_photo', 'seminar_photo'], true)) {
             return false;
         }
 
@@ -352,6 +392,14 @@ class BotAdminPanelService
 
         if ($flow === 'reference_channel_cover') {
             return $this->handleReferenceChannelCoverPhoto($bot, $account, $conversation, $client, $chatId, $fileId);
+        }
+
+        if ($flow === 'product_photo') {
+            return $this->handleCatalogProductPhoto($bot, $account, $conversation, $client, $chatId, $fileId);
+        }
+
+        if ($flow === 'seminar_photo') {
+            return $this->handleCatalogSeminarPhoto($bot, $account, $conversation, $client, $chatId, $fileId);
         }
 
         $jpgPath = null;
@@ -464,14 +512,17 @@ class BotAdminPanelService
                 ])->saveQuietly();
             }
 
-            \App\Jobs\PushTelegramHostSyncJob::catalog();
-            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
+            $hostSynced = $this->dispatchHostCatalogAndBootstrapSync();
 
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
             ]);
 
-            $client->sendMessage($chatId, '✅ عکس کاور کانال مرجع ذخیره و به هاست خارج همگام شد.', [
+            $successText = $hostSynced
+                ? '✅ عکس کاور کانال مرجع ذخیره و به هاست خارج همگام شد.'
+                : '✅ کاور در سرور اصلی ذخیره شد. همگام‌سازی با هاست خارج در صف است — چند دقیقه صبر کنید یا از پنل وب «همگام‌سازی هاست» را بزنید.';
+
+            $client->sendMessage($chatId, $successText, [
                 'reply_markup' => $this->adminMenuMarkup($account),
             ]);
         } catch (Throwable $e) {
@@ -4058,5 +4109,24 @@ class BotAdminPanelService
         imagedestroy($square);
 
         return $jpgPath;
+    }
+
+    /**
+     * Push catalog/bootstrap to the external Telegram host without failing admin UX.
+     * With QUEUE_CONNECTION=sync the job may run inline and throw on network errors.
+     */
+    private function dispatchHostCatalogAndBootstrapSync(): bool
+    {
+        $ok = true;
+
+        foreach (['refresh_catalog', 'refresh_bootstrap'] as $action) {
+            try {
+                \App\Jobs\PushTelegramHostSyncJob::dispatch($action);
+            } catch (\Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
     }
 }

@@ -51,11 +51,35 @@ try {
 fwrite(STDOUT, "Local poll → {$webhookUrl}\nCtrl+C to stop.\n");
 
 $offset = 0;
+$webhookClears = 0;
 while (true) {
     try {
         $updates = $api->getUpdates($offset, 25);
     } catch (Throwable $e) {
-        fwrite(STDERR, '['.date('H:i:s').'] getUpdates: '.$e->getMessage()."\n");
+        $msg = $e->getMessage();
+        fwrite(STDERR, '['.date('H:i:s').'] getUpdates: '.$msg."\n");
+
+        // Laravel schedule / admin "register webhook" often re-sets the production
+        // webhook and kills getUpdates — clear it and keep polling locally.
+        if (
+            str_contains($msg, 'webhook is active')
+            || str_contains($msg, 'terminated by setWebhook')
+            || str_contains($msg, 'Conflict:')
+        ) {
+            try {
+                $api->deleteWebhook(false);
+                $webhookClears++;
+                fwrite(STDOUT, '['.date('H:i:s')."] deleteWebhook (heal #{$webhookClears})\n");
+            } catch (Throwable $delErr) {
+                fwrite(STDERR, '['.date('H:i:s').'] deleteWebhook heal failed: '.$delErr->getMessage()."\n");
+                sleep(2);
+            }
+            if ($once) {
+                exit(1);
+            }
+            continue;
+        }
+
         sleep(2);
         if ($once) {
             exit(1);

@@ -513,29 +513,109 @@ class DatabaseBackupService
             $mysqli->set_charset('utf8mb4');
             $mysqli->query('SET FOREIGN_KEY_CHECKS=0');
             $mysqli->query('SET NAMES utf8mb4');
-            $mysqli->query('SET SESSION max_allowed_packet=1073741824');
 
             $payload = $this->normalizeDumpSqlForMysqli($sql);
 
-            if (! $mysqli->multi_query($payload)) {
-                throw new RuntimeException($mysqli->error);
-            }
-
-            do {
-                $result = $mysqli->store_result();
-                if ($result instanceof \mysqli_result) {
-                    $result->free();
+            try {
+                $this->mysqliRunMultiQuery($mysqli, $payload);
+            } catch (\mysqli_sql_exception $e) {
+                if (! $this->shouldRetryMysqliBatchRestore($e->getMessage())) {
+                    throw $e;
                 }
-            } while ($mysqli->more_results() && $mysqli->next_result());
-
-            if ($mysqli->errno !== 0) {
-                throw new RuntimeException($mysqli->error);
+                $this->mysqliRunBatchQuery($mysqli, $payload);
             }
 
             $mysqli->query('SET FOREIGN_KEY_CHECKS=1');
+        } catch (\mysqli_sql_exception $e) {
+            throw new RuntimeException('بازیابی mysqli ناموفق بود: '.$e->getMessage());
         } finally {
             $mysqli->close();
         }
+    }
+
+    private function mysqliRunMultiQuery(\mysqli $mysqli, string $payload): void
+    {
+        if (! $mysqli->multi_query($payload)) {
+            throw new \mysqli_sql_exception($mysqli->error, $mysqli->errno);
+        }
+
+        do {
+            $result = $mysqli->store_result();
+            if ($result instanceof \mysqli_result) {
+                $result->free();
+            }
+        } while ($mysqli->more_results() && $mysqli->next_result());
+
+        if ($mysqli->errno !== 0) {
+            throw new \mysqli_sql_exception($mysqli->error, $mysqli->errno);
+        }
+    }
+
+    private function shouldRetryMysqliBatchRestore(string $message): bool
+    {
+        $lower = strtolower($message);
+
+        return str_contains($lower, 'max_allowed_packet')
+            || str_contains($lower, 'packet bigger')
+            || str_contains($lower, 'gone away');
+    }
+
+    private function mysqliRunBatchQuery(\mysqli $mysqli, string $payload): void
+    {
+        foreach ($this->splitSqlStatements($payload) as $statement) {
+            if ($statement === '') {
+                continue;
+            }
+            $mysqli->query($statement);
+        }
+    }
+
+    /** @return list<string> */
+    private function splitSqlStatements(string $sql): array
+    {
+        $statements = [];
+        $buffer = '';
+        $inString = false;
+        $escape = false;
+        $len = strlen($sql);
+
+        for ($i = 0; $i < $len; $i++) {
+            $char = $sql[$i];
+            $buffer .= $char;
+
+            if ($escape) {
+                $escape = false;
+
+                continue;
+            }
+
+            if ($char === '\\' && $inString) {
+                $escape = true;
+
+                continue;
+            }
+
+            if ($char === "'") {
+                $inString = ! $inString;
+
+                continue;
+            }
+
+            if (! $inString && $char === ';') {
+                $statement = trim($buffer);
+                $buffer = '';
+                if ($statement !== '' && ! str_starts_with($statement, '--')) {
+                    $statements[] = $statement;
+                }
+            }
+        }
+
+        $tail = trim($buffer);
+        if ($tail !== '' && ! str_starts_with($tail, '--')) {
+            $statements[] = $tail;
+        }
+
+        return $statements;
     }
 
     private function normalizeDumpSqlForMysqli(string $sql): string

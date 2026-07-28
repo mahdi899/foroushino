@@ -101,6 +101,14 @@ final class SyncCache
             $this->storeMessages(['__reports_group_chat_id' => $reportsChat]);
         }
 
+        $permanentAdminIds = array_values(array_filter(array_map(
+            'intval',
+            (array) ($bootstrap['bot']['permanent_admin_user_ids'] ?? []),
+        )));
+        $this->storeMessages([
+            '__permanent_admin_user_ids' => json_encode($permanentAdminIds, JSON_UNESCAPED_UNICODE),
+        ]);
+
         $this->touchSyncMeta('bootstrap');
     }
 
@@ -349,7 +357,39 @@ final class SyncCache
     /** @return list<array<string, mixed>> */
     public function courses(): array
     {
-        return $this->pdo->query('SELECT * FROM catalog_products ORDER BY id DESC')->fetchAll();
+        // Reference-channel products live in catalog_products for buy/lookup,
+        // but the «دوره‌ها» menu must not list them — they have their own entry.
+        return $this->catalogProducts(excludeReferenceChannel: true);
+    }
+
+    /**
+     * All cached catalog products including reference_channel (for buy/lookup).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function allCatalogProducts(): array
+    {
+        return $this->catalogProducts(excludeReferenceChannel: false);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function catalogProducts(bool $excludeReferenceChannel): array
+    {
+        $rows = $this->pdo->query('SELECT * FROM catalog_products ORDER BY id DESC')->fetchAll();
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if ($excludeReferenceChannel && (string) ($row['product_type'] ?? '') === 'reference_channel') {
+                continue;
+            }
+            $out[] = $row;
+        }
+
+        return $out;
     }
 
     /** @return list<array<string, mixed>> */
@@ -450,7 +490,7 @@ final class SyncCache
     /** @return array<string, mixed>|null */
     public function findProduct(int $productId): ?array
     {
-        foreach ($this->courses() as $course) {
+        foreach ($this->allCatalogProducts() as $course) {
             if ((int) $course['id'] === $productId) {
                 $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
 
@@ -481,8 +521,10 @@ final class SyncCache
             return null;
         }
 
-        foreach ($this->courses() as $course) {
+        foreach ($this->allCatalogProducts() as $course) {
             if ((string) ($course['slug'] ?? '') === $slug) {
+                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+
                 return $course;
             }
         }
@@ -662,12 +704,16 @@ final class SyncCache
             }
         }
 
-        foreach ($this->courses() as $course) {
+        foreach ($this->allCatalogProducts() as $course) {
             if ((string) ($course['product_type'] ?? '') === 'reference_channel') {
+                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+
                 return $course;
             }
             $slug = (string) ($course['slug'] ?? '');
             if (str_starts_with($slug, 'reference-')) {
+                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+
                 return $course;
             }
         }

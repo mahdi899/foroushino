@@ -75,6 +75,8 @@ class ReferenceChannelAdminController extends Controller
         $this->products->syncProduct($channel);
         $this->syncDestinationRequirement($channel);
 
+        app(\App\Services\TelegramHostCatalogRevision::class)->bump(scope: 'all');
+
         return response()->json(['data' => $this->listPayload($channel->fresh(['product', 'telegramDestination']))]);
     }
 

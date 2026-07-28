@@ -12,6 +12,7 @@ class TelegramAudienceSegmentResolver
     public const SEGMENTS = [
         'all_bot_users' => 'همه کاربران بات',
         'course_buyers' => 'خریداران دوره',
+        'reference_channel_buyers' => 'خریداران کانال مرجع',
         'no_purchase' => 'بدون خرید دوره',
         'seminar_attendees' => 'شرکت‌کنندگان سمینار',
         'sat_submitted' => 'ثبت‌کننده سات',
@@ -61,6 +62,7 @@ class TelegramAudienceSegmentResolver
     {
         return match ($key) {
             'course_buyers' => $base->whereNotNull('user_id')->whereHas('user.courseAccesses'),
+            'reference_channel_buyers' => $base->whereNotNull('user_id')->whereHas('user.referenceChannelEntitlements'),
             'no_purchase' => $base->whereNotNull('user_id')->whereDoesntHave('user.courseAccesses'),
             'seminar_attendees' => $base->whereNotNull('user_id')->whereHas('user.seminarAttendances'),
             'sat_submitted' => $base->whereNotNull('user_id')->whereHas('user.satApplications'),
