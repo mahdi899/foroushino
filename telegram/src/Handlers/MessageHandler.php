@@ -8,6 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
+use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Routing\IranSyncRelay;
 use TelegramHost\Services\HostAdminShell;
@@ -38,6 +39,7 @@ final class MessageHandler
         private readonly AccountSyncCoordinator $accountSync,
         private readonly HostSupportService $support,
         private readonly IranSyncRelay $iranSync,
+        private readonly AdminFastClient $adminFast,
         private readonly ReferenceChannelFlow $referenceChannel,
         private readonly HostSatFlow $satFlow,
         private readonly HostAdminShell $adminShell,
@@ -252,9 +254,13 @@ final class MessageHandler
 
     private function openAdminShell(int $chatId, int $telegramUserId, string $text): void
     {
+        $this->conversations->set($telegramUserId, 'admin_panel', []);
+
+        if ($this->adminFast->openDashboard($chatId, $telegramUserId)) {
+            return;
+        }
+
         $this->adminShell->open($chatId, $telegramUserId);
-        // Mirror admin_panel on Iran right away. Background-only enqueue raced
-        // the next button tap and Iran answered ok while still Idle (typing, no UI).
         $update = [
             'update_id' => 0,
             'message' => [

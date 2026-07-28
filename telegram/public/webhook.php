@@ -95,6 +95,7 @@ try {
     $reporter = new \TelegramHost\Services\IranFailureReporter($api, $cache, $accounts, $config);
     $live = new ResilientLiveClient($liveClient, $api, $reporter);
     $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter);
+    $adminFast = new AdminFastClient($sync, $config, $conversations);
 
     $maxRelay = max(1, (int) ($config['iran_relay_per_webhook'] ?? 2));
     $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
@@ -134,6 +135,7 @@ try {
         $accountSync,
         $support,
         $iranSync,
+        $adminFast,
         $referenceChannel,
         $satFlow,
         $adminShell,
@@ -158,6 +160,7 @@ try {
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
         $iranSync,
+        $adminFast,
         $accounts,
         $cache,
         $api,

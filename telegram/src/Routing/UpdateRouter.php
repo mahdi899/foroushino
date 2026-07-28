@@ -6,6 +6,7 @@ namespace TelegramHost\Routing;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
+use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
 use TelegramHost\Services\HostSupportService;
@@ -18,6 +19,7 @@ final class UpdateRouter
     public function __construct(
         private readonly DelegationDetector $delegation,
         private readonly IranSyncRelay $iranSync,
+        private readonly AdminFastClient $adminFast,
         private readonly AccountCache $accounts,
         private readonly SyncCache $cache,
         private readonly BotApiClient $api,
@@ -46,6 +48,9 @@ final class UpdateRouter
             if ($this->delegation->shouldTrySyncRelayToIran($update)) {
                 $telegramUserId = $this->extractTelegramUserId($update);
                 $chatId = $this->extractChatId($update);
+                if ($this->adminFast->tryDispatch($chatId, $telegramUserId, $update)) {
+                    return;
+                }
                 $timeout = $this->delegation->syncRelayTimeoutSeconds($update);
                 if ($this->iranSync->tryRelay($chatId, $telegramUserId, $update, $timeout)) {
                     return;
