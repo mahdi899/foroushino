@@ -17,10 +17,13 @@ export const DEFAULT_MEDIA_DOWNLOAD_HOST = (
 /**
  * Unified CDN/host for ALL public images (/images + /storage/media/*).
  * Set NEXT_PUBLIC_MEDIA_URL=https://cdn.example.com — must match backend MEDIA_URL.
+ * Local: NEXT_PUBLIC_MEDIA_URL=http://127.0.0.1:8010/storage (or empty string = same-origin /storage).
  * When unset: uses DEFAULT_MEDIA_DOWNLOAD_HOST (cdn.rostami.app).
  */
 export const MEDIA_ORIGIN: string =
-  (process.env.NEXT_PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || DEFAULT_MEDIA_DOWNLOAD_HOST;
+  process.env.NEXT_PUBLIC_MEDIA_URL !== undefined
+    ? process.env.NEXT_PUBLIC_MEDIA_URL.replace(/\/$/, '')
+    : DEFAULT_MEDIA_DOWNLOAD_HOST;
 
 /** Upload origin for non-CDN paths (/storage/articles, etc.). */
 export const ASSET_ORIGIN = (process.env.NEXT_PUBLIC_ASSET_URL || API_ORIGIN).replace(/\/$/, '');

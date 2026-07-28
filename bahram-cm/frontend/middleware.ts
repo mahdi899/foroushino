@@ -163,17 +163,55 @@ async function applyPublicCacheHeaders(
   return response;
 }
 
-/** /media/family|site/* → CDN upstream (mirrors rostami.club nginx — not local storage). */
+/** Build absolute media URL — keep `/storage` suffix on local MEDIA_ORIGIN. */
+function publicMediaFetchUrl(pathname: string, search: string, mediaOrigin: string): URL {
+  const base = mediaOrigin.replace(/\/+$/, "");
+  // `new URL('/media/...', 'http://host/storage')` drops `/storage`; concatenate instead.
+  if (/\/storage$/i.test(base) && pathname.startsWith("/media/")) {
+    return new URL(`${base}${pathname}${search}`);
+  }
+  if (!mediaOrigin) {
+    return new URL(`/storage${pathname}${search}`, backendProxyUrl());
+  }
+  return new URL(`${pathname}${search}`, base.endsWith("/") ? base : `${base}/`);
+}
+
+/** /media/family|site/* → CDN upstream (mirrors rostami.club nginx), or local Laravel disk. */
 async function proxyPublicMediaToCdn(
   request: NextRequest,
   pathname: string,
   search: string,
 ): Promise<NextResponse> {
+  // Same-origin /storage when MEDIA_ORIGIN unset/empty (local without CDN).
   if (!MEDIA_ORIGIN) {
-    return new NextResponse("CDN not configured", { status: 502 });
+    const backendOrigin = backendProxyUrl();
+    const target = new URL(`/storage${pathname}${search}`, backendOrigin);
+    const range = request.headers.get("range");
+    const ifRange = request.headers.get("if-range");
+    const headers = new Headers();
+    if (range) headers.set("Range", range);
+    if (ifRange) headers.set("If-Range", ifRange);
+    try {
+      const backendResponse = await fetch(target, {
+        method: request.method,
+        headers,
+        redirect: "manual",
+        signal: AbortSignal.timeout(30_000),
+      });
+      const out = new Headers(backendResponse.headers);
+      out.set("Content-Disposition", "inline");
+      if (!out.has("Accept-Ranges")) out.set("Accept-Ranges", "bytes");
+      return new NextResponse(backendResponse.body, {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        headers: out,
+      });
+    } catch {
+      return new NextResponse("Backend media unavailable", { status: 502 });
+    }
   }
 
-  const cdnTarget = new URL(`${pathname}${search}`, MEDIA_ORIGIN);
+  const cdnTarget = publicMediaFetchUrl(pathname, search, MEDIA_ORIGIN);
   const range = request.headers.get("range");
   const ifRange = request.headers.get("if-range");
 

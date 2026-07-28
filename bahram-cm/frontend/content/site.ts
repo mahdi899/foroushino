@@ -123,7 +123,7 @@ export const site = {
   },
 
   mainPaths: {
-    eyebrow: "دو مسیر اصلی",
+    eyebrow: "مسیرهای اصلی",
     title: "از اینجا شروع می‌کنی",
     lead: "انتخاب با توست؛ هر مسیر، تجربه‌ای متفاوت.",
     trust: [
@@ -143,6 +143,12 @@ export const site = {
         label: "سات",
         tagline: "انقلابی در فروش تلفنی",
         cta: "ثبت درخواست",
+      },
+      {
+        href: "/reference-channels/kanal-mrgf",
+        label: "کانال مرجع",
+        tagline: "درآمد مستقیم از فروش",
+        cta: "ورود",
       },
     ],
   },

@@ -1,30 +1,51 @@
 "use client";
 
-import { PencilLine, Phone } from "lucide-react";
+import { PencilLine, Phone, Radio } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { PathCard } from "@/components/sections/PathCard";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
-const pathMeta = [
+const pathMeta: Record<
+  string,
   {
+    icon: LucideIcon;
+    tone: "gold" | "teal";
+    image: string;
+    imageAlt: string;
+  }
+> = {
+  "/course/campaign-writing": {
     icon: PencilLine,
-    tone: "gold" as const,
-    label: "کمپین نویسی",
-    tagline: "درآمد ۲۱ تا ۸۰ میلیون",
+    tone: "gold",
     image: sitePhotos.mainPathCampaign,
     imageAlt: "کارت مسیر کمپین‌نویسی — کمپین نویسی با درآمد ۲۱ تا ۸۰ میلیون",
   },
-  {
+  "/saat#apply": {
     icon: Phone,
-    tone: "teal" as const,
-    label: "سات",
-    tagline: "انقلابی در فروش تلفنی",
+    tone: "teal",
     image: sitePhotos.mainPathSaat,
     imageAlt: "کارت مسیر سات — انقلابی در فروش تلفنی",
   },
-] as const;
+  "/saat": {
+    icon: Phone,
+    tone: "teal",
+    image: sitePhotos.mainPathSaat,
+    imageAlt: "کارت مسیر سات — انقلابی در فروش تلفنی",
+  },
+  "/reference-channels/kanal-mrgf": {
+    icon: Radio,
+    tone: "gold",
+    image: sitePhotos.landscapeSession,
+    imageAlt: "کارت کانال مرجع — درآمد مستقیم از فروش دوره‌ها و محصولات",
+  },
+};
+
+function isReferenceChannelHref(href: string): boolean {
+  return href.startsWith("/reference-channels/");
+}
 
 export function MainPaths({
   pathOverrides = {},
@@ -35,11 +56,17 @@ export function MainPaths({
 }) {
   const pathImages = pathOverrides.images ?? {};
 
-  const items = site.mainPaths.items.map((item, i) => ({
-    ...item,
-    ...pathMeta[i]!,
-    image: pathImages[item.href] ?? pathMeta[i]!.image,
-  }));
+  const items = site.mainPaths.items.map((item) => {
+    const meta = pathMeta[item.href] ?? pathMeta["/saat"]!;
+    return {
+      ...item,
+      ...meta,
+      image: pathImages[item.href] ?? meta.image,
+    };
+  });
+
+  const primary = items.filter((item) => !isReferenceChannelHref(item.href));
+  const secondary = items.filter((item) => isReferenceChannelHref(item.href));
 
   return (
     <section
@@ -66,14 +93,24 @@ export function MainPaths({
           </Reveal>
         </div>
 
-        <div className="relative mt-8 md:mt-10">
+        <div className="relative mt-8 flex flex-col gap-4 md:mt-10 md:gap-5 lg:gap-6">
           <div className="grid items-stretch gap-4 md:grid-cols-2 md:gap-5 lg:gap-6">
-            {items.map((path, i) => (
+            {primary.map((path, i) => (
               <Reveal key={path.href} delay={0.12 + i * 0.06} className="h-full">
                 <PathCard {...path} />
               </Reveal>
             ))}
           </div>
+
+          {secondary.length > 0 ? (
+            <div className="mx-auto w-full max-w-3xl">
+              {secondary.map((path, i) => (
+                <Reveal key={path.href} delay={0.12 + (primary.length + i) * 0.06} className="h-full">
+                  <PathCard {...path} />
+                </Reveal>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

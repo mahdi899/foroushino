@@ -43,6 +43,19 @@ class MediaHostSettingsService
 
     public function mediaUrl(): ?string
     {
+        // Local only: prefer .env so unreachable production CDN is not forced.
+        // Keep DB-first for production and PHPUnit (`testing`).
+        if (app()->environment('local')) {
+            $envRaw = config('bahram.media_url');
+            if (is_string($envRaw) && trim($envRaw) === '') {
+                return null;
+            }
+            $env = $this->normalizeUrl(is_string($envRaw) ? $envRaw : null);
+            if ($env !== null) {
+                return $env;
+            }
+        }
+
         $stored = $this->normalizeUrl($this->stored()['media_url'] ?? null);
         if ($stored !== null) {
             return $stored;
@@ -64,6 +77,18 @@ class MediaHostSettingsService
 
     public function familyMediaCdnUrl(): ?string
     {
+        if (app()->environment('local')) {
+            $envRaw = config('family.media.cdn_url');
+            if (is_string($envRaw) && trim($envRaw) === '') {
+                // Fall through to mediaUrl() / storage.
+            } else {
+                $env = $this->normalizeUrl(is_string($envRaw) ? $envRaw : null);
+                if ($env !== null && ! $this->isClubMediaProxyUrl($env)) {
+                    return $env;
+                }
+            }
+        }
+
         $stored = $this->normalizeUrl($this->stored()['family_media_cdn_url'] ?? null);
         if ($stored !== null && ! $this->isClubMediaProxyUrl($stored)) {
             return $stored;
