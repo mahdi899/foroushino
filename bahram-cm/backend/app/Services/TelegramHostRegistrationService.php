@@ -355,22 +355,34 @@ class TelegramHostRegistrationService
 
         $conversation->refresh();
 
-        $replies = $prefixReplies;
-        $replies[] = $this->reply($this->messages->get($bot, 'main_menu_hint'), [
-            'parse_mode' => 'HTML',
-            'show_main_menu' => true,
-        ]);
+        // One Telegram send instead of greeting + menu + complete (each is a
+        // full Bot-API RTT through the foreign proxy — felt like "staggered"
+        // replies even when Iran itself was fast).
+        $chunks = [];
+        foreach ($prefixReplies as $prefix) {
+            $text = trim((string) ($prefix['text'] ?? ''));
+            if ($text !== '') {
+                $chunks[] = $text;
+            }
+        }
+        $chunks[] = $this->messages->get($bot, 'main_menu_hint');
 
-        $body = $this->messages->get($bot, 'registration_complete');
+        $complete = $this->messages->get($bot, 'registration_complete');
         if ($summaryLines !== []) {
-            $body .= "\n\n".implode("\n", array_map(
+            $complete .= "\n\n".implode("\n", array_map(
                 static fn ($line) => TelegramHtml::escape((string) $line),
                 $summaryLines,
             ));
         }
-        $replies[] = $this->reply($body, ['parse_mode' => 'HTML']);
+        $chunks[] = $complete;
 
-        return $this->ok($replies, $conversation, $account, includeAccount: true);
+        return $this->ok([
+            $this->reply(implode("\n\n", $chunks), [
+                'parse_mode' => 'HTML',
+                'remove_keyboard' => true,
+                'show_main_menu' => true,
+            ]),
+        ], $conversation, $account, includeAccount: true);
     }
 
     /**

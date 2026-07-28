@@ -2,7 +2,7 @@
 
 import useSWRInfinite from 'swr/infinite';
 import { mutate as globalMutate } from 'swr';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   feedBrowserCacheKey,
   mergeBrandingFromFeed,
@@ -219,7 +219,13 @@ export function useFamilyFeed(
     if (typeof tipMeta.has_newer === 'boolean') hasNewerRef.current = tipMeta.has_newer;
   }, [data, viewerKey]);
 
-  const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];
+  // Must stay referentially stable across renders: FeedView derives `feedItems`,
+  // virtual row props and several DOM-measuring effects from this array, so a fresh
+  // array every render re-renders every mounted PostCard and forces layout reads.
+  const posts = useMemo(
+    () => (data ? data.flatMap((page) => page.data).reverse() : []),
+    [data],
+  );
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.meta.next_cursor);
   const hasNewer = Boolean(data?.[0]?.meta.has_newer ?? hasNewerRef.current);

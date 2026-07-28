@@ -24,6 +24,14 @@ if (! hash_equals((string) $config['webhook_secret'], $token)) {
     exit;
 }
 
+if (isset($_GET['reset_circuit'])) {
+    $breaker = new \TelegramHost\Support\IranCircuitBreaker();
+    $breaker->reset();
+    echo "Iran circuit breaker reset OK.\n";
+    echo "Done.\n";
+    exit;
+}
+
 function step(string $title, callable $fn): void
 {
     echo "== {$title} ==\n";
@@ -52,6 +60,17 @@ step('Config sanity', function () use ($config) {
     }
     $syncToken = \TelegramHost\Support\HostBridgeConfig::syncToken($config);
     echo 'host_sync_token: '.($syncToken !== '' ? 'present ('.strlen($syncToken).' chars)' : 'MISSING/EMPTY')."\n";
+    $relay = (int) ($config['iran_relay_per_webhook'] ?? 2);
+    echo 'iran_relay_per_webhook: '.$relay.($relay < 1 ? '  ← BAD (queue never drains; use >= 2)' : ($relay < 2 ? '  ← low, prefer 2+' : ' OK'))."\n";
+});
+
+step('Iran circuit breaker', function () {
+    $status = (new \TelegramHost\Support\IranCircuitBreaker())->status();
+    echo 'open: '.($status['open'] ? 'YES (Iran calls fail-fast)' : 'no')."\n";
+    echo 'consecutive_failures: '.$status['consecutive_failures']."\n";
+    echo 'last_failure_at: '.($status['last_failure_at'] > 0 ? date('c', $status['last_failure_at']) : 'never')."\n";
+    echo 'file: '.$status['file']."\n";
+    echo "Reset: diagnose.php?token=...&reset_circuit=1\n";
 });
 
 step('MySQL connection', function () use ($config) {

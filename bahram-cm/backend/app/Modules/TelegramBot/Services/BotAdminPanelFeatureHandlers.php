@@ -297,9 +297,14 @@ trait BotAdminPanelFeatureHandlers
         $total = count($rows);
 
         $text = "💬 پیام‌های قابل ویرایش بات\n"
-            ."صفحه ".($page + 1)." — یکی را برای ویرایش انتخاب کنید.";
+            ."صفحه ".($page + 1)." — یکی را برای ویرایش انتخاب کنید.\n\n"
+            ."برای کانال مرجع: متن «توضیح کانال مرجع» را ویرایش کنید یا عکس کاور را عوض کنید.";
 
         $keyboard = [];
+        $keyboard[] = [[
+            'text' => '🖼 کانال مرجع — عکس کاور',
+            'callback_data' => 'admin:msg:refcover',
+        ]];
         foreach ($slice as $row) {
             $mark = $row['is_custom'] ? '✏️' : '📄';
             $keyboard[] = [[
@@ -340,6 +345,12 @@ trait BotAdminPanelFeatureHandlers
 
         if ($action === 'p') {
             $this->openMessagesSection($bot, $account, $client, $chatId, $messageId, (int) ($parts[3] ?? 0));
+
+            return;
+        }
+
+        if ($action === 'refcover') {
+            $this->beginReferenceChannelCoverFlow($bot, $account, $client, $chatId);
 
             return;
         }
@@ -405,7 +416,35 @@ trait BotAdminPanelFeatureHandlers
                         ['text' => '✏️ ویرایش', 'callback_data' => 'admin:msg:e:'.$key],
                         ['text' => '↩️ پیش‌فرض', 'callback_data' => 'admin:msg:rst:'.$key],
                     ],
+                    ...($key === 'reference_channel_description'
+                        ? [[['text' => '🖼 ویرایش عکس کاور', 'callback_data' => 'admin:msg:refcover']]]
+                        : []),
                     [['text' => '◀️ لیست', 'callback_data' => 'admin:msg:p:0']],
+                ],
+            ],
+        );
+    }
+
+    private function beginReferenceChannelCoverFlow(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramBotClientInterface $client,
+        int $chatId,
+    ): void {
+        $conversation = $this->conversations->forAccount($account);
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'reference_channel_cover', 'draft' => []],
+        ]);
+
+        $client->sendMessage(
+            $chatId,
+            "🖼 عکس کاور کانال مرجع\n\n"
+            ."یک عکس بفرستید تا در ربات (دکمه کانال مرجع) و کاتالوگ هاست نمایش داده شود.\n"
+            .'برای انصراف «لغو» بفرستید.',
+            [
+                'reply_markup' => [
+                    'keyboard' => [[['text' => 'لغو']]],
+                    'resize_keyboard' => true,
                 ],
             ],
         );

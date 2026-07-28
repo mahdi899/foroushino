@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/cn';
 import { useFamilyFeedMediaInView } from '@/hooks/useFamilyFeedMediaInView';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
-import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
 import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
 import {
   resolveFamilyMediaDownloadUrl,
@@ -14,6 +14,12 @@ import {
 import { hasFamilyMediaBeenSeen, markFamilyMediaSeen } from '@/lib/family/seenFamilyMedia';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import type { FamilyMediaBlock } from '@/lib/family/types';
+
+/** Only needed once an image is tapped — keep its gesture/zoom code out of the feed bundle. */
+const ImageZoomLightbox = dynamic(
+  () => import('@/components/family/blocks/ImageZoomLightbox').then((m) => m.ImageZoomLightbox),
+  { ssr: false },
+);
 
 /** Always reserve height so the virtualizer never measures a collapsed 0-tall image row. */
 function aspectStyle(media: FamilyMediaBlock): { aspectRatio: string } {

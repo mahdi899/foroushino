@@ -96,7 +96,7 @@ try {
     $live = new ResilientLiveClient($liveClient, $api, $reporter);
     $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter);
 
-    $maxRelay = max(0, (int) ($config['iran_relay_per_webhook'] ?? 2));
+    $maxRelay = max(1, (int) ($config['iran_relay_per_webhook'] ?? 2));
     $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
     $membershipCache = new \TelegramHost\Services\MembershipCheckCache(
         $pdo,
@@ -113,12 +113,13 @@ try {
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview);
     $ticketSync = new \TelegramHost\Queue\PendingTicketSync($pdo);
-    $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync);
-    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $purchaseFlow, $siteBaseUrl);
+    $supportForward = new \TelegramHost\Queue\PendingSupportForward($pdo);
+    $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync, $supportForward);
+    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $siteBaseUrl);
     $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
     $membershipSync = new \TelegramHost\Queue\PendingMembershipSync($pdo);
-    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl);
+    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $membershipCache);
 
     $messageHandler = new MessageHandler(
         $api,
@@ -175,6 +176,12 @@ try {
     }
 
     // Account mirror is Iran→host push only — do not pull Iran on every webhook.
+    try {
+        (new \TelegramHost\Queue\BackgroundSupportForward($supportForward, $support))->drain();
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] support forward: '.$e->getMessage());
+    }
+
     try {
         $iranRelay->drain();
     } catch (\Throwable $e) {

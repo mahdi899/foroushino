@@ -89,7 +89,20 @@ class DatabaseBackupSettingsController extends Controller
 
         $request->validate([
             'confirm' => ['required', 'string', 'in:RESTORE'],
-            'file' => ['required', 'file', 'max:102400'],
+            'file' => [
+                'required',
+                'file',
+                'max:102400',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! $value instanceof \Illuminate\Http\UploadedFile) {
+                        return;
+                    }
+                    $name = strtolower($value->getClientOriginalName());
+                    if (! (str_ends_with($name, '.sql') || str_ends_with($name, '.sql.gz'))) {
+                        $fail('فقط فایل .sql یا .sql.gz مجاز است.');
+                    }
+                },
+            ],
         ]);
 
         try {

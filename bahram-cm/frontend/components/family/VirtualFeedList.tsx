@@ -17,6 +17,8 @@ export type VirtualFeedListHandle = {
   measure: () => void;
   /** Remeasure currently mounted rows without wiping the size cache. */
   remasureVisible: () => void;
+  /** Cheap pass over rows still sitting on an estimate — safe during scroll. */
+  measureNewRows: () => void;
 };
 
 type KeyedItem = { key: string };
@@ -76,6 +78,25 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
         : undefined,
   });
 
+  /**
+   * `measureElement` reads offsetHeight and may immediately write scrollTop, so a
+   * full sweep is an interleaved read/write storm and every non-zero delta above the
+   * viewport becomes another scroll adjustment. Rows already in the size cache are
+   * kept by their own ResizeObserver (registered via the `measureElement` ref), so
+   * only rows still sitting on an estimate need an explicit pass.
+   */
+  const measureUnmeasuredRows = useCallback(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>('[data-index]').forEach((node) => {
+      const index = Number(node.dataset.index);
+      if (!Number.isInteger(index)) return;
+      const key = itemsRef.current[index]?.key;
+      if (key != null && virtualizer.itemSizeCache.has(key)) return;
+      virtualizer.measureElement(node);
+    });
+  }, [virtualizer]);
+
   const remasureVisible = useCallback(() => {
     const root = containerRef.current;
     if (!root) return;
@@ -97,19 +118,21 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
         virtualizer.measure();
       },
       remasureVisible,
+      measureNewRows: measureUnmeasuredRows,
     }),
-    [virtualizer, remasureVisible],
+    [virtualizer, remasureVisible, measureUnmeasuredRows],
   );
 
   const virtualItems = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
 
-  // First paint / remount: remasure mounted rows before the user sees estimate gaps.
+  // Newly mounted rows only — closes estimate gaps without touching settled rows.
   useLayoutEffect(() => {
-    remasureVisible();
-  }, [count, remasureVisible]);
+    measureUnmeasuredRows();
+  }, [count, measureUnmeasuredRows]);
 
-  // After fonts settle (common remount flash) remasure without clearing cache.
+  // Fonts change every row's text height, so this one full sweep is worth it — but
+  // only once per mount, never per count change.
   useEffect(() => {
     let cancelled = false;
     const run = () => {
@@ -118,12 +141,10 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
     if (typeof document !== 'undefined' && document.fonts?.ready) {
       void document.fonts.ready.then(run);
     }
-    const t1 = window.setTimeout(run, 180);
     return () => {
       cancelled = true;
-      window.clearTimeout(t1);
     };
-  }, [count, remasureVisible]);
+  }, [remasureVisible]);
 
   // Keep measured sizes across prepend/append. Wiping the cache with measure()
   // forced every row back to rough estimates and created empty gaps + scroll jumps
@@ -133,7 +154,6 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
     const first = items[0]?.key ?? '';
     const last = items[count - 1]?.key ?? '';
     const prev = edgeKeysRef.current;
-    const prepended = count > prev.count && first !== prev.first;
     const reordered =
       count === prev.count && count > 0 && (first !== prev.first || last !== prev.last);
     edgeKeysRef.current = { first, last, count };
@@ -142,15 +162,9 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
       // Keys moved without a net insert — safest to rebuild.
       virtualizer.measure();
       requestAnimationFrame(() => remasureVisible());
-      return;
     }
-
-    if (prepended || (count > prev.count && first === prev.first)) {
-      requestAnimationFrame(() => {
-        remasureVisible();
-        requestAnimationFrame(() => remasureVisible());
-      });
-    }
+    // Plain prepend/append needs nothing: `anchorTo: 'end'` re-anchors the viewport
+    // and each row's ResizeObserver reports its real size on mount.
   }, [count, items, remasureVisible, virtualizer]);
 
   return (
