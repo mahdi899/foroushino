@@ -6101,3 +6101,28 @@ html[data-theme='dark'] .family-app .family-install-hero__card,
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Lite tier — budget devices (see FamilyPerfTierBoot)
+   Glass on chrome (header/compose/sheets) stays: those are a handful of fixed
+   elements. Glass on bubbles does not: every feed row becomes its own backdrop
+   root, so the blur is re-sampled per row on every frame of a scroll.
+   ========================================================================== */
+/* Specificity must clear the theme blocks (`.family-app[data-family-theme='dark']`). */
+.family-app[data-family-perf='lite'] {
+  --family-bubble-glass: none;
+}
+
+/* Blur was carrying the translucency — flatten the bubble over the canvas instead,
+   otherwise rows behind read through the semi-transparent fill. */
+[data-family-perf='lite'] .family-post-bubble {
+  background:
+    linear-gradient(var(--family-bubble-channel-bg), var(--family-bubble-channel-bg)),
+    var(--family-bg);
+}
+
+[data-family-perf='lite'] .family-comment-bubble {
+  background:
+    linear-gradient(var(--family-bubble-incoming), var(--family-bubble-incoming)),
+    var(--family-bg);
+}

@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext';
 import { FamilyActionCelebrateProvider } from '@/lib/family/FamilyActionCelebrateContext';
 import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
+import { FamilyPerfTierBoot } from '@/app/family/FamilyPerfTierBoot';
 import { FamilyMediaPreconnect } from '@/components/family/FamilyMediaPreconnect';
 import { FamilyServiceWorkerRegistrar } from '@/components/family/FamilyServiceWorkerRegistrar';
 import { FamilyReactScan } from '@/components/family/FamilyReactScan';
@@ -62,6 +63,7 @@ export default async function FamilyLayout({ children }: { children: React.React
     >
       <FamilyMediaPreconnect />
       <FamilyThemeBoot />
+      <FamilyPerfTierBoot />
       <FamilyKeyboardViewportBoot />
       <FamilyServiceWorkerRegistrar />
       <FamilyReactScan />

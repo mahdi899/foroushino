@@ -34,6 +34,7 @@ function ReactionButton({
   compact = false,
   menuItem = false,
   pop = false,
+  animated = false,
   buttonRef,
   onClick,
 }: {
@@ -46,6 +47,12 @@ function ReactionButton({
   menuItem?: boolean;
   /** Brief, simple scale-in when this chip just appeared in the bar — no flight/impact. */
   pop?: boolean;
+  /**
+   * Load the Lottie icon. Off for feed chips: every mounted chip is a separate
+   * lottie-web SVG animation rebuilt on each virtual-row remount, which dominated
+   * scroll cost on low-end phones. Only the picker and a just-tapped chip animate.
+   */
+  animated?: boolean;
   buttonRef?: (el: HTMLButtonElement | null) => void;
   onClick: (source?: HTMLButtonElement) => void;
 }) {
@@ -71,7 +78,11 @@ function ReactionButton({
           disabled && 'pointer-events-none opacity-45',
         )}
       >
-        <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="inline" />
+        <FamilyReactionLottie
+          type={type}
+          size={compact ? 24 : 18}
+          mode={animated ? 'inline' : 'static'}
+        />
         {count > 0 && (
           <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
             {count.toLocaleString('en-US')}
@@ -523,6 +534,7 @@ export const ReactionBar = forwardRef<
               disabled={isReactionBusy()}
               compact
               menuItem
+              animated
               onClick={() => handlePick(r.type)}
             />
           ))}
@@ -543,6 +555,7 @@ export const ReactionBar = forwardRef<
             active={active === r.type}
             disabled={isReactionBusy()}
             pop={popType === r.type}
+            animated={popType === r.type}
             buttonRef={(el) => {
               reactionBtnRefs.current[r.type] = el;
             }}

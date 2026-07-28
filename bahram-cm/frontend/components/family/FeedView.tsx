@@ -27,14 +27,11 @@ import { FamilyInstallPromoInline, FamilyInstallTopBanner } from '@/components/f
 import { cn } from '@/lib/cn';
 import { useFamilyPwaInstall } from '@/lib/family/pwa-install';
 import {
-  captureFeedScrollRestore,
   getFeedDistanceFromBottom,
   getLenisDistanceFromBottom,
   pinFeedElementBottomUntilSettled,
-  restoreFeedScrollPosition,
   scrollFeedToElement,
   scrollFeedToLatest,
-  type FeedScrollRestoreSnapshot,
 } from '@/lib/family/feedScroll';
 import {
   countUnreadPosts,
@@ -63,7 +60,11 @@ import {
 import { isRealtimeConfigured } from '@/lib/realtime/config';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
-import { estimateFeedItemSize, type FeedListItem } from '@/lib/family/feedItemEstimate';
+import {
+  calibrateFeedEstimateMetrics,
+  estimateFeedItemSize,
+  type FeedListItem,
+} from '@/lib/family/feedItemEstimate';
 import {
   FAMILY_FEED_HISTORY_PREFETCH_COOLDOWN_MS,
   FAMILY_FEED_HISTORY_PREFETCH_SCROLL_PX,
@@ -81,6 +82,9 @@ import {
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
 const FAMILY_FEED_USER_SCROLL_GUARD_MS = 600;
+
+/** Shared identity so non-guest feeds never invalidate memoized PostCards. */
+const NO_BLURRED_POST_IDS: ReadonlySet<number> = new Set<number>();
 
 const FamilyNotificationsPanel = dynamic(
   () =>
@@ -265,10 +269,6 @@ export function FeedView({
   const pinNavigateRef = useRef(false);
   /** True after a far "jump to post" replaced the loaded window and the tip is no longer loaded. */
   const isJumpedAwayRef = useRef(false);
-  const scrollRestoreRef = useRef<FeedScrollRestoreSnapshot | null>(null);
-  /** Keep re-pinning the same post briefly after history prepend (images/layout settle). */
-  const historyPinRef = useRef<FeedScrollRestoreSnapshot | null>(null);
-  const historyPinClearTimerRef = useRef<number | null>(null);
   const restoringFromCommentsRef = useRef(false);
   /** User was at the feed tip when comments/notifications opened — restore tip on close. */
   const tipBeforeOverlayRef = useRef(false);
@@ -320,7 +320,7 @@ export function FeedView({
     [posts, isPreview, unreadSplitId, unreadDividerCount, includeInstallPromos],
   );
   const guestBlurredPostIds = useMemo(() => {
-    if (previewMode !== 'guest') return new Set<number>();
+    if (previewMode !== 'guest') return NO_BLURRED_POST_IDS;
     const ids = feedItems
       .filter((item): item is Extract<FeedListItem, { kind: 'post' }> => item.kind === 'post')
       .slice(0, GUEST_BLURRED_POST_COUNT)
@@ -615,49 +615,24 @@ export function FeedView({
     });
   }, [onCloseComments]);
 
-  const clearHistoryPin = useCallback(() => {
-    historyPinRef.current = null;
-    if (historyPinClearTimerRef.current != null) {
-      window.clearTimeout(historyPinClearTimerRef.current);
-      historyPinClearTimerRef.current = null;
-    }
-  }, []);
-
   const markFeedUserScrollIntent = useCallback((movingAwayFromTip = false) => {
     userScrollQuietUntilRef.current = performance.now() + FAMILY_FEED_USER_SCROLL_GUARD_MS;
     // Cancel delayed passes from an earlier automatic scroll. A later explicit FAB click
     // starts a new generation, so manual "jump to latest" remains reliable.
     scrollLatestGenRef.current += 1;
-    // Release history pin only when the user keeps scrolling after prepend settled.
-    // Clearing on every touchmove broke restore: the same gesture that triggered
-    // loadMore also fired scroll events and dropped the pin immediately.
-    if (
-      movingAwayFromTip &&
-      historyPinRef.current &&
-      !scrollRestoreRef.current &&
-      !loadingHistoryRef.current
-    ) {
-      clearHistoryPin();
-    }
     if (!movingAwayFromTip) return;
     tipSettleUntilRef.current = 0;
     anchoredToBottomRef.current = false;
     jumpToLatestInFlightRef.current = false;
-  }, [clearHistoryPin]);
+  }, []);
 
   const stickToBottomIfAnchored = useCallback(() => {
     const { root, lenis } = getScrollCtx();
     if (!root || pinNavigateRef.current || restoringFromCommentsRef.current) return;
     if (performance.now() < userScrollQuietUntilRef.current) return;
     // Never jump to tip while older pages are being prepended / unread boot.
-    if (loadingHistoryRef.current || scrollRestoreRef.current || unreadBootLockRef.current) return;
+    if (loadingHistoryRef.current || unreadBootLockRef.current) return;
     if (performance.now() < catchUpQuietUntilRef.current) return;
-
-    // After prepend, keep the captured post glued while media/layout settle.
-    if (historyPinRef.current) {
-      restoreFeedScrollPosition(historyPinRef.current, { root, lenis });
-      return;
-    }
 
     // Active unread session: only the jump FAB / user scroll may reach the tip.
     if (unreadSplitRef.current != null && !anchoredToBottomRef.current) return;
@@ -732,14 +707,14 @@ export function FeedView({
     }
     // History load is safe only after the boot scroll target is applied.
     historyReadyRef.current = true;
+    // Bubble geometry is only readable once real rows are mounted; estimates built from
+    // the wrong width are what turn into large measurement deltas mid-scroll later.
+    calibrateFeedEstimateMetrics();
     // Remeasure before reveal so remount doesn't flash estimate/overlap gaps.
     virtualListRef.current?.remasureVisible();
     requestAnimationFrame(() => {
       virtualListRef.current?.remasureVisible();
-      requestAnimationFrame(() => {
-        virtualListRef.current?.remasureVisible();
-        setFeedReady(true);
-      });
+      setFeedReady(true);
     });
   }, []);
 
@@ -974,7 +949,7 @@ export function FeedView({
     if (pinNavigateRef.current || commentsOpenRef.current || notificationsOpenRef.current) return;
     if (!hasMoreRef.current || isValidatingRef.current || loadingHistoryRef.current) return;
 
-    const { root, lenis } = getScrollCtx();
+    const { root } = getScrollCtx();
     if (!root || root.scrollTop > FAMILY_FEED_HISTORY_PREFETCH_SCROLL_PX) return;
 
     const now = Date.now();
@@ -982,7 +957,6 @@ export function FeedView({
     lastHistoryPrefetchAtRef.current = now;
 
     loadingHistoryRef.current = true;
-    scrollRestoreRef.current = captureFeedScrollRestore(root, lenis);
     loadMore();
     if (hasNewer) isJumpedAwayRef.current = true;
   }, [getScrollCtx, hasNewer, isPreview, loadMore]);
@@ -1070,7 +1044,7 @@ export function FeedView({
       return;
     }
     // Don't re-measure anchor while history prepend is in flight (would false-trigger tip stick).
-    if (loadingHistoryRef.current || scrollRestoreRef.current) return;
+    if (loadingHistoryRef.current) return;
     updateAnchoredToBottom();
   }, [posts.length, commentsTarget, notificationsOpen, setJumpFabVisible, updateAnchoredToBottom]);
 
@@ -1157,7 +1131,6 @@ export function FeedView({
       let attempts = 0;
       while (attempts < NEARBY_ATTEMPTS && hasMoreRef.current) {
         loadingHistoryRef.current = true;
-        scrollRestoreRef.current = null;
         loadMore();
         attempts += 1;
         await waitForValidateSettle();
@@ -1203,52 +1176,21 @@ export function FeedView({
   }, [onRegisterScrollToPost, scrollToPost]);
 
   useEffect(() => {
-    // Don't clear while scroll restore still owns the history-load cycle.
-    if (!isValidating && !scrollRestoreRef.current) {
+    if (!isValidating) {
       loadingHistoryRef.current = false;
     }
   }, [isValidating]);
 
+  /**
+   * Older pages arrive as a prepend. The virtualizer's `anchorTo: 'end'` anchor already
+   * re-pins the row the reader is on, and every new row reports its real height through
+   * its own ResizeObserver. A second hand-rolled restore used to correct the same
+   * prepend a second time and kept writing scrollTop for 400ms into an active fling —
+   * that was the scroll jump. All that is needed here is closing estimate gaps.
+   */
   useLayoutEffect(() => {
-    const snapshot = scrollRestoreRef.current;
-    if (!snapshot) return;
-
-    const apply = () => {
-      const ctx = getScrollCtx();
-      if (!ctx.root) return;
-      restoreFeedScrollPosition(snapshot, { root: ctx.root, lenis: ctx.lenis });
-    };
-
-    // Remeasure mounted rows without wiping the size cache — measure() was
-    // resetting every row to estimates and creating large empty gaps on mobile.
-    apply();
-    virtualListRef.current?.remasureVisible();
-    apply();
-
-    requestAnimationFrame(() => {
-      virtualListRef.current?.remasureVisible();
-      apply();
-      scrollRestoreRef.current = null;
-      loadingHistoryRef.current = false;
-      historyPinRef.current = snapshot;
-      if (historyPinClearTimerRef.current != null) {
-        window.clearTimeout(historyPinClearTimerRef.current);
-      }
-      // One short follow-up while media settles — long multi-timeout pins fought fling.
-      const followUp = window.setTimeout(() => {
-        if (historyPinRef.current !== snapshot) return;
-        virtualListRef.current?.remasureVisible();
-        apply();
-      }, 160);
-      historyPinClearTimerRef.current = window.setTimeout(() => {
-        window.clearTimeout(followUp);
-        if (historyPinRef.current === snapshot) {
-          historyPinRef.current = null;
-        }
-        historyPinClearTimerRef.current = null;
-      }, 400);
-    });
-  }, [getScrollCtx, posts.length]);
+    virtualListRef.current?.measureNewRows();
+  }, [posts.length]);
 
   // Keep catching up to bottom after media/layout settles (caught-up sessions only).
   // Do NOT depend on unreadSplitId — clearing the split must not re-trigger tip scroll.
@@ -1256,16 +1198,16 @@ export function FeedView({
     if (!feedReady || isPreview || !initialScrollDoneRef.current) return;
     if (unreadSplitRef.current != null || unreadBootLockRef.current) return;
     if (!anchoredToBottomRef.current) return;
-    if (loadingHistoryRef.current || scrollRestoreRef.current || historyPinRef.current) return;
+    if (loadingHistoryRef.current) return;
     const t1 = window.setTimeout(() => {
       if (unreadBootLockRef.current || unreadSplitRef.current != null) return;
-      if (loadingHistoryRef.current || scrollRestoreRef.current || historyPinRef.current) return;
+      if (loadingHistoryRef.current) return;
       if (performance.now() < userScrollQuietUntilRef.current) return;
       if (anchoredToBottomRef.current) scrollToLatestReliable('auto');
     }, 200);
     const t2 = window.setTimeout(() => {
       if (unreadBootLockRef.current || unreadSplitRef.current != null) return;
-      if (loadingHistoryRef.current || scrollRestoreRef.current || historyPinRef.current) return;
+      if (loadingHistoryRef.current) return;
       if (performance.now() < userScrollQuietUntilRef.current) return;
       if (anchoredToBottomRef.current) markCaughtUpToLatest();
     }, 500);
@@ -1563,14 +1505,29 @@ export function FeedView({
     );
   }, [posts]);
 
-  // After reveal, remasure again once layout/fonts are live (leave→return remount path).
+  // After reveal, remasure once more when layout/fonts are live (leave→return remount).
   useLayoutEffect(() => {
     if (!feedReady) return;
-    virtualListRef.current?.remasureVisible();
-    const timers = [120, 320].map((ms) =>
-      window.setTimeout(() => virtualListRef.current?.remasureVisible(), ms),
-    );
-    return () => timers.forEach((id) => window.clearTimeout(id));
+    const timer = window.setTimeout(() => {
+      if (calibrateFeedEstimateMetrics()) virtualListRef.current?.measureNewRows();
+      virtualListRef.current?.remasureVisible();
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [feedReady]);
+
+  // Rotation / keyboard resize changes bubble width, which invalidates every estimate.
+  useEffect(() => {
+    if (!feedReady) return;
+    const onResize = () => {
+      if (!calibrateFeedEstimateMetrics()) return;
+      virtualListRef.current?.measureNewRows();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
   }, [feedReady]);
 
   // Keep jump FAB badge aligned after feed mutates (realtime) — count what's still below.
@@ -1640,13 +1597,7 @@ export function FeedView({
         }
         if (!hasMoreRef.current) return;
 
-        const ctx = getScrollCtx();
-        const scrollRoot = ctx.root;
-        if (!scrollRoot) return;
-
         loadingHistoryRef.current = true;
-        // Pin the first visible post — height/scrollTop math is unreliable with Lenis.
-        scrollRestoreRef.current = captureFeedScrollRestore(scrollRoot, ctx.lenis);
         loadMore();
         // If tip page was pruned by MAX_FEED_PAGES, treat as jumped-away.
         if (hasNewer) isJumpedAwayRef.current = true;
@@ -1669,10 +1620,7 @@ export function FeedView({
       (entries) => {
         if (!entries[0]?.isIntersecting || loadingNewerRef.current || pinNavigateRef.current) return;
         loadingNewerRef.current = true;
-        const ctx = getScrollCtx();
-        if (ctx.root) {
-          scrollRestoreRef.current = captureFeedScrollRestore(ctx.root, ctx.lenis);
-        }
+        // Newer posts append at the chronological end — nothing above the viewport moves.
         void loadNewer()
           .then((didLoad) => {
             if (!hasNewer && !didLoad) {
@@ -1690,13 +1638,10 @@ export function FeedView({
     return () => observer.disconnect();
   }, [commentsTarget, getScrollCtx, hasNewer, loadNewer, notificationsOpen, posts.length]);
 
-  useEffect(() => {
-    return () => {
-      if (historyPinClearTimerRef.current != null) {
-        window.clearTimeout(historyPinClearTimerRef.current);
-      }
-    };
-  }, []);
+  /** Stable identity — an inline arrow here defeated PostCard's memo on every render. */
+  const unlockGuestPost = useCallback(() => {
+    handleGuestGate('morePosts');
+  }, [handleGuestGate]);
 
   const renderFeedItem = useCallback(
     (item: FeedListItem) => {
@@ -1730,14 +1675,14 @@ export function FeedView({
           animateEnter={animateEnter}
           onOpenComments={isPreview ? undefined : openPostComments}
           guestBlurred={guestBlurredPostIds.has(item.post.id)}
-          onGuestUnlock={() => handleGuestGate('morePosts')}
+          onGuestUnlock={unlockGuestPost}
         />
       );
     },
     [
       feedReady,
       guestBlurredPostIds,
-      handleGuestGate,
+      unlockGuestPost,
       isPreview,
       isStaff,
       openPostComments,
@@ -1898,7 +1843,7 @@ export function FeedView({
                     className="family-feed-list__virtual"
                     getScrollElement={() => feedScrollRef.current?.getScrollElement() ?? null}
                     estimateSize={estimateFeedItemSize}
-                    renderItem={(item) => renderFeedItem(item)}
+                    renderItem={renderFeedItem}
                   />
                   {!isPreview && (hasNewer || isJumpedAwayRef.current) ? (
                     <div ref={newerSentinelRef} className="h-8 shrink-0" aria-hidden />
