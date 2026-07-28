@@ -15,6 +15,7 @@ import { MediaPreconnect } from "@/components/performance/MediaPreconnect";
 import { PerformanceProvider } from "@/components/performance/PerformanceProvider";
 import { getPublicChatbotConfig } from "@/lib/chatbot/public";
 import { EMPTY_CHATBOT_PUBLIC } from "@/lib/chatbot/types";
+import { isStaticContentPath } from "@/lib/cache/staticScope";
 import { getPublicPerfConfig } from "@/lib/cache/public";
 import { DEFAULT_PUBLIC_PERF } from "@/lib/cache/types";
 import { getActiveSeminarPromo } from "@/lib/services/seminarPromo";
@@ -22,6 +23,7 @@ import { getStudentDisplayName } from "@/lib/student/displayName";
 import { buildStudentFormPrefill } from "@/lib/student/formPrefill";
 import { getCurrentStudent } from "@/lib/student/session";
 import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
+import { StudentSessionBootstrap } from "@/components/student-panel/auth/StudentSessionBootstrap";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
 import { SiteShellDeferred } from "@/components/layout/SiteShellDeferred";
 import { cookies } from "next/headers";
@@ -66,6 +68,10 @@ export default async function RootLayout({
     pathname.startsWith("/family") ||
     onFamilyHost;
   const hidePromoRoute = pathname.startsWith("/seminars/") || pathname.startsWith("/purchase/");
+  // Marketing ISR paths must not call cookies()/getCurrentStudent() or the
+  // whole tree becomes dynamic and Full Route Cache / soft-nav RSC stay cold.
+  const useStaticMarketingShell =
+    !isBareShellRoute && isStaticContentPath(pathname || "/");
 
   const [chatbotConfig, perfConfig, seminarPromo] = await Promise.all([
     isBareShellRoute ? Promise.resolve(EMPTY_CHATBOT_PUBLIC) : getPublicChatbotConfig(),
@@ -74,7 +80,9 @@ export default async function RootLayout({
   ]);
   const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
   const studentUser =
-    !isAdminRoute && !onFamilyHost ? await getCurrentStudent() : null;
+    !isAdminRoute && !onFamilyHost && !useStaticMarketingShell
+      ? await getCurrentStudent()
+      : null;
   const studentLoggedIn = Boolean(studentUser);
   const studentDisplayName = studentUser ? getStudentDisplayName(studentUser) : null;
   const studentPrefill = studentUser ? buildStudentFormPrefill(studentUser) : null;
@@ -83,9 +91,10 @@ export default async function RootLayout({
     unstable_noStore();
   }
 
-  const initialTheme =
-    parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
-  // When no cookie, siteThemeBootScript applies OS preference before paint.
+  const initialTheme = useStaticMarketingShell
+    ? DEFAULT_SITE_THEME
+    : parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
+  // When no cookie / static shell, siteThemeBootScript applies OS preference before paint.
 
   return (
     <html
@@ -126,6 +135,7 @@ export default async function RootLayout({
           initialDisplayName={studentDisplayName}
           initialPrefill={studentPrefill}
         >
+          <StudentSessionBootstrap enabled={useStaticMarketingShell} />
           <PerformanceProvider config={perfConfig}>
             <AdminAwareChrome promo={seminarPromo} bareShell={isBareShellRoute}>
               {children}

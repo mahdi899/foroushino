@@ -11,20 +11,41 @@ type Props = {
   fallback: ProductPurchaseState;
   className?: string;
   cardClassName?: string;
+  /** When set, overrides the default discount hint under the price. */
+  discountHint?: string | null;
+  ribbonLabel?: string | null;
 };
 
-export function HydratedProductPriceCard({ fallback, className, cardClassName }: Props) {
+export function HydratedProductPriceCard({
+  fallback,
+  className,
+  cardClassName,
+  discountHint,
+  ribbonLabel,
+}: Props) {
   const purchase = useProductPurchaseState(fallback);
   const originalPriceLabel =
     purchase.hasDiscount ? `${formatFa(purchase.listPrice)} تومان` : null;
+  const hint =
+    discountHint !== undefined
+      ? discountHint
+      : purchase.seminarOff
+        ? 'ویژه شرکت‌کنندگان سمینار'
+        : purchase.hasDiscount
+          ? null
+          : null;
+  const ribbon =
+    ribbonLabel !== undefined
+      ? ribbonLabel
+      : purchase.discountPercent
+        ? `${toPersianDigits(String(purchase.discountPercent))}٪ تخفیف ویژه`
+        : null;
 
   return (
     <div className={cn(className)}>
       <div className={cn('campaign-course-intro-price', cardClassName)}>
-        {purchase.discountPercent ? (
-          <div className="campaign-course-intro-price-ribbon">
-            {toPersianDigits(String(purchase.discountPercent))}٪ تخفیف ویژه
-          </div>
+        {ribbon ? (
+          <div className="campaign-course-intro-price-ribbon">{ribbon}</div>
         ) : null}
 
         <div className="campaign-course-intro-price-body">
@@ -38,9 +59,7 @@ export function HydratedProductPriceCard({ fallback, className, cardClassName }:
             </span>
             <span className="campaign-course-intro-now__unit">تومان</span>
           </p>
-          {purchase.hasDiscount ? (
-            <p className="mt-2 text-caption text-emerald">ویژه شرکت‌کنندگان سمینار</p>
-          ) : null}
+          {hint ? <p className="mt-2 text-caption text-emerald">{hint}</p> : null}
         </div>
       </div>
     </div>

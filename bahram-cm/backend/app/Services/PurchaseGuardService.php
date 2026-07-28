@@ -15,6 +15,7 @@ use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\User;
 use App\Support\Mobile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 class PurchaseGuardService
@@ -23,28 +24,36 @@ class PurchaseGuardService
     {
         $phone = Mobile::normalize($rawPhone);
         $userId = $user && ! $user->is_admin ? $user->id : null;
+        $memoKey = sprintf(
+            'purchase_guard:owns:%d:%s:%s',
+            $product->id,
+            $userId ?? 0,
+            $phone ? hash('xxh3', $phone) : '0',
+        );
 
-        if ($this->hasPaidOrder($product->id, $userId, $phone)) {
-            return true;
-        }
+        return (bool) Cache::remember($memoKey, 45, function () use ($user, $phone, $product, $userId) {
+            if ($this->hasPaidOrder($product->id, $userId, $phone)) {
+                return true;
+            }
 
-        if ($this->hasMiniCourseEnrollment($product, $userId)) {
-            return true;
-        }
+            if ($this->hasMiniCourseEnrollment($product, $userId)) {
+                return true;
+            }
 
-        if ($userId && CourseAccess::query()
-            ->where('user_id', $userId)
-            ->where('product_id', $product->id)
-            ->where('status', CourseAccessStatus::Active)
-            ->exists()) {
-            return true;
-        }
+            if ($userId && CourseAccess::query()
+                ->where('user_id', $userId)
+                ->where('product_id', $product->id)
+                ->where('status', CourseAccessStatus::Active)
+                ->exists()) {
+                return true;
+            }
 
-        if ($this->hasReferenceChannelEntitlement($product, $userId, $phone)) {
-            return true;
-        }
+            if ($this->hasReferenceChannelEntitlement($product, $userId, $phone)) {
+                return true;
+            }
 
-        return $this->isRegisteredSeminarAttendee($product, $userId, $phone);
+            return $this->isRegisteredSeminarAttendee($product, $userId, $phone);
+        });
     }
 
     private function hasReferenceChannelEntitlement(Product $product, ?int $userId, ?string $phone): bool

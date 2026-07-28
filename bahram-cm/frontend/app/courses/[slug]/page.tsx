@@ -27,11 +27,13 @@ import { getCourseBySlug, getCourses } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { courseCoverPhotos } from "@/lib/site-photo-paths";
-import { buildCommentAuthorFromStudent } from "@/lib/contentComments/author";
 import { getContentCommentsFromApi } from "@/lib/services/contentComments.server";
-import { getCurrentStudent } from "@/lib/student/session";
+import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 const covers = courseCoverPhotos;
+
+// Literal required for Next segment config static analysis (Next 16).
+export const revalidate = 600;
 
 export async function generateStaticParams() {
   const items = await getCourses();
@@ -59,11 +61,11 @@ export default async function CourseDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await ensureStaticPageCache();
   const { slug } = await params;
-  const [course, all, student, commentsResult] = await Promise.all([
+  const [course, all, commentsResult] = await Promise.all([
     getCourseBySlug(slug),
     getCourses(),
-    getCurrentStudent(),
     getContentCommentsFromApi('course', slug),
   ]);
   if (!course) notFound();
@@ -369,7 +371,6 @@ export default async function CourseDetailPage({
         type="course"
         slug={course.slug}
         initialComments={comments}
-        initialAuthor={buildCommentAuthorFromStudent(student)}
       />
     </main>
   );

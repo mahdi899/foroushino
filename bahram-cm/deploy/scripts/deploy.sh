@@ -46,6 +46,26 @@ if [[ -f "$APP_ROOT/deploy/php-fpm/99-bahram-opcache.ini" ]]; then
   cp "$APP_ROOT/deploy/php-fpm/99-bahram-opcache.ini" /etc/php/8.4/fpm/conf.d/99-bahram-opcache.ini
 fi
 
+if [[ -f "$APP_ROOT/deploy/php-fpm/www.conf.snippet" ]]; then
+  echo "==> PHP-FPM pool tuning"
+  WWW_CONF=/etc/php/8.4/fpm/pool.d/www.conf
+  if [[ -f "$WWW_CONF" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ "$line" =~ ^[[:space:]]*; ]] && continue
+      [[ "$line" =~ ^[[:space:]]*# ]] && continue
+      [[ -z "${line// }" ]] && continue
+      key="${line%%=*}"; key="$(echo "$key" | xargs)"
+      val="${line#*=}"; val="$(echo "$val" | xargs)"
+      [[ -z "$key" || -z "$val" ]] && continue
+      if grep -qE "^;?[[:space:]]*${key}[[:space:]]*=" "$WWW_CONF"; then
+        sed -i -E "s|^;?[[:space:]]*${key}[[:space:]]*=.*|${key} = ${val}|" "$WWW_CONF"
+      else
+        printf '\n%s = %s\n' "$key" "$val" >> "$WWW_CONF"
+      fi
+    done < <(grep -E '^(pm\.|request_slowlog_timeout|slowlog)' "$APP_ROOT/deploy/php-fpm/www.conf.snippet" || true)
+  fi
+fi
+
 if [[ -f "$APP_ROOT/deploy/scripts/tune-mysql.sh" ]]; then
   echo "==> MySQL/Redis high-traffic tuning"
   # Idempotent; restarts MySQL only when applying (first run / RAM change).

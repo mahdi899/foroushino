@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Cache;
 /** Laravel object cache that respects admin panel object_cache + per-content TTL. */
 class RuntimeCache
 {
+    /** @var array<string, mixed>|null */
+    private static ?array $settingsMemo = null;
+
     /** @var array<string, string> */
     private const CONTENT_TTL_KEYS = [
         'articles' => 'ttl_articles',
@@ -25,7 +28,7 @@ class RuntimeCache
      */
     public static function remember(string $key, int $defaultTtl, Closure $callback, ?string $contentGroup = null): mixed
     {
-        $settings = app(CacheService::class)->getSettings();
+        $settings = self::settings();
         if (! ($settings['object_cache'] ?? true)) {
             return $callback();
         }
@@ -38,6 +41,18 @@ class RuntimeCache
     public static function forget(string $key): void
     {
         Cache::forget($key);
+    }
+
+    /** Drop per-request settings memo (call after cache settings update). */
+    public static function flushSettingsMemo(): void
+    {
+        self::$settingsMemo = null;
+    }
+
+    /** @return array<string, mixed> */
+    private static function settings(): array
+    {
+        return self::$settingsMemo ??= app(CacheService::class)->getSettings();
     }
 
     /** @param  array<string, mixed>  $settings */

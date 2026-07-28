@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { SiteImage } from '@/components/ui/SiteImage';
 import { cn } from '@/lib/cn';
-import type { PublicSeminarSliderItem } from '@/lib/services/seminars';
+import type { PublicSeminarSliderItem } from '@/lib/services/seminars.types';
 
 const AUTO_MS = 4200;
 

@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatFa } from "@/lib/persian";
 import { cn } from "@/lib/cn";
+import type { ProductDetail } from "@/lib/services/products";
 
 type SeminarRegisterCtaProps = {
   productSlug: string | null;
@@ -27,11 +28,32 @@ export function SeminarRegisterCta({
   salePrice,
   effectivePrice,
   remainingSeats,
-  alreadyPurchased = false,
+  alreadyPurchased: initialAlreadyPurchased = false,
   variant = "card",
 }: SeminarRegisterCtaProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [alreadyPurchased, setAlreadyPurchased] = useState(initialAlreadyPurchased);
+
+  useEffect(() => {
+    if (!productSlug) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch(`/api/student/products/${encodeURIComponent(productSlug)}`, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+          credentials: "same-origin",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { data?: ProductDetail };
+        if (json.data?.already_purchased) setAlreadyPurchased(true);
+      } catch {
+        // Keep guest CTA from ISR HTML.
+      }
+    })();
+    return () => controller.abort();
+  }, [productSlug]);
 
   const hasDiscount =
     price != null && salePrice != null && effectivePrice != null && effectivePrice < price;

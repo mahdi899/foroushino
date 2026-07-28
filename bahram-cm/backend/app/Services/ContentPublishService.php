@@ -254,6 +254,7 @@ class ContentPublishService
 
         if ($slug) {
             RuntimeCache::forget('public_products:show:'.$slug);
+            RuntimeCache::forget('public_products:payload:'.$slug);
         }
     }
 

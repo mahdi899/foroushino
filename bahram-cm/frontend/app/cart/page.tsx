@@ -36,14 +36,8 @@ export const metadata: Metadata = buildMetadata({
 });
 
 async function loadCartProducts(slugs: string[]): Promise<ProductDetail[]> {
-  const products: ProductDetail[] = [];
-
-  for (const slug of slugs) {
-    const result = await getProductBySlug(slug);
-    if (result.ok) products.push(result.data);
-  }
-
-  return products;
+  const results = await Promise.all(slugs.map((slug) => getProductBySlug(slug)));
+  return results.filter((result): result is { ok: true; data: ProductDetail } => result.ok).map((r) => r.data);
 }
 
 function CartProductCard({ product, className }: { product: ProductDetail; className?: string }) {

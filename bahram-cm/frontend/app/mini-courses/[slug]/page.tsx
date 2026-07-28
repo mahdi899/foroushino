@@ -1,22 +1,21 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { unstable_noStore } from 'next/cache';
 import { ContentCommentsSection } from '@/components/comments/ContentCommentsSection';
 import { MiniCourseDetailHero } from '@/components/mini-courses/MiniCourseDetailHero';
-import { buildCommentAuthorFromStudent } from '@/lib/contentComments/author';
 import {
   getMiniCourseBySlugFromApi,
 } from '@/lib/services/miniCourses.server';
 import { getContentCommentsFromApi } from '@/lib/services/contentComments.server';
 import { resolveMediaAlt } from '@/lib/media/alt';
 import { buildMetadata } from '@/lib/seo';
-import { getCurrentStudent, studentFetch } from '@/lib/student/session';
+import { ensureStaticPageCache } from '@/lib/cache/staticPage';
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export const dynamic = 'force-dynamic';
+// Literal required for Next segment config static analysis (Next 16).
+export const revalidate = 300;
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -37,7 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function MiniCourseDetailPage({ params }: PageProps) {
-  unstable_noStore();
+  await ensureStaticPageCache();
   const { slug } = await params;
   const [courseResult, commentsResult] = await Promise.all([
     getMiniCourseBySlugFromApi(slug),
@@ -55,22 +54,6 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
     ? await resolveMediaAlt(course.thumbnail_mobile, course.title)
     : imageAlt;
 
-  const student = await getCurrentStudent();
-  let isEnrolled = false;
-  let enrollmentNumber: string | null = null;
-
-  if (student) {
-    try {
-      const status = await studentFetch<{
-        data: { enrolled: boolean; order_number?: string | null; enrollment_number?: string | null };
-      }>(`/mini-courses/${encodeURIComponent(slug)}`);
-      isEnrolled = status.data.enrolled;
-      enrollmentNumber = status.data.order_number ?? status.data.enrollment_number ?? null;
-    } catch {
-      isEnrolled = false;
-    }
-  }
-
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <section className="border-b border-bone/8 pb-section-sm">
@@ -79,8 +62,8 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
           imageAlt={imageAlt}
           mobileImageAlt={mobileImageAlt}
           descriptionHtml={course.description}
-          isEnrolled={isEnrolled}
-          enrollmentNumber={enrollmentNumber}
+          isEnrolled={false}
+          enrollmentNumber={null}
         />
       </section>
 
@@ -89,7 +72,6 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
         slug={course.slug}
         enabled={course.comments_enabled}
         initialComments={comments}
-        initialAuthor={buildCommentAuthorFromStudent(student)}
       />
     </main>
   );

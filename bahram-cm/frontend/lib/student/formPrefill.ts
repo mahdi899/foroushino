@@ -1,5 +1,5 @@
 import { getStudentDisplayName, splitDisplayName } from '@/lib/student/displayName';
-import type { StudentUser } from '@/lib/student/session';
+import type { StudentUser } from '@/lib/student/session.types';
 
 export type StudentFormPrefill = {
   name: string;

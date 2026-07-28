@@ -26,8 +26,12 @@ import {
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
-import { MobileStickyEnrollBar } from "@/components/commerce/MobileStickyEnrollBar";
-import { ProductPurchaseCta } from "@/components/commerce/ProductPurchaseCta";
+import { HydratedMobileStickyEnrollBar } from "@/components/commerce/HydratedMobileStickyEnrollBar";
+import { HydratedProductPurchaseCta } from "@/components/commerce/HydratedProductPurchaseCta";
+import {
+  ProductPurchaseProvider,
+  type ProductPurchaseState,
+} from "@/components/commerce/ProductPurchaseProvider";
 import { LinkButton } from "@/components/ui/Button";
 import { CAMPAIGN_WRITING_SLUG } from "@/lib/cart/constants";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -43,13 +47,12 @@ import { coalesceAlt, staticAltForSrc } from "@/lib/media/altShared";
 import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { formatFa, toPersianDigits } from "@/lib/persian";
-import { getProductBySlug } from "@/lib/services/products";
+import { getPublicProductBySlug, productPurchaseInitial } from "@/lib/services/products";
 import { getContentCommentsFromApi } from "@/lib/services/contentComments.server";
-import { buildCommentAuthorFromStudent } from "@/lib/contentComments/author";
-import { getCurrentStudent } from "@/lib/student/session";
 import { ContentCommentsSection } from "@/components/comments/ContentCommentsSection";
 import { pageHeroBackdropPhoto, pageHeroBackdropPhotoMobile, sitePhotos } from "@/lib/site-photo-paths";
 import { site } from "@/content/site";
+import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 const FALLBACK_PRICE = 26_900_000;
 const SECTION_COUNT = 5;
@@ -68,7 +71,7 @@ const heroMobileAlt = coalesceAlt(
 const heroPurchaseCtaClassName =
   "h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export const metadata: Metadata = buildMetadata({
   title: "دوره کمپین‌نویسی حرفه‌ای",
@@ -252,10 +255,21 @@ const faqs = [
 ];
 
 export default async function CourseCampaignWritingPage() {
-  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
-  const alreadyPurchased = productResult.ok ? (productResult.data.already_purchased ?? false) : false;
+  await ensureStaticPageCache();
+  const productResult = await getPublicProductBySlug(CAMPAIGN_WRITING_SLUG);
+  const product = productResult.ok ? productResult.data : null;
+  const purchase: ProductPurchaseState = product
+    ? productPurchaseInitial(product)
+    : {
+        alreadyPurchased: false,
+        listPrice: FALLBACK_PRICE,
+        finalPrice: FALLBACK_PRICE,
+        hasDiscount: false,
+        discountPercent: null,
+      };
 
   return (
+    <ProductPurchaseProvider productSlug={CAMPAIGN_WRITING_SLUG} initial={purchase}>
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
       <link
         rel="preload"
@@ -290,9 +304,9 @@ export default async function CourseCampaignWritingPage() {
               </div>
             </div>
             <div className="flex w-full max-w-lg flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-stretch sm:justify-center md:max-w-2xl md:gap-4">
-              <ProductPurchaseCta
+              <HydratedProductPurchaseCta
+                fallback={purchase}
                 productSlug={CAMPAIGN_WRITING_SLUG}
-                alreadyPurchased={alreadyPurchased}
                 location="campaign_writing_hero"
                 variant="vip"
                 withArrow
@@ -300,7 +314,7 @@ export default async function CourseCampaignWritingPage() {
                 className={heroPurchaseCtaClassName}
               >
                 خرید
-              </ProductPurchaseCta>
+              </HydratedProductPurchaseCta>
               <LinkButton
                 href="#curriculum"
                 variant="ghost"
@@ -320,31 +334,27 @@ export default async function CourseCampaignWritingPage() {
       </section>
 
       <Suspense fallback={null}>
-        <CampaignWritingPageContent />
+        <CampaignWritingPageContent purchase={purchase} />
       </Suspense>
     </main>
+    </ProductPurchaseProvider>
   );
 }
 
-async function CampaignWritingPageContent() {
-  const [productResult, student, commentsResult] = await Promise.all([
-    getProductBySlug(CAMPAIGN_WRITING_SLUG),
-    getCurrentStudent(),
-    getContentCommentsFromApi('campaign_writing', CAMPAIGN_WRITING_SLUG),
-  ]);
-  const product = productResult.ok ? productResult.data : null;
+async function CampaignWritingPageContent({
+  purchase,
+}: {
+  purchase: ProductPurchaseState;
+}) {
+  const commentsResult = await getContentCommentsFromApi(
+    'campaign_writing',
+    CAMPAIGN_WRITING_SLUG,
+  );
   const comments = commentsResult.ok ? commentsResult.data : [];
-  const alreadyPurchased = product?.already_purchased ?? false;
-  const coursePrice = product?.effective_price ?? FALLBACK_PRICE;
-  const hasDiscount =
-    product !== null && product.sale_price !== null && product.effective_price < product.price;
-  const originalPriceLabel =
-    hasDiscount && product ? `${formatFa(product.price)} تومان` : null;
-  const priceLabel = `${formatFa(coursePrice)} تومان`;
-  const discountPercent =
-    hasDiscount && product
-      ? Math.round(((product.price - coursePrice) / product.price) * 100)
-      : null;
+  const coursePrice = purchase.finalPrice;
+  const hasDiscount = purchase.hasDiscount;
+  const originalPriceLabel = hasDiscount ? `${formatFa(purchase.listPrice)} تومان` : null;
+  const discountPercent = purchase.discountPercent;
   const faqSliderPhotos = await Promise.all(
     [
       sitePhotos.testimonialPortrait[0]!,
@@ -700,7 +710,6 @@ async function CampaignWritingPageContent() {
         type="campaign_writing"
         slug={CAMPAIGN_WRITING_SLUG}
         initialComments={comments}
-        initialAuthor={buildCommentAuthorFromStudent(student)}
       />
 
       {/* 10. FAQ */}
@@ -760,19 +769,21 @@ async function CampaignWritingPageContent() {
               </Reveal>
 
               <Reveal delay={0.1}>
-                <EnrollCard
-                  coursePrice={coursePrice}
-                  originalPriceLabel={originalPriceLabel}
-                  discountPercent={discountPercent}
-                  alreadyPurchased={alreadyPurchased}
-                />
+                <EnrollCard purchase={purchase} />
               </Reveal>
             </div>
           </div>
         </div>
       </section>
 
-      <MobileStickyEnrollBar priceLabel={priceLabel} alreadyPurchased={alreadyPurchased} />
+      <HydratedMobileStickyEnrollBar
+        fallback={purchase}
+        productSlug={CAMPAIGN_WRITING_SLUG}
+        title="دوره کمپین‌نویسی"
+        location="campaign_writing_mobile_bar"
+        panelHref="/panel"
+        ownedLabel="مشاهده در پنل"
+      />
     </>
   );
 }
@@ -872,22 +883,16 @@ function ImageSplitSection({
   );
 }
 
-function EnrollCard({
-  coursePrice,
-  originalPriceLabel,
-  discountPercent,
-  alreadyPurchased,
-}: {
-  coursePrice: number;
-  originalPriceLabel: string | null;
-  discountPercent: number | null;
-  alreadyPurchased: boolean;
-}) {
+function EnrollCard({ purchase }: { purchase: ProductPurchaseState }) {
+  const originalPriceLabel = purchase.hasDiscount
+    ? `${formatFa(purchase.listPrice)} تومان`
+    : null;
+
   return (
     <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
-      {discountPercent ? (
+      {purchase.discountPercent ? (
         <div className="campaign-course-intro-price-ribbon">
-          {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
+          {toPersianDigits(String(purchase.discountPercent))}٪ تخفیف ویژه
         </div>
       ) : null}
 
@@ -898,14 +903,14 @@ function EnrollCard({
 
         <p className="campaign-course-intro-now">
           <span className="campaign-course-intro-now__amount num-latin">
-            {formatFa(coursePrice)}
+            {formatFa(purchase.finalPrice)}
           </span>
           <span className="campaign-course-intro-now__unit">تومان</span>
         </p>
 
-        <ProductPurchaseCta
+        <HydratedProductPurchaseCta
+          fallback={purchase}
           productSlug={CAMPAIGN_WRITING_SLUG}
-          alreadyPurchased={alreadyPurchased}
           location="campaign_writing_enroll"
           variant="vip"
           withArrow
@@ -913,7 +918,7 @@ function EnrollCard({
           className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
         >
           خرید
-        </ProductPurchaseCta>
+        </HydratedProductPurchaseCta>
       </div>
     </div>
   );

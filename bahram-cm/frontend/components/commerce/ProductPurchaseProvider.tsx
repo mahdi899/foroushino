@@ -15,6 +15,7 @@ export type ProductPurchaseState = {
   finalPrice: number;
   hasDiscount: boolean;
   discountPercent: number | null;
+  seminarOff?: boolean;
 };
 
 const ProductPurchaseContext = createContext<ProductPurchaseState | null>(null);
@@ -49,7 +50,7 @@ export function ProductPurchaseProvider({
         const pricing = product.reference_pricing;
         const listPrice = pricing?.amount ?? product.price;
         const finalPrice = pricing?.final_amount ?? product.effective_price;
-        const hasDiscount = Boolean(pricing?.seminar_off) && finalPrice < listPrice;
+        const hasDiscount = finalPrice < listPrice;
         const discountPercent = hasDiscount
           ? Math.round(((listPrice - finalPrice) / listPrice) * 100)
           : null;
@@ -60,6 +61,7 @@ export function ProductPurchaseProvider({
           finalPrice,
           hasDiscount,
           discountPercent,
+          seminarOff: Boolean(pricing?.seminar_off),
         });
       } catch {
         // Keep ISR guest pricing / CTA.

@@ -98,9 +98,15 @@ class PublicSeminarController extends Controller
 
         unset($cached['product_id'], $cached['product_is_active']);
 
-        return response()->json(['data' => [
+        $payload = [
             ...$cached,
             'already_purchased' => $alreadyPurchased,
-        ]]);
+        ];
+
+        $response = response()->json(['data' => $payload]);
+
+        return $student
+            ? $response->header('Cache-Control', 'private, no-store')
+            : $response->header('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
     }
 }

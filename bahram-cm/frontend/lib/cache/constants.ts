@@ -14,6 +14,10 @@ export const CACHE_ISR_TAGS = [
   'mini-courses',
   'public-mini-courses',
   'chatbot',
+  'seminars',
+  'products',
+  'home',
+  'content-comments',
 ] as const;
 
 export const CACHE_WARM_PATHS = [
@@ -25,6 +29,7 @@ export const CACHE_WARM_PATHS = [
   '/course/campaign-writing',
   '/reference-channels/kanal-mrgf',
   '/seminars',
+  '/mini-courses',
   '/sitemap.xml',
   '/robots.txt',
   '/llms.txt',
