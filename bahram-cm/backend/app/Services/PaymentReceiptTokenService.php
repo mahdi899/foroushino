@@ -16,7 +16,7 @@ class PaymentReceiptTokenService
 
     private const CACHE_PREFIX = 'payment_receipt_token:';
 
-    /** @param  'success'|'failed'|'cancelled'  $status */
+    /** @param  'success'|'failed'|'cancelled'|'pending'  $status */
     public function issue(?Order $order, string $status): string
     {
         $nonce = Str::random(32);
@@ -68,21 +68,24 @@ class PaymentReceiptTokenService
         }
 
         $status = (string) ($payload['st'] ?? '');
-        if (! in_array($status, ['success', 'failed', 'cancelled'], true)) {
+        if (! in_array($status, ['success', 'failed', 'cancelled', 'pending'], true)) {
             return null;
         }
 
         $nonce = (string) ($payload['n'] ?? '');
+        $orderId = (int) ($payload['oid'] ?? 0);
         $cached = Cache::get(self::CACHE_PREFIX.$nonce);
-        if (
-            ! is_array($cached)
-            || (string) ($cached['status'] ?? '') !== $status
-            || (int) ($cached['order_id'] ?? -1) !== (int) ($payload['oid'] ?? -1)
-        ) {
+
+        $cacheOk = is_array($cached)
+            && (string) ($cached['status'] ?? '') === $status
+            && (int) ($cached['order_id'] ?? -1) === $orderId;
+
+        // Cache drivers can drop nonces (flush / multi-node without shared store).
+        // Signed + unexpired tokens still resolve against the live order row.
+        if (! $cacheOk && $orderId <= 0) {
             return null;
         }
 
-        $orderId = (int) ($payload['oid'] ?? 0);
         if ($orderId <= 0) {
             return [
                 'status' => $status,
@@ -94,7 +97,15 @@ class PaymentReceiptTokenService
         }
 
         $order = Order::query()->with('product')->find($orderId);
-        if (! $order || ! $this->orderMatchesStatus($order, $status)) {
+        if (! $order) {
+            return null;
+        }
+
+        // Prefer live DB truth when the claimed status no longer matches
+        // (e.g. pending_verify token after a later successful fulfill).
+        if ($order->isPaid()) {
+            $status = 'success';
+        } elseif (! $this->orderMatchesStatus($order, $status)) {
             return null;
         }
 
@@ -118,6 +129,9 @@ class PaymentReceiptTokenService
                 || in_array($order->payment_status, ['failed'], true),
             'cancelled' => in_array($order->payment_status, ['pending', 'canceled'], true)
                 && ! $order->isPaid(),
+            'pending' => ! $order->isPaid()
+                && ! in_array($order->status, ['failed'], true)
+                && ! in_array($order->payment_status, ['failed'], true),
             default => false,
         };
     }

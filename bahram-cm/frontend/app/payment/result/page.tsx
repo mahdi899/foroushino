@@ -48,6 +48,13 @@ const COPY: Record<
     icon: Clock,
     tone: "cancelled",
   },
+  pending: {
+    eyebrow: "در حال تأیید",
+    title: "پرداخت در حال بررسی است",
+    body: "ارتباط لحظه‌ای با درگاه قطع شد، اما سفارش هنوز در صف تأیید است. اگر در ربات تلگرام پیام تأیید دیدی، پرداخت موفق بوده — چند لحظه بعد این صفحه را رفرش کن یا از پنل وضعیت را ببین.",
+    icon: Clock,
+    tone: "cancelled",
+  },
 };
 
 function retryHref(product?: string | null): string {
@@ -78,16 +85,19 @@ export default async function PaymentResultPage({
             {!verified ? (
               <PaymentResultCard
                 tone="invalid"
-                eyebrow="خطا"
-                title="لینک نامعتبر یا منقضی شده"
-                body="این صفحه فقط از طریق بازگشت از درگاه پرداخت در دسترس است. اگر تازه پرداخت کرده‌ای از لینک درگاه استفاده کن؛ در غیر این صورت می‌توانی دوباره پرداخت کنی."
+                eyebrow="توجه"
+                title="نتیجه پرداخت در دسترس نیست"
+                body="این لینک منقضی یا ناقص است. اگر همین الان از درگاه برگشتی و در ربات تلگرام تأیید پرداخت را دیدی، سفارش ثبت شده — از پنل یا کانال مرجع ادامه بده. در غیر این صورت دوباره پرداخت کن."
                 icon={XCircle}
               >
-                <LinkButton href="/cart" variant="primary" size="lg" className="payment-result-card__primary">
-                  بازگشت به سبد خرید
-                </LinkButton>
-                <LinkButton href="/panel" variant="ghost" size="lg" className="payment-result-card__secondary">
+                <LinkButton href="/panel" variant="primary" size="lg" className="payment-result-card__primary">
                   ورود به پنل
+                </LinkButton>
+                <LinkButton href="/panel/reference-channel" variant="ghost" size="lg" className="payment-result-card__secondary">
+                  کانال مرجع
+                </LinkButton>
+                <LinkButton href="/cart" variant="ghost" size="lg" className="payment-result-card__secondary">
+                  بازگشت به سبد خرید
                 </LinkButton>
               </PaymentResultCard>
             ) : (
@@ -122,6 +132,15 @@ export default async function PaymentResultPage({
                       variant={verified.is_reference_channel ? "secondary" : "primary"}
                     />
                   </div>
+                ) : verified.status === "pending" ? (
+                  <>
+                    <LinkButton href="/panel" variant="primary" size="lg" className="payment-result-card__primary">
+                      بررسی در پنل
+                    </LinkButton>
+                    <LinkButton href="/panel/reference-channel" variant="ghost" size="lg" className="payment-result-card__secondary">
+                      کانال مرجع
+                    </LinkButton>
+                  </>
                 ) : (
                   <>
                     <Link

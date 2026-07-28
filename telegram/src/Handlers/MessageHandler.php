@@ -152,12 +152,14 @@ final class MessageHandler
                 return;
             }
 
-            // Sync relay to Iran failed — unlock locally.
+            // Sync relay to Iran failed — unlock locally with actionable guidance.
             $this->conversations->set($telegramUserId, 'idle', []);
             $this->api->sendMessage(
                 $chatId,
                 TelegramCustomEmoji::tag('warning')
-                .' پنل ادمین فعلاً به سرور اصلی وصل نمی‌شود. لطفاً چند لحظه دیگر دوباره تلاش کنید.',
+                ." پنل ادمین به سرور اصلی وصل نشد.\n"
+                ."درخواست در صف ماند؛ چند لحظه دیگر دوباره «پنل ادمین» را باز کنید.\n"
+                .'اگر ادامه داشت: iran_relay_per_webhook را روی ۲ بگذارید و circuit را از diagnose.php?reset_circuit=1 ریست کنید.',
                 ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
             );
 

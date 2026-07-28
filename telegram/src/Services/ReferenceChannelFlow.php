@@ -12,7 +12,7 @@ use TelegramHost\Telegram\BotApiClient;
 
 /**
  * «کانال مرجع» funnel:
- * description → seminar max-discount pricing → pay → identity → destination invite.
+ * photo + description + buy → discount → pay → identity → destination invite.
  */
 final class ReferenceChannelFlow
 {
@@ -20,7 +20,6 @@ final class ReferenceChannelFlow
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
         private readonly AccountCache $accounts,
-        private readonly PurchaseFlow $purchaseFlow,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -34,8 +33,7 @@ final class ReferenceChannelFlow
             return;
         }
 
-        $this->sendDescriptionAndJoin($chatId);
-        $this->sendPricingThenPay($chatId, $telegramUserId, $product);
+        $this->sendProductOffer($chatId, $product);
     }
 
     private function openOwned(int $chatId, int $telegramUserId, int $productId): void
@@ -81,32 +79,8 @@ final class ReferenceChannelFlow
         ]));
     }
 
-    private function sendDescriptionAndJoin(int $chatId): void
-    {
-        $title = $this->cache->message('__reference_channel_title', 'کانال مرجع آکادمی بهرام');
-        $text = $this->cache->message(
-            'reference_channel_description',
-            TelegramCustomEmoji::tag('channel').' <b>'.htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')."</b>\n\n"
-            .'با خرید کانال مرجع به گروه اختصاصی منابع دسترسی پیدا می‌کنید. '
-            .'پس از پرداخت، احراز هویت سطح ۲ و سپس عضویت در گروه لازم است.',
-        );
-
-        $joinUrl = $this->resolveJoinUrl();
-        $joinLabel = $this->cache->message('reference_channel_join_btn', 'عضویت در کانال عمومی');
-
-        $keyboard = [];
-        if ($joinUrl !== '') {
-            $keyboard[] = [InlineButtons::url($joinLabel, $joinUrl, 'channel', 'primary')];
-        }
-
-        $this->api->sendMessage($chatId, $text, array_filter([
-            'parse_mode' => 'HTML',
-            'reply_markup' => $keyboard !== [] ? ['inline_keyboard' => $keyboard] : null,
-        ]));
-    }
-
     /** @param array<string, mixed>|null $product */
-    private function sendPricingThenPay(int $chatId, int $telegramUserId, ?array $product): void
+    private function sendProductOffer(int $chatId, ?array $product): void
     {
         if ($product === null) {
             $this->api->sendMessage(
@@ -118,44 +92,33 @@ final class ReferenceChannelFlow
         }
 
         $productId = (int) $product['id'];
-        $listPrice = (int) ($product['price'] ?? 0);
-        $discount = $this->accounts->maxReferenceDiscount($telegramUserId, $this->cache);
-        $finalPrice = max(0, $listPrice - $discount);
+        $title = trim((string) ($product['title'] ?? $this->cache->message('__reference_channel_title', 'کانال مرجع آکادمی بهرام')));
+        $safeTitle = htmlspecialchars($title !== '' ? $title : 'کانال مرجع آکادمی بهرام', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        if ($discount > 0) {
-            $priceText = $this->cache->message(
-                'reference_channel_price_seminar',
-                TelegramCustomEmoji::tag('gift')." <b>چون در سمینار حضور داشتید</b>\n\n"
-                .TelegramCustomEmoji::tag('money').' قیمت: <s>'.number_format($listPrice).' تومان</s>'."\n"
-                .TelegramCustomEmoji::tag('fire').' با تخفیف سمینار: <b>'.number_format($finalPrice).' تومان</b>',
-            );
-        } else {
-            $priceText = $this->cache->message(
-                'reference_channel_price_full',
-                TelegramCustomEmoji::tag('cart')." <b>دسترسی به کانال مرجع</b>\n\n"
-                .TelegramCustomEmoji::tag('money').' قیمت: <b>'.number_format($listPrice).' تومان</b>'."\n\n"
-                .'اگر در سمینار شرکت کرده باشید، تخفیف ویژه روی حسابتان اعمال می‌شود.',
-            );
+        $productDescription = trim($this->cache->message('__reference_channel_product_description', ''));
+        $defaultBody = TelegramCustomEmoji::tag('channel').' <b>'.$safeTitle."</b>\n\n"
+            .($productDescription !== ''
+                ? htmlspecialchars($productDescription, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                : 'با خرید کانال مرجع به گروه اختصاصی منابع دسترسی پیدا می‌کنید.');
+
+        $caption = $this->cache->message('reference_channel_description', $defaultBody);
+
+        $keyboard = [
+            [InlineButtons::buy($productId, $this->cache->message('reference_channel_buy_btn', 'خرید'))],
+        ];
+
+        $options = [
+            'parse_mode' => 'HTML',
+            'reply_markup' => ['inline_keyboard' => $keyboard],
+        ];
+
+        $photo = trim((string) ($product['photo'] ?? $product['photo_url'] ?? ''));
+        if ($photo !== '') {
+            $this->api->sendPhoto($chatId, $photo, $caption, $options);
+
+            return;
         }
 
-        $this->api->sendMessage($chatId, $priceText, ['parse_mode' => 'HTML']);
-        $this->purchaseFlow->proceedToPaymentMethods($chatId, $telegramUserId, $productId, null);
-    }
-
-    private function resolveJoinUrl(): string
-    {
-        $configured = trim($this->cache->siteUrl('reference_channel', ''));
-        if ($configured !== '') {
-            return $configured;
-        }
-
-        foreach ($this->cache->requiredChats() as $chat) {
-            $url = trim((string) ($chat['invite_link'] ?? ''));
-            if ($url !== '') {
-                return $url;
-            }
-        }
-
-        return '';
+        $this->api->sendMessage($chatId, $caption, $options);
     }
 }

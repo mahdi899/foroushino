@@ -44,7 +44,7 @@
 
 - **وب‌هوک:** فقط MySQL محلی + تلگرام — **هیچ انتظاری برای ایران نیست.**
 - **push فوری (event-driven):** ثبت‌نام، ویرایش حساب، **تکمیل سفارش** → `push_account` بلافاصله از ایران به `host-sync.php` (+ پیام آنی `notification` برای پرداخت).
-- **سیکل reconcile هر ۱۰ دقیقه:** `telegram:host-sync-accounts --skip-catalog` روی ایران — پوشش خریدهایی که push فوری‌شان fail شده؛ کاتالوگ/bootstrap جداگانه با push رویدادی یا `refresh_catalog` دستی.
+- **سیکل reconcile هر ۵ دقیقه:** `telegram:host-sync-accounts --skip-catalog` روی ایران — پوشش خریدهایی که push فوری‌شان fail شده؛ کاتالوگ/bootstrap جداگانه با push رویدادی یا `refresh_catalog` دستی.
 - **ثبت‌نام / پرداخت:** در صف `pending_iran_updates` → `BackgroundIranRelay` وقتی ایران در دسترس بود.
 - **پشتیبانی:** کاملاً محلی روی هاست (فوروارد به گروه گزارشات + پاسخ ادمین) — بدون ایران.
 
@@ -118,13 +118,15 @@ OTP/SMS، شروع زرین‌پال/C2C روی سرور، پنل ادمین، �
 
 بعد از آپلود نسخهٔ اصلاح‌شدهٔ `telegram/` روی هاست خارج:
 
-1. **`config.php` روی هاست** را بررسی کن: اگر `iran_relay_per_webhook` روی `0` است، به `2` تغییرش بده (نمونهٔ به‌روز در `config.sample.php`) — در `0` صف delegateهای ایران (از جمله پنل ادمین) هرگز drain نمی‌شود.
-2. فایل `telegram/storage/iran-circuit-state.json` روی هاست را حذف/ریست کن تا وضعیت قدیمی circuit breaker پاک شود.
-3. `telegram/public/diagnose.php?token=<webhook_secret>` را باز کن و اتصال MySQL، `sync_base_url`، و `api.telegram.org` را تأیید کن.
-4. روی سرور ایران یک‌بار `php artisan telegram:host-sync-accounts --sync` بزن تا حساب‌های verified و خریداران اخیر فوراً push شوند؛ با `php artisan schedule:list` تأیید کن هر ۵ دقیقه هم تکرار می‌شود.
+1. **`config.php` روی هاست** را بررسی کن: اگر `iran_relay_per_webhook` روی `0` است، به `2` تغییرش بده (نمونهٔ به‌روز در `config.sample.php`) — مقدار زیر ۱ دیگر پذیرفته نمی‌شود (webhook حداقل ۱ drain می‌کند).
+2. فایل `telegram/storage/iran-circuit-state.json` روی هاست را حذف کن، یا `diagnose.php?token=…&reset_circuit=1` را باز کن.
+3. `telegram/public/diagnose.php?token=<webhook_secret>` را باز کن و اتصال MySQL، `sync_base_url`، `api.telegram.org`، و وضعیت circuit را تأیید کن.
+4. روی سرور ایران یک‌بار `php artisan telegram:host-sync-accounts --sync` بزن تا حساب‌های verified و خریداران اخیر فوراً push شوند؛ با `php artisan schedule:list` تأیید کن هر **۵ دقیقه** هم تکرار می‌شود. `config:clear` و queue worker (Horizon) را چک کن.
 5. مطمئن شو ربات در «گروه گزارشات (پشتیبانی)» عضو و ادمین است و `reports_group_chat_id` در بوت‌استرپ ایران ست شده.
 6. تست دستی:
    - **مهمان**: `/start` با یک تلگرام‌آیدی جدید → شماره → نام → منو باید بیاید بدون خطای مکرر.
    - **خریدار**: «حساب من» و «خانواده» باید دادهٔ واقعی (نه پیام «هنوز همگام نشده») نشان بدهد.
-   - **پشتیبانی**: یک دسته انتخاب کن، پیام بفرست → باید در گروه گزارشات فوروارد شود؛ ریپلای ادمین باید به کاربر برسد.
+   - **پشتیبانی**: یک دسته انتخاب کن، پیام بفرست → **ack فوری**؛ بعد پیام در گروه گزارشات ظاهر شود؛ ریپلای ادمین باید به کاربر برسد.
+   - **کانال مرجع**: عکس + توضیح + دکمه خرید → کد تخفیف → پرداخت؛ بعد از پرداخت، ربات تأیید و سایت `/payment/result` هم‌راستا باشند.
    - **پنل ادمین**: «پنل ادمین» را بزن، حداقل دو دکمهٔ داخل پنل (نه فقط اولین) را پشت‌سرهم بزن، بعد «خروج از پنل ادمین» — منوی اصلی باید درست برگردد.
+   - **ویرایش پیام/کاور**: از «پیام‌ها» متن توضیح کانال مرجع و «عکس کاور» را عوض کن و روی ربات چک کن.

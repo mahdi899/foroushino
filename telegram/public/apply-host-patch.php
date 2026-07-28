@@ -40,12 +40,21 @@ if ($root === false) {
 
 $allowed = [
     'src/Services/HostSupportService.php',
+    'src/Services/ReferenceChannelFlow.php',
+    'src/Services/HostDestinationsFlow.php',
+    'src/Services/HostAdminShell.php',
+    'src/Support/IranCircuitBreaker.php',
+    'src/Queue/PendingSupportForward.php',
+    'src/Queue/BackgroundSupportForward.php',
+    'src/Cache/SyncCache.php',
+    'src/Handlers/CallbackQueryHandler.php',
+    'src/Handlers/MessageHandler.php',
     'public/webhook.php',
+    'public/diagnose.php',
     'src/Http/InboundSyncHandler.php',
     'src/Http/LiveClient.php',
     'src/Queue/BackgroundIranRelay.php',
     'src/Routing/IranSyncRelay.php',
-    'src/Handlers/MessageHandler.php',
 ];
 $allowedMap = array_fill_keys($allowed, true);
 $written = [];

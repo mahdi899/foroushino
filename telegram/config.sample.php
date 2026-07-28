@@ -33,8 +33,14 @@ return [
     // Telegram webhook secret — must match bot config on main server.
     'webhook_secret' => '__WEBHOOK_SECRET__',
 
-    // Bot API token — only for api.telegram.org outbound calls.
+    // Bot API token — only for Bot API outbound calls.
     'bot_token' => '__BOT_TOKEN__',
+
+    // Optional: foreign Bot API proxy when the host cannot reach api.telegram.org
+    // (e.g. local Iran → https://bahram.rahai.online/bahram). Leave empty on a
+    // real foreign cPanel host that can call Telegram directly.
+    // 'telegram_api_base_url' => 'https://bahram.rahai.online/bahram',
+    // 'telegram_api_bearer' => 'same-as-PROXY_SHARED_TOKEN',
 
     'site_base_url' => 'https://rostami.app',
 

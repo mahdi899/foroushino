@@ -98,6 +98,23 @@ function backendImagePattern() {
   return patterns;
 }
 
+const serverActionAllowedOrigins = [
+  "app.lvh.me",
+  "club.lvh.me",
+  "app.lvh.me:3000",
+  "club.lvh.me:3001",
+  "localhost",
+  "127.0.0.1",
+  "localhost:3000",
+  "localhost:3001",
+  "127.0.0.1:3010",
+  process.env.NEXT_PUBLIC_APP_DOMAIN,
+  process.env.NEXT_PUBLIC_FAMILY_DOMAIN,
+  ...(process.env.SERVER_ACTIONS_ALLOWED_ORIGINS?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) ?? []),
+].filter((value): value is string => Boolean(value?.trim()));
+
 const config: NextConfig = {
   allowedDevOrigins,
   reactStrictMode: true,
@@ -158,6 +175,8 @@ const config: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
+      /** dev:local proxy sets x-forwarded-host (lvh.me) while Origin may differ — without this, Server Actions abort. */
+      allowedOrigins: [...new Set(serverActionAllowedOrigins)],
     },
     staleTimes: {
       // Dev: short client cache cuts repeated "Rendering" on in-app navigation.

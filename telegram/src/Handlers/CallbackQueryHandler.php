@@ -225,7 +225,17 @@ final class CallbackQueryHandler
 
         $title = (string) ($product['title'] ?? 'محصول');
         $base = (int) ($product['price'] ?? 0);
-        $sale = isset($product['sale_price']) ? (int) $product['sale_price'] : null;
+        $sale = isset($product['sale_price']) && $product['sale_price'] !== null && $product['sale_price'] !== ''
+            ? (int) $product['sale_price']
+            : null;
+
+        // Reference channel: apply local seminar max-discount to the displayed price.
+        if ((string) ($product['product_type'] ?? '') === 'reference_channel') {
+            $seminarDiscount = $this->accounts->maxReferenceDiscount($telegramUserId, $this->cache);
+            if ($seminarDiscount > 0) {
+                $sale = max(0, $base - $seminarDiscount);
+            }
+        }
 
         $this->purchaseFlow->promptDiscountCode($chatId, $telegramUserId, $productId, $title, $base, $sale);
     }

@@ -44,6 +44,14 @@ final class InboundSyncHandler
         }
 
         if ($action === 'push_account') {
+            $pdo = Connection::get($this->config);
+            $stored = $this->pushAccount($pdo, $body);
+            if (! ($stored['ok'] ?? false)) {
+                return array_merge($stored, ['defer' => false]);
+            }
+
+            // Ownership/cache must land BEFORE the paid notification, otherwise
+            // the user can reopen «کانال مرجع» and still see the buy UI.
             $account = (array) ($body['account'] ?? []);
             $telegramUserId = (int) ($account['telegram_user_id'] ?? 0);
             $notification = (array) ($body['notification'] ?? []);
@@ -55,6 +63,8 @@ final class InboundSyncHandler
                     'options' => (array) ($notification['options'] ?? []),
                 ]);
             }
+
+            return ['ok' => true, 'action' => 'push_account', 'defer' => false];
         }
 
         // Bootstrap/catalog refreshes now carry the actual data in the push
