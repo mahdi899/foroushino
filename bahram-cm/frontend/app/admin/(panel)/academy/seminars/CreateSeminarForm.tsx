@@ -51,7 +51,7 @@ export function CreateSeminarForm() {
   }
 
   return (
-    <form id="create-seminar" onSubmit={onSubmit} className="grid gap-3 md:grid-cols-4">
+    <form id="create-seminar" onSubmit={onSubmit} className="grid gap-4 md:grid-cols-4">
       <label className="md:col-span-2">
         <span className="field-label">عنوان سمینار</span>
         <input required value={title} onChange={(e) => setTitle(e.target.value)} className="field-input" />
@@ -83,13 +83,14 @@ export function CreateSeminarForm() {
           <option value="published">منتشر شده</option>
         </select>
       </label>
-      <div className="flex items-end md:col-span-4">
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4 md:col-span-4">
         <button type="submit" disabled={pending} className="btn btn-primary">
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           ایجاد سمینار
         </button>
+        {error ? <p className="text-small text-error">{error}</p> : null}
       </div>
-      {error && <p className="text-small text-error md:col-span-4">{error}</p>}
     </form>
   );
 }

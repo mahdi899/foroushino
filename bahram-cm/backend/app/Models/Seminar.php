@@ -21,9 +21,12 @@ class Seminar extends Model
         'description',
         'cover_image',
         'cover_image_mobile',
+        'gallery',
+        'gallery_slider',
         'telegram_photo_file_id',
         'telegram_photo_source',
         'status',
+        'ended_at',
         'product_id',
         'price',
         'sale_price',
@@ -38,6 +41,9 @@ class Seminar extends Model
 
     protected $casts = [
         'date' => 'datetime',
+        'ended_at' => 'datetime',
+        'gallery' => 'array',
+        'gallery_slider' => 'array',
         'price' => 'integer',
         'sale_price' => 'integer',
         'capacity' => 'integer',
@@ -122,5 +128,10 @@ class Seminar extends Model
     public function purchaseSlug(): ?string
     {
         return $this->product?->slug;
+    }
+
+    public function isEnded(): bool
+    {
+        return $this->ended_at !== null;
     }
 }

@@ -33,9 +33,21 @@ class ContentCommentService
     {
         $this->assertContentAllowsComments($type, $slug);
 
-        $authorName = $user
-            ? StudentDisplayName::fromUser($user)
-            : trim((string) ($data['author_name'] ?? ''));
+        $providedName = trim((string) ($data['author_name'] ?? ''));
+        $profileName = $user ? StudentDisplayName::fromUser($user) : '';
+
+        if ($user) {
+            // Fresh OTP accounts often only have the fallback label — prefer the name they typed.
+            $authorName = ($profileName !== '' && $profileName !== 'دانشجو')
+                ? $profileName
+                : $providedName;
+
+            if ($authorName !== '' && ($profileName === '' || $profileName === 'دانشجو') && trim((string) $user->name) === '') {
+                $user->forceFill(['name' => $authorName])->save();
+            }
+        } else {
+            $authorName = $providedName;
+        }
 
         if ($authorName === '') {
             throw ValidationException::withMessages([

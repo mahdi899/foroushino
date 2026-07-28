@@ -1,6 +1,19 @@
 import { type ApiResult } from './api';
 import { getStudentToken } from '@/lib/student/session';
 
+export type PublicSeminarGalleryItem = {
+  type: 'image' | 'video';
+  aspect: '16:9' | '9:16';
+  src: string;
+  alt: string | null;
+  poster: string | null;
+};
+
+export type PublicSeminarSliderItem = {
+  src: string;
+  alt: string | null;
+};
+
 export type PublicSeminar = {
   id: number;
   title: string;
@@ -17,6 +30,10 @@ export type PublicSeminar = {
   attendees_count: number;
   remaining_seats: number | null;
   is_full: boolean;
+  is_ended: boolean;
+  ended_at: string | null;
+  gallery: PublicSeminarGalleryItem[];
+  gallery_slider: PublicSeminarSliderItem[];
   product_slug: string | null;
   is_purchasable: boolean;
   already_purchased?: boolean;

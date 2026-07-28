@@ -109,6 +109,19 @@ export type AdminSpotplayerLicense = {
   created_at: string | null;
 };
 
+export type AdminSeminarGalleryItem = {
+  type: 'image' | 'video';
+  aspect: '16:9' | '9:16';
+  src: string;
+  alt?: string | null;
+  poster?: string | null;
+};
+
+export type AdminSeminarSliderItem = {
+  src: string;
+  alt?: string | null;
+};
+
 export type AdminSeminar = {
   id: number;
   title: string;
@@ -116,6 +129,8 @@ export type AdminSeminar = {
   date: string | null;
   location: string | null;
   status: string | null;
+  ended_at: string | null;
+  is_ended: boolean;
   price: number | null;
   sale_price: number | null;
   capacity: number | null;
@@ -125,6 +140,8 @@ export type AdminSeminar = {
   banner_full_mobile: string | null;
   cover_image: string | null;
   cover_image_mobile: string | null;
+  gallery?: AdminSeminarGalleryItem[];
+  gallery_slider?: AdminSeminarSliderItem[];
   promo_enabled: boolean;
   reference_discount_amount?: number;
   product_id: number | null;
@@ -139,6 +156,8 @@ export type AdminSeminarDetail = AdminSeminar & {
   description: string | null;
   cover_image?: string | null;
   cover_image_mobile?: string | null;
+  gallery: AdminSeminarGalleryItem[];
+  gallery_slider: AdminSeminarSliderItem[];
   attendees: { id: number; user_id: number; name: string | null; mobile: string | null; attendance_status: string }[];
   assets: { id: number; title: string; type: string; is_downloadable: boolean; external_url?: string | null }[];
   certificates: { id: number; user_name: string | null; certificate_number: string; issued_at: string | null }[];

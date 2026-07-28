@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\RequiresCaptcha;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class StoreContentCommentRequest extends FormRequest
 {
@@ -32,6 +34,24 @@ class StoreContentCommentRequest extends FormRequest
 
     public function withValidator($validator): void
     {
+        // Logged-in students already verified phone OTP — skip captcha friction.
+        if ($this->authenticatedStudent()) {
+            return;
+        }
+
         $this->appendCaptchaValidation($validator);
+    }
+
+    private function authenticatedStudent(): bool
+    {
+        $token = $this->bearerToken();
+        if (! is_string($token) || $token === '') {
+            return false;
+        }
+
+        $accessToken = PersonalAccessToken::findToken($token);
+        $user = $accessToken?->tokenable;
+
+        return $user instanceof User;
     }
 }

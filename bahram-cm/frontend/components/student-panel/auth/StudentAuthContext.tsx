@@ -1,11 +1,16 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { StudentFormPrefill } from '@/lib/student/formPrefill';
 
 type OpenLoginOptions = {
   redirectTo?: string;
   context?: 'panel' | 'family';
+  purpose?: 'default' | 'comment';
+  /** When set (e.g. comment flow), login stays on-page and then runs this. */
+  onSuccess?: () => void;
+  /** Preserve page scroll across open/close (avoids jump-to-opener). */
+  scrollY?: number;
 };
 
 type StudentAuthContextValue = {
@@ -15,10 +20,14 @@ type StudentAuthContextValue = {
   loginOpen: boolean;
   redirectTo: string;
   loginContext: 'panel' | 'family';
+  loginPurpose: 'default' | 'comment';
   openLogin: (options?: OpenLoginOptions) => void;
   closeLogin: () => void;
   markLoggedIn: (displayName?: string, prefill?: StudentFormPrefill | null) => void;
   markLoggedOut: () => void;
+  consumeLoginSuccess: () => void;
+  takeLoginScrollY: () => number | null;
+  peekLoginScrollY: () => number | null;
 };
 
 const StudentAuthContext = createContext<StudentAuthContextValue | null>(null);
@@ -40,6 +49,9 @@ export function StudentAuthProvider({
   const [loginOpen, setLoginOpen] = useState(false);
   const [redirectTo, setRedirectTo] = useState('/panel');
   const [loginContext, setLoginContext] = useState<'panel' | 'family'>('panel');
+  const [loginPurpose, setLoginPurpose] = useState<'default' | 'comment'>('default');
+  const onSuccessRef = useRef<(() => void) | null>(null);
+  const scrollYRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!initialLoggedIn) {
@@ -59,19 +71,44 @@ export function StudentAuthProvider({
   const openLogin = useCallback((options?: OpenLoginOptions) => {
     setRedirectTo(options?.redirectTo ?? '/panel');
     setLoginContext(options?.context ?? 'panel');
+    setLoginPurpose(options?.purpose ?? 'default');
+    onSuccessRef.current = options?.onSuccess ?? null;
+    scrollYRef.current =
+      typeof options?.scrollY === 'number' && Number.isFinite(options.scrollY)
+        ? options.scrollY
+        : typeof window !== 'undefined'
+          ? window.scrollY
+          : null;
     setLoginOpen(true);
   }, []);
 
   const closeLogin = useCallback(() => {
     setLoginOpen(false);
     setLoginContext('panel');
+    setLoginPurpose('default');
+    onSuccessRef.current = null;
   }, []);
+
+  const consumeLoginSuccess = useCallback(() => {
+    const cb = onSuccessRef.current;
+    onSuccessRef.current = null;
+    cb?.();
+  }, []);
+
+  const takeLoginScrollY = useCallback(() => {
+    const y = scrollYRef.current;
+    scrollYRef.current = null;
+    return y;
+  }, []);
+
+  const peekLoginScrollY = useCallback(() => scrollYRef.current, []);
 
   const markLoggedIn = useCallback((name?: string, nextPrefill?: StudentFormPrefill | null) => {
     setIsLoggedIn(true);
     if (name) setDisplayName(name);
     if (nextPrefill !== undefined) setPrefill(nextPrefill);
     setLoginOpen(false);
+    setLoginPurpose('default');
   }, []);
 
   const markLoggedOut = useCallback(() => {
@@ -88,12 +125,16 @@ export function StudentAuthProvider({
       loginOpen,
       redirectTo,
       loginContext,
+      loginPurpose,
       openLogin,
       closeLogin,
       markLoggedIn,
       markLoggedOut,
+      consumeLoginSuccess,
+      takeLoginScrollY,
+      peekLoginScrollY,
     }),
-    [isLoggedIn, displayName, prefill, loginOpen, redirectTo, loginContext, openLogin, closeLogin, markLoggedIn, markLoggedOut],
+    [isLoggedIn, displayName, prefill, loginOpen, redirectTo, loginContext, loginPurpose, openLogin, closeLogin, markLoggedIn, markLoggedOut, consumeLoginSuccess, takeLoginScrollY, peekLoginScrollY],
   );
 
   return <StudentAuthContext.Provider value={value}>{children}</StudentAuthContext.Provider>;

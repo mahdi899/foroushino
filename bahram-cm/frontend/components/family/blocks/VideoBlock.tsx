@@ -19,6 +19,13 @@ const FamilyVideoModal = dynamic(
 const DOUBLE_TAP_MS = 320;
 const TAP_MOVE_PX = 12;
 
+/** Media fragment so browsers paint a decoded frame without autoplay. */
+function videoFramePreviewSrc(url: string): string {
+  const hash = url.indexOf('#');
+  const base = hash >= 0 ? url.slice(0, hash) : url;
+  return `${base}#t=0.1`;
+}
+
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapAtRef = useRef(0);
@@ -29,12 +36,25 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
   const [modalOpen, setModalOpen] = useState(false);
   const [posterError, setPosterError] = useState(false);
+  const [frameError, setFrameError] = useState(false);
   // Warmup may have already decoded this URL — start visible so we don't wait on a
   // cached-image onLoad that never fires (same pattern as ImageBlock).
   const [posterLoaded, setPosterLoaded] = useState(() => hasFamilyMediaBeenSeen(posterUrl));
-  const seenPoster = hasFamilyMediaBeenSeen(posterUrl) || posterLoaded;
-  const inView = useFamilyFeedMediaInView(containerRef, Boolean(streamUrl) && !seenPoster);
-  const shouldLoadPreview = seenPoster || inView;
+  const [frameReady, setFrameReady] = useState(() =>
+    Boolean(streamUrl && hasFamilyMediaBeenSeen(videoFramePreviewSrc(streamUrl))),
+  );
+
+  const needsPoster = Boolean(posterUrl) && !posterError;
+  const needsFrameFallback = Boolean(streamUrl) && (!posterUrl || posterError) && !frameError;
+  const previewSeen =
+    (needsPoster && (hasFamilyMediaBeenSeen(posterUrl) || posterLoaded)) ||
+    (needsFrameFallback &&
+      Boolean(streamUrl && (hasFamilyMediaBeenSeen(videoFramePreviewSrc(streamUrl)) || frameReady)));
+  const inView = useFamilyFeedMediaInView(
+    containerRef,
+    Boolean(streamUrl) && !previewSeen,
+  );
+  const shouldLoadPreview = previewSeen || inView;
 
   useEffect(() => {
     if (hasFamilyMediaBeenSeen(posterUrl)) {
@@ -45,6 +65,22 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     setPosterLoaded(false);
     setPosterError(false);
   }, [posterUrl]);
+
+  useEffect(() => {
+    if (!streamUrl) {
+      setFrameReady(false);
+      setFrameError(false);
+      return;
+    }
+    const frameSrc = videoFramePreviewSrc(streamUrl);
+    if (hasFamilyMediaBeenSeen(frameSrc)) {
+      setFrameReady(true);
+      setFrameError(false);
+      return;
+    }
+    setFrameReady(false);
+    setFrameError(false);
+  }, [streamUrl]);
 
   const openPlayer = () => {
     if (!streamUrl) return;
@@ -98,7 +134,10 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   }
 
   const isPortrait = Boolean(media.width && media.height && media.height > media.width);
-  const showPoster = shouldLoadPreview && posterUrl && !posterError;
+  const showPoster = shouldLoadPreview && needsPoster;
+  const showFrameFallback = shouldLoadPreview && needsFrameFallback;
+  const showPreviewFailed = shouldLoadPreview && !needsPoster && !needsFrameFallback && Boolean(downloadUrl);
+  const frameSrc = videoFramePreviewSrc(streamUrl);
   const videoAspectStyle =
     media.width && media.height
       ? { aspectRatio: `${media.width} / ${media.height}` }
@@ -127,10 +166,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             alt=""
             decoding="async"
             fetchPriority="auto"
-            className={cn(
-              'pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.04] blur-sm transition-opacity duration-200 ease-out',
-              posterLoaded ? 'opacity-100' : 'opacity-0',
-            )}
+            // Always visible once mounted — tiny LQIP; opacity-0 + missed onLoad left cells blank.
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.04] blur-sm opacity-100"
             onLoad={() => {
               markFamilyMediaSeen(posterUrl);
               setPosterLoaded(true);
@@ -140,7 +177,37 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           />
         ) : null}
 
-        {posterError && downloadUrl && (
+        {showFrameFallback ? (
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video
+            src={frameSrc}
+            muted
+            playsInline
+            preload="metadata"
+            tabIndex={-1}
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            onLoadedMetadata={(event) => {
+              const el = event.currentTarget;
+              try {
+                if (el.currentTime < 0.05) el.currentTime = 0.1;
+              } catch {
+                // ignore seek errors (some browsers lock until more data)
+              }
+            }}
+            onLoadedData={() => {
+              markFamilyMediaSeen(frameSrc);
+              setFrameReady(true);
+            }}
+            onSeeked={() => {
+              markFamilyMediaSeen(frameSrc);
+              setFrameReady(true);
+            }}
+            onError={() => setFrameError(true)}
+            aria-hidden
+          />
+        ) : null}
+
+        {showPreviewFailed ? (
           <span className="absolute inset-0 z-[3] flex flex-col items-center justify-center gap-2 bg-black/35 px-3 backdrop-blur-md">
             <span className="text-xs text-bone/75">پیش‌نمایش ویدیو در دسترس نیست</span>
             <FamilyMediaDownloadButton
@@ -150,7 +217,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
               className="pointer-events-auto"
             />
           </span>
-        )}
+        ) : null}
 
         <div
           className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/45"

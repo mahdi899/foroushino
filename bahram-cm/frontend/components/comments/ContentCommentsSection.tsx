@@ -1,13 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, MessageSquareText, Send, Sparkles } from 'lucide-react';
-import { useFormSecurity } from '@/components/captcha/FormCaptcha';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Loader2, Send } from 'lucide-react';
 import { CommentAvatar } from '@/components/comments/CommentAvatar';
 import { useStudentAuthOptional } from '@/components/student-panel/auth/StudentAuthContext';
 import { submitContentCommentAction } from '@/lib/contentComments/actions';
-import { submitContentComment } from '@/lib/services/contentComments.client';
+import {
+  POST_COMMENT_PARAM,
+  buildCommentLoginReturnUrl,
+  clearContentCommentDraft,
+  readContentCommentDraft,
+  saveContentCommentDraft,
+} from '@/lib/contentComments/draft';
 import type {
   ContentCommentAuthor,
   ContentCommentRecord,
@@ -20,25 +25,20 @@ function CommentCard({ comment, depth = 0 }: { comment: ContentCommentRecord; de
   const isReply = depth > 0;
 
   return (
-    <div className={cn(isReply && 'mt-3 ms-3 border-s-2 border-gold/20 ps-3 sm:ms-5 sm:ps-4')}>
-      <article
-        className={cn(
-          'rounded-card border border-bone/10 p-4 sm:p-5',
-          isReply ? 'bg-charcoal/25' : 'bg-charcoal/35',
-        )}
-      >
-        <header className="flex items-start gap-3">
+    <div className={cn(isReply && 'mt-3 ms-3 border-s border-bone/10 ps-3 sm:ms-4 sm:ps-4')}>
+      <article className="py-4">
+        <header className="flex items-center gap-2.5">
           <CommentAvatar name={comment.author_name} avatarUrl={comment.author_avatar_url} size="sm" />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-bone">{comment.author_name}</p>
+            <p className="truncate text-sm font-medium text-bone">{comment.author_name}</p>
             {comment.created_at ? (
-              <time className="mt-0.5 block text-caption text-mist" dateTime={comment.created_at}>
+              <time className="block text-[0.7rem] text-mist" dateTime={comment.created_at}>
                 {formatDateFa(comment.created_at)}
               </time>
             ) : null}
           </div>
         </header>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-bone-dim sm:mt-4 sm:text-base">
+        <p className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-bone-dim sm:text-[0.95rem]">
           {comment.body}
         </p>
       </article>
@@ -64,6 +64,7 @@ export function ContentCommentsSection({
   initialAuthor?: ContentCommentAuthor | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const auth = useStudentAuthOptional();
   const isLoggedIn = Boolean(initialAuthor) || Boolean(auth?.isLoggedIn);
   const author = initialAuthor ?? (auth?.displayName
@@ -71,218 +72,228 @@ export function ContentCommentsSection({
     : null);
 
   const [comments, setComments] = useState(initialComments);
-  const [authorName, setAuthorName] = useState('');
-  const [authorEmail, setAuthorEmail] = useState('');
-  const [body, setBody] = useState('');
+  const [authorName, setAuthorName] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return readContentCommentDraft(type, slug)?.authorName ?? '';
+  });
+  const [body, setBody] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return readContentCommentDraft(type, slug)?.body ?? '';
+  });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const {
-    captchaField,
-    honeypotField,
-    captchaReady,
-    securityLoading,
-    getSecurityPayload,
-    resetCaptcha,
-  } = useFormSecurity('leads', { captchaStacked: true, captchaInline: false });
+  const autoSubmitLock = useRef(false);
+  const urlCleaned = useRef(false);
+  const showNameField = !isLoggedIn || !author?.displayName || author.displayName === 'دانشجو';
 
   useEffect(() => {
     setComments(initialComments);
   }, [initialComments]);
 
-  if (!enabled) return null;
+  useEffect(() => {
+    if (!showNameField || authorName.trim()) return;
+    if (author?.displayName && author.displayName !== 'دانشجو') {
+      setAuthorName(author.displayName);
+    }
+  }, [showNameField, author?.displayName, authorName]);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!body.trim()) {
-      setError('متن نظر الزامی است.');
-      return;
-    }
-    if (!isLoggedIn && !authorName.trim()) {
-      setError('نام الزامی است.');
-      return;
-    }
-    if (!captchaReady) {
-      setError('لطفاً تأیید امنیتی را کامل کنید.');
-      return;
-    }
-
+  const submitComment = useCallback(async (name: string, text: string) => {
     setPending(true);
     setError('');
     setSuccess('');
 
-    const security = getSecurityPayload();
-    const payload = {
-      author_name: isLoggedIn ? undefined : authorName.trim(),
-      author_email: isLoggedIn ? undefined : authorEmail.trim() || undefined,
-      body: body.trim(),
-      ...security.captcha,
-      website: security.website,
-    };
-
-    const result = isLoggedIn
-      ? await submitContentCommentAction(type, slug, payload)
-      : await submitContentComment(type, slug, payload);
+    const result = await submitContentCommentAction(type, slug, {
+      author_name: name.trim() || undefined,
+      body: text.trim(),
+    });
 
     setPending(false);
 
     if (!result.ok) {
       setError(result.error);
-      resetCaptcha();
+      return false;
+    }
+
+    clearContentCommentDraft(type, slug);
+    setSuccess(result.data.message || 'نظر شما ثبت شد و پس از بررسی نمایش داده می‌شود.');
+    setBody('');
+    if (showNameField) setAuthorName('');
+    return true;
+  }, [type, slug, showNameField]);
+
+  const submitPendingDraft = useCallback(() => {
+    if (autoSubmitLock.current) return;
+    const draft = readContentCommentDraft(type, slug);
+    if (!draft?.body?.trim()) return;
+    autoSubmitLock.current = true;
+    setAuthorName(draft.authorName ?? '');
+    setBody(draft.body);
+    void submitComment(draft.authorName ?? '', draft.body).finally(() => {
+      autoSubmitLock.current = false;
+    });
+  }, [type, slug, submitComment]);
+
+  // Fallback for hard redirects (e.g. full-page login) — keep URL clean, no forced scroll.
+  useEffect(() => {
+    if (!enabled || typeof window === 'undefined') return;
+
+    const query = new URLSearchParams(window.location.search);
+    if (query.get(POST_COMMENT_PARAM) !== '1') return;
+
+    if (!urlCleaned.current) {
+      urlCleaned.current = true;
+      query.delete(POST_COMMENT_PARAM);
+      const qs = query.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+
+      const draft = readContentCommentDraft(type, slug);
+      if (draft?.body?.trim()) {
+        setAuthorName(draft.authorName ?? '');
+        setBody(draft.body);
+      }
+    }
+
+    if (!isLoggedIn) return;
+    submitPendingDraft();
+  }, [enabled, isLoggedIn, pathname, router, slug, submitPendingDraft, type]);
+
+  if (!enabled) return null;
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    const name = authorName.trim();
+    const text = body.trim();
+
+    if (!text) {
+      setError('متن نظر را بنویسید.');
+      return;
+    }
+    if (text.length < 3) {
+      setError('نظر کمی کوتاه است.');
+      return;
+    }
+    if (showNameField && !name) {
+      setError('نام را وارد کنید.');
       return;
     }
 
-    setSuccess(result.data.message);
-    setBody('');
     if (!isLoggedIn) {
-      setAuthorName('');
-      setAuthorEmail('');
+      saveContentCommentDraft({ type, slug, authorName: name, body: text });
+      if (auth?.openLogin) {
+        // Blur the submit control so closing the modal does not scroll it back into view.
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        auth.openLogin({
+          purpose: 'comment',
+          redirectTo: pathname,
+          scrollY: window.scrollY,
+          onSuccess: submitPendingDraft,
+        });
+        return;
+      }
+      const redirectTo = buildCommentLoginReturnUrl(pathname, window.location.search);
+      router.push(`/panel/login?redirect=${encodeURIComponent(redirectTo)}`);
+      return;
     }
-    resetCaptcha();
-    router.refresh();
+
+    await submitComment(name || author?.displayName || '', text);
   }
 
   return (
     <section
-      className="border-t border-bone/8 bg-ink py-10 sm:py-12 md:py-section-sm"
+      id="comments"
+      className="scroll-mt-24 border-t border-bone/8 bg-ink py-10 sm:py-12 md:py-14"
       aria-labelledby={`comments-${type}-${slug}`}
     >
-      <div className="container-luxe mx-auto w-full min-w-0 max-w-3xl">
-        {/* Header */}
-        <header className="mb-6 sm:mb-8">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
-            <MessageSquareText className="h-5 w-5 shrink-0 text-gold" aria-hidden />
-            <h2
-              id={`comments-${type}-${slug}`}
-              className="text-h3 text-bone"
-            >
-              نظرات
-            </h2>
-            <span className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border border-gold/30 bg-gold/10 px-2 text-caption text-gold-soft">
-              {comments.length.toLocaleString('fa-IR')}
+      <div className="container-luxe mx-auto w-full min-w-0 max-w-xl">
+        <header className="mb-7 flex items-end justify-between gap-3 sm:mb-8">
+          <h2
+            id={`comments-${type}-${slug}`}
+            className="font-display text-2xl font-semibold tracking-tight text-bone sm:text-[1.65rem]"
+          >
+            نظرات
+          </h2>
+          {comments.length > 0 ? (
+            <span className="pb-0.5 text-sm tabular-nums text-mist">
+              {comments.length.toLocaleString('fa-IR')} نظر
             </span>
-          </div>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-bone-dim sm:text-base">
-            تجربه و دیدگاه خود را با دیگران به اشتراک بگذارید. نظرات پس از بررسی تیم منتشر می‌شوند.
-          </p>
+          ) : null}
         </header>
 
-        {/* List */}
         {comments.length > 0 ? (
-          <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="mb-8 divide-y divide-bone/8 border-y border-bone/8 sm:mb-10">
             {comments.map((comment) => (
               <CommentCard key={comment.id} comment={comment} />
             ))}
           </div>
-        ) : (
-          <div className="rounded-card border border-dashed border-bone/15 bg-charcoal/20 px-4 py-8 text-center sm:px-6 sm:py-10">
-            <Sparkles className="mx-auto mb-3 h-5 w-5 text-gold" aria-hidden />
-            <p className="text-sm text-bone-dim sm:text-base">
-              هنوز نظری ثبت نشده. اولین نفری باشید که تجربه خود را می‌نویسد.
-            </p>
-          </div>
-        )}
+        ) : null}
 
-        {/* Form */}
         <form
           onSubmit={onSubmit}
-          className="mt-8 rounded-card border border-bone/10 bg-charcoal/35 p-4 sm:mt-10 sm:p-6"
+          className="space-y-3 rounded-2xl border border-bone/10 bg-charcoal/30 p-4 sm:space-y-3.5 sm:p-5"
         >
-          <h3 className="text-lg font-semibold text-bone">ثبت نظر</h3>
-          <p className="mt-1.5 text-sm text-bone-dim">نظر شما پس از تأیید تیم نمایش داده می‌شود.</p>
-
-          {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
-          {success ? <p className="mt-4 text-sm text-emerald-300">{success}</p> : null}
-
-          {isLoggedIn && author ? (
-            <div className="mt-5 flex items-center gap-3 rounded-lg border border-bone/10 bg-ink/50 p-3 sm:p-4">
-              <CommentAvatar name={author.displayName} avatarUrl={author.avatarUrl} />
-              <div className="min-w-0">
-                <p className="truncate font-medium text-bone">{author.displayName}</p>
-                <p className="mt-0.5 text-caption text-mist">با پروفایل حساب کاربری شما ارسال می‌شود</p>
-              </div>
+          {!showNameField && author ? (
+            <div className="flex items-center gap-2.5">
+              <CommentAvatar name={author.displayName} avatarUrl={author.avatarUrl} size="sm" />
+              <p className="truncate text-sm text-bone-dim">
+                به‌نام <span className="font-medium text-bone">{author.displayName}</span>
+              </p>
             </div>
-          ) : null}
-
-          <div className="mt-5 space-y-4">
-            {!isLoggedIn ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block min-w-0 sm:col-span-1">
-                  <span className="mb-1.5 block text-caption text-mist">نام</span>
-                  <input
-                    className="w-full rounded-lg border border-bone/15 bg-ink/60 px-4 py-3 text-bone outline-none transition-colors focus:border-gold/40"
-                    value={authorName}
-                    onChange={(e) => setAuthorName(e.target.value)}
-                    maxLength={120}
-                    required
-                  />
-                </label>
-                <label className="block min-w-0 sm:col-span-1">
-                  <span className="mb-1.5 block text-caption text-mist">ایمیل (اختیاری)</span>
-                  <input
-                    type="email"
-                    className="w-full rounded-lg border border-bone/15 bg-ink/60 px-4 py-3 text-bone outline-none transition-colors focus:border-gold/40"
-                    dir="ltr"
-                    value={authorEmail}
-                    onChange={(e) => setAuthorEmail(e.target.value)}
-                  />
-                </label>
-              </div>
-            ) : null}
-
+          ) : (
             <label className="block min-w-0">
-              <span className="mb-1.5 block text-caption text-mist">متن نظر</span>
-              <textarea
-                className="min-h-28 w-full rounded-lg border border-bone/15 bg-ink/60 px-4 py-3 text-bone outline-none transition-colors focus:border-gold/40 sm:min-h-32"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                maxLength={2000}
-                required
-                placeholder="نظر یا سوال خود را بنویسید..."
+              <span className="mb-1.5 block text-caption text-mist">نام</span>
+              <input
+                className="h-11 w-full rounded-xl border border-bone/12 bg-ink/45 px-3.5 text-sm text-bone outline-none transition-[border-color,box-shadow] placeholder:text-mist/70 focus:border-gold/40 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_14%,transparent)]"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                maxLength={120}
+                placeholder="نام شما"
+                autoComplete="name"
               />
             </label>
+          )}
 
-            {honeypotField}
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-caption text-mist">نظر</span>
+            <textarea
+              className="min-h-[7rem] w-full resize-y rounded-xl border border-bone/12 bg-ink/45 px-3.5 py-3 text-sm leading-relaxed text-bone outline-none transition-[border-color,box-shadow] placeholder:text-mist/70 focus:border-gold/40 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_14%,transparent)] sm:min-h-[8rem]"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              maxLength={2000}
+              placeholder="تجربه یا دیدگاه‌تان را بنویسید…"
+            />
+          </label>
 
-            <div className="min-w-0 w-full max-w-full overflow-x-auto">
-              {captchaField}
-            </div>
+          {error ? <p className="text-sm text-red-300/90">{error}</p> : null}
+          {success ? <p className="text-sm text-emerald-300/90">{success}</p> : null}
 
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <button
-                type="submit"
-                data-neon-tone="gold"
-                disabled={pending || securityLoading || !captchaReady}
-                className={cn(
-                  'neon-btn-primary neon-btn-vip group relative inline-flex h-12 w-full items-center justify-center gap-2.5',
-                  'overflow-hidden rounded-pill px-8 text-base font-bold shadow-gold',
-                  'transition-transform hover:-translate-y-px active:translate-y-0',
-                  'disabled:pointer-events-none disabled:opacity-55 sm:w-auto sm:min-w-[11.5rem]',
-                )}
-              >
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-l from-white/0 via-white/15 to-white/0 opacity-0 transition-opacity group-hover:opacity-100"
-                />
-                {pending ? (
-                  <Loader2 className="relative h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="relative h-4 w-4 rtl-flip" aria-hidden />
-                )}
-                <span className="relative">ارسال نظر</span>
-              </button>
-              {!isLoggedIn && auth ? (
-                <button
-                  type="button"
-                  className="text-sm text-gold-soft underline underline-offset-2 transition-colors hover:text-gold"
-                  onClick={() => auth.openLogin({ redirectTo: window.location.pathname })}
-                >
-                  ورود با حساب کاربری
-                </button>
-              ) : null}
-            </div>
-          </div>
+          <button
+            type="submit"
+            disabled={pending}
+            data-neon-tone="gold"
+            className={cn(
+              'neon-btn-primary neon-btn-vip group relative inline-flex h-12 w-full items-center justify-center gap-2.5',
+              'overflow-hidden rounded-pill px-6 text-sm font-bold shadow-gold',
+              'transition-transform hover:-translate-y-px active:translate-y-0',
+              'disabled:pointer-events-none disabled:opacity-55',
+            )}
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-gradient-to-l from-white/0 via-white/15 to-white/0 opacity-0 transition-opacity group-hover:opacity-100"
+            />
+            {pending ? (
+              <Loader2 className="relative h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="relative h-4 w-4 rtl-flip" aria-hidden />
+            )}
+            <span className="relative">ارسال نظر</span>
+          </button>
         </form>
       </div>
     </section>

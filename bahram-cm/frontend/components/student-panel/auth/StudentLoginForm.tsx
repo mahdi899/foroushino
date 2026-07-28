@@ -12,6 +12,7 @@ import {
 } from '@/lib/student/actions';
 import { getIranMobileInputError, isValidIranMobile, sanitizePhoneInput } from '@/lib/chatbot/phone';
 import { cn } from '@/lib/cn';
+import { useStudentAuthOptional } from './StudentAuthContext';
 import { OtpDigitInput } from './OtpDigitInput';
 
 const OTP_INITIAL: OtpAuthState = { step: 'mobile' };
@@ -31,6 +32,7 @@ export type StudentLoginFormProps = {
   active?: boolean;
   onClose?: () => void;
   context?: 'panel' | 'family';
+  purpose?: 'default' | 'comment';
 };
 
 export function StudentLoginForm({
@@ -39,7 +41,10 @@ export function StudentLoginForm({
   active = true,
   onClose,
   context = 'panel',
+  purpose = 'default',
 }: StudentLoginFormProps) {
+  const auth = useStudentAuthOptional();
+  const stayOnPage = purpose === 'comment';
   const [step, setStep] = useState<Step>('mobile');
   const [phone, setPhone] = useState('');
   const [phoneTouched, setPhoneTouched] = useState(false);
@@ -52,6 +57,7 @@ export function StudentLoginForm({
   const resendFormRef = useRef<HTMLFormElement>(null);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  const stayHandled = useRef(false);
   const [otpState, sendOtp, sendPending] = useActionState(sendOtpAction, OTP_INITIAL);
   const [verifyState, verifyOtp, verifyPending] = useActionState(verifyOtpAction, OTP_INITIAL);
   const passwordSecurity = useFormSecurity('admin_login', { captchaStacked: true });
@@ -87,6 +93,7 @@ export function StudentLoginForm({
     setResendIn(0);
     setPasswordError(null);
     setOtpInfo(null);
+    stayHandled.current = false;
   }, []);
 
   useEffect(() => {
@@ -119,6 +126,13 @@ export function StudentLoginForm({
   useEffect(() => {
     if (verifyState.step === 'otp' && verifyState.error) setOtpCode('');
   }, [verifyState]);
+
+  useEffect(() => {
+    if (!stayOnPage || verifyState.step !== 'done' || stayHandled.current) return;
+    stayHandled.current = true;
+    auth?.markLoggedIn(verifyState.displayName);
+    auth?.consumeLoginSuccess();
+  }, [stayOnPage, verifyState, auth]);
 
   useEffect(() => {
     if (!active || resendIn <= 0) return;
@@ -168,11 +182,20 @@ export function StudentLoginForm({
       fd.set('captcha_answer', String(captcha.captcha_answer));
     }
     if (website) fd.set('website', website);
+    if (stayOnPage) fd.set('stay', '1');
 
     startPasswordTransition(async () => {
       try {
         const result = await loginPasswordAction({}, fd);
-        if (result.error) setPasswordError(result.error);
+        if (result.error) {
+          setPasswordError(result.error);
+          return;
+        }
+        if (stayOnPage && result.ok) {
+          auth?.markLoggedIn(result.displayName);
+          auth?.consumeLoginSuccess();
+          return;
+        }
       } catch (error) {
         // Let Next.js handle redirect() from the server action.
         const digest = typeof error === 'object' && error !== null && 'digest' in error ? String(error.digest) : '';
@@ -223,6 +246,17 @@ export function StudentLoginForm({
           <p id={titleId} className="text-center text-sm text-bone/55">
             ورود با پیامک
           </p>
+        ) : purpose === 'comment' ? (
+          <div className="text-center">
+            <BrandMark className="mx-auto h-9 w-9 rounded-pill ring-bone/12" />
+            <h2 id={titleId} className="panel-text-body-lg mt-2.5 font-display font-semibold text-bone">
+              ثبت نظر
+            </h2>
+            <p className="mt-0.5 flex items-center justify-center gap-1 panel-text-meta text-mist">
+              <ShieldCheck className="h-3 w-3 text-emerald-glow/80" strokeWidth={1.5} aria-hidden />
+              برای ثبت نظر، شماره‌ات را بزن
+            </p>
+          </div>
         ) : (
           <div className="text-center">
             <BrandMark className="mx-auto h-9 w-9 rounded-pill ring-bone/12" />
@@ -339,6 +373,7 @@ export function StudentLoginForm({
               <form ref={verifyFormRef} action={verifyOtp} className="space-y-3">
                 <input type="hidden" name="mobile" value={mobile} />
                 <input type="hidden" name="redirect_to" value={redirectTo} />
+                {stayOnPage ? <input type="hidden" name="stay" value="1" /> : null}
                 {isFamily ? <input type="hidden" name="auth_context" value="family" /> : null}
                 <input ref={codeInputRef} type="hidden" name="code" value={otpCode} readOnly />
 
@@ -366,7 +401,7 @@ export function StudentLoginForm({
                   disabled={otpCode.length < 5 || verifyPending}
                   className={submitClass}
                 >
-                  {verifyPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تأیید و ورود'}
+                  {verifyPending ? <Loader2 className="h-4 w-4 animate-spin" /> : purpose === 'comment' ? 'تأیید و ثبت نظر' : 'تأیید و ورود'}
                 </button>
               </form>
 
@@ -395,6 +430,7 @@ export function StudentLoginForm({
           {step === 'password' ? (
             <form onSubmit={handlePasswordSubmit} className="space-y-3">
               <input type="hidden" name="redirect_to" value={redirectTo} />
+              {stayOnPage ? <input type="hidden" name="stay" value="1" /> : null}
               {isFamily ? <input type="hidden" name="auth_context" value="family" /> : null}
               {passwordSecurity.honeypotField}
 
