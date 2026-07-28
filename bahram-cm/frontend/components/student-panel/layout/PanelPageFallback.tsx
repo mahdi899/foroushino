@@ -4,7 +4,7 @@ import { SiteLoader } from '@/components/layout/SiteLoader';
 export function PanelPageFallback() {
   return (
     <div className="panel-page-inner site-route-loading site-route-loading--panel-inset">
-      <SiteLoader size="md" variant="page" label="در حال بارگذاری..." />
+      <SiteLoader size="md" variant="page" label="" ariaLabel="در حال بارگذاری" />
     </div>
   );
 }

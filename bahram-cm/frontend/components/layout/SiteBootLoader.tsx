@@ -78,7 +78,7 @@ export function SiteBootLoader() {
       aria-hidden={phase === 'fading'}
     >
       <div className="site-boot-loader__backdrop" />
-      <SiteLoader size="lg" variant="page" label="در حال بارگذاری..." />
+      <SiteLoader size="lg" variant="page" label="" ariaLabel="در حال بارگذاری" />
     </div>
   );
 }

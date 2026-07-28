@@ -1,13 +1,10 @@
 import { headers } from 'next/headers';
-import { PanelShellLoading } from '@/components/student-panel/layout/PanelShellLoading';
 import { SiteLoader } from '@/components/layout/SiteLoader';
 
 /**
- * Entry into /panel (from the marketing site) — show panel chrome skeleton so
- * the user never gets a blank white frame while auth + RSC resolve.
- *
- * In-panel page switches use (shell)/loading.tsx instead; this file does not
- * remount for those navigations.
+ * Only /panel/login uses a local loader here.
+ * Authenticated shell entry/navigation is handled solely by
+ * app/panel/(shell)/loading.tsx so users never see two stacked loaders.
  */
 export default async function PanelLoading() {
   const pathname = (await headers()).get('x-pathname') ?? '';
@@ -15,10 +12,10 @@ export default async function PanelLoading() {
   if (pathname.startsWith('/panel/login')) {
     return (
       <div className="site-route-loading site-route-loading--panel-inset">
-        <SiteLoader size="md" variant="page" label="در حال بارگذاری..." />
+        <SiteLoader size="md" variant="page" label="" ariaLabel="در حال بارگذاری" />
       </div>
     );
   }
 
-  return <PanelShellLoading />;
+  return null;
 }
