@@ -38,8 +38,8 @@ const pathMeta: Record<
   "/reference-channels/kanal-mrgf": {
     icon: Radio,
     tone: "gold",
-    image: sitePhotos.landscapeSession,
-    imageAlt: "کارت کانال مرجع — درآمد مستقیم از فروش دوره‌ها و محصولات",
+    image: sitePhotos.mainPathReference,
+    imageAlt: "کارت کانال مرجع — محصول آماده، آموزش فروش و درآمد مستقیم",
   },
 };
 

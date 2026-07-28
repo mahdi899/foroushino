@@ -46,7 +46,7 @@ export function CopyTextButton({
         type="button"
         onClick={() => void copy()}
         className={cn(
-          'panel-text-meta inline-flex shrink-0 items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-2 font-medium text-text-muted transition hover:border-primary/30 hover:text-primary',
+          'panel-text-meta inline-flex shrink-0 items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-2 font-medium text-text-muted transition hover:border-primary/30 hover:text-primary panel-copy-btn',
           !showValue && 'justify-center',
         )}
       >

@@ -80,7 +80,7 @@ function ReactionButton({
       >
         <FamilyReactionLottie
           type={type}
-          size={compact ? 24 : 18}
+          size={compact ? 22 : 16}
           mode={animated ? 'inline' : 'static'}
         />
         {count > 0 && (
@@ -104,7 +104,8 @@ const PICKER_BURST_MS = 360;
 const POP_MS = 260;
 /** 3×2.375rem rows + gaps + padding — keep close to real grid so first paint isn’t far off */
 const PICKER_FALLBACK_HEIGHT = 96;
-const PICKER_FALLBACK_WIDTH = 216;
+/** 5×2.375 + 4×0.25 gap + 2×0.5 padding ≈ 13.875rem */
+const PICKER_FALLBACK_WIDTH = 228;
 
 export type ReactionBarHandle = {
   openPicker: (anchor?: HTMLElement | null) => void;

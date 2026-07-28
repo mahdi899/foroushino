@@ -147,7 +147,7 @@ export const site = {
       {
         href: "/reference-channels/kanal-mrgf",
         label: "کانال مرجع",
-        tagline: "درآمد مستقیم از فروش",
+        tagline: "محصول آماده؛ تو فقط فروش را یاد بگیر",
         cta: "ورود",
       },
     ],

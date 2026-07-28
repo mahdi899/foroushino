@@ -454,14 +454,16 @@ export const PostCard = memo(function PostCard({
       </div>
 
       <div className="space-y-2 border-t border-[var(--family-border-subtle)] pt-2.5">
-        <div dir="ltr" className="flex items-end justify-between gap-x-2">
-          <ReactionBar
-            postId={post.id}
-            stats={{ ...post.stats, comments: commentCount }}
-            userReaction={post.user_reaction}
-            readOnly={Boolean(previewMode)}
-            onLockedInteract={() => onGuestGate?.('react')}
-          />
+        <div dir="ltr" className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1.5">
+          <div className="min-w-0 flex-1 basis-[11rem]">
+            <ReactionBar
+              postId={post.id}
+              stats={{ ...post.stats, comments: commentCount }}
+              userReaction={post.user_reaction}
+              readOnly={Boolean(previewMode)}
+              onLockedInteract={() => onGuestGate?.('react')}
+            />
+          </div>
           <PostMetaRow
             postId={post.id}
             publishedAt={post.published_at}

@@ -1505,6 +1505,55 @@
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
+/* Light mode — after .card so shorthand does not win; kill section outlines */
+.panel-root:not([data-panel-theme='dark']) {
+  --color-border-ui: #d5e5e6;
+  --color-border: transparent;
+}
+
+.panel-root:not([data-panel-theme='dark']) .card,
+.panel-root:not([data-panel-theme='dark']) .panel-stat-card,
+.panel-root:not([data-panel-theme='dark']) .panel-hero-banner,
+.panel-root:not([data-panel-theme='dark']) .panel-page-inner > .card {
+  border: none !important;
+  box-shadow: var(--shadow-soft);
+}
+
+.panel-root:not([data-panel-theme='dark']) .border-border,
+.panel-root:not([data-panel-theme='dark']) .border-border\/80,
+.panel-root:not([data-panel-theme='dark']) .border-border\/70,
+.panel-root:not([data-panel-theme='dark']) .border-border\/60,
+.panel-root:not([data-panel-theme='dark']) .border-border\/50 {
+  border-color: transparent !important;
+}
+
+.panel-root:not([data-panel-theme='dark']) .panel-telegram-groups__item,
+.panel-root:not([data-panel-theme='dark']) .panel-telegram-groups__list > li {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.panel-root:not([data-panel-theme='dark']) .badge-neutral {
+  border-color: transparent !important;
+}
+
+.panel-root:not([data-panel-theme='dark']) .field-input,
+.panel-root:not([data-panel-theme='dark']) .btn-secondary,
+.panel-root:not([data-panel-theme='dark']) .panel-input,
+.panel-root:not([data-panel-theme='dark']) select.field-input,
+.panel-root:not([data-panel-theme='dark']) textarea.field-input {
+  border-color: var(--color-border-ui) !important;
+}
+
+.panel-root:not([data-panel-theme='dark']) .btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-primary) !important;
+}
+
+.panel-root:not([data-panel-theme='dark']) .field-input:focus {
+  border-color: var(--color-primary) !important;
+}
+
 .panel-root[data-panel-theme='dark'] .card {
   background: var(--panel-glass-bg);
   backdrop-filter: blur(18px) saturate(150%);

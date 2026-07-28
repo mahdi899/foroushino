@@ -15,7 +15,7 @@ class SeminarAttendeeCoursePricing
 {
     public const COURSE_SLUG = 'campaign-writing';
 
-    public const LIST_PRICE = 30_000_000;
+    public const LIST_PRICE = 26_900_000;
 
     public const SEMINAR_PRICE = 200_000;
 
@@ -84,10 +84,12 @@ class SeminarAttendeeCoursePricing
         }
 
         $hasSeminar = $this->userHasSeminar($user, $rawPhone);
+        // Prefer live product.price so catalog / checkout / Telegram stay aligned.
+        $listPrice = (int) $product->price > 0 ? (int) $product->price : self::LIST_PRICE;
 
         return [
-            'amount' => self::LIST_PRICE,
-            'final_amount' => $hasSeminar ? self::SEMINAR_PRICE : self::LIST_PRICE,
+            'amount' => $listPrice,
+            'final_amount' => $hasSeminar ? self::SEMINAR_PRICE : $listPrice,
             'seminar_off' => $hasSeminar,
         ];
     }

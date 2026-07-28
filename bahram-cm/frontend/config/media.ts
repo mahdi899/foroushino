@@ -59,6 +59,11 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     label: 'هیرو کمپین‌نویسی — موبایل',
     category: 'دوره‌ها',
   },
+  'reference-channel-hero': {
+    src: siteStorageMedia('reference-channel-hero.webp'),
+    label: 'هیرو و تامبنیل کانال مرجع',
+    category: 'دوره‌ها',
+  },
   'founder': { src: siteStorageMedia('founder-portrait.svg'), label: 'تصویر بهرام', category: 'درباره' },
   'logo-bahram': {
     src: siteStorageMedia('logo-bahram.webp'),

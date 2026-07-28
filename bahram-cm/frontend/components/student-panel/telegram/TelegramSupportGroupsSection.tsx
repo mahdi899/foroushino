@@ -56,7 +56,7 @@ export function TelegramSupportGroupsSection({
         {data.destinations.map((destination) => (
           <li
             key={destination.id}
-            className="rounded-xl border border-border/70 bg-surface-soft/50 p-4"
+            className="panel-telegram-groups__item rounded-xl bg-surface-soft/80 p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">

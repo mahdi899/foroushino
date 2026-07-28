@@ -51,7 +51,7 @@ import { ContentCommentsSection } from "@/components/comments/ContentCommentsSec
 import { pageHeroBackdropPhoto, pageHeroBackdropPhotoMobile, sitePhotos } from "@/lib/site-photo-paths";
 import { site } from "@/content/site";
 
-const FALLBACK_PRICE = 28_900_000;
+const FALLBACK_PRICE = 26_900_000;
 const SECTION_COUNT = 5;
 
 const heroDesktopAlt = coalesceAlt(

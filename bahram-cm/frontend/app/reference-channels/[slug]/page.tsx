@@ -4,10 +4,11 @@ import type { LucideIcon } from "lucide-react";
 import {
   BadgePercent,
   Check,
-  Network,
+  GraduationCap,
+  Handshake,
+  Package,
   Radio,
-  ShoppingBag,
-  Users,
+  Sparkles,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
@@ -25,82 +26,92 @@ import { formatFa, toPersianDigits } from "@/lib/persian";
 import { getProductBySlug } from "@/lib/services/products";
 import { buildMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
-import {
-  pageHeroBackdropPhoto,
-  pageHeroBackdropPhotoMobile,
-  sitePhotos,
-} from "@/lib/site-photo-paths";
+import { sitePhotos } from "@/lib/site-photo-paths";
+
+const referenceHero = sitePhotos.mainPathReference;
 
 const heroPurchaseCtaClassName =
   "h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg";
 
-const heroDesktopAlt = coalesceAlt(
-  staticAltForSrc(pageHeroBackdropPhoto),
-  "کانال مرجع آکادمی بهرام",
-  pageHeroBackdropPhoto,
-);
-const heroMobileAlt = coalesceAlt(
-  staticAltForSrc(pageHeroBackdropPhotoMobile),
-  "کانال مرجع آکادمی بهرام",
-  pageHeroBackdropPhotoMobile,
+const heroAlt = coalesceAlt(
+  staticAltForSrc(referenceHero),
+  "کانال مرجع — محصول آماده، آموزش فروش و درآمد مستقیم",
+  referenceHero,
 );
 
-const benefitCards: { icon: LucideIcon; title: string; body: string }[] = [
+const pillarCards: { icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: Users,
-    title: "گروه ۱۰۰ نفری خودت",
-    body: "ثبت‌نام می‌کنی و زیرمجموعه خودت را می‌سازی — گروهی تا ۱۰۰ نفر که با تو کار می‌کنند.",
+    icon: Package,
+    title: "محصول آماده",
+    body: "محصول برای فروش در اختیار توست؛ لازم نیست از صفر بسازی.",
   },
   {
-    icon: ShoppingBag,
-    title: "فروش دوره‌ها و محصولات",
-    body: "دوره‌ها و محصولات آکادمی را می‌فروشی و مستقیم از هر فروش سهم می‌گیری.",
+    icon: GraduationCap,
+    title: "آموزش فروش",
+    body: "فروش، محتوا، کمپین و پیگیری را عملی یاد می‌گیری.",
+  },
+  {
+    icon: Handshake,
+    title: "کوچینگ و همراهی",
+    body: "در مسیر اجرا همراهت هستیم تا مسیرت را اصلاح کنی.",
   },
   {
     icon: BadgePercent,
-    title: "درصد از هر فروش",
-    body: "از هر فروشی که انجام می‌دهی درصد برمی‌داری — درآمد مستقیم، نه وعده.",
+    title: "درآمد مستقیم از فروش",
+    body: "بعد از هر فروش تأییدشده، سهم تو محاسبه می‌شود.",
   },
-  {
-    icon: Network,
-    title: "شبکه فروش فعال",
-    body: "به‌جای کار تکی، یک کانال مرجع داری که تیم و فروش را کنار هم نگه می‌دارد.",
-  },
+];
+
+const whatYouGet = [
+  "محصول آماده برای فروش",
+  "آموزش ساخت کانال فروش",
+  "نقشه محتوایی جذب و اعتمادسازی",
+  "ایده و نمونه محتوای فروش",
+  "ساختار اجرای کمپین",
+  "آموزش پیگیری و بستن فروش",
+  "کوچینگ و همراهی در مسیر",
+];
+
+const pathSteps = [
+  { step: "۱", title: "شروع", body: "با محصول و مدل همکاری آشنا می‌شوی." },
+  { step: "۲", title: "ساخت کانال", body: "کانالت را برای جذب و اعتماد آماده می‌کنی." },
+  { step: "۳", title: "جذب مخاطب", body: "افراد درست را وارد کانال خودت می‌کنی." },
+  { step: "۴", title: "تولید محتوا", body: "محتوایی می‌سازی که مخاطب را به خرید نزدیک کند." },
+  { step: "۵", title: "اجرای کمپین", body: "محصول را معرفی می‌کنی و فروش را شروع می‌کنی." },
+  { step: "۶", title: "پیگیری و فروش", body: "مخاطبان آماده را پیگیری می‌کنی و فروش را می‌بندی." },
+  { step: "۷", title: "تکرار و رشد", body: "نتیجه را بررسی می‌کنی و بهتر از قبل ادامه می‌دهی." },
 ];
 
 const whoFor = [
-  "می‌خواهی از فروش آموزش و محصولات آکادمی درآمد مستقیم بسازی.",
-  "حاضری گروه خودت را بسازی و با تیم کار کنی.",
-  "دنبال مسیر کمیسیون‌محور هستی، نه فقط مصرف محتوا.",
-  "می‌خواهی به شبکه فروش آکادمی وصل شوی.",
+  "می‌خواهی از فروش محصول درآمد داشته باشی",
+  "هنوز محصول خودت را نداری",
+  "می‌خواهی فروش را عملی یاد بگیری",
+  "حاضری محتوا تولید کنی و پیگیری داشته باشی",
 ];
 
 const notFor = [
-  "فقط می‌خواهی عضو شوی و هیچ فروشی نکنی.",
-  "دنبال درآمد بدون فعالیت و پیگیری هستی.",
-  "حاضر نیستی با افراد زیرمجموعه‌ات در ارتباط باشی.",
+  "دنبال درآمد بدون فعالیت هستی",
+  "فکر می‌کنی فقط با عضویت درآمد می‌سازی",
+  "نمی‌خواهی محتوا و فروش را اجرا کنی",
 ];
 
 const faqs = [
   {
     question: "کانال مرجع چیست؟",
     answer:
-      "کانالی است که در آن ثبت‌نام می‌کنی، گروه زیرمجموعه تا ۱۰۰ نفر می‌سازی و با فروش دوره‌ها و محصولات آکادمی از هر فروش درصد می‌گیری.",
+      "مسیر اجرایی فروش است که در آن محصول، آموزش و محتوا دریافت می‌کنی و در کانال خودت می‌فروشی.",
   },
   {
-    question: "درآمد چطور ساخته می‌شود؟",
-    answer:
-      "با فروش دوره‌ها و محصولات آکادمی. هر فروشی که انجام بدهی، سهم مستقیم خودت را برمی‌داری.",
+    question: "آیا باید محصول خودم را داشته باشم؟",
+    answer: "خیر، محصول برای فروش در اختیار تو قرار می‌گیرد.",
   },
   {
-    question: "گروه ۱۰۰ نفری یعنی چه؟",
-    answer:
-      "بعد از عضویت می‌توانی زیرمجموعه خودت را داشته باشی — گروهی که با تو در مسیر فروش و معرفی محصولات کار می‌کند.",
+    question: "فروش در کجا انجام می‌شود؟",
+    answer: "در کانال و فضای ارتباطی خودت.",
   },
   {
-    question: "چطور وارد کانال مرجع شوم؟",
-    answer:
-      "ثبت‌نام و پرداخت را انجام می‌دهی؛ بعد از احراز هویت، دسترسی کانال و مسیر عضویت برایت باز می‌شود.",
+    question: "آیا درآمد تضمینی است؟",
+    answer: "خیر، نتیجه به اجرای تو، استمرار و کیفیت عملکردت بستگی دارد.",
   },
 ];
 
@@ -122,9 +133,9 @@ export async function generateMetadata({
     description:
       product.meta_description ||
       product.short_description ||
-      "کانال مرجع آکادمی بهرام؛ ثبت‌نام، گروه ۱۰۰ نفری و درآمد مستقیم از فروش دوره‌ها و محصولات.",
+      "محصول آماده است؛ تو فقط فروش را یاد بگیر. کانال مرجع آکادمی بهرام — محصول، آموزش و درآمد مستقیم از فروش.",
     path: `/reference-channels/${slug}`,
-    image: product.featured_image ?? undefined,
+    image: product.featured_image || referenceHero,
   });
 }
 
@@ -159,24 +170,16 @@ export default async function ReferenceChannelLandingPage({
       <link
         rel="preload"
         as="image"
-        href={primarySiteImageSrc(pageHeroBackdropPhotoMobile)}
-        media="(max-width: 767px)"
-        fetchPriority="high"
-      />
-      <link
-        rel="preload"
-        as="image"
-        href={primarySiteImageSrc(pageHeroBackdropPhoto)}
-        media="(min-width: 768px)"
+        href={primarySiteImageSrc(referenceHero)}
         fetchPriority="high"
       />
 
       <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
         <SitePhotoHeroFrame
-          desktopSrc={pageHeroBackdropPhoto}
-          mobileSrc={pageHeroBackdropPhotoMobile}
-          desktopAlt={heroDesktopAlt}
-          mobileAlt={heroMobileAlt}
+          desktopSrc={referenceHero}
+          mobileSrc={referenceHero}
+          desktopAlt={heroAlt}
+          mobileAlt={heroAlt}
         >
           <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center overflow-visible px-4 pb-8 pt-16 sm:bottom-4 sm:pb-7 sm:pt-24 md:bottom-0 md:pb-8 md:pt-28">
             <div className="campaign-course-hero-headline-outer">
@@ -199,7 +202,7 @@ export default async function ReferenceChannelLandingPage({
                 size="lg"
                 className={heroPurchaseCtaClassName}
               >
-                عضویت
+                ورود به کانال مرجع
               </ProductPurchaseCta>
               <LinkButton
                 href="#about"
@@ -219,7 +222,7 @@ export default async function ReferenceChannelLandingPage({
         </SitePhotoHeroFrame>
       </section>
 
-      {/* Intro — price */}
+      {/* Promise + price */}
       <section
         id="hero-purchase"
         className="campaign-course-intro relative scroll-mt-20 overflow-visible bg-ink py-12 sm:py-16 md:py-20 lg:py-24"
@@ -228,37 +231,38 @@ export default async function ReferenceChannelLandingPage({
         <div className="container-luxe relative z-[1] min-w-0">
           <div className="campaign-course-intro-layout">
             <div className="campaign-course-intro-cluster">
-              <Reveal delay={0.1}>
-                <div className="campaign-course-intro-income-wrap">
-                  <p className="campaign-course-intro-income">
-                    <span className="campaign-course-intro-income__lead">درآمد</span>
-                    <span className="campaign-course-intro-income__range">مستقیم</span>
-                    <span className="campaign-course-intro-income__tail">از هر فروش</span>
+              <Reveal delay={0.08}>
+                <div className="mx-auto max-w-2xl text-center">
+                  <p className="text-h3 text-balance text-bone md:text-h2">
+                    محصول آماده است؛
+                    <br />
+                    تو فقط فروش را یاد بگیر
                   </p>
-                  <p className="campaign-course-intro-students">
-                    <span className="campaign-course-intro-students__plus" aria-hidden>
-                      +
-                    </span>
-                    <span className="campaign-course-intro-students__count">
-                      {toPersianDigits("100")}
-                    </span>
-                    <span className="campaign-course-intro-students__label">نفر در گروه تو</span>
+                  <p className="mt-4 text-sm leading-relaxed text-bone-dim md:text-body">
+                    محصول، محتوا و مسیر اجرا را از ما بگیر؛ در کانال خودت بفروش و از فروش‌های خودت
+                    درآمد داشته باش.
                   </p>
                 </div>
               </Reveal>
 
-              <Reveal delay={0.16}>
+              <Reveal delay={0.14}>
                 <div className="campaign-course-intro-price">
                   {discountPercent ? (
                     <div className="campaign-course-intro-price-ribbon">
-                      {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
+                      عضویت ویژه سمینار
                     </div>
-                  ) : null}
+                  ) : (
+                    <div className="campaign-course-intro-price-ribbon">عضویت ویژه</div>
+                  )}
 
                   <div className="campaign-course-intro-price-body">
                     {originalPriceLabel ? (
                       <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
-                    ) : null}
+                    ) : (
+                      <p className="campaign-course-intro-was num-latin">
+                        ارزش کامل: {formatFa(listPrice)} تومان
+                      </p>
+                    )}
 
                     <p className="campaign-course-intro-now">
                       <span className="campaign-course-intro-now__amount num-latin">
@@ -267,7 +271,7 @@ export default async function ReferenceChannelLandingPage({
                       <span className="campaign-course-intro-now__unit">تومان</span>
                     </p>
                     {hasDiscount ? (
-                      <p className="mt-2 text-caption text-emerald">ویژه شرکت‌کنندگان سمینار</p>
+                      <p className="mt-2 text-caption text-emerald">قیمت ویژه شرکت‌کنندگان سمینار</p>
                     ) : null}
                   </div>
                 </div>
@@ -277,50 +281,22 @@ export default async function ReferenceChannelLandingPage({
         </div>
       </section>
 
-      {/* About */}
-      <section id="about" className="scroll-mt-20 bg-obsidian py-10 md:py-section-sm lg:py-section">
-        <div className="container-luxe min-w-0">
-          <div className="mx-auto max-w-3xl text-center">
-            <Reveal>
-              <Eyebrow className="justify-center">درباره کانال مرجع</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="mt-3 text-h2 text-balance md:mt-5">
-                کانال مرجع؛ ثبت‌نام، تیم خودت، درآمد مستقیم
-              </h2>
-            </Reveal>
-            <Reveal delay={0.14}>
-              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:text-body">
-                کانال مرجع کانالی است که افراد در آن ثبت‌نام می‌کنند و می‌توانند گروه‌های
-                زیرمجموعه {toPersianDigits("100")} نفری خودشان را داشته باشند. با فروش دوره‌ها و
-                محصولات آکادمی درآمد مستقیم می‌سازند و از هر فروشی که دارند درصد برمی‌دارند.
-              </p>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits */}
+      {/* Four pillars */}
       <section className="py-8 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
           <div className="max-w-xl">
             <Reveal>
-              <Eyebrow>چرا کانال مرجع؟</Eyebrow>
+              <Eyebrow>چهار ستون مسیر</Eyebrow>
             </Reveal>
             <Reveal delay={0.08}>
               <h2 className="mt-2 text-h3 text-balance sm:mt-3 md:mt-5 md:text-h2">
-                چهار ستون مسیر درآمد تو
+                داخل کانال مرجع چه می‌گیری؟
               </h2>
-            </Reveal>
-            <Reveal delay={0.14}>
-              <p className="mt-3 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
-                عضویت فقط تماشا نیست؛ ساختن گروه و گرفتن سهم از فروش است.
-              </p>
             </Reveal>
           </div>
 
           <div className="mt-5 grid gap-2.5 sm:mt-8 sm:grid-cols-2 sm:gap-4 md:mt-10 lg:gap-5">
-            {benefitCards.map((card, i) => (
+            {pillarCards.map((card, i) => (
               <Reveal key={card.title} delay={i * 0.06}>
                 <FeatureCard
                   icon={card.icon}
@@ -335,26 +311,58 @@ export default async function ReferenceChannelLandingPage({
         </div>
       </section>
 
-      {/* Split story */}
+      {/* About */}
+      <section id="about" className="scroll-mt-20 bg-obsidian py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <div className="mx-auto max-w-3xl text-center">
+            <Reveal>
+              <Eyebrow className="justify-center">کانال مرجع چیست؟</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h2 className="mt-3 text-h2 text-balance md:mt-5">
+                یک مسیر اجرایی برای شروع فروش
+              </h2>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:text-body">
+                ما محصول، محتوا و آموزش را در اختیارت می‌گذاریم و تو یاد می‌گیری چطور در کانال خودت
+                مخاطب جذب کنی، اعتماد بسازی و فروش انجام دهی.
+              </p>
+            </Reveal>
+            <Reveal delay={0.2}>
+              <ul className="mx-auto mt-8 grid max-w-xl gap-3 text-start sm:grid-cols-2">
+                {[
+                  "ما محصول را می‌دهیم",
+                  "تو کانال خودت را می‌سازی",
+                  "با آموزش‌ها محتوا و کمپین اجرا می‌کنی",
+                  "از فروش‌های خودت سهم می‌گیری",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-bone-dim md:text-base">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.8} aria-hidden />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Why + deliverables */}
       <ImageSplitSection
-        eyebrow="مسیر درآمد"
-        title="با تیم خودت بفروش و از هر فروش سهم بگیر"
-        image={sitePhotos.landscapeSession}
-        imageAlt="کانال مرجع و مسیر فروش تیمی"
+        eyebrow="چرا کانال مرجع؟"
+        title="برای شروع فروش، لازم نیست همه‌چیز را از صفر بسازی"
+        image={referenceHero}
+        imageAlt={heroAlt}
         imagePosition="end"
         tone="gold"
       >
         <p>
-          بعد از ثبت‌نام، گروه زیرمجموعه تا {toPersianDigits("100")} نفر می‌سازی. دوره‌ها و
-          محصولات آکادمی را معرفی و می‌فروشی — و از هر فروش، درصد مستقیم خودت را برمی‌داری.
+          در کانال مرجع به تو کمک می‌کنیم محصول آماده داشته باشی، محتوای درست تولید کنی، فروش و
+          پیگیری را یاد بگیری و با کوچینگ مسیرت را اصلاح کنی.
         </p>
         <ul className="mt-6 space-y-3">
-          {[
-            "ثبت‌نام در کانال مرجع",
-            "ساخت گروه زیرمجموعه ۱۰۰ نفری",
-            "فروش دوره‌ها و محصولات آکادمی",
-            "برداشت درصد از هر فروش",
-          ].map((item) => (
+          {whatYouGet.map((item) => (
             <li key={item} className="flex items-start gap-3 text-sm text-bone-dim md:text-base">
               <span className="mt-1 inline-flex h-2 w-2 shrink-0 rounded-full bg-gold/70" aria-hidden />
               <span>{item}</span>
@@ -363,6 +371,57 @@ export default async function ReferenceChannelLandingPage({
         </ul>
       </ImageSplitSection>
 
+      {/* Path */}
+      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <Reveal>
+            <Eyebrow>مسیر تو در کانال مرجع</Eyebrow>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <h2 className="mt-3 max-w-2xl text-h2 text-balance md:mt-5">هفت گام تا فروش و رشد</h2>
+          </Reveal>
+
+          <ol className="mt-8 grid gap-3 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+            {pathSteps.map((item, i) => (
+              <Reveal key={item.title} delay={i * 0.04}>
+                <li className="rounded-card-lg border border-bone/10 bg-charcoal/35 p-5">
+                  <p className="text-caption font-bold text-gold">{toPersianDigits(item.step)}</p>
+                  <h3 className="mt-2 text-base font-bold text-bone">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-bone-dim">{item.body}</p>
+                </li>
+              </Reveal>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Important note */}
+      <section className="py-10 md:py-section-sm">
+        <div className="container-luxe min-w-0">
+          <Reveal>
+            <div className="mx-auto max-w-3xl rounded-card-lg border border-gold/20 bg-gold/5 p-6 text-center md:p-8">
+              <Sparkles className="mx-auto h-6 w-6 text-gold" aria-hidden />
+              <h2 className="mt-3 text-h3 text-balance text-bone">نکته مهم</h2>
+              <p className="mt-3 text-sm leading-relaxed text-bone-dim md:text-body">
+                برای شروع، لازم نیست هزاران مخاطب داشته باشی.{" "}
+                {toPersianDigits("100")} مخاطب هدفمند، از هزاران عضو غیرفعال ارزشمندتر است.
+              </p>
+              <p className="mt-5 text-sm font-semibold text-bone">تمرکز تو روی این ۳ چیز است:</p>
+              <ul className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {["جذب درست", "اعتمادسازی", "تبدیل به فروش"].map((item) => (
+                  <li
+                    key={item}
+                    className="rounded-full border border-gold/25 bg-ink/40 px-3 py-1.5 text-caption text-bone"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* Who for */}
       <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
@@ -370,7 +429,7 @@ export default async function ReferenceChannelLandingPage({
             <Eyebrow>مخاطب کانال مرجع</Eyebrow>
           </Reveal>
           <Reveal delay={0.08}>
-            <h2 className="mt-3 max-w-2xl text-h2 text-balance md:mt-5">برای چه کسی است؟</h2>
+            <h2 className="mt-3 max-w-2xl text-h2 text-balance md:mt-5">مناسب چه کسی است؟</h2>
           </Reveal>
 
           <div className="mt-8 grid gap-4 md:mt-10 md:grid-cols-2 md:gap-6">
@@ -392,7 +451,7 @@ export default async function ReferenceChannelLandingPage({
             </Reveal>
             <Reveal delay={0.16}>
               <article className="rounded-card-lg border border-bone/10 bg-charcoal/40 p-5 md:p-6">
-                <h3 className="text-lg font-bold text-bone">مناسب نیست اگر</h3>
+                <h3 className="text-lg font-bold text-bone">مناسب تو نیست اگر</h3>
                 <ul className="mt-4 space-y-3">
                   {notFor.map((item) => (
                     <li key={item} className="flex items-start gap-2.5 text-sm text-bone-dim md:text-base">
@@ -407,17 +466,37 @@ export default async function ReferenceChannelLandingPage({
         </div>
       </section>
 
-      {/* FAQ */}
+      {/* Income */}
       <section className="py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <div className="mx-auto max-w-3xl text-center">
+            <Reveal>
+              <Eyebrow className="justify-center">درآمد چطور ساخته می‌شود؟</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h2 className="mt-3 text-h2 text-balance md:mt-5">
+                از اجرای درست، نه صرف عضویت
+              </h2>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:text-body">
+                فرمول ساده: محصول آماده + محتوای درست + جذب مخاطب هدفمند + پیگیری اصولی = فروش بیشتر.
+                بعد از هر فروش تأییدشده، سهم تو محاسبه می‌شود.
+              </p>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
           <div className="max-w-3xl">
             <Reveal>
               <Eyebrow>سوالات متداول</Eyebrow>
             </Reveal>
             <Reveal delay={0.08}>
-              <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-5">
-                قبل از عضویت این‌ها را بخوان
-              </h2>
+              <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-5">قبل از ورود این‌ها را بخوان</h2>
             </Reveal>
             <div className="mt-6 md:mt-10">
               <Reveal delay={0.12}>
@@ -440,23 +519,27 @@ export default async function ReferenceChannelLandingPage({
                     className="campaign-course-enroll__eyebrow justify-center"
                     dotClassName="campaign-course-enroll__eyebrow-dot"
                   >
-                    عضویت
+                    جمع‌بندی
                   </Eyebrow>
                   <h2 className="campaign-course-enroll__title mt-3 text-h2 text-balance md:mt-4">
-                    آماده‌ای گروه خودت را بسازی؟
+                    محصول آماده است. مسیر فروش مشخص است. حالا نوبت اجرای توست.
                   </h2>
                   <p className="campaign-course-enroll__lead mx-auto mt-4 max-w-md text-sm leading-relaxed md:text-body">
-                    ثبت‌نام در کانال مرجع — گروه {toPersianDigits("100")} نفری و درآمد مستقیم از فروش.
+                    اگر می‌خواهی فقط آموزش نبینی و وارد اجرای واقعی شوی، کانال مرجع برای توست.
                   </p>
+                  {hasDiscount ? (
+                    <p className="mt-3 text-caption text-emerald">
+                      قیمت ویژه شرکت‌کنندگان سمینار: {formatFa(listPrice)} تومان →{" "}
+                      {formatFa(finalPrice)} تومان
+                    </p>
+                  ) : null}
                 </div>
               </Reveal>
 
               <Reveal delay={0.1}>
                 <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
-                  {discountPercent ? (
-                    <div className="campaign-course-intro-price-ribbon">
-                      {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
-                    </div>
+                  {hasDiscount ? (
+                    <div className="campaign-course-intro-price-ribbon">ویژه سمینار</div>
                   ) : null}
 
                   <div className="campaign-course-intro-price-body">
@@ -482,7 +565,7 @@ export default async function ReferenceChannelLandingPage({
                       size="lg"
                       className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
                     >
-                      عضویت در کانال مرجع
+                      ورود به کانال مرجع
                     </ProductPurchaseCta>
                   </div>
                 </div>
@@ -538,7 +621,7 @@ function ImageSplitSection({
           <div className={cn("max-md:order-2 md:col-span-5", !imageFirst && "md:order-2")}>
             <Reveal delay={imageFirst ? 0.1 : 0}>
               <div className="relative overflow-hidden rounded-card-lg border border-bone/10">
-                <div className="relative aspect-[4/3] sm:aspect-[5/4] md:aspect-[4/5] lg:aspect-[5/6]">
+                <div className="relative aspect-[16/9] sm:aspect-[5/4] md:aspect-[4/5] lg:aspect-[5/6]">
                   <SiteImage
                     src={image}
                     alt={imageAlt}

@@ -356,6 +356,51 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 .admin-root .shadow-soft { box-shadow: var(--shadow-soft); }
 .admin-root .shadow-glow { box-shadow: var(--shadow-glow); }
 
+/* Light mode: no hard outlines around section shells — shadow + surface contrast only */
+.admin-root:not([data-admin-theme='dark']) {
+  --color-border-ui: #d5e5e6;
+  /* Decorative section outlines off — inputs/buttons use --color-border-ui */
+  --color-border: transparent;
+}
+
+.admin-root:not([data-admin-theme='dark']) .card,
+.admin-root:not([data-admin-theme='dark']) .admin-dashboard-panel,
+.admin-root:not([data-admin-theme='dark']) .admin-dashboard-welcome,
+.admin-root:not([data-admin-theme='dark']) .admin-table-wrap,
+.admin-root:not([data-admin-theme='dark']) .admin-table-card,
+.admin-root:not([data-admin-theme='dark']) .admin-collection-row {
+  border-color: transparent;
+}
+
+.admin-root:not([data-admin-theme='dark']) .card:hover,
+.admin-root:not([data-admin-theme='dark']) .admin-collection-row:hover {
+  border-color: transparent;
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-root:not([data-admin-theme='dark']) .border-border,
+.admin-root:not([data-admin-theme='dark']) .border-border\/80,
+.admin-root:not([data-admin-theme='dark']) .border-border\/70,
+.admin-root:not([data-admin-theme='dark']) .border-border\/60,
+.admin-root:not([data-admin-theme='dark']) .border-border\/50 {
+  border-color: transparent;
+}
+
+.admin-root:not([data-admin-theme='dark']) .field-input,
+.admin-root:not([data-admin-theme='dark']) .btn-secondary,
+.admin-root:not([data-admin-theme='dark']) select.field-input,
+.admin-root:not([data-admin-theme='dark']) textarea.field-input {
+  border-color: var(--color-border-ui);
+}
+
+.admin-root:not([data-admin-theme='dark']) .btn-secondary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border-ui));
+}
+
+.admin-root:not([data-admin-theme='dark']) .admin-dashboard-panel__head {
+  border-bottom-color: transparent;
+}
+
 .admin-text-caption {
   font-size: var(--admin-text-caption);
   line-height: var(--admin-line-height-caption);

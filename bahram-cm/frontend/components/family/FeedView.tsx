@@ -27,11 +27,14 @@ import { FamilyInstallPromoInline, FamilyInstallTopBanner } from '@/components/f
 import { cn } from '@/lib/cn';
 import { useFamilyPwaInstall } from '@/lib/family/pwa-install';
 import {
+  captureFeedScrollRestore,
   getFeedDistanceFromBottom,
   getLenisDistanceFromBottom,
   pinFeedElementBottomUntilSettled,
+  restoreFeedScrollPosition,
   scrollFeedToElement,
   scrollFeedToLatest,
+  type FeedScrollRestoreSnapshot,
 } from '@/lib/family/feedScroll';
 import {
   countUnreadPosts,
@@ -266,6 +269,8 @@ export function FeedView({
   const anchoredToBottomRef = useRef(false);
   const historyReadyRef = useRef(false);
   const loadingHistoryRef = useRef(false);
+  /** Snapshot taken before older-page prepend — restored once after layout (no multi-frame pin). */
+  const scrollRestoreRef = useRef<FeedScrollRestoreSnapshot | null>(null);
   const pinNavigateRef = useRef(false);
   /** True after a far "jump to post" replaced the loaded window and the tip is no longer loaded. */
   const isJumpedAwayRef = useRef(false);
@@ -631,7 +636,7 @@ export function FeedView({
     if (!root || pinNavigateRef.current || restoringFromCommentsRef.current) return;
     if (performance.now() < userScrollQuietUntilRef.current) return;
     // Never jump to tip while older pages are being prepended / unread boot.
-    if (loadingHistoryRef.current || unreadBootLockRef.current) return;
+    if (loadingHistoryRef.current || scrollRestoreRef.current || unreadBootLockRef.current) return;
     if (performance.now() < catchUpQuietUntilRef.current) return;
 
     // Active unread session: only the jump FAB / user scroll may reach the tip.
@@ -949,7 +954,7 @@ export function FeedView({
     if (pinNavigateRef.current || commentsOpenRef.current || notificationsOpenRef.current) return;
     if (!hasMoreRef.current || isValidatingRef.current || loadingHistoryRef.current) return;
 
-    const { root } = getScrollCtx();
+    const { root, lenis } = getScrollCtx();
     if (!root || root.scrollTop > FAMILY_FEED_HISTORY_PREFETCH_SCROLL_PX) return;
 
     const now = Date.now();
@@ -957,6 +962,7 @@ export function FeedView({
     lastHistoryPrefetchAtRef.current = now;
 
     loadingHistoryRef.current = true;
+    scrollRestoreRef.current = captureFeedScrollRestore(root, lenis);
     loadMore();
     if (hasNewer) isJumpedAwayRef.current = true;
   }, [getScrollCtx, hasNewer, isPreview, loadMore]);
@@ -1044,7 +1050,7 @@ export function FeedView({
       return;
     }
     // Don't re-measure anchor while history prepend is in flight (would false-trigger tip stick).
-    if (loadingHistoryRef.current) return;
+    if (loadingHistoryRef.current || scrollRestoreRef.current) return;
     updateAnchoredToBottom();
   }, [posts.length, commentsTarget, notificationsOpen, setJumpFabVisible, updateAnchoredToBottom]);
 
@@ -1176,21 +1182,36 @@ export function FeedView({
   }, [onRegisterScrollToPost, scrollToPost]);
 
   useEffect(() => {
-    if (!isValidating) {
+    if (isValidating) return;
+    if (!scrollRestoreRef.current) {
       loadingHistoryRef.current = false;
+      return;
     }
+    // Fetch ended without a length change — drop the pin on the next frame so a
+    // same-tick posts.length update can still restore in useLayoutEffect first.
+    const id = requestAnimationFrame(() => {
+      scrollRestoreRef.current = null;
+      loadingHistoryRef.current = false;
+    });
+    return () => cancelAnimationFrame(id);
   }, [isValidating]);
 
   /**
-   * Older pages arrive as a prepend. The virtualizer's `anchorTo: 'end'` anchor already
-   * re-pins the row the reader is on, and every new row reports its real height through
-   * its own ResizeObserver. A second hand-rolled restore used to correct the same
-   * prepend a second time and kept writing scrollTop for 400ms into an active fling —
-   * that was the scroll jump. All that is needed here is closing estimate gaps.
+   * Older pages arrive as a prepend. TanStack `anchorTo: 'end'` re-pins by estimated
+   * sizes, but at scrollTop≈0 (ceiling) that often under-corrects — the viewport jumps
+   * onto the newly loaded oldest posts. Capture the first visible post before fetch and
+   * restore it once after layout. No multi-timeout pin: that fought active fling before.
    */
   useLayoutEffect(() => {
+    const snapshot = scrollRestoreRef.current;
     virtualListRef.current?.measureNewRows();
-  }, [posts.length]);
+    if (!snapshot) return;
+
+    const { root, lenis } = getScrollCtx();
+    restoreFeedScrollPosition(snapshot, { root, lenis });
+    scrollRestoreRef.current = null;
+    loadingHistoryRef.current = false;
+  }, [getScrollCtx, posts.length]);
 
   // Keep catching up to bottom after media/layout settles (caught-up sessions only).
   // Do NOT depend on unreadSplitId — clearing the split must not re-trigger tip scroll.
@@ -1198,16 +1219,16 @@ export function FeedView({
     if (!feedReady || isPreview || !initialScrollDoneRef.current) return;
     if (unreadSplitRef.current != null || unreadBootLockRef.current) return;
     if (!anchoredToBottomRef.current) return;
-    if (loadingHistoryRef.current) return;
+    if (loadingHistoryRef.current || scrollRestoreRef.current) return;
     const t1 = window.setTimeout(() => {
       if (unreadBootLockRef.current || unreadSplitRef.current != null) return;
-      if (loadingHistoryRef.current) return;
+      if (loadingHistoryRef.current || scrollRestoreRef.current) return;
       if (performance.now() < userScrollQuietUntilRef.current) return;
       if (anchoredToBottomRef.current) scrollToLatestReliable('auto');
     }, 200);
     const t2 = window.setTimeout(() => {
       if (unreadBootLockRef.current || unreadSplitRef.current != null) return;
-      if (loadingHistoryRef.current) return;
+      if (loadingHistoryRef.current || scrollRestoreRef.current) return;
       if (performance.now() < userScrollQuietUntilRef.current) return;
       if (anchoredToBottomRef.current) markCaughtUpToLatest();
     }, 500);
@@ -1597,7 +1618,13 @@ export function FeedView({
         }
         if (!hasMoreRef.current) return;
 
+        const ctx = getScrollCtx();
+        const scrollRoot = ctx.root;
+        if (!scrollRoot) return;
+
         loadingHistoryRef.current = true;
+        // Pin the first visible post — at the ceiling, scrollTop stays ~0 without this.
+        scrollRestoreRef.current = captureFeedScrollRestore(scrollRoot, ctx.lenis);
         loadMore();
         // If tip page was pruned by MAX_FEED_PAGES, treat as jumped-away.
         if (hasNewer) isJumpedAwayRef.current = true;
@@ -1821,7 +1848,7 @@ export function FeedView({
                   {!isPreview && hasMore && (
                     <div
                       ref={topSentinelRef}
-                      className="flex items-center justify-center py-3"
+                      className="flex min-h-10 items-center justify-center py-3"
                       aria-busy={isValidating && posts.length > 0}
                     >
                       {isValidating && posts.length > 0 ? (

@@ -26,6 +26,8 @@ export const sitePhotos = {
   founderLetter: siteStorageMedia('founder-letter.webp'),
   mainPathCampaign: siteStorageMedia('main-path-campaign.webp'),
   mainPathSaat: siteStorageMedia('main-path-saat.webp'),
+  /** تامبنیل و هیرو کانال مرجع */
+  mainPathReference: siteStorageMedia('reference-channel-hero.webp'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
   landscapeSession: siteStorageMedia('landscape-session.webp'),
   /** هیرو دوره کمپین‌نویسی — موبایل (۹:۱۶) */

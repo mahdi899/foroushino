@@ -41,8 +41,8 @@ const staticPathMeta: Record<string, { level: string; duration: string; featured
     featured: false,
   },
   '/reference-channels/kanal-mrgf': {
-    level: 'شبکه فروش',
-    duration: 'گروه ۱۰۰ نفری',
+    level: 'مسیر فروش',
+    duration: 'محصول + آموزش',
     featured: false,
   },
 };

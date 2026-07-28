@@ -3,13 +3,13 @@ import { sitePhotos } from '@/lib/site-photo-paths';
 const slugFallback: Record<string, string> = {
   'campaign-writing': sitePhotos.mainPathCampaign,
   saat: sitePhotos.mainPathSaat,
-  'reference-kanal-mrgf': sitePhotos.landscapeSession,
+  'reference-kanal-mrgf': sitePhotos.mainPathReference,
 };
 
 const landingHrefFallback: Record<string, string> = {
   '/course/campaign-writing': sitePhotos.mainPathCampaign,
   '/saat': sitePhotos.mainPathSaat,
-  '/reference-channels/kanal-mrgf': sitePhotos.landscapeSession,
+  '/reference-channels/kanal-mrgf': sitePhotos.mainPathReference,
 };
 
 type ProductImageInput = {
