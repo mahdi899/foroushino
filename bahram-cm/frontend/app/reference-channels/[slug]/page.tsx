@@ -103,7 +103,7 @@ export default async function ReferenceChannelLandingPage({
                   </LinkButton>
                 )}
                 {student ? (
-                  <LinkButton href="/panel/reference-channel" variant="secondary" size="lg">
+                  <LinkButton href="/panel/reference-channel" variant="ghost" size="lg">
                     پنل دانشجو
                   </LinkButton>
                 ) : null}
