@@ -35,6 +35,7 @@ Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle
         // Live — never cache; host calls these at purchase/identity time.
         Route::prefix('live')->group(function (): void {
             Route::post('/process-update', [TelegramHostLiveController::class, 'processUpdate'])->middleware('throttle:120,1');
+            Route::post('/admin/fast', [TelegramHostLiveController::class, 'adminFast'])->middleware('throttle:180,1');
             Route::post('/discount/preview', [TelegramHostLiveController::class, 'discountPreview']);
             Route::post('/access/owns', [TelegramHostLiveController::class, 'accessOwns']);
             Route::post('/product/present', [TelegramHostLiveController::class, 'productPresent']);

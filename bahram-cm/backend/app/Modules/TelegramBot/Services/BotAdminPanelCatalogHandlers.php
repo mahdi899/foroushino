@@ -10,6 +10,7 @@ use App\Modules\TelegramBot\Enums\BotAdminPermission;
 use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Models\TelegramConversation;
 use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Services\ReferenceChannelProductService;
 use App\Services\SeminarProductService;

@@ -35,6 +35,7 @@ use App\Services\Family\FamilyAccessService;
 use App\Services\Family\FamilyAssignmentService;
 use App\Services\ReferralService;
 use App\Services\TelegramHostUpdateProcessor;
+use App\Services\TelegramHostAdminFastService;
 use App\Support\InflatedMemberCount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -105,6 +106,16 @@ class TelegramHostLiveController
         }
 
         return $this->jsonResponse(['ok' => true]);
+    }
+
+    public function adminFast(Request $request, TelegramHostAdminFastService $adminFast): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $result = $adminFast->dispatch($this->productionBot(), $payload);
+
+        $status = ($result['ok'] ?? false) ? 200 : 422;
+
+        return $this->jsonResponse($result, $status);
     }
 
     public function productPresent(Request $request): JsonResponse
