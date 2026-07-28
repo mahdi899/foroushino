@@ -1,50 +1,46 @@
 "use client";
 
-import { useEffect, type ImgHTMLAttributes } from "react";
-import { ENAMAD_CODE, ENAMAD_LOGO_URL, ENAMAD_TRUST_URL } from "@/lib/enamad";
+import { useEffect, useRef } from "react";
+
+/** اسنیپت‌های رسمی — بدون دستکاری؛ فقط داخل باکس استایل می‌شوند. */
+const TRUST_SEALS_HTML = `<style>#zarinpal{margin:auto} #zarinpal img {width: 80px;}</style>
+<div id="zarinpal">
+<script src="https://www.zarinpal.com/webservice/TrustCode" type="text/javascript"></script>
+</div>
+<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=7018924&Code=WXwKRP44oHlTXnGwsgyYeTs3OtYeCZOY'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=7018924&Code=WXwKRP44oHlTXnGwsgyYeTs3OtYeCZOY' alt='' style='cursor:pointer' code='WXwKRP44oHlTXnGwsgyYeTs3OtYeCZOY'></a>`;
 
 /**
- * اسکریپت‌های رسمی نماد اعتماد — بدون دستکاری اسنیپت‌ها.
+ * اسکریپت‌های رسمی نماد اعتماد.
  * ساماندهی بعد از دریافت کد اضافه می‌شود.
  */
 export function TrustSeals() {
+  const hostRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const host = document.getElementById("zarinpal");
-    if (!host || host.querySelector("script[data-zarinpal-trust]")) return;
+    const host = hostRef.current;
+    if (!host || host.dataset.mounted === "1") return;
+    host.dataset.mounted = "1";
+    host.innerHTML = TRUST_SEALS_HTML;
 
-    const script = document.createElement("script");
-    script.src = "https://www.zarinpal.com/webservice/TrustCode";
-    script.type = "text/javascript";
-    script.dataset.zarinpalTrust = "1";
-    host.appendChild(script);
-
-    return () => {
-      script.remove();
-    };
+    // اسکریپت‌های تزریق‌شده با innerHTML اجرا نمی‌شوند — همان تگ را دوباره mount می‌کنیم
+    host.querySelectorAll("script").forEach((oldScript) => {
+      const script = document.createElement("script");
+      for (const attr of Array.from(oldScript.attributes)) {
+        script.setAttribute(attr.name, attr.value);
+      }
+      if (oldScript.textContent) {
+        script.textContent = oldScript.textContent;
+      }
+      oldScript.replaceWith(script);
+    });
   }, []);
 
   return (
-    <div className="namad-trust-box mx-auto flex max-w-xl flex-wrap items-center justify-center gap-6 rounded-2xl border border-bone/15 bg-bone/5 px-6 py-8 sm:gap-10 sm:px-10">
-      <style>{`#zarinpal{margin:auto} #zarinpal img {width: 80px;}`}</style>
-
-      <div id="zarinpal" className="flex min-h-[80px] min-w-[80px] items-center justify-center" />
-
-      <a
-        referrerPolicy="origin"
-        target="_blank"
-        rel="noreferrer noopener"
-        href={ENAMAD_TRUST_URL}
-        className="flex min-h-[80px] min-w-[80px] items-center justify-center"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          referrerPolicy="origin"
-          src={ENAMAD_LOGO_URL}
-          alt="نماد اعتماد الکترونیکی"
-          style={{ cursor: "pointer", width: 80, height: "auto" }}
-          {...({ code: ENAMAD_CODE } as ImgHTMLAttributes<HTMLImageElement>)}
-        />
-      </a>
+    <div className="namad-trust-box mx-auto max-w-xl rounded-2xl border border-bone/15 bg-bone/5 px-6 py-8 sm:px-10">
+      <div
+        ref={hostRef}
+        className="flex flex-wrap items-center justify-center gap-6 sm:gap-10"
+      />
     </div>
   );
 }

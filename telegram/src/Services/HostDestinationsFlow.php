@@ -82,11 +82,10 @@ final class HostDestinationsFlow
 
                 if ($isMember) {
                     $destLines[] = '  '.TelegramCustomEmoji::tag('check').' شما عضو این گروه هستید.';
-
-                    continue;
+                } else {
+                    $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
                 }
 
-                $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
                 $inviteUrl = $this->resolveInviteUrl($destination, $telegramUserId);
                 if ($inviteUrl !== null && $inviteUrl !== '') {
                     $joinButtons[] = [InlineButtons::url($title !== '' ? $title : 'عضویت', $inviteUrl, 'pin')];
@@ -110,10 +109,9 @@ final class HostDestinationsFlow
                     $destLines[] = '• <b>'.$this->escape((string) $item['title']).'</b>';
                     if ($isMember) {
                         $destLines[] = '  '.TelegramCustomEmoji::tag('check').' شما عضو این گروه هستید.';
-
-                        continue;
+                    } else {
+                        $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
                     }
-                    $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
                     $joinButtons[] = [InlineButtons::url(
                         (string) $item['title'],
                         (string) $item['url'],

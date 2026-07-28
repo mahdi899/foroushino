@@ -153,11 +153,14 @@ class TelegramReferenceChannelPresenter
                 $lines[] = TelegramCustomEmoji::tag('check').' شما عضو گروه مرجع هستید.';
             } elseif (filled($inviteUrl)) {
                 $lines[] = TelegramCustomEmoji::tag('pin').' لینک عضویت اختصاصی شما آماده است — فقط با همین اکانت درخواست بدهید.';
+            } else {
+                $lines[] = 'لینک عضویت در حال آماده‌سازی است. چند لحظه بعد دوباره «کانال مرجع» را بزنید.';
+            }
+
+            if (filled($inviteUrl)) {
                 foreach (TelegramSiteUrl::urlKeyboardRow('عضویت در گروه مرجع', (string) $inviteUrl, 'success', 'channel') as $row) {
                     $keyboard[] = $row;
                 }
-            } else {
-                $lines[] = 'لینک عضویت در حال آماده‌سازی است. چند لحظه بعد دوباره «کانال مرجع» را بزنید.';
             }
         }
 

@@ -89,7 +89,10 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
         } else {
             $client->declineChatJoinRequest($chatId, $telegramUserId);
             if ($account) {
-                $client->sendMessage($telegramUserId, '❌ درخواست عضویت رد شد: '.$decision['reason']);
+                $client->sendMessage(
+                    $telegramUserId,
+                    "❌ درخواست عضویت رد شد\n\n".trim((string) $decision['reason']),
+                );
             }
         }
 

@@ -61,6 +61,10 @@ export function ReferenceChannelShowcase({
   const owned = Boolean(channel.owned);
   const coverSrc = channel.cover_image?.trim() || FALLBACK_COVER;
   const status = owned ? ownedStatus(channel) : null;
+  const hasDiscount =
+    typeof channel.amount === 'number' &&
+    typeof channel.final_amount === 'number' &&
+    channel.amount > channel.final_amount;
 
   return (
     <article className="card group flex h-full flex-col overflow-hidden transition hover:border-primary/30 hover:shadow-glow">
@@ -86,10 +90,8 @@ export function ReferenceChannelShowcase({
 
         {!owned && typeof channel.final_amount === 'number' ? (
           <div className="flex flex-wrap items-baseline gap-2">
-            {channel.seminar_off && typeof channel.amount === 'number' ? (
-              <span className="panel-text-meta text-text-muted line-through opacity-70">
-                <PanelTomanAmount amount={channel.amount} size="sm" />
-              </span>
+            {hasDiscount ? (
+              <PanelTomanAmount amount={channel.amount!} size="sm" struck />
             ) : null}
             <PanelTomanAmount amount={channel.final_amount} />
             {channel.seminar_off ? (
@@ -119,14 +121,7 @@ export function ReferenceChannelShowcase({
           </Link>
         ) : null}
 
-        {owned && !channel.identity_ready ? (
-          <Link href="/panel/identity-verification" className="btn btn-primary w-full">
-            <ShieldCheck size={16} />
-            احراز هویت
-          </Link>
-        ) : null}
-
-        {owned && channel.identity_ready && channel.invite_url ? (
+        {owned && channel.invite_url ? (
           <a
             href={channel.invite_url}
             target="_blank"
@@ -138,10 +133,7 @@ export function ReferenceChannelShowcase({
           </a>
         ) : null}
 
-        {owned &&
-        channel.identity_ready &&
-        !channel.invite_url &&
-        channel.bot_start_url ? (
+        {owned && !channel.invite_url && channel.bot_start_url ? (
           <a
             href={channel.bot_start_url}
             target="_blank"
@@ -149,14 +141,21 @@ export function ReferenceChannelShowcase({
             className="btn btn-primary w-full"
           >
             <ExternalLink size={16} />
-            عضویت از طریق ربات
+            ورود سریع به ربات تلگرام
           </a>
         ) : null}
 
+        {owned && !channel.invite_url && !channel.bot_start_url && !channel.identity_ready ? (
+          <Link href="/panel/identity-verification" className="btn btn-primary w-full">
+            <ShieldCheck size={16} />
+            احراز هویت
+          </Link>
+        ) : null}
+
         {owned &&
-        channel.identity_ready &&
         !channel.invite_url &&
-        !channel.bot_start_url ? (
+        !channel.bot_start_url &&
+        channel.identity_ready ? (
           <span className="panel-text-meta flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
             لینک دعوت به‌زودی فعال می‌شود
           </span>
