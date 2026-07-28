@@ -198,6 +198,7 @@ export const PRODUCT_TYPE_LABELS: Record<AdminProductType, string> = {
   manual_service: 'خدمت دستی',
   event: 'رویداد',
   mini_course: 'مینی‌دوره',
+  reference_channel: 'کانال مرجع',
 };
 
 export const PAYMENT_RECORD_STATUS_LABELS: Record<string, string> = {
