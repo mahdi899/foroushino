@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Product;
 use App\Models\ReferenceChannel;
 use App\Services\ReferenceChannelProductService;
 use Illuminate\Database\Seeder;
@@ -53,6 +54,30 @@ HTML,
                 'show_on_courses' => false,
                 'is_active' => true,
             ]);
+        }
+
+        // Local/admin experiments often leave extra published rows; only the canonical
+        // slug should appear in the student panel / Telegram purchase offer.
+        $this->demoteNonCanonicalChannels($channel->id);
+    }
+
+    private function demoteNonCanonicalChannels(int $canonicalId): void
+    {
+        $extras = ReferenceChannel::query()
+            ->whereKeyNot($canonicalId)
+            ->where('slug', '!=', self::SLUG)
+            ->get();
+
+        foreach ($extras as $extra) {
+            $extra->forceFill([
+                'status' => 'draft',
+                'show_in_panel' => false,
+                'show_in_telegram' => false,
+            ])->save();
+
+            if ($extra->product_id) {
+                Product::query()->whereKey($extra->product_id)->update(['is_active' => false]);
+            }
         }
     }
 }

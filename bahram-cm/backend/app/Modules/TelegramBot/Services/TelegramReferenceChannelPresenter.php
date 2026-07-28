@@ -28,12 +28,16 @@ class TelegramReferenceChannelPresenter
 
     public function resolvePublishedChannel(): ?ReferenceChannel
     {
-        return ReferenceChannel::query()
+        $base = ReferenceChannel::query()
             ->where('status', 'published')
+            ->where('show_in_telegram', true)
             ->whereNotNull('product_id')
-            ->with(['product', 'telegramDestination'])
-            ->orderByDesc('id')
-            ->first();
+            ->with(['product', 'telegramDestination']);
+
+        // Prefer the marketing/storefront slug used by /reference-channels/kanal-mrgf.
+        $canonical = (clone $base)->where('slug', 'kanal-mrgf')->first();
+
+        return $canonical ?? $base->orderByDesc('id')->first();
     }
 
     public function owns(TelegramAccount $account, Product $product): bool
