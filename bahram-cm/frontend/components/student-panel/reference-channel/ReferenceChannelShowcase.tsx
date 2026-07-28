@@ -3,6 +3,7 @@ import { ExternalLink, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { PanelTomanAmount } from '@/components/student-panel/ui/PanelTomanAmount';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
+import { formatSeminarDiscountCopy } from '@/lib/commerce/seminarDiscountCopy';
 import { sitePhotos } from '@/lib/site-photo-paths';
 
 export type SeminarBadge = {
@@ -26,6 +27,7 @@ export type ReferenceChannelCardModel = {
   amount?: number;
   final_amount?: number;
   seminar_off?: boolean;
+  seminar_title?: string | null;
 };
 
 const FALLBACK_COVER = sitePhotos.mainPathReference;
@@ -91,12 +93,20 @@ export function ReferenceChannelShowcase({
             ) : null}
             <PanelTomanAmount amount={channel.final_amount} />
             {channel.seminar_off ? (
-              <span className="panel-text-caption font-semibold text-primary">ویژه سمینار</span>
+              <span className="panel-text-caption font-semibold text-primary">
+                {formatSeminarDiscountCopy(channel.seminar_title).ribbon}
+              </span>
             ) : null}
           </div>
         ) : null}
 
-        {!owned ? (
+        {!owned && channel.seminar_off ? (
+          <p className="panel-text-meta text-primary">
+            {formatSeminarDiscountCopy(channel.seminar_title).hint}
+          </p>
+        ) : null}
+
+        {!owned && !channel.seminar_off ? (
           <p className="panel-text-meta text-text-muted">محصول آماده؛ فروش در کانال خودت</p>
         ) : null}
       </div>

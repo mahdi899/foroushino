@@ -32,6 +32,7 @@ export type ProductDetail = ProductListItem & {
     final_amount: number;
     seminar_discount: number;
     seminar_off: boolean;
+    seminar_title?: string | null;
   } | null;
   seminar?: {
     capacity: number | null;
@@ -121,5 +122,6 @@ export function productPurchaseInitial(product: ProductDetail) {
     hasDiscount,
     discountPercent,
     seminarOff: Boolean(pricing?.seminar_off),
+    seminarTitle: pricing?.seminar_title ?? null,
   };
 }

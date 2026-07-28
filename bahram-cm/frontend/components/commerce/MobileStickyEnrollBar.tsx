@@ -9,7 +9,8 @@ type Props = {
   priceLabel: string;
   alreadyPurchased: boolean;
   productSlug?: string;
-  title?: string;
+  title?: string | null;
+  priceHint?: string | null;
   location?: string;
   panelHref?: string;
   ownedLabel?: string;
@@ -20,6 +21,7 @@ export function MobileStickyEnrollBar({
   alreadyPurchased,
   productSlug = CAMPAIGN_WRITING_SLUG,
   title = "دوره کمپین‌نویسی",
+  priceHint = null,
   location = "campaign_writing_mobile_bar",
   panelHref,
   ownedLabel,
@@ -40,12 +42,24 @@ export function MobileStickyEnrollBar({
     >
       <div className="flex items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col items-start text-right">
-          <p className="mobile-sticky-enroll-bar__title text-[11px] font-medium leading-tight">
-            {title}
-          </p>
-          <p className="mobile-sticky-enroll-bar__price mt-1 text-base font-bold leading-tight num-latin">
+          {title ? (
+            <p className="mobile-sticky-enroll-bar__title text-[11px] font-medium leading-tight">
+              {title}
+            </p>
+          ) : null}
+          <p
+            className={cn(
+              "mobile-sticky-enroll-bar__price text-base font-bold leading-tight num-latin",
+              title ? "mt-1" : null,
+            )}
+          >
             {priceLabel}
           </p>
+          {priceHint ? (
+            <p className="mobile-sticky-enroll-bar__hint mt-0.5 text-[10px] leading-snug text-emerald">
+              {priceHint}
+            </p>
+          ) : null}
         </div>
         <ProductPurchaseCta
           productSlug={productSlug}

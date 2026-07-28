@@ -117,6 +117,7 @@ class ProductController extends Controller
                     'final_amount' => (int) $quote['final_amount'],
                     'seminar_discount' => (int) $quote['seminar_discount'],
                     'seminar_off' => (bool) $quote['seminar_off'],
+                    'seminar_title' => $quote['seminar_title'] ?? null,
                 ];
                 $payload['effective_price'] = (int) $quote['final_amount'];
             }

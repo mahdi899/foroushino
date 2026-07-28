@@ -158,6 +158,7 @@ class ReferenceChannelPurchaseTest extends TestCase
         $this->assertSame(30_000_000, $payload[0]['amount']);
         $this->assertSame(200_000, $payload[0]['final_amount']);
         $this->assertTrue($payload[0]['seminar_off']);
+        $this->assertSame('زعفرانیه', $payload[0]['seminar_title']);
         $this->assertSame('/purchase/'.$channel->fresh()->product?->slug, $payload[0]['purchase_path']);
     }
 

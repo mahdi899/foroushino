@@ -4,6 +4,7 @@ import {
   useProductPurchaseState,
   type ProductPurchaseState,
 } from '@/components/commerce/ProductPurchaseProvider';
+import { formatSeminarDiscountCopy } from '@/lib/commerce/seminarDiscountCopy';
 import { formatFa, toPersianDigits } from '@/lib/persian';
 import { cn } from '@/lib/cn';
 
@@ -11,35 +12,31 @@ type Props = {
   fallback: ProductPurchaseState;
   className?: string;
   cardClassName?: string;
-  /** When set, overrides the default discount hint under the price. */
-  discountHint?: string | null;
-  ribbonLabel?: string | null;
+  /** Guest / non-seminar ribbon when there is no live discount. */
+  guestRibbonLabel?: string | null;
 };
 
 export function HydratedProductPriceCard({
   fallback,
   className,
   cardClassName,
-  discountHint,
-  ribbonLabel,
+  guestRibbonLabel = null,
 }: Props) {
   const purchase = useProductPurchaseState(fallback);
   const originalPriceLabel =
     purchase.hasDiscount ? `${formatFa(purchase.listPrice)} تومان` : null;
-  const hint =
-    discountHint !== undefined
-      ? discountHint
-      : purchase.seminarOff
-        ? 'ویژه شرکت‌کنندگان سمینار'
-        : purchase.hasDiscount
-          ? null
-          : null;
-  const ribbon =
-    ribbonLabel !== undefined
-      ? ribbonLabel
-      : purchase.discountPercent
-        ? `${toPersianDigits(String(purchase.discountPercent))}٪ تخفیف ویژه`
-        : null;
+
+  const seminarCopy = purchase.seminarOff
+    ? formatSeminarDiscountCopy(purchase.seminarTitle)
+    : null;
+
+  const ribbon = seminarCopy
+    ? seminarCopy.ribbon
+    : purchase.discountPercent
+      ? `${toPersianDigits(String(purchase.discountPercent))}٪ تخفیف ویژه`
+      : guestRibbonLabel;
+
+  const hint = seminarCopy?.hint ?? null;
 
   return (
     <div className={cn(className)}>

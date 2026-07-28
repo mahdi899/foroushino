@@ -3694,6 +3694,10 @@ html[data-theme="light"] .mobile-sticky-enroll-bar {
   color: #f8fbfb;
 }
 
+.mobile-sticky-enroll-bar__hint {
+  color: #9ef0c8;
+}
+
 /* Site — mobile bottom navigation */
 :root {
   --site-header-height: calc(3.5rem + max(env(safe-area-inset-top, 0px), 0.25rem));

@@ -250,16 +250,7 @@ export default async function ReferenceChannelLandingPage({
               <Reveal delay={0.14}>
                 <HydratedProductPriceCard
                   fallback={purchase}
-                  ribbonLabel={
-                    purchase.hasDiscount || purchase.seminarOff
-                      ? "عضویت ویژه سمینار"
-                      : "عضویت ویژه"
-                  }
-                  discountHint={
-                    purchase.hasDiscount || purchase.seminarOff
-                      ? "قیمت ویژه شرکت‌کنندگان سمینار"
-                      : null
-                  }
+                  guestRibbonLabel="عضویت ویژه"
                 />
               </Reveal>
             </div>
@@ -564,7 +555,6 @@ export default async function ReferenceChannelLandingPage({
       <HydratedMobileStickyEnrollBar
         fallback={purchase}
         productSlug={productSlug}
-        title="کانال مرجع"
         location="reference_channel_mobile_bar"
         panelHref="/panel/reference-channel"
         ownedLabel="مشاهده در پنل"

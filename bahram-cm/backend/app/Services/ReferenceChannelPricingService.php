@@ -15,7 +15,7 @@ use App\Support\Mobile;
 class ReferenceChannelPricingService
 {
     /**
-     * @return array{amount: int, final_amount: int, seminar_discount: int, seminar_off: bool}
+     * @return array{amount: int, final_amount: int, seminar_discount: int, seminar_off: bool, seminar_title: ?string}
      */
     public function quoteForProduct(Product $product, ?User $user, ?string $rawPhone = null): array
     {
@@ -28,6 +28,7 @@ class ReferenceChannelPricingService
                 'final_amount' => $final,
                 'seminar_discount' => max($amount - $final, 0),
                 'seminar_off' => false,
+                'seminar_title' => null,
             ];
         }
 
@@ -43,6 +44,7 @@ class ReferenceChannelPricingService
                 'final_amount' => $amount,
                 'seminar_discount' => 0,
                 'seminar_off' => false,
+                'seminar_title' => null,
             ];
         }
 
@@ -50,19 +52,35 @@ class ReferenceChannelPricingService
     }
 
     /**
-     * @return array{amount: int, final_amount: int, seminar_discount: int, seminar_off: bool}
+     * @return array{amount: int, final_amount: int, seminar_discount: int, seminar_off: bool, seminar_title: ?string}
      */
     public function quote(ReferenceChannel $channel, ?User $user, ?string $rawPhone = null): array
     {
         $amount = (int) $channel->price;
-        $discount = $this->maxSeminarDiscount($user, $rawPhone);
+        $badges = $this->qualifyingSeminarBadges($user, $rawPhone);
+        $discount = $badges === []
+            ? 0
+            : max(array_map(static fn (array $row): int => (int) $row['discount_amount'], $badges));
         $final = max(0, $amount - $discount);
+        $seminarTitle = null;
+
+        if ($discount > 0) {
+            foreach ($badges as $badge) {
+                if ((int) $badge['discount_amount'] === $discount) {
+                    $seminarTitle = (string) $badge['title'];
+                    break;
+                }
+            }
+            $seminarTitle ??= (string) ($badges[0]['title'] ?? '');
+            $seminarTitle = $seminarTitle !== '' ? $seminarTitle : null;
+        }
 
         return [
             'amount' => $amount,
             'final_amount' => $final,
             'seminar_discount' => $discount,
             'seminar_off' => $discount > 0,
+            'seminar_title' => $seminarTitle,
         ];
     }
 

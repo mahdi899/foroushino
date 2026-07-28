@@ -175,7 +175,7 @@ class TelegramReferenceChannelPresenter
     }
 
     /**
-     * @return array{amount: int, final_amount: int, seminar_discount: int, seminar_off: bool}
+     * @return array{amount: int, final_amount: int, seminar_discount: int, seminar_off: bool, seminar_title: ?string}
      */
     public function quote(ReferenceChannel $channel, TelegramAccount $account): array
     {

@@ -16,6 +16,7 @@ export type ProductPurchaseState = {
   hasDiscount: boolean;
   discountPercent: number | null;
   seminarOff?: boolean;
+  seminarTitle?: string | null;
 };
 
 const ProductPurchaseContext = createContext<ProductPurchaseState | null>(null);
@@ -62,6 +63,7 @@ export function ProductPurchaseProvider({
           hasDiscount,
           discountPercent,
           seminarOff: Boolean(pricing?.seminar_off),
+          seminarTitle: pricing?.seminar_title ?? null,
         });
       } catch {
         // Keep ISR guest pricing / CTA.
