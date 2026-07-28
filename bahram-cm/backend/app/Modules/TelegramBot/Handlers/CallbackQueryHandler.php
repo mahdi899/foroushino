@@ -96,6 +96,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         }
 
         if (str_starts_with($data, 'support:cat:')) {
+            $this->consumeSourceMessage($client, $chatId, $messageId);
             $this->handleSupportCategory($client, $bot, $account, $chatId, $callbackId, $data);
 
             return;
@@ -131,12 +132,14 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         if (str_starts_with($data, 'buy:skip:')) {
             $productId = (int) substr($data, strlen('buy:skip:'));
             $this->answer($client, $callbackId, 'ادامه بدون کد تخفیف');
+            $this->consumeSourceMessage($client, $chatId, $messageId);
             $this->purchaseFlow->proceedToPaymentMethods($bot, $account, $chatId, $productId, null);
 
             return;
         }
 
         if (str_starts_with($data, 'buy:')) {
+            $this->consumeSourceMessage($client, $chatId, $messageId);
             $this->handleBuy($client, $bot, $account, $chatId, $callbackId, $data);
 
             return;
@@ -144,6 +147,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         if (str_starts_with($data, 'pay:zp:')) {
             $this->answer($client, $callbackId, 'در حال آماده‌سازی…');
+            $this->consumeSourceMessage($client, $chatId, $messageId);
             $this->purchaseFlow->startZarinpal($bot, $account, $chatId, (int) substr($data, 7));
 
             return;
@@ -151,6 +155,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         if (str_starts_with($data, 'pay:c2c:')) {
             $this->answer($client, $callbackId, 'در حال ثبت سفارش…');
+            $this->consumeSourceMessage($client, $chatId, $messageId);
             $this->purchaseFlow->startCardToCard($bot, $account, $chatId, (int) substr($data, 8));
 
             return;
@@ -331,6 +336,31 @@ class CallbackQueryHandler implements UpdateHandlerInterface
                 ],
             ],
         );
+    }
+
+    private function consumeSourceMessage($client, int $chatId, int $messageId): void
+    {
+        if ($chatId === 0 || $messageId <= 0) {
+            return;
+        }
+
+        try {
+            if ($client->deleteMessage($chatId, $messageId)) {
+                return;
+            }
+        } catch (\Throwable) {
+            // Fall through to clearing markup.
+        }
+
+        try {
+            $client->editMessageReplyMarkup([
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'reply_markup' => ['inline_keyboard' => []],
+            ]);
+        } catch (\Throwable) {
+            // Best-effort only.
+        }
     }
 
     private function answer($client, string $callbackId, string $text, bool $showAlert = false): void

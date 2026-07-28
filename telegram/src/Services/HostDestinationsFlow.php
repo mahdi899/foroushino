@@ -129,7 +129,11 @@ final class HostDestinationsFlow
         }
 
         $keyboard = $joinButtons;
-        if (! empty($profile['needs_identity_for_reference'])) {
+        $verificationLevel = (int) ($profile['verification_level'] ?? 0);
+        $needsIdentity = ! empty($profile['needs_identity_for_reference'])
+            && $verificationLevel < 2
+            && ! $this->accounts->hasIdentityLevel2($telegramUserId);
+        if ($needsIdentity) {
             $identityUrl = $this->cache->siteUrl(
                 'identity',
                 $this->siteBaseUrl.'/panel/identity-verification',

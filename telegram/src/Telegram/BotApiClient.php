@@ -172,6 +172,53 @@ final class BotApiClient
         ]);
     }
 
+    /** Best-effort — never throw (message may already be gone / too old). */
+    public function deleteMessage(int|string $chatId, int $messageId): bool
+    {
+        if ($messageId <= 0) {
+            return false;
+        }
+
+        try {
+            $this->call('deleteMessage', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+            ], false, 4);
+
+            return true;
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] deleteMessage failed: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Clear or replace inline keyboard on an existing message.
+     *
+     * @param  array<string, mixed>|null  $replyMarkup  null / empty inline_keyboard removes buttons
+     */
+    public function editMessageReplyMarkup(int|string $chatId, int $messageId, ?array $replyMarkup = null): bool
+    {
+        if ($messageId <= 0) {
+            return false;
+        }
+
+        try {
+            $this->call('editMessageReplyMarkup', [
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'reply_markup' => $replyMarkup ?? ['inline_keyboard' => []],
+            ], false, 4);
+
+            return true;
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] editMessageReplyMarkup failed: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
     /**
      * @param  list<array{type: string, emoji?: string, custom_emoji_id?: string}>  $reaction
      */

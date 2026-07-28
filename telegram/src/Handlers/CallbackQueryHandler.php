@@ -37,6 +37,7 @@ final class CallbackQueryHandler
     public function handle(array $callback): void
     {
         $chatId = (int) ($callback['message']['chat']['id'] ?? 0);
+        $messageId = (int) ($callback['message']['message_id'] ?? 0);
         $telegramUserId = (int) ($callback['from']['id'] ?? 0);
         $callbackId = (string) ($callback['id'] ?? '');
         $data = (string) ($callback['data'] ?? '');
@@ -54,12 +55,14 @@ final class CallbackQueryHandler
         }
 
         if (str_starts_with($data, 'support:cat:')) {
+            $this->consumeSourceMessage($chatId, $messageId);
             $this->handleSupportCategory($chatId, $telegramUserId, substr($data, strlen('support:cat:')));
 
             return;
         }
 
         if ($data === 'support:cancel') {
+            $this->consumeSourceMessage($chatId, $messageId);
             $this->conversations->set($telegramUserId, 'idle', []);
             $this->api->sendMessage($chatId, 'پشتیبانی لغو شد.', [
                 'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
@@ -117,6 +120,7 @@ final class CallbackQueryHandler
         }
 
         if (str_starts_with($data, 'buy:skip:')) {
+            $this->consumeSourceMessage($chatId, $messageId);
             $productId = (int) substr($data, strlen('buy:skip:'));
             $this->purchaseFlow->proceedToPaymentMethods($chatId, $telegramUserId, $productId, null);
 
@@ -124,18 +128,21 @@ final class CallbackQueryHandler
         }
 
         if (str_starts_with($data, 'buy:')) {
+            $this->consumeSourceMessage($chatId, $messageId);
             $this->handleBuy($chatId, $telegramUserId, (int) substr($data, 4));
 
             return;
         }
 
         if (str_starts_with($data, 'pay:zp:')) {
+            $this->consumeSourceMessage($chatId, $messageId);
             $this->purchaseFlow->startZarinpal($chatId, $telegramUserId, (int) substr($data, 7));
 
             return;
         }
 
         if (str_starts_with($data, 'pay:c2c:')) {
+            $this->consumeSourceMessage($chatId, $messageId);
             $this->purchaseFlow->startCardToCard($chatId, $telegramUserId, (int) substr($data, 8));
 
             return;
@@ -155,6 +162,20 @@ final class CallbackQueryHandler
 
             return;
         }
+    }
+
+    /** Delete the callback source message so inline buttons cannot be re-clicked. */
+    private function consumeSourceMessage(int $chatId, int $messageId): void
+    {
+        if ($chatId === 0 || $messageId <= 0) {
+            return;
+        }
+
+        if ($this->api->deleteMessage($chatId, $messageId)) {
+            return;
+        }
+
+        $this->api->editMessageReplyMarkup($chatId, $messageId, ['inline_keyboard' => []]);
     }
 
     private function handleSupportCategory(int $chatId, int $telegramUserId, string $category): void
