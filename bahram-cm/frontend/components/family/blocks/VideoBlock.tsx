@@ -1,14 +1,20 @@
 'use client';
 
-import { useRef, useState, type PointerEvent, type TouchEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent, type TouchEvent } from 'react';
+import dynamic from 'next/dynamic';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyFeedMediaInView } from '@/hooks/useFamilyFeedMediaInView';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
-import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
 import { resolveFamilyMediaPlaybackUrl, resolveFamilyMediaPosterUrl } from '@/lib/family/mediaPlaybackUrl';
 import { hasFamilyMediaBeenSeen, markFamilyMediaSeen } from '@/lib/family/seenFamilyMedia';
 import type { FamilyMediaBlock } from '@/lib/family/types';
+
+/** Player chrome is only needed after a tap — keep it out of the feed bundle. */
+const FamilyVideoModal = dynamic(
+  () => import('@/components/family/FamilyVideoModal').then((m) => m.FamilyVideoModal),
+  { ssr: false },
+);
 
 const DOUBLE_TAP_MS = 320;
 const TAP_MOVE_PX = 12;
@@ -17,17 +23,28 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapAtRef = useRef(0);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [posterError, setPosterError] = useState(false);
-  const [posterLoaded, setPosterLoaded] = useState(false);
-
   const streamUrl = resolveFamilyMediaPlaybackUrl(media.url);
   const downloadUrl = streamUrl ?? media.url;
   // Tiny blur poster only — never load the full video just for a feed preview.
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
-  const seenPoster = hasFamilyMediaBeenSeen(posterUrl);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [posterError, setPosterError] = useState(false);
+  // Warmup may have already decoded this URL — start visible so we don't wait on a
+  // cached-image onLoad that never fires (same pattern as ImageBlock).
+  const [posterLoaded, setPosterLoaded] = useState(() => hasFamilyMediaBeenSeen(posterUrl));
+  const seenPoster = hasFamilyMediaBeenSeen(posterUrl) || posterLoaded;
   const inView = useFamilyFeedMediaInView(containerRef, Boolean(streamUrl) && !seenPoster);
   const shouldLoadPreview = seenPoster || inView;
+
+  useEffect(() => {
+    if (hasFamilyMediaBeenSeen(posterUrl)) {
+      setPosterLoaded(true);
+      setPosterError(false);
+      return;
+    }
+    setPosterLoaded(false);
+    setPosterError(false);
+  }, [posterUrl]);
 
   const openPlayer = () => {
     if (!streamUrl) return;

@@ -15,7 +15,13 @@ import { cn } from '@/lib/utils';
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
-export type AnimatedEmojiMode = 'loop' | 'inline' | 'reaction';
+/**
+ * `static` renders the unicode glyph only — no Lottie JSON chunk, no lottie-web
+ * instance, no rAF. Required for anything that mounts once per feed row: each
+ * animated instance builds a large SVG tree and is rebuilt on every remount while
+ * scrolling.
+ */
+export type AnimatedEmojiMode = 'loop' | 'inline' | 'reaction' | 'static';
 
 const SLUG_TO_CHAR: Record<string, string> = Object.fromEntries(
   Object.entries(NOTO_CHAR_MAP).map(([char, slug]) => [slug, char]),
@@ -48,10 +54,12 @@ export function AnimatedEmoji({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const loop = mode === 'loop';
+  const isStatic = mode === 'static';
   const [animationData, setAnimationData] = useState<object | null>(null);
   const glyph = fallbackChar || SLUG_TO_CHAR[notoKey] || '✨';
 
   useEffect(() => {
+    if (isStatic) return;
     let cancelled = false;
     setAnimationData(null);
     void loadNotoLottie(notoKey).then((data) => {
@@ -60,7 +68,7 @@ export function AnimatedEmoji({
     return () => {
       cancelled = true;
     };
-  }, [notoKey]);
+  }, [isStatic, notoKey]);
 
   const clampSvgSize = useCallback(() => {
     const svg = hostRef.current?.querySelector('svg');
