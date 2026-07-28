@@ -39,7 +39,8 @@ function markBootDone(): void {
 
 /**
  * Branded boot overlay — first full site paint only.
- * In-app navigations (e.g. bottom nav «خانه») use app/loading.tsx instead.
+ * Soft navigations use route-level loading.tsx files (not a root app/loading.tsx),
+ * so /panel does not flash a full-screen loader before its inset shell loader.
  */
 export function SiteBootLoader() {
   const pathname = usePathname();

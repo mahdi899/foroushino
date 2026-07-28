@@ -1,7 +1,5 @@
-import { Suspense } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { PanelPageFallback } from '@/components/student-panel/layout/PanelPageFallback';
 import { PanelShell } from '@/components/student-panel/layout/PanelShell';
 import { panelLoginRedirectTarget } from '@/lib/student/panelAuth';
 import { resolvePanelAccess } from '@/lib/student/session';
@@ -16,9 +14,7 @@ export default async function PanelShellLayout({ children }: { children: React.R
     redirect(`/panel/login?redirect=${encodeURIComponent(redirectTo)}${blockedQuery}`);
   }
 
-  return (
-    <PanelShell user={user} unreadCount={0}>
-      <Suspense fallback={<PanelPageFallback />}>{children}</Suspense>
-    </PanelShell>
-  );
+  // Page loading UI lives in ./loading.tsx — avoid a second Suspense fallback here
+  // or first entry flashes full-shell loader then inset loader.
+  return <PanelShell user={user} unreadCount={0}>{children}</PanelShell>;
 }
