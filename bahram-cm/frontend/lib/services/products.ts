@@ -59,6 +59,22 @@ export async function getProducts(options?: { listed?: boolean }): Promise<ApiRe
   return { ok: true, data: result.data.data };
 }
 
+/**
+ * Public marketing pages — ISR, no cookies/auth.
+ * Prefer this over getProductBySlug so soft navigations (_rsc) hit the route cache.
+ */
+export const getPublicProductBySlug = cache(async (
+  slug: string,
+): Promise<ApiResult<ProductDetail>> => {
+  const result = await getStaticJson<SingleResponse<ProductDetail>>(
+    `/products/${encodeURIComponent(slug)}`,
+    { ttlKey: 'pricing', tags: ['products', 'pricing'] },
+  );
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.data };
+});
+
+/** Personalized product detail (ownership / seminar quote). Uses no-store + optional Bearer. */
 export const getProductBySlug = cache(async (
   slug: string,
 ): Promise<ApiResult<ProductDetail>> => {

@@ -43,13 +43,13 @@ import { coalesceAlt, staticAltForSrc } from "@/lib/media/altShared";
 import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { formatFa, toPersianDigits } from "@/lib/persian";
-import { getProductBySlug } from "@/lib/services/products";
+import { getPublicProductBySlug } from "@/lib/services/products";
 import { getContentCommentsFromApi } from "@/lib/services/contentComments.server";
 import { buildCommentAuthorFromStudent } from "@/lib/contentComments/author";
-import { getCurrentStudent } from "@/lib/student/session";
 import { ContentCommentsSection } from "@/components/comments/ContentCommentsSection";
 import { pageHeroBackdropPhoto, pageHeroBackdropPhotoMobile, sitePhotos } from "@/lib/site-photo-paths";
 import { site } from "@/content/site";
+import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 const FALLBACK_PRICE = 28_900_000;
 const SECTION_COUNT = 5;
@@ -68,7 +68,8 @@ const heroMobileAlt = coalesceAlt(
 const heroPurchaseCtaClassName =
   "h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg";
 
-export const dynamic = "force-dynamic";
+// Segment revalidate floor — product fetch TTL from /admin/cache → ttl_pricing.
+export const revalidate = 600;
 
 export const metadata: Metadata = buildMetadata({
   title: "دوره کمپین‌نویسی حرفه‌ای",
@@ -252,7 +253,8 @@ const faqs = [
 ];
 
 export default async function CourseCampaignWritingPage() {
-  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
+  await ensureStaticPageCache();
+  const productResult = await getPublicProductBySlug(CAMPAIGN_WRITING_SLUG);
   const alreadyPurchased = productResult.ok ? (productResult.data.already_purchased ?? false) : false;
 
   return (
@@ -327,9 +329,8 @@ export default async function CourseCampaignWritingPage() {
 }
 
 async function CampaignWritingPageContent() {
-  const [productResult, student, commentsResult] = await Promise.all([
-    getProductBySlug(CAMPAIGN_WRITING_SLUG),
-    getCurrentStudent(),
+  const [productResult, commentsResult] = await Promise.all([
+    getPublicProductBySlug(CAMPAIGN_WRITING_SLUG),
     getContentCommentsFromApi('campaign_writing', CAMPAIGN_WRITING_SLUG),
   ]);
   const product = productResult.ok ? productResult.data : null;
@@ -700,7 +701,7 @@ async function CampaignWritingPageContent() {
         type="campaign_writing"
         slug={CAMPAIGN_WRITING_SLUG}
         initialComments={comments}
-        initialAuthor={buildCommentAuthorFromStudent(student)}
+        initialAuthor={buildCommentAuthorFromStudent(null)}
       />
 
       {/* 10. FAQ */}

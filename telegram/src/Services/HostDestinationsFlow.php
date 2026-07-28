@@ -129,8 +129,7 @@ final class HostDestinationsFlow
         }
 
         $keyboard = $joinButtons;
-        $verificationLevel = (int) ($profile['verification_level'] ?? 0);
-        if ($verificationLevel < 2) {
+        if (! empty($profile['needs_identity_for_reference'])) {
             $identityUrl = $this->cache->siteUrl(
                 'identity',
                 $this->siteBaseUrl.'/panel/identity-verification',

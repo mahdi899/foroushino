@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch, getToken } from '@/lib/auth/session';
 import { SERVER_API_URL } from '@/lib/api/config';
 import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
-import { revalidatePublicContent, revalidateTestimonialSurfaces, revalidateFaqSurfaces } from '@/lib/cache/contentRevalidation';
+import { revalidatePublicContent, revalidateTestimonialSurfaces, revalidateFaqSurfaces, revalidatePricingSurfaces } from '@/lib/cache/contentRevalidation';
 import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData, AdminDiscountCode } from '@/lib/admin/commerceTypes';
 
 export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData | null> {
@@ -17,10 +17,8 @@ export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData |
 }
 
 function revalidateCommerce() {
+  void revalidatePricingSurfaces();
   void revalidatePublicContent(() => {
-    revalidatePath('/');
-    revalidatePath('/courses');
-    revalidatePath('/faq');
     revalidatePath('/admin/commerce/products');
     revalidatePath('/admin/commerce/orders');
     revalidatePath('/admin/commerce/faqs');

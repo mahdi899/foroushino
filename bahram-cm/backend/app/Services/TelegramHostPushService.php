@@ -230,8 +230,8 @@ class TelegramHostPushService
 
         $timeout = match ($action) {
             'register_webhook' => 20,
-            'notify_user' => 8,
-            'push_account' => 8,
+            'notify_user' => 15,
+            'push_account' => 15,
             // Bootstrap can include messages/destinations; Imunify/WAF + host
             // MySQL store often exceeds 8s on the Iran→host hop.
             'refresh_bootstrap', 'refresh_all' => 45,

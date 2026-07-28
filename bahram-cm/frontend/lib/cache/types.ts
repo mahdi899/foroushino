@@ -205,12 +205,13 @@ export const CACHE_TAG_GROUPS: CacheTagGroup[] = [
   { id: 'cases', label: 'نمونه کارها', tags: ['cases'], ttlKey: 'ttl_cases', fallbackSeconds: REVALIDATE.cases },
   { id: 'services', label: 'خدمات', tags: ['services'], ttlKey: 'ttl_services', fallbackSeconds: REVALIDATE.services },
   { id: 'settings', label: 'تنظیمات سایت', tags: ['settings'], ttlKey: 'ttl_settings', fallbackSeconds: REVALIDATE.settings },
-  { id: 'pricing', label: 'قیمت‌ها', tags: ['pricing'], ttlKey: 'ttl_pricing', fallbackSeconds: REVALIDATE.pricing },
+  { id: 'pricing', label: 'قیمت‌ها / محصولات', tags: ['pricing', 'products'], ttlKey: 'ttl_pricing', fallbackSeconds: REVALIDATE.pricing },
   { id: 'seo', label: 'سئو و سایت‌مپ', tags: ['seo', 'redirects'], ttlKey: 'ttl_settings', fallbackSeconds: 3600 },
   { id: 'faqs', label: 'سوالات متداول', tags: ['faqs', 'public-faqs'], ttlKey: 'ttl_settings', fallbackSeconds: 300 },
   { id: 'testimonials', label: 'نظرات / تبدیل‌ها', tags: ['testimonials', 'public-transformations'], ttlKey: 'ttl_cases', fallbackSeconds: 600 },
   { id: 'mini-courses', label: 'مینی‌دوره‌ها', tags: ['mini-courses', 'public-mini-courses', 'content-comments'], ttlKey: 'ttl_services', fallbackSeconds: 3600 },
   { id: 'chatbot', label: 'چت‌بات', tags: ['chatbot'], ttlKey: 'ttl_settings', fallbackSeconds: 300 },
+  { id: 'seminars', label: 'سمینارها', tags: ['seminars'], ttlKey: 'ttl_services', fallbackSeconds: REVALIDATE.seminars },
 ];
 
 export const CACHE_MODULE_GROUPS = [

@@ -559,8 +559,16 @@ class TelegramHostLiveController
         foreach ($this->userDestinations->keyboardRows($bot, $account) as $row) {
             $keyboard[] = $row;
         }
-        foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
-            $keyboard[] = $row;
+        $account->loadMissing('user.identityProfile');
+        $needsIdentity = (int) ($account->user?->identityProfile?->verification_level ?? 0) < 2
+            && $account->user_id
+            && \App\Models\ReferenceChannelEntitlement::query()
+                ->where('user_id', $account->user_id)
+                ->exists();
+        if ($needsIdentity) {
+            foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
+                $keyboard[] = $row;
+            }
         }
         foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل دانشجو', TelegramSiteUrl::studentPanel(), 'success', 'graduation') as $row) {
             $keyboard[] = $row;

@@ -69,17 +69,26 @@ class ApiIrShahkarProvider implements
 
         $config = $this->config();
         $baseUrl = $this->baseUrl($config);
+        $path = (string) ($config->settings['shahkar_path'] ?? '/api/sw1/ShahkarLite');
 
         try {
-            $response = $this->client($config)->get($baseUrl.'/');
+            // Same shape as s.api.ir docs: POST + Authorization: Bearer <token>
+            // (Laravel withToken() adds the Bearer prefix — store raw token only in admin).
+            $response = $this->client($config)->post($baseUrl.$path, [
+                'nationalCode' => '0010007700',
+                'mobile' => '09120000000',
+            ]);
 
             if (in_array($response->status(), [401, 403], true)) {
-                return ProviderConnectionResult::invalidCredentials('توکن API.ir نامعتبر است.');
+                return ProviderConnectionResult::invalidCredentials('توکن API.ir نامعتبر است (Authorization: Bearer).');
             }
 
-            return ProviderConnectionResult::connected('سرویس API.ir در دسترس است.');
+            // Any non-auth HTTP response means TLS + Bearer reached the API.
+            return ProviderConnectionResult::connected('سرویس API.ir در دسترس است (هدر Bearer ارسال شد).');
         } catch (ConnectionException) {
-            return ProviderConnectionResult::providerUnavailable('ارتباط با سرویس API.ir برقرار نشد.');
+            return ProviderConnectionResult::providerUnavailable(
+                'ارتباط با سرویس API.ir برقرار نشد. سرور ایران باید به https://s.api.ir دسترسی داشته باشد (فیلتر/فایروال). مشکل از نوشتن یا ننوشتن کلمه Bearer در فیلد توکن نیست.'
+            );
         } catch (Throwable $e) {
             return ProviderConnectionResult::providerUnavailable($e->getMessage() ?: 'خطای ناشناخته در تست اتصال.');
         }

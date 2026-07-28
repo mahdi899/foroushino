@@ -1,5 +1,5 @@
 import { SiteRouteLoading } from '@/components/layout/SiteRouteLoading';
 
-export default function CoursesLoading() {
+export default function ReferenceChannelLoading() {
   return <SiteRouteLoading />;
 }

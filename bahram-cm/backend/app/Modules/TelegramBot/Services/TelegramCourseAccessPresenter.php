@@ -57,9 +57,13 @@ class TelegramCourseAccessPresenter
 
         $access = $this->resolveAccess($account, $product);
         $licenseKey = $this->resolveLicenseKey($account, $product);
+        // Identity (level 2) is only required for the reference-channel product.
+        // Seminars/courses: mobile verification is enough to show watch + destination links.
+        $isReferenceProduct = $product->isReferenceChannelProduct();
         $identityReady = $this->hasIdentityLevel2($account);
-        $destRows = $identityReady ? $this->destinationKeyboardRows($bot, $account, $product) : [];
-        $destinationLines = $identityReady ? $this->destinationMessageLines($bot, $account, $product) : [];
+        $canShowDestinations = ! $isReferenceProduct || $identityReady;
+        $destRows = $canShowDestinations ? $this->destinationKeyboardRows($bot, $account, $product) : [];
+        $destinationLines = $canShowDestinations ? $this->destinationMessageLines($bot, $account, $product) : [];
         $watchUrl = $access
             ? TelegramSiteUrl::courseWatchPage($access->id)
             : TelegramSiteUrl::coursesPanel();
@@ -81,9 +85,9 @@ class TelegramCourseAccessPresenter
             $lines[] = TelegramCustomEmoji::tag('key').' کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
         }
 
-        if (! $identityReady) {
+        if ($isReferenceProduct && ! $identityReady) {
             $lines[] = '';
-            $lines[] = TelegramCustomEmoji::tag('lock').' <b>احراز هویت سطح ۲</b> برای دریافت لینک مقاصد لازم است.';
+            $lines[] = TelegramCustomEmoji::tag('lock').' <b>احراز هویت سطح ۲</b> لازم است تا لینک عضویت گروه مرجع فعال شود.';
         } elseif ($destinationLines !== []) {
             $lines[] = '';
             $lines[] = TelegramCustomEmoji::tag('pin').' <b>گروه پشتیبانی این دوره</b>';
@@ -97,7 +101,7 @@ class TelegramCourseAccessPresenter
         foreach (TelegramSiteUrl::urlKeyboardRow('پخش آنلاین در پنل', $watchUrl, 'success', 'play') as $row) {
             $keyboard[] = $row;
         }
-        if (! $identityReady) {
+        if ($isReferenceProduct && ! $identityReady) {
             foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
                 $keyboard[] = $row;
             }

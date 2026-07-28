@@ -49,9 +49,12 @@ class ProcessNotificationOutboxJob implements ShouldQueue
                     $text = (string) ($row->payload['text'] ?? '');
                     $options = (array) ($row->payload['options'] ?? []);
                     if ($text !== '') {
+                        $sent = false;
                         if ($infra->usesHostBridge()) {
-                            $hostPush->notifyUser((int) $account->telegram_user_id, $text, $options);
-                        } else {
+                            $sent = $hostPush->notifyUser((int) $account->telegram_user_id, $text, $options);
+                        }
+                        // Host push can fail while Iran still reaches Telegram via proxy.
+                        if (! $sent) {
                             $factory->forBot($account->bot)->sendMessage(
                                 $account->telegram_user_id,
                                 $text,

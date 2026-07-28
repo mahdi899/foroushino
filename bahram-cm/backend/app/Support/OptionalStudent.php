@@ -18,7 +18,13 @@ class OptionalStudent
         $accessToken = PersonalAccessToken::findToken($token);
         $user = $accessToken?->tokenable;
 
-        if (! $user instanceof User || $user->is_admin) {
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        // SAT staff use their own panel. Admins may hold a student-scoped
+        // token (same mobile on /panel) and still need ownership/pricing.
+        if ($user->is_sat_staff) {
             return null;
         }
 

@@ -90,16 +90,17 @@ final class MainMenu
     /** @return array<string, mixed> */
     public function replyMarkup(int $telegramUserId): array
     {
+        // Same layout as Iran MainMenuKeyboard (labels from message cache unchanged).
         $rows = [
-            [self::ACTION_COURSES, self::ACTION_SEMINARS, self::ACTION_SAT],
-            [self::ACTION_CHANNEL, self::ACTION_FAMILY, self::ACTION_SUPPORT],
+            [self::ACTION_COURSES, self::ACTION_CHANNEL],
+            [self::ACTION_SAT, self::ACTION_SEMINARS, self::ACTION_FAMILY],
         ];
 
-        $lastRow = [self::ACTION_ACCOUNT];
         if ($this->cache->featureEnabled('referral_enabled')) {
-            array_unshift($lastRow, self::ACTION_REFERRAL);
+            $rows[] = [self::ACTION_SUPPORT, self::ACTION_ACCOUNT, self::ACTION_REFERRAL];
+        } else {
+            $rows[] = [self::ACTION_SUPPORT, self::ACTION_ACCOUNT];
         }
-        $rows[] = $lastRow;
 
         if ($this->accounts->isBotAdmin($telegramUserId)) {
             $rows[] = [self::ACTION_ADMIN];

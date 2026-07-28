@@ -711,8 +711,10 @@ class MessageHandler implements UpdateHandlerInterface
         foreach ($this->userDestinations->keyboardRows($bot, $account) as $row) {
             $keyboard[] = $row;
         }
-        foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
-            $keyboard[] = $row;
+        if ($this->shouldPromptReferenceIdentity($account)) {
+            foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
+                $keyboard[] = $row;
+            }
         }
         foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل دانشجو', $panelUrl, 'success', 'graduation') as $row) {
             $keyboard[] = $row;
@@ -726,6 +728,22 @@ class MessageHandler implements UpdateHandlerInterface
                 ? ['reply_markup' => ['inline_keyboard' => $keyboard]]
                 : [],
         );
+    }
+
+    private function shouldPromptReferenceIdentity(TelegramAccount $account): bool
+    {
+        $account->loadMissing('user.identityProfile');
+        if ((int) ($account->user?->identityProfile?->verification_level ?? 0) >= 2) {
+            return false;
+        }
+
+        if (! $account->user_id) {
+            return false;
+        }
+
+        return \App\Models\ReferenceChannelEntitlement::query()
+            ->where('user_id', $account->user_id)
+            ->exists();
     }
 
     private function sendWithLink(
