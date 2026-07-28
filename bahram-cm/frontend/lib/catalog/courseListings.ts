@@ -88,7 +88,7 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
       image: resolveProductFeaturedImage({
         featured_image: product?.featured_image,
         slug: product?.slug,
-        landing_href: product?.landing_href,
+        landing_href: product?.landing_href || item.href,
       }) || defaultImage,
       imageAlt: product?.featured_image_alt || `کاور ${product?.title?.trim() || item.label}`,
     };

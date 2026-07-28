@@ -8,7 +8,6 @@ import {
   notificationTypeLabel,
   notificationTypeVariant,
 } from '@/components/student-panel/notifications/notificationMeta';
-import { NotificationLinkButton } from '@/components/student-panel/notifications/NotificationLinkButton';
 
 export interface NotificationEntry {
   id: number;
@@ -35,12 +34,11 @@ export function NotificationItem({ notification }: { notification: NotificationE
   const isUnread = !notification.read_at;
   const typeVariant = notificationTypeVariant(notification.type);
   const isPremium = isOrderPaidNotification(notification.type);
-  const hasLink = Boolean(notification.link?.trim());
 
   const cardClass = [
     'panel-notification-link',
     isPremium ? 'panel-notification-link--premium' : '',
-    hasLink ? '' : 'panel-notification-link--static',
+    'panel-notification-link--static',
   ]
     .filter(Boolean)
     .join(' ');
@@ -87,18 +85,7 @@ export function NotificationItem({ notification }: { notification: NotificationE
 
       <footer className="panel-notification__footer">
         <span className="panel-notification__datetime">{formatDateTime(notification.created_at)}</span>
-        <div className="panel-notification__footer-actions">
-          {hasLink && notification.link ? (
-            <span onClick={(event) => event.stopPropagation()}>
-              <NotificationLinkButton
-                link={notification.link}
-                linkLabel={notification.link_label}
-                onNavigate={markRead}
-              />
-            </span>
-          ) : null}
-          {isUnread ? <span className="panel-notification__dot" aria-hidden /> : null}
-        </div>
+        {isUnread ? <span className="panel-notification__dot" aria-hidden /> : null}
       </footer>
     </article>
   );

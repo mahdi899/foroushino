@@ -16,6 +16,7 @@ export function PathCard({
   tone,
   image,
   imageAlt,
+  imageClassName,
   featured = false,
   level,
   duration,
@@ -28,6 +29,8 @@ export function PathCard({
   tone: "gold" | "teal";
   image: string;
   imageAlt: string;
+  /** Extra object-position / crop classes for the cover image. */
+  imageClassName?: string;
   featured?: boolean;
   level?: string;
   duration?: string;
@@ -43,7 +46,10 @@ export function PathCard({
           src={image}
           alt={imageAlt}
           fill
-          className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.05]"
+          className={cn(
+            "object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.05]",
+            imageClassName,
+          )}
           sizes="(max-width: 767px) 50vw, 280px"
         />
         {featured ? (
