@@ -46,6 +46,12 @@ if [[ -f "$APP_ROOT/deploy/php-fpm/99-bahram-opcache.ini" ]]; then
   cp "$APP_ROOT/deploy/php-fpm/99-bahram-opcache.ini" /etc/php/8.4/fpm/conf.d/99-bahram-opcache.ini
 fi
 
+if [[ -f "$APP_ROOT/deploy/scripts/tune-mysql.sh" ]]; then
+  echo "==> MySQL/Redis high-traffic tuning"
+  # Idempotent; restarts MySQL only when applying (first run / RAM change).
+  bash "$APP_ROOT/deploy/scripts/tune-mysql.sh" || echo "WARN: tune-mysql.sh failed — check MySQL manually"
+fi
+
 # Reload unconditionally: opcache.validate_timestamps=0 means workers only
 # pick up new code on restart/reload, not automatically like before.
 echo "==> Reload php8.4-fpm"

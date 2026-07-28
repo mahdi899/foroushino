@@ -66,3 +66,18 @@ PHP-FPM slow: `/var/log/php8.4-fpm-slow.log`
 - MySQL connections (`SHOW STATUS LIKE 'Threads_connected'`)
 - Nginx 5xx rate
 - Cache hit rate (Redis `INFO stats` keyspace_hits/misses)
+
+## MySQL / Redis tuning
+
+```bash
+sudo bash /var/www/bahram-cm/deploy/scripts/tune-mysql.sh --check
+sudo bash /var/www/bahram-cm/deploy/scripts/tune-mysql.sh
+```
+
+Slow queries (after tuning enables the log):
+
+```bash
+sudo tail -n 80 /var/log/mysql/bahram-slow.log
+```
+
+See `deploy/mysql/README.md`.

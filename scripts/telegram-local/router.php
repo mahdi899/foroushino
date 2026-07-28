@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 /**
- * Router for `php -S 127.0.0.1:8088 router.php`.
+ * Router for local `php -S 127.0.0.1:8088 ../scripts/telegram-local/router.php`
+ * (run with cwd = telegram/).
  *
- * PHP's built-in server often drops the Authorization header. Capture it here
- * and include PHP scripts in-process so host-sync Bearer auth works locally.
+ * PHP's built-in server often drops Authorization — capture it here.
  */
+
+$telegramRoot = require __DIR__.'/_paths.php';
 
 $auth = $_SERVER['HTTP_AUTHORIZATION']
     ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
@@ -27,8 +29,8 @@ if ($auth !== '') {
 }
 
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$file = realpath(__DIR__.str_replace('/', DIRECTORY_SEPARATOR, $uri));
-$root = realpath(__DIR__);
+$file = realpath($telegramRoot.str_replace('/', DIRECTORY_SEPARATOR, $uri));
+$root = $telegramRoot;
 
 if ($file === false || $root === false || ! str_starts_with($file, $root) || ! is_file($file)) {
     http_response_code(404);
