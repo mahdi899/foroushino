@@ -22,6 +22,8 @@ Telegram → public/webhook.php → UpdateRouter
 6. نصب اول (اختیاری): یک‌بار `php cron/pull-sync.php --force` فقط اگر کش خالی است و موقتاً `pull_sync_enabled=true` گذاشته‌اید؛ بعد دوباره `false`.
 7. در پنل ادمین: حالت «هاست خارج» + ثبت webhook
 
+**آپلود نکنید:** `config.php` لوکال، پوشه `scripts/telegram-local/` (فقط توسعه روی ویندوز)، و فایل‌های `storage/*.lock` / runtime JSON.
+
 اگر پنل با timeout به `host-sync.php` خورد: روی هاست یک‌بار  
 `public/register-webhook.php?token=<webhook_secret>` را باز کنید (همان secret در `config.php`).
 

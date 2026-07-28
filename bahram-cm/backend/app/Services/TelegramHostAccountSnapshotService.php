@@ -200,9 +200,14 @@ class TelegramHostAccountSnapshotService
         $account->loadMissing('user.identityProfile');
         $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
         $pricing = app(SeminarAttendeeCoursePricing::class);
+        $needsIdentityForReference = $verificationLevel < 2
+            && $account->user_id
+            && \App\Models\ReferenceChannelEntitlement::query()
+                ->where('user_id', $account->user_id)
+                ->exists();
 
         $keyboard = [];
-        if ($verificationLevel < 2) {
+        if ($needsIdentityForReference) {
             foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
                 $keyboard[] = $row;
             }
@@ -215,6 +220,7 @@ class TelegramHostAccountSnapshotService
             'ok' => true,
             'text' => $text,
             'verification_level' => $verificationLevel,
+            'needs_identity_for_reference' => $needsIdentityForReference,
             'has_seminar' => $pricing->userHasSeminar($account->user, $account->mobile),
             // Meta only (no is_member) — host checks Telegram live.
             'destinations' => $this->accessibleDestinationsMeta($bot, $account),
@@ -284,7 +290,7 @@ class TelegramHostAccountSnapshotService
             return [
                 'ok' => true,
                 'text' => $text,
-                'reply_markup' => TelegramSiteUrl::linkMarkup($panelUrl, 'باشگاه مشتریان در پنل', [], 'success', 'gift'),
+                'reply_markup' => TelegramSiteUrl::linkMarkup($panelUrl, 'ورود به باشگاه', [], 'success', 'gift'),
             ];
         } catch (Throwable) {
             return [
@@ -305,7 +311,7 @@ class TelegramHostAccountSnapshotService
             return [
                 'ok' => true,
                 'text' => TelegramCustomEmoji::tag('family')." <b>خانواده</b>\n\nابتدا ثبت‌نام را کامل کنید.",
-                'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'صفحه خانواده', [], 'primary', 'globe'),
+                'reply_markup' => TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
             ];
         }
 
@@ -322,7 +328,7 @@ class TelegramHostAccountSnapshotService
             return [
                 'ok' => true,
                 'text' => TelegramCustomEmoji::tag('family')." <b>خانواده</b>\n\nهنوز به خانواده‌ای وصل نیستید.\nبا ورود به وب‌اپ، عضویت شما فعال می‌شود.",
-                'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'ورود به خانواده', [], 'primary', 'globe'),
+                'reply_markup' => TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
             ];
         }
 
@@ -352,7 +358,7 @@ class TelegramHostAccountSnapshotService
         return [
             'ok' => true,
             'text' => implode("\n", $lines),
-            'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'ورود به خانواده', [], 'primary', 'globe'),
+            'reply_markup' => TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
         ];
     }
 

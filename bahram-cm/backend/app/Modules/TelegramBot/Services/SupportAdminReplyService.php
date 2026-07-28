@@ -4,6 +4,7 @@ namespace App\Modules\TelegramBot\Services;
 
 use App\Models\TicketMessage;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
+use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramMessageMap;
 use App\Modules\TelegramBot\Support\TelegramHtml;
@@ -205,6 +206,11 @@ class SupportAdminReplyService
             $deliverOptions['allow_sending_without_reply'] = true;
         }
 
+        $threadId = (int) data_get($message, 'message_thread_id', 0);
+        if ($threadId <= 0 && $map->target_thread_id) {
+            $threadId = (int) $map->target_thread_id;
+        }
+
         try {
             if ($hasMedia) {
                 $delivered = $client->copyMessage($userChatId, $groupChatId, $adminMessageId, [
@@ -221,7 +227,11 @@ class SupportAdminReplyService
             }
 
             $deliveredId = (int) ($delivered['message_id'] ?? 0);
-            if ($deliveredId > 0 && $map->ticket_id) {
+            if ($deliveredId <= 0) {
+                throw new \RuntimeException('empty_delivery_result');
+            }
+
+            if ($map->ticket_id) {
                 // media_group_id stores the private user message this answer replied to.
                 $this->bridge->mapSupportThreadToUser(
                     (int) $map->ticket_id,
@@ -235,9 +245,64 @@ class SupportAdminReplyService
             }
 
             $this->bridge->reactConfirm($client, $groupChatId, $adminMessageId);
-        } catch (Throwable) {
-            // Swallow — do not spam the reports group.
+        } catch (Throwable $e) {
+            $this->bridge->reactFail($client, $groupChatId, $adminMessageId);
+            $this->notifyDeliveryFailure($client, $groupChatId, $adminMessageId, $threadId, $e);
         }
+    }
+
+    private function notifyDeliveryFailure(
+        TelegramBotClientInterface $client,
+        string $groupChatId,
+        int $adminMessageId,
+        int $threadId,
+        Throwable $error,
+    ): void {
+        $reason = $this->humanizeDeliveryError($error->getMessage());
+        $body = '❌ '.TelegramHtml::bold('پیام به کاربر نرسید')
+            ."\n"
+            .TelegramHtml::escape($reason);
+
+        $options = [
+            'parse_mode' => 'HTML',
+            'reply_to_message_id' => $adminMessageId,
+            'allow_sending_without_reply' => true,
+        ];
+        if ($threadId > 0) {
+            $options['message_thread_id'] = $threadId;
+        }
+
+        try {
+            $client->sendMessage($groupChatId, $body, $options);
+        } catch (Throwable) {
+            // Do not spam the reports group if even the notice fails.
+        }
+    }
+
+    private function humanizeDeliveryError(string $raw): string
+    {
+        $msg = mb_strtolower($raw);
+
+        if (str_contains($msg, 'blocked by the user') || str_contains($msg, 'bot was blocked')) {
+            return 'کاربر ربات را مسدود کرده است.';
+        }
+        if (str_contains($msg, 'user is deactivated') || str_contains($msg, 'user deactivated')) {
+            return 'حساب کاربر در تلگرام غیرفعال شده است.';
+        }
+        if (str_contains($msg, "can't initiate conversation") || str_contains($msg, 'chat not found')) {
+            return 'کاربر ربات را استارت نکرده یا چت خصوصی در دسترس نیست.';
+        }
+        if (str_contains($msg, 'forbidden')) {
+            return 'ارسال به کاربر مجاز نیست (احتمالاً ربات را متوقف کرده).';
+        }
+        if (str_contains($msg, 'empty_delivery_result')) {
+            return 'تلگرام نتیجه ارسال معتبری برنگرداند.';
+        }
+        if ($raw !== '') {
+            return 'خطا: '.$raw;
+        }
+
+        return 'ارسال به کاربر ناموفق بود.';
     }
 
     private function formatSupportReply(string $text): string

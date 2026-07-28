@@ -534,33 +534,6 @@ class MessageHandler implements UpdateHandlerInterface
         $channel = $this->referenceChannelPresenter->resolvePublishedChannel();
         $product = $channel?->product;
 
-        if ($channel !== null && $product !== null && $this->referenceChannelPresenter->owns($account, $product)) {
-            $view = $this->referenceChannelPresenter->presentOwned($bot, $account, $channel);
-            $this->outbound->reply($bot, $chatId, $view['text'], $view['options'], sync: true);
-
-            return;
-        }
-
-        $description = $this->messages->get($bot, 'reference_channel_description');
-        $joinLabel = $this->messages->get($bot, 'reference_channel_join_btn');
-        $joinUrl = $bot->requiredChats()
-            ->whereNotNull('invite_link')
-            ->where('invite_link', '!=', '')
-            ->value('invite_link');
-
-        $descKeyboard = [];
-        if (filled($joinUrl)) {
-            foreach (TelegramSiteUrl::urlKeyboardRow($joinLabel, (string) $joinUrl, 'primary', 'channel') as $row) {
-                $descKeyboard[] = $row;
-            }
-        }
-        $this->replyHtml(
-            $bot,
-            $chatId,
-            $description,
-            $descKeyboard !== [] ? ['reply_markup' => ['inline_keyboard' => $descKeyboard]] : [],
-        );
-
         if ($channel === null || $product === null || ! $product->is_active) {
             $this->outbound->reply(
                 $bot,
@@ -573,22 +546,28 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        $quote = $this->referenceChannelPresenter->quote($channel, $account);
-        $listPrice = (int) $quote['amount'];
-        $finalPrice = (int) $quote['final_amount'];
+        $owned = $this->referenceChannelPresenter->owns($account, $product);
+        $view = $this->referenceChannelPresenter->presentScreen($bot, $account, $channel, $owned);
+        $caption = (string) ($view['text'] ?? '');
+        $options = (array) ($view['options'] ?? []);
+        $photo = $this->catalogMedia->productPhoto($product);
 
-        if ($quote['seminar_off']) {
-            $priceText = TelegramCustomEmoji::tag('gift')." <b>چون در سمینار حضور داشتید</b>\n\n"
-                .TelegramCustomEmoji::tag('money').' قیمت: <s>'.number_format($listPrice).' تومان</s>'."\n"
-                .TelegramCustomEmoji::tag('fire').' با تخفیف سمینار: <b>'.number_format($finalPrice).' تومان</b>';
+        if ($photo !== null) {
+            $photoOptions = $options;
+            $photoOptions['caption'] = $this->content->fitTelegramCaption($caption);
+            $result = $this->outbound->replyPhoto($bot, $chatId, $photo, $photoOptions, sync: true);
+            if (is_array($result)) {
+                $this->catalogMedia->rememberProductPhoto($product, $result);
+            } elseif ($result === null) {
+                $this->outbound->reply($bot, $chatId, $caption, $options, sync: true);
+            }
         } else {
-            $priceText = TelegramCustomEmoji::tag('cart')." <b>دسترسی به کانال مرجع</b>\n\n"
-                .TelegramCustomEmoji::tag('money').' قیمت: <b>'.number_format($listPrice).' تومان</b>'."\n\n"
-                .'اگر در سمینار شرکت کرده باشید، تخفیف ویژه روی حسابتان اعمال می‌شود.';
+            $this->outbound->reply($bot, $chatId, $caption, $options, sync: true);
         }
 
-        $this->replyHtml($bot, $chatId, $priceText);
-        $this->purchaseFlow->proceedToPaymentMethods($bot, $account, $chatId, (int) $product->id, null);
+        if (! $owned) {
+            $this->purchaseFlow->proceedToPaymentMethods($bot, $account, $chatId, (int) $product->id, null);
+        }
     }
 
     private function sendFamily(TelegramBot $bot, int $chatId, TelegramAccount $account): void
@@ -596,13 +575,11 @@ class MessageHandler implements UpdateHandlerInterface
         $familyUrl = TelegramSiteUrl::familyHome();
 
         if (! $account->user_id || ! $account->user) {
-            $this->sendWithLink(
+            $this->replyHtml(
                 $bot,
                 $chatId,
                 "👨‍👩‍👧‍👦 <b>خانواده</b>\n\nابتدا ثبت‌نام را کامل کنید تا عضویت فعال شود.",
-                $familyUrl,
-                '🌐 صفحه خانواده',
-                'primary',
+                TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
             );
 
             return;
@@ -618,13 +595,11 @@ class MessageHandler implements UpdateHandlerInterface
 
         $membership = app(\App\Services\Family\FamilyAccessService::class)->homeMembership($user);
         if ($membership === null) {
-            $this->sendWithLink(
+            $this->replyHtml(
                 $bot,
                 $chatId,
                 "👨‍👩‍👧‍👦 <b>خانواده</b>\n\nهنوز به خانواده‌ای وصل نیستید.\nبا ورود به وب‌اپ، عضویت شما فعال می‌شود.",
-                $familyUrl,
-                '🌐 ورود به خانواده',
-                'primary',
+                TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
             );
 
             return;
@@ -654,7 +629,7 @@ class MessageHandler implements UpdateHandlerInterface
             $lines[] = 'فعلاً همه‌چیز را دیده‌اید. برای حال‌وهوای خانواده یک سر بزنید.';
         }
 
-        $this->sendWithLink($bot, $chatId, implode("\n", $lines), $familyUrl, '🌐 ورود به خانواده', 'primary');
+        $this->replyHtml($bot, $chatId, implode("\n", $lines), TelegramSiteUrl::familyClubLinkMarkup($familyUrl));
     }
 
     private function familyUnreadPostCount(\App\Models\User $user, \App\Models\FamilyMembership $membership): int
@@ -715,7 +690,7 @@ class MessageHandler implements UpdateHandlerInterface
                 .$e('notes').' کد اختصاصی: <code>'.\App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $code->code)."</code>\n\n"
                 .$e('check').' خریدهای موفق: <b>'.number_format((int) ($summary['successful_purchases'] ?? 0))."</b>\n"
                 .$e('money').' پاداش قابل برداشت: <b>'.number_format((int) ($summary['payable_amount'] ?? 0)).'</b> تومان',
-                TelegramSiteUrl::linkMarkup($panelUrl, 'باشگاه مشتریان در پنل', [], 'success', 'gift'),
+                TelegramSiteUrl::linkMarkup($panelUrl, 'ورود به باشگاه', [], 'success', 'gift'),
             );
         } catch (\Throwable) {
             $this->replyHtml($bot, $chatId, $e('warning').' <b>لینک معرفی در دسترس نیست</b>\nکمی بعد دوباره تلاش کنید.');
@@ -736,8 +711,10 @@ class MessageHandler implements UpdateHandlerInterface
         foreach ($this->userDestinations->keyboardRows($bot, $account) as $row) {
             $keyboard[] = $row;
         }
-        foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
-            $keyboard[] = $row;
+        if ($this->shouldPromptReferenceIdentity($account)) {
+            foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
+                $keyboard[] = $row;
+            }
         }
         foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل دانشجو', $panelUrl, 'success', 'graduation') as $row) {
             $keyboard[] = $row;
@@ -753,6 +730,22 @@ class MessageHandler implements UpdateHandlerInterface
         );
     }
 
+    private function shouldPromptReferenceIdentity(TelegramAccount $account): bool
+    {
+        $account->loadMissing('user.identityProfile');
+        if ((int) ($account->user?->identityProfile?->verification_level ?? 0) >= 2) {
+            return false;
+        }
+
+        if (! $account->user_id) {
+            return false;
+        }
+
+        return \App\Models\ReferenceChannelEntitlement::query()
+            ->where('user_id', $account->user_id)
+            ->exists();
+    }
+
     private function sendWithLink(
         TelegramBot $bot,
         int $chatId,
@@ -760,12 +753,13 @@ class MessageHandler implements UpdateHandlerInterface
         ?string $url,
         string $label,
         ?string $style = 'primary',
+        ?string $iconKey = 'globe',
     ): void {
         $this->replyHtml(
             $bot,
             $chatId,
             $message,
-            TelegramSiteUrl::linkMarkup($url, $label, [], $style),
+            TelegramSiteUrl::linkMarkup($url, $label, [], $style, $iconKey),
         );
     }
 }

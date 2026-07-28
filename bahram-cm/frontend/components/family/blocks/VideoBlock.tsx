@@ -162,14 +162,14 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         {showPoster ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={posterUrl}
+            src={posterUrl ?? undefined}
             alt=""
             decoding="async"
             fetchPriority="auto"
             // Always visible once mounted — tiny LQIP; opacity-0 + missed onLoad left cells blank.
             className="pointer-events-none absolute inset-0 h-full w-full object-cover scale-[1.04] blur-sm opacity-100"
             onLoad={() => {
-              markFamilyMediaSeen(posterUrl);
+              if (posterUrl) markFamilyMediaSeen(posterUrl);
               setPosterLoaded(true);
             }}
             onError={() => setPosterError(true)}
@@ -207,7 +207,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           />
         ) : null}
 
-        {showPreviewFailed ? (
+        {showPreviewFailed && downloadUrl ? (
           <span className="absolute inset-0 z-[3] flex flex-col items-center justify-center gap-2 bg-black/35 px-3 backdrop-blur-md">
             <span className="text-xs text-bone/75">پیش‌نمایش ویدیو در دسترس نیست</span>
             <FamilyMediaDownloadButton
@@ -259,8 +259,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
       <FamilyVideoModal
         open={modalOpen}
-        url={streamUrl ?? media.url}
-        posterUrl={posterUrl}
+        url={streamUrl ?? media.url ?? ''}
+        posterUrl={posterUrl ?? undefined}
         mediaId={media.id}
         postId={postId}
         durationHint={media.duration}

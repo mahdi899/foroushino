@@ -83,6 +83,38 @@ export async function revalidateFaqSurfaces(): Promise<void> {
   });
 }
 
+/** Product / pricing landing pages (campaign course, reference channels, courses index). */
+export async function revalidatePricingSurfaces(options?: {
+  productSlug?: string | null;
+  landingHref?: string | null;
+}): Promise<void> {
+  await revalidatePublicContent(() => {
+    revalidateTag('pricing', 'max');
+    revalidateTag('products', 'max');
+    revalidateTag('home', 'max');
+    revalidatePath('/');
+    revalidatePath('/courses');
+    revalidatePath('/course/campaign-writing');
+    revalidatePath('/reference-channels/kanal-mrgf');
+    revalidatePath('/admin/commerce/products');
+
+    const href = options?.landingHref?.trim();
+    if (href?.startsWith('/')) {
+      revalidatePath(href);
+    }
+
+    const slug = options?.productSlug?.trim();
+    if (slug) {
+      if (slug.startsWith('reference-')) {
+        revalidatePath(`/reference-channels/${slug.slice('reference-'.length)}`);
+      } else {
+        revalidatePath(`/course/${slug}`);
+        revalidatePath(`/purchase/${slug}`);
+      }
+    }
+  });
+}
+
 export async function revalidateContentCommentSurfaces(
   type: string,
   slug?: string | null,

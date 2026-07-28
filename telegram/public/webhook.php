@@ -11,6 +11,7 @@ use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Db\Connection;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
+use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Http\LiveClient;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Http\SyncClient;

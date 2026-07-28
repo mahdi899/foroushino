@@ -76,7 +76,8 @@ class SsoBridgeController extends Controller
         }
 
         $user = User::find($userId);
-        if (! $user || $user->is_admin || $user->is_sat_staff) {
+        // Admins may hold a student-panel session; SAT staff stay on the SAT panel.
+        if (! $user || $user->is_sat_staff) {
             return ApiResponse::error('bridge_invalid_user', 'کاربر معتبر نیست.', 422);
         }
 

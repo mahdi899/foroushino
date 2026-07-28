@@ -26,6 +26,17 @@ final class ResilientLiveClient
     }
 
     /** @return array<string, mixed> */
+    public function productPresent(int $chatId, int $telegramUserId, int $productId): array
+    {
+        return $this->invoke(
+            $chatId,
+            $telegramUserId,
+            'نمایش دسترسی محصول',
+            fn () => $this->live->productPresent($telegramUserId, $productId),
+        );
+    }
+
+    /** @return array<string, mixed> */
     public function discountPreview(int $chatId, int $telegramUserId, int $productId, string $code): array
     {
         return $this->invoke($chatId, $telegramUserId, 'بررسی کد تخفیف', fn () => $this->live->discountPreview($telegramUserId, $productId, $code));

@@ -37,6 +37,12 @@ final class HostSupportService
     /** @var list<string> */
     private const CANCEL_TEXTS = ['لغو', '/cancel', 'انصراف', 'cancel'];
 
+    /** @var list<string> */
+    private const CONFIRM_EMOJIS = ['✅', '👍', '👌'];
+
+    /** @var list<string> */
+    private const FAIL_EMOJIS = ['❌', '👎', '🚫'];
+
     public function __construct(
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
@@ -388,6 +394,10 @@ final class HostSupportService
 
         $userChatId = $resolved['user_chat_id'];
         $replyToUserMessageId = $resolved['reply_to_user_message_id'];
+        $threadId = isset($resolved['thread_id']) ? (int) $resolved['thread_id'] : 0;
+        if ($threadId <= 0) {
+            $threadId = (int) ($message['message_thread_id'] ?? 0);
+        }
         $deliverOptions = ['parse_mode' => 'HTML'];
         if ($replyToUserMessageId > 0) {
             $deliverOptions['reply_to_message_id'] = $replyToUserMessageId;
@@ -418,19 +428,23 @@ final class HostSupportService
             }
 
             $deliveredId = (int) ($delivered['message_id'] ?? 0);
-            if ($deliveredId > 0) {
-                $this->storeMap([
-                    'direction' => 'support_to_user',
-                    'source_chat_id' => $groupChatId,
-                    'source_message_id' => $adminMessageId,
-                    'target_chat_id' => $userChatId,
-                    'target_message_id' => $deliveredId,
-                    'target_thread_id' => $resolved['thread_id'] ?? null,
-                    'forward_message_id' => $replyToUserMessageId > 0 ? $replyToUserMessageId : null,
-                ]);
+            if ($deliveredId <= 0) {
+                throw new \RuntimeException('empty_delivery_result');
             }
-        } catch (\Throwable) {
-            return true;
+
+            $this->storeMap([
+                'direction' => 'support_to_user',
+                'source_chat_id' => $groupChatId,
+                'source_message_id' => $adminMessageId,
+                'target_chat_id' => $userChatId,
+                'target_message_id' => $deliveredId,
+                'target_thread_id' => $threadId > 0 ? $threadId : ($resolved['thread_id'] ?? null),
+                'forward_message_id' => $replyToUserMessageId > 0 ? $replyToUserMessageId : null,
+            ]);
+            $this->reactOnMessage($groupChatId, $adminMessageId, self::CONFIRM_EMOJIS);
+        } catch (\Throwable $e) {
+            $this->reactOnMessage($groupChatId, $adminMessageId, self::FAIL_EMOJIS);
+            $this->notifyDeliveryFailure($groupChatId, $adminMessageId, $threadId, $e);
         }
 
         return true;
@@ -503,6 +517,75 @@ final class HostSupportService
             ."\n<b>نام: </b>{$safeName}"
             ."\n<b>شناسه: </b>"
             .'<a href="tg://openmessage?user_id='.$telegramUserId.'">'.$telegramUserId.'</a>';
+    }
+
+    /** @param list<string> $emojis */
+    private function reactOnMessage(string $chatId, int $messageId, array $emojis): void
+    {
+        if ($messageId <= 0) {
+            return;
+        }
+
+        foreach ($emojis as $emoji) {
+            try {
+                $this->api->setMessageReaction($chatId, $messageId, [
+                    ['type' => 'emoji', 'emoji' => $emoji],
+                ]);
+
+                return;
+            } catch (\Throwable) {
+                // Try next emoji — group may restrict which reactions are allowed.
+            }
+        }
+    }
+
+    private function notifyDeliveryFailure(string $groupChatId, int $adminMessageId, int $threadId, \Throwable $error): void
+    {
+        $reason = $this->humanizeDeliveryError($error->getMessage());
+        $body = '❌ <b>پیام به کاربر نرسید</b>'
+            ."\n"
+            .htmlspecialchars($reason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+        $options = [
+            'parse_mode' => 'HTML',
+            'reply_to_message_id' => $adminMessageId,
+            'allow_sending_without_reply' => true,
+        ];
+        if ($threadId > 0) {
+            $options['message_thread_id'] = $threadId;
+        }
+
+        try {
+            $this->api->sendMessage($groupChatId, $body, $options);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] support delivery failure notice: '.$e->getMessage());
+        }
+    }
+
+    private function humanizeDeliveryError(string $raw): string
+    {
+        $msg = mb_strtolower($raw);
+
+        if (str_contains($msg, 'blocked by the user') || str_contains($msg, 'bot was blocked')) {
+            return 'کاربر ربات را مسدود کرده است.';
+        }
+        if (str_contains($msg, 'user is deactivated') || str_contains($msg, 'user deactivated')) {
+            return 'حساب کاربر در تلگرام غیرفعال شده است.';
+        }
+        if (str_contains($msg, "can't initiate conversation") || str_contains($msg, 'chat not found')) {
+            return 'کاربر ربات را استارت نکرده یا چت خصوصی در دسترس نیست.';
+        }
+        if (str_contains($msg, 'forbidden')) {
+            return 'ارسال به کاربر مجاز نیست (احتمالاً ربات را متوقف کرده).';
+        }
+        if (str_contains($msg, 'empty_delivery_result')) {
+            return 'تلگرام نتیجه ارسال معتبری برنگرداند.';
+        }
+        if ($raw !== '') {
+            return 'خطا: '.$raw;
+        }
+
+        return 'ارسال به کاربر ناموفق بود.';
     }
 
     private function formatSupportReply(string $text): string

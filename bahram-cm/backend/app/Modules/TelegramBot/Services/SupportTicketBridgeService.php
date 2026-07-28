@@ -34,6 +34,8 @@ class SupportTicketBridgeService
 
     private const CONFIRM_EMOJIS = ['✅', '👍', '👌', '🔥', '💯'];
 
+    private const FAIL_EMOJIS = ['❌', '👎', '🚫'];
+
     public function __construct(
         private readonly TelegramBotClientFactory $clients,
     ) {}
@@ -318,8 +320,21 @@ class SupportTicketBridgeService
 
     public function reactConfirm(TelegramBotClientInterface $client, int|string $chatId, int $messageId): void
     {
-        $candidates = $this->resolveConfirmEmojis($client, (string) $chatId);
+        $this->reactWithCandidates($client, $chatId, $messageId, $this->resolveConfirmEmojis($client, (string) $chatId));
+    }
 
+    public function reactFail(TelegramBotClientInterface $client, int|string $chatId, int $messageId): void
+    {
+        $this->reactWithCandidates($client, $chatId, $messageId, $this->resolveFailEmojis($client, (string) $chatId));
+    }
+
+    /** @param  list<string>  $candidates */
+    private function reactWithCandidates(
+        TelegramBotClientInterface $client,
+        int|string $chatId,
+        int $messageId,
+        array $candidates,
+    ): void {
         foreach ($candidates as $emoji) {
             try {
                 if (str_starts_with($emoji, 'custom:')) {
@@ -347,6 +362,21 @@ class SupportTicketBridgeService
     /** @return list<string> */
     private function resolveConfirmEmojis(TelegramBotClientInterface $client, string $chatId): array
     {
+        return $this->resolvePreferredEmojis($client, $chatId, self::CONFIRM_EMOJIS);
+    }
+
+    /** @return list<string> */
+    private function resolveFailEmojis(TelegramBotClientInterface $client, string $chatId): array
+    {
+        return $this->resolvePreferredEmojis($client, $chatId, self::FAIL_EMOJIS);
+    }
+
+    /**
+     * @param  list<string>  $preferred
+     * @return list<string>
+     */
+    private function resolvePreferredEmojis(TelegramBotClientInterface $client, string $chatId, array $preferred): array
+    {
         try {
             $chat = $client->getChat($chatId);
             $available = data_get($chat, 'available_reactions');
@@ -364,9 +394,9 @@ class SupportTicketBridgeService
                 }
 
                 if ($allowedEmoji !== []) {
-                    $preferred = array_values(array_intersect(self::CONFIRM_EMOJIS, $allowedEmoji));
+                    $matched = array_values(array_intersect($preferred, $allowedEmoji));
 
-                    return $preferred !== [] ? $preferred : array_values($allowedEmoji);
+                    return $matched !== [] ? $matched : array_values($allowedEmoji);
                 }
 
                 if ($allowedCustom !== []) {
@@ -380,6 +410,6 @@ class SupportTicketBridgeService
             // Fall through to defaults.
         }
 
-        return self::CONFIRM_EMOJIS;
+        return $preferred;
     }
 }

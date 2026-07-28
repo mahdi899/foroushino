@@ -126,7 +126,9 @@ final class SyncClient
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $json,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => max(1, min(3, $timeoutSeconds)),
+            // Allow a bit more connect time on the Iran hop (TLS / WAF) without
+            // burning the whole request budget.
+            CURLOPT_CONNECTTIMEOUT => max(2, min(5, $timeoutSeconds)),
             CURLOPT_TIMEOUT => max(1, $timeoutSeconds),
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
@@ -153,6 +155,13 @@ final class SyncClient
         }
 
         if ($status >= 400) {
+            // Business replies from Iran (validation / not registered / not admin)
+            // come back as 4xx + {ok:false}. Treat them as normal responses so we
+            // do NOT trip the circuit breaker and kill checkout/admin for everyone.
+            if ($status < 500 && array_key_exists('ok', $decoded)) {
+                return $decoded;
+            }
+
             $detail = (string) ($decoded['error']['message'] ?? $decoded['message'] ?? "HTTP {$status}");
 
             throw new \RuntimeException("Sync request failed (HTTP {$status}): {$detail}");

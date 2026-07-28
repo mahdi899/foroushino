@@ -186,21 +186,16 @@ class FulfillOrderJob implements ShouldQueue
         $identityUrl = \App\Modules\TelegramBot\Support\TelegramSiteUrl::identityPage();
         $botStartUrl = \App\Modules\TelegramBot\Support\TelegramSiteUrl::botStartDeepLink('reference');
         $isReferencePurchase = $order->product?->isReferenceChannelProduct() ?? false;
-        $isLegacyCampaign = $order->product?->slug === \App\Services\SeminarAttendeeCoursePricing::COURSE_SLUG;
 
         if ($isReferencePurchase) {
             $orderPaidText .= "\n\n"
                 .'قدم بعدی: احراز هویت سطح ۲، سپس ربات تلگرام را استارت کنید و «کانال مرجع» را بزنید.'."\n"
                 .'بعد از تأیید هویت، لینک عضویت گروه مرجع برایتان فعال می‌شود.';
-        } elseif ($isLegacyCampaign) {
-            $orderPaidText .= "\n\n"
-                .'قدم بعدی: احراز هویت سطح ۲.'."\n"
-                .'بعد از تأیید، لینک مقاصد برایتان در بخش «کانال مرجع» فعال می‌شود.';
         }
 
         $notifyOptions = [];
         $keyboard = [];
-        if ($identityUrl && ($isReferencePurchase || $isLegacyCampaign)) {
+        if ($identityUrl && $isReferencePurchase) {
             foreach (\App\Modules\TelegramBot\Support\TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
                 $keyboard[] = $row;
             }
@@ -220,15 +215,16 @@ class FulfillOrderJob implements ShouldQueue
             $telegramAccounts = TelegramAccount::query()
                 ->where('user_id', $userId)
                 ->whereHas('bot', fn ($q) => $q->where('key', 'production'))
+                ->with('bot')
                 ->get();
 
             $hostSync = app(TelegramHostAccountSync::class);
-            $hostNotified = false;
+            $delivered = false;
 
             if ($usesHost) {
                 foreach ($telegramAccounts as $account) {
                     if ($hostSync->pushPaidOrderNotification($account, $orderPaidText, $notifyOptions)) {
-                        $hostNotified = true;
+                        $delivered = true;
                     }
                 }
 
@@ -240,12 +236,41 @@ class FulfillOrderJob implements ShouldQueue
                 }
             }
 
-            if (! $usesHost || ! $hostNotified) {
+            // If Iran→host push failed (timeout/WAF/circuit), still tell the
+            // buyer via Bot API from Iran (proxy) so payment success is never silent.
+            if (! $delivered) {
+                foreach ($telegramAccounts as $account) {
+                    if ($account->bot === null) {
+                        continue;
+                    }
+                    try {
+                        app(\App\Modules\TelegramBot\Clients\TelegramBotClientFactory::class)
+                            ->forBot($account->bot)
+                            ->sendMessage(
+                                (int) $account->telegram_user_id,
+                                $orderPaidText,
+                                $notifyOptions,
+                            );
+                        $delivered = true;
+                    } catch (\Throwable $e) {
+                        Log::channel('telegram')->warning('Direct order_paid Telegram send failed.', [
+                            'order_id' => $order->id,
+                            'telegram_user_id' => $account->telegram_user_id,
+                            'message' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+
+            if (! $delivered) {
                 try {
                     app(\App\Modules\TelegramBot\Services\NotificationOutboxWriter::class)->write(
                         eventType: 'order_paid',
                         userId: $userId,
-                        payload: ['text' => $orderPaidText],
+                        payload: [
+                            'text' => $orderPaidText,
+                            'options' => $notifyOptions,
+                        ],
                         channels: ['telegram'],
                         idempotencyKey: 'order_paid:'.$order->id,
                     );
@@ -257,10 +282,9 @@ class FulfillOrderJob implements ShouldQueue
                 }
             }
 
-            if (! $usesHost) {
-                foreach ($telegramAccounts as $account) {
-                    $hostSync->queuePush($account);
-                }
+            // Keep host ownership mirror fresh even when notify went via Bot API.
+            foreach ($telegramAccounts as $account) {
+                $hostSync->queuePush($account);
             }
         }
     }

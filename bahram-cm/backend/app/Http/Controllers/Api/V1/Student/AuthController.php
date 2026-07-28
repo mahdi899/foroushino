@@ -38,10 +38,7 @@ class AuthController extends Controller
             return $blocked;
         }
 
-        if (User::query()->where('mobile', $mobile)->where('is_admin', true)->exists()) {
-            return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
-        }
-
+        // Admins may use the student panel with the same mobile; only SAT staff are redirected.
         if (User::query()->where('mobile', $mobile)->where('is_sat_staff', true)->exists()) {
             return ApiResponse::error('forbidden', 'این شماره متعلق به پرسنل سات است. از پنل سات وارد شوید.', 403);
         }
@@ -65,10 +62,6 @@ class AuthController extends Controller
 
         if ($blocked = StudentAccess::blockedResponseForMobile($mobile)) {
             return $blocked;
-        }
-
-        if (User::query()->where('mobile', $mobile)->where('is_admin', true)->exists()) {
-            return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
         }
 
         if (User::query()->where('mobile', $mobile)->where('is_sat_staff', true)->exists()) {
@@ -111,8 +104,8 @@ class AuthController extends Controller
             app(AdminTelegramLogService::class)->notifyStudentRegistered($user);
         }
 
-        if ($user->is_admin || $user->is_sat_staff) {
-            return ApiResponse::error('forbidden', 'این شماره متعلق به حساب پرسنلی است.', 403);
+        if ($user->is_sat_staff) {
+            return ApiResponse::error('forbidden', 'این شماره متعلق به پرسنل سات است. از پنل سات وارد شوید.', 403);
         }
 
         if (StudentAccess::isBlocked($user)) {
@@ -145,7 +138,6 @@ class AuthController extends Controller
 
         $user = User::query()
             ->where('mobile', $mobile)
-            ->where('is_admin', false)
             ->where('is_sat_staff', false)
             ->first();
 

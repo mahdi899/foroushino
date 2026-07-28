@@ -42,6 +42,11 @@ final class WebhookRegisterFromPull
 
         (new BotApiClient($token))->setWebhook($url, $secret !== '' ? $secret : null);
 
-        $sync->call('webhook-register/ack', ['nonce' => $nonce]);
+        // Ack is best-effort — never block host-sync on Iran reachability.
+        try {
+            $sync->call('webhook-register/ack', ['nonce' => $nonce]);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] webhook-register ack failed: '.$e->getMessage());
+        }
     }
 }

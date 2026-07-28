@@ -243,7 +243,9 @@ function ProviderCard({
                 />
                 {isApiIr ? (
                   <p className="mt-1 text-caption text-text-muted">
-                    فقط توکن خام؛ نیازی به نوشتن Bearer نیست. آدرس پایه ثابت است: s.api.ir
+                    فقط توکن خام (مثل eyJhbGciOi…). سیستم خودش هدر{' '}
+                    <code dir="ltr">Authorization: Bearer …</code> را می‌گذارد — کلمه Bearer را در فیلد ننویس.
+                    آدرس پایه: <code dir="ltr">https://s.api.ir</code>
                   </p>
                 ) : null}
               </div>

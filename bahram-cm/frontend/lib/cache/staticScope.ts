@@ -1,6 +1,7 @@
 /**
  * Routes that are statically cached (ISR) — content reads only, no forms.
  * Checkout, chat, auth, and admin stay dynamic (no-store / force-dynamic).
+ * Keep in sync with CacheService::WARM_PATHS / CACHE_WARM_PATHS where practical.
  */
 export const STATIC_CONTENT_PREFIXES = [
   '/',
@@ -9,6 +10,8 @@ export const STATIC_CONTENT_PREFIXES = [
   '/transformations',
   '/faq',
   '/courses',
+  '/course',
+  '/reference-channels',
   '/founder',
   '/mini-courses',
   '/events',

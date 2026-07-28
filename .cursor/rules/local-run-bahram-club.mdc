@@ -79,22 +79,28 @@ One-time / when secrets change:
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS telegram_host_local CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 cmd /c "mysql -u root telegram_host_local < telegram\db\schema.sql"
 
-php telegram/_local_enable_host.php
+php scripts/telegram-local/enable-host.php
 ```
 
 Every session:
 
 ```bash
 cd telegram
-php -S 127.0.0.1:8088 router.php
-# other terminal:
-php bin/local-poll.php
+php -S 127.0.0.1:8088 ../scripts/telegram-local/router.php
+# other terminal — only ONE of these (not both, not two local-poll windows):
+php ../scripts/telegram-local/local-poll.php
+# or from repo root:
+# php scripts/telegram-local/local-poll.php
 ```
 
-- `router.php` preserves `Authorization` for PHP built-in server (needed by `host-sync.php`).
-- `bin/local-poll.php` deletes the Telegram webhook, long-polls via the proxy, POSTs updates to local `/public/webhook.php`.
-- Sync Iran ↔ host uses `127.0.0.1:8010` and `127.0.0.1:8088` on the same PC.
+Local-only helpers live in `scripts/telegram-local/` — **never upload that folder** (or `config.php`) to the foreign cPanel host.
 
+- Optional: `TELEGRAM_LOCAL_POLL_BOT_TOKEN=` in `backend/.env` + `php scripts/telegram-local/refresh-token.php` so local poll uses a **dev bot** and does not fight production `telegram:reconcile-webhook` every 2 minutes on `@RostamiAppBot`.
+- Local Laravel: `TELEGRAM_WEBHOOK_RECONCILE=false` so `schedule:work` does not re-register webhook while polling.
+
+- `scripts/telegram-local/router.php` preserves `Authorization` for PHP built-in server (needed by `host-sync.php`).
+- `scripts/telegram-local/local-poll.php` deletes the Telegram webhook, long-polls via the proxy, POSTs updates to local `/public/webhook.php`.
+- Sync Iran ↔ host uses `127.0.0.1:8010` and `127.0.0.1:8088` on the same PC.
 ### Fallback — Laravel `telegram:poll` (not host mode)
 
 ```bash
@@ -127,4 +133,4 @@ Only when `APP_ENV` is `local`/`testing`. Deletes webhook; ingest goes through L
 | `http://club.lvh.me:3001` | خانواده (rewrite به `/family`) |
 | `http://localhost:7357` | Flutter manager (optional) |
 | host-sync push | `refreshAll()` → ok |
-| `php bin/local-poll.php` | running; updates POSTed locally |
+| `php scripts/telegram-local/local-poll.php` | running; updates POSTed locally |

@@ -51,10 +51,9 @@ trait BotAdminPanelCatalogHandlers
 
     private function bumpTelegramCatalog(): void
     {
+        // Revision first; host push runs afterResponse (see PushTelegramHostSyncJob)
+        // so it does not deadlock the single-threaded local host during process-update.
         app(TelegramHostCatalogRevision::class)->bump(scope: 'all');
-        if (method_exists($this, 'dispatchHostCatalogAndBootstrapSync')) {
-            $this->dispatchHostCatalogAndBootstrapSync();
-        }
     }
 
     private function formatToman(int $amount): string

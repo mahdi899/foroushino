@@ -20,8 +20,8 @@ return [
     'assignment_lock_seconds' => (int) env('FAMILY_ASSIGNMENT_LOCK_SECONDS', 10),
 
     'entry' => [
-        'base_url' => rtrim((string) env('FAMILY_ENTRY_BASE_URL', env('FRONTEND_URL', 'http://localhost:3000')), '/'),
-        'path' => trim((string) env('FAMILY_ENTRY_PATH', 'family'), '/'),
+        'base_url' => rtrim((string) env('FAMILY_ENTRY_BASE_URL', 'https://rostami.club'), '/'),
+        'path' => trim((string) env('FAMILY_ENTRY_PATH', ''), '/'),
     ],
 
     'internal_name_pool' => [

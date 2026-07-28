@@ -194,7 +194,7 @@ final class CallbackQueryHandler
         }
 
         if ($this->accounts->ownsProduct($telegramUserId, $productId)) {
-            $present = $this->accounts->ownedPresent($telegramUserId, $productId);
+            $present = $this->resolveOwnedPresent($chatId, $telegramUserId, $productId);
             if ($present !== null && isset($present['text'])) {
                 $text = (string) $present['text'];
                 $options = (array) ($present['options'] ?? []);
@@ -240,4 +240,94 @@ final class CallbackQueryHandler
         $this->purchaseFlow->promptDiscountCode($chatId, $telegramUserId, $productId, $title, $base, $sale);
     }
 
+    /**
+     * Prefer Iran live present; fall back to host cache. For courses/seminars
+     * (not reference channel), strip any stale level-2 identity gate from cache.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function resolveOwnedPresent(int $chatId, int $telegramUserId, int $productId): ?array
+    {
+        $live = $this->live->productPresent($chatId, $telegramUserId, $productId);
+        $present = null;
+        if (empty($live['offline']) && isset($live['text']) && trim((string) $live['text']) !== '') {
+            $present = [
+                'text' => (string) $live['text'],
+                'options' => (array) ($live['options'] ?? []),
+                'photo' => (string) ($live['photo'] ?? ''),
+            ];
+        }
+
+        if ($present === null) {
+            $cached = $this->accounts->ownedPresent($telegramUserId, $productId);
+            if ($cached !== null && isset($cached['text'])) {
+                $present = $cached;
+            }
+        }
+
+        if ($present === null) {
+            return null;
+        }
+
+        $product = $this->cache->findProduct($productId);
+        $isReference = is_array($product)
+            && (string) ($product['product_type'] ?? '') === 'reference_channel';
+
+        return $isReference ? $present : $this->stripIdentityGateFromPresent($present);
+    }
+
+    /**
+     * @param  array<string, mixed>  $present
+     * @return array<string, mixed>
+     */
+    private function stripIdentityGateFromPresent(array $present): array
+    {
+        $text = (string) ($present['text'] ?? '');
+        $lines = preg_split("/\r\n|\n|\r/", $text) ?: [];
+        $kept = [];
+        foreach ($lines as $line) {
+            $plain = strip_tags((string) $line);
+            if (str_contains($plain, 'احراز هویت سطح ۲')) {
+                continue;
+            }
+            $kept[] = $line;
+        }
+        $present['text'] = trim((string) preg_replace("/\n{3,}/", "\n\n", implode("\n", $kept)));
+
+        $options = (array) ($present['options'] ?? []);
+        $markup = $options['reply_markup'] ?? null;
+        if (! is_array($markup) || ! isset($markup['inline_keyboard']) || ! is_array($markup['inline_keyboard'])) {
+            return $present;
+        }
+
+        $rows = [];
+        foreach ($markup['inline_keyboard'] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $buttons = [];
+            foreach ($row as $button) {
+                if (! is_array($button)) {
+                    continue;
+                }
+                $label = strip_tags((string) ($button['text'] ?? ''));
+                if (str_contains($label, 'احراز هویت سطح ۲')) {
+                    continue;
+                }
+                $buttons[] = $button;
+            }
+            if ($buttons !== []) {
+                $rows[] = $buttons;
+            }
+        }
+
+        if ($rows === []) {
+            unset($options['reply_markup']);
+        } else {
+            $options['reply_markup'] = ['inline_keyboard' => $rows];
+        }
+        $present['options'] = $options;
+
+        return $present;
+    }
 }

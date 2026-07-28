@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 /**
  * Refresh telegram/config.php bot_token (+ secrets) from Laravel panel.
- * Does not print secrets.
  *
- *   php _local_refresh_token.php
+ *   php scripts/telegram-local/refresh-token.php
  */
 
-require __DIR__.'/../bahram-cm/backend/vendor/autoload.php';
-$app = require __DIR__.'/../bahram-cm/backend/bootstrap/app.php';
+$repoRoot = realpath(__DIR__.'/../..');
+$telegramRoot = require __DIR__.'/_paths.php';
+
+require $repoRoot.'/bahram-cm/backend/vendor/autoload.php';
+$app = require $repoRoot.'/bahram-cm/backend/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Modules\TelegramBot\Models\TelegramBot;
@@ -27,9 +29,9 @@ if ($token === '') {
     exit(1);
 }
 
-$configPath = __DIR__.'/config.php';
+$configPath = $telegramRoot.'/config.php';
 if (! is_file($configPath)) {
-    fwrite(STDERR, "config.php missing — run _local_enable_host.php first\n");
+    fwrite(STDERR, "config.php missing — run php scripts/telegram-local/enable-host.php first\n");
     exit(1);
 }
 
@@ -72,7 +74,6 @@ if ($changed !== []) {
     echo "config.php already matches panel.\n";
 }
 
-// Verify token via Bot API proxy (getMe) without printing credentials.
 $base = rtrim((string) ($config['telegram_api_base_url'] ?? 'https://api.telegram.org'), '/');
 $url = $base.'/bot'.$token.'/getMe';
 $headers = ['Content-Type: application/json'];

@@ -27,6 +27,18 @@ class EnsureUserIsAdmin
             ], 403);
         }
 
+        // Student-panel tokens (ability: student) must not open admin APIs,
+        // even when the underlying user is an admin who also uses /panel.
+        $token = $user->currentAccessToken();
+        if ($token && method_exists($token, 'can') && ! $token->can('*')) {
+            return response()->json([
+                'error' => [
+                    'code' => 'forbidden',
+                    'message_fa' => 'برای پنل مدیریت با حساب ادمین وارد شوید.',
+                ],
+            ], 403);
+        }
+
         if ($user->status === UserStatus::Suspended) {
             return response()->json([
                 'error' => [

@@ -216,10 +216,16 @@ Seeder: `php artisan db:seed --class=CacheIntegrationsSeeder`
 ### مسیرهایی که ISR **نیستند**
 
 ```
-/admin, /purchase, /apply, /api/chatbot, /api/captcha, ...
+/admin, /panel, /family, /purchase, /apply, /api/chatbot, /api/captcha, ...
 ```
 
 لیست: `lib/cache/staticScope.ts` → `DYNAMIC_ROUTE_PREFIXES`
+
+### مسیرهای کش‌شونده (HTML + CDN headers)
+
+شامل خانه، insights، courses، **`/course/*`**, **`/reference-channels/*`**, seminars، mini-courses، …
+
+لیست: `STATIC_CONTENT_PREFIXES` — صفحات محصول باید `ensureStaticPageCache` + `getStaticJson`/`getPublicProductBySlug` باشند، نه `force-dynamic`.
 
 ---
 

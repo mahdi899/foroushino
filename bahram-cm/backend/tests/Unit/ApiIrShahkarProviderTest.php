@@ -145,6 +145,28 @@ class ApiIrShahkarProviderTest extends TestCase
         });
     }
 
+    public function test_connection_probe_posts_shahkar_lite_with_bearer(): void
+    {
+        $this->seedApiIr(credentials: ['api_token' => 'eyJ-test-token']);
+
+        Http::fake([
+            's.api.ir/api/sw1/ShahkarLite' => Http::response([
+                'data' => false,
+                'success' => false,
+                'code' => 0,
+            ], 200),
+        ]);
+
+        $result = $this->provider->testConnection();
+
+        $this->assertSame(\App\Enums\ProviderConnectionStatus::Connected, $result->status);
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://s.api.ir/api/sw1/ShahkarLite'
+                && $request->method() === 'POST'
+                && $request->hasHeader('Authorization', 'Bearer eyJ-test-token');
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $credentials
      * @param  array<string, mixed>|null  $settings

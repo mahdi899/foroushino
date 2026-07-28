@@ -52,6 +52,9 @@ class CacheService
         '/transformations',
         '/faq',
         '/courses',
+        '/course/campaign-writing',
+        '/reference-channels/kanal-mrgf',
+        '/seminars',
         '/sitemap.xml',
         '/robots.txt',
     ];

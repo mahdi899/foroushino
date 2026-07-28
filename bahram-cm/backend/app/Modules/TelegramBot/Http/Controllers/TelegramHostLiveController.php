@@ -181,7 +181,7 @@ class TelegramHostLiveController
             return $this->jsonResponse([
                 'ok' => true,
                 'text' => $text,
-                'reply_markup' => TelegramSiteUrl::linkMarkup($panelUrl, 'باشگاه مشتریان در پنل', [], 'success', 'gift'),
+                'reply_markup' => TelegramSiteUrl::linkMarkup($panelUrl, 'ورود به باشگاه', [], 'success', 'gift'),
             ]);
         } catch (Throwable) {
             return $this->jsonResponse([
@@ -200,7 +200,7 @@ class TelegramHostLiveController
             return $this->jsonResponse([
                 'ok' => true,
                 'text' => TelegramCustomEmoji::tag('family')." <b>خانواده</b>\n\nابتدا ثبت‌نام را کامل کنید.",
-                'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'صفحه خانواده', [], 'primary', 'globe'),
+                'reply_markup' => TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
             ]);
         }
 
@@ -217,7 +217,7 @@ class TelegramHostLiveController
             return $this->jsonResponse([
                 'ok' => true,
                 'text' => TelegramCustomEmoji::tag('family')." <b>خانواده</b>\n\nهنوز به خانواده‌ای وصل نیستید.\nبا ورود به وب‌اپ، عضویت شما فعال می‌شود.",
-                'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'ورود به خانواده', [], 'primary', 'globe'),
+                'reply_markup' => TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
             ]);
         }
 
@@ -247,7 +247,7 @@ class TelegramHostLiveController
         return $this->jsonResponse([
             'ok' => true,
             'text' => implode("\n", $lines),
-            'reply_markup' => TelegramSiteUrl::linkMarkup($familyUrl, 'ورود به خانواده', [], 'primary', 'globe'),
+            'reply_markup' => TelegramSiteUrl::familyClubLinkMarkup($familyUrl),
         ]);
     }
 
@@ -559,8 +559,16 @@ class TelegramHostLiveController
         foreach ($this->userDestinations->keyboardRows($bot, $account) as $row) {
             $keyboard[] = $row;
         }
-        foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
-            $keyboard[] = $row;
+        $account->loadMissing('user.identityProfile');
+        $needsIdentity = (int) ($account->user?->identityProfile?->verification_level ?? 0) < 2
+            && $account->user_id
+            && \App\Models\ReferenceChannelEntitlement::query()
+                ->where('user_id', $account->user_id)
+                ->exists();
+        if ($needsIdentity) {
+            foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
+                $keyboard[] = $row;
+            }
         }
         foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل دانشجو', TelegramSiteUrl::studentPanel(), 'success', 'graduation') as $row) {
             $keyboard[] = $row;

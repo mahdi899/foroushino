@@ -65,13 +65,13 @@ final class LiveClient
     /** @return array<string, mixed> */
     public function checkoutZarinpal(int $telegramUserId, int $productId, ?string $coupon = null): array
     {
-        // Chains to the Zarinpal gateway on Iran's side — needs more headroom
-        // than the default sync timeout so a real payment start isn't cut off.
+        // Iran creates the order + calls Zarinpal — keep headroom so a slow
+        // gateway round-trip is not misread as "payment server offline".
         return $this->live('checkout/zarinpal/start', array_filter([
             'telegram_user_id' => $telegramUserId,
             'product_id' => $productId,
             'coupon' => $coupon,
-        ]), 15);
+        ]), 28);
     }
 
     /** @return array<string, mixed> */
@@ -82,7 +82,7 @@ final class LiveClient
             'chat_id' => $chatId,
             'product_id' => $productId,
             'coupon' => $coupon,
-        ]), 12);
+        ]), 20);
     }
 
     /** @return array<string, mixed> */

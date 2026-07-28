@@ -91,13 +91,35 @@ final class TelegramSiteUrl
     public static function familyHome(): ?string
     {
         $base = rtrim((string) config('family.entry.base_url', ''), '/');
-        if ($base === '' || ! self::isPublicWebBase($base)) {
-            return self::page('family');
-        }
-
         $path = trim((string) config('family.entry.path', ''), '/');
 
+        if ($base === '') {
+            return 'https://rostami.club';
+        }
+
+        $host = strtolower((string) parse_url($base, PHP_URL_HOST));
+        if (in_array($host, ['rostami.app', 'www.rostami.app'], true)) {
+            return 'https://rostami.club';
+        }
+
+        $localDevClub = $host !== '' && (str_ends_with($host, '.lvh.me') || $host === 'lvh.me');
+        if (! self::isPublicWebBase($base) && ! $localDevClub) {
+            return 'https://rostami.club';
+        }
+
         return $path === '' ? $base : $base.'/'.$path;
+    }
+
+    /**
+     * Inline «دیدن کلاب» — URL button (not web_app) so clients offer opening in Safari/Chrome.
+     *
+     * @return array<string, mixed>
+     */
+    public static function familyClubLinkMarkup(?string $url = null): array
+    {
+        $url ??= self::familyHome();
+
+        return self::linkMarkup($url, '✨ دیدن کلاب', [], 'primary', 'family');
     }
 
     public static function studentPanel(): ?string

@@ -3,23 +3,16 @@
 declare(strict_types=1);
 
 /**
- * Local Iran substitute for a public Telegram webhook.
+ * Local substitute for a public Telegram webhook.
  *
- * Cloudflare quick tunnels and unauthenticated ngrok are often blocked or
- * unavailable from Iran. This CLI long-polls Bot API (via the foreign proxy in
- * config.php) and POSTs each update to the local host webhook entry.
- *
- * Requires the PHP built-in server (or Apache) serving `telegram/` on
- * WEBHOOK_BASE (default http://127.0.0.1:8088).
- *
- *   php bin/local-poll.php
- *   php bin/local-poll.php --once
- *   php bin/local-poll.php --webhook-base=http://127.0.0.1:8088
+ *   php scripts/telegram-local/local-poll.php
+ *   php scripts/telegram-local/local-poll.php --once
  */
 
 use TelegramHost\Telegram\BotApiClient;
 
-$config = require __DIR__.'/../bootstrap.php';
+$telegramRoot = require __DIR__.'/_paths.php';
+$config = require $telegramRoot.'/bootstrap.php';
 
 $once = in_array('--once', $argv, true);
 $webhookBase = 'http://127.0.0.1:8088';
@@ -34,13 +27,35 @@ $secret = (string) ($config['webhook_secret'] ?? '');
 $token = trim((string) ($config['bot_token'] ?? ''));
 
 if ($token === '' || $secret === '') {
-    fwrite(STDERR, "bot_token / webhook_secret missing in config.php\n");
+    fwrite(STDERR, "bot_token / webhook_secret missing in telegram/config.php\n");
     exit(1);
 }
+
+$lockPath = $telegramRoot.'/storage/local-poll.lock';
+if (! is_dir(dirname($lockPath))) {
+    mkdir(dirname($lockPath), 0775, true);
+}
+$lockFp = fopen($lockPath, 'c+');
+if ($lockFp === false) {
+    fwrite(STDERR, "Cannot open lock file: {$lockPath}\n");
+    exit(1);
+}
+if (! flock($lockFp, LOCK_EX | LOCK_NB)) {
+    fwrite(STDERR, "Another local-poll is already running (lock: {$lockPath}). Stop it first.\n");
+    exit(1);
+}
+ftruncate($lockFp, 0);
+fwrite($lockFp, (string) getmypid());
+
+register_shutdown_function(static function () use ($lockFp): void {
+    flock($lockFp, LOCK_UN);
+    fclose($lockFp);
+});
 
 $api = new BotApiClient($token);
 
 fwrite(STDOUT, "Deleting Telegram webhook so getUpdates can run…\n");
+fwrite(STDOUT, "Tip: set TELEGRAM_LOCAL_POLL_BOT_TOKEN in backend/.env + run php scripts/telegram-local/refresh-token.php\n");
 try {
     $api->deleteWebhook(false);
 } catch (Throwable $e) {
@@ -59,12 +74,9 @@ while (true) {
         $msg = $e->getMessage();
         fwrite(STDERR, '['.date('H:i:s').'] getUpdates: '.$msg."\n");
 
-        // Laravel schedule / admin "register webhook" often re-sets the production
-        // webhook and kills getUpdates — clear it and keep polling locally.
         if (
             str_contains($msg, 'webhook is active')
             || str_contains($msg, 'terminated by setWebhook')
-            || str_contains($msg, 'Conflict:')
         ) {
             try {
                 $api->deleteWebhook(false);
@@ -74,6 +86,23 @@ while (true) {
                 fwrite(STDERR, '['.date('H:i:s').'] deleteWebhook heal failed: '.$delErr->getMessage()."\n");
                 sleep(2);
             }
+            if ($once) {
+                exit(1);
+            }
+            continue;
+        }
+
+        if (str_contains($msg, 'other getUpdates request')) {
+            fwrite(STDERR, '['.date('H:i:s')."] only one poll allowed — stop duplicate local-poll or telegram:poll\n");
+            sleep(5);
+            if ($once) {
+                exit(1);
+            }
+            continue;
+        }
+
+        if (str_contains($msg, 'Conflict:')) {
+            sleep(2);
             if ($once) {
                 exit(1);
             }

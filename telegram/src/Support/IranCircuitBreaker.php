@@ -25,10 +25,11 @@ namespace TelegramHost\Support;
  */
 final class IranCircuitBreaker
 {
-    private const OPEN_AFTER_FAILURES = 2;
+    /** Need several real network failures — one slow Zarinpal must not block checkout. */
+    private const OPEN_AFTER_FAILURES = 4;
 
-    /** Shorter cool-down so admin panel / OTP recover faster after a brief Iran blip. */
-    private const COOLDOWN_SECONDS = 12;
+    /** Short cool-down so payment/admin recover quickly after a brief Iran blip. */
+    private const COOLDOWN_SECONDS = 8;
 
     private const RENOTIFY_AFTER_SECONDS = 600; // 10 minutes
 

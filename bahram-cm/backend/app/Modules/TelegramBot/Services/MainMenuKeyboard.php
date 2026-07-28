@@ -115,16 +115,19 @@ class MainMenuKeyboard
         $support = $this->buttonLabel($bot, self::ACTION_SUPPORT);
         $accountBtn = $this->buttonLabel($bot, self::ACTION_ACCOUNT);
 
-        // Prefer 3-across rows for denser, less repetitive layout.
+        // Layout (labels/emojis unchanged — only positions):
+        // 1) courses + channel
+        // 2) sat + seminars + family
+        // 3) support + account + referral
         $rows = [
-            [$courses, $seminars, $sat],
-            [$channel, $family, $support],
+            [$courses, $channel],
+            [$sat, $seminars, $family],
         ];
 
         if ($bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $rows[] = [$this->buttonLabel($bot, self::ACTION_REFERRAL), $accountBtn];
+            $rows[] = [$support, $accountBtn, $this->buttonLabel($bot, self::ACTION_REFERRAL)];
         } else {
-            $rows[] = [$accountBtn];
+            $rows[] = [$support, $accountBtn];
         }
 
         if ($account?->isBotAdmin()) {
@@ -232,14 +235,14 @@ class MainMenuKeyboard
     private function defaultRows(?TelegramAccount $account, ?TelegramBot $bot): array
     {
         $rows = [
-            ['دوره‌ها', 'سمینارها', 'سات'],
-            ['کانال مرجع', 'خانواده', 'پشتیبانی'],
+            ['دوره‌ها', 'کانال مرجع'],
+            ['سات', 'سمینارها', 'خانواده'],
         ];
 
         if ($bot === null || $bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $rows[] = ['معرفی دوستان', 'حساب من'];
+            $rows[] = ['پشتیبانی', 'حساب من', 'معرفی دوستان'];
         } else {
-            $rows[] = ['حساب من'];
+            $rows[] = ['پشتیبانی', 'حساب من'];
         }
 
         if ($account?->isBotAdmin()) {
