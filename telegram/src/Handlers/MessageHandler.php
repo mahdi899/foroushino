@@ -208,10 +208,8 @@ final class MessageHandler
         }
 
         // Ask for the phone number immediately from local cache — no blocking
-        // Iran round-trip. If this Telegram user already has a verified
-        // account on Iran, the background sync triggered after this reply
-        // (see HostBackgroundSync in webhook.php) picks it up within this
-        // same request, so the very next button press already sees it.
+        // Iran round-trip. Verified identity arrives via Iran→host push
+        // (or OTP/registration live), not a webhook account/fetch pull.
         $this->registration->showLocalWelcome($chatId, $telegramUserId);
     }
 
@@ -337,7 +335,11 @@ final class MessageHandler
             // locally from Iran, so tapping the seminar goes straight to the
             // purchase flow (which re-verifies with Iran at payment time).
             if ($productId > 0) {
-                $keyboard[] = [InlineButtons::buy($productId, 'ثبت‌نام / '.mb_substr($title, 0, 18))];
+                $keyboard[] = [[
+                    'text' => mb_substr($title, 0, 64),
+                    'callback_data' => 'buy:'.$productId,
+                    'style' => 'success',
+                ]];
             }
         }
 
@@ -436,17 +438,35 @@ final class MessageHandler
 
     private function openSupportHub(int $chatId): void
     {
-        // Categories from host message cache — no Iran round-trip.
-        // Each row must be [button], not [[button]] — extra nesting makes Telegram
-        // reject the keyboard ("InlineKeyboardButton must be an Object").
+        // Categories from Iran→host bootstrap push (title_fa / sort_order).
+        $rows = [];
+        foreach ($this->cache->supportCategories() as $category) {
+            $key = (string) ($category['key'] ?? '');
+            if ($key === '') {
+                continue;
+            }
+            $title = (string) ($category['title_fa'] ?? $key);
+            $fallbackKey = 'support_category_'.$key;
+            $label = $this->cache->message($fallbackKey, $title);
+            $emoji = match ($key) {
+                'purchase' => 'cart',
+                'campaign_course' => 'graduation',
+                'sat' => 'bell',
+                default => 'chat',
+            };
+            $style = $key === 'purchase' ? 'primary' : '';
+            $rows[] = [InlineButtons::callback($label, 'support:cat:'.$key, $emoji, $style)];
+        }
+
+        if ($rows === []) {
+            $rows = [
+                [InlineButtons::callback($this->cache->message('support_category_other', 'سایر'), 'support:cat:other', 'chat')],
+            ];
+        }
+
         $this->api->sendMessage($chatId, $this->cache->message('support_prompt', 'دسته پشتیبانی را انتخاب کنید:'), [
             'reply_markup' => [
-                'inline_keyboard' => [
-                    [InlineButtons::callback($this->cache->message('support_category_purchase', 'خرید و پرداخت'), 'support:cat:purchase', 'cart', 'primary')],
-                    [InlineButtons::callback($this->cache->message('support_category_campaign_course', 'دوره کمپین‌نویسی'), 'support:cat:campaign_course', 'graduation')],
-                    [InlineButtons::callback($this->cache->message('support_category_sat', 'سات'), 'support:cat:sat', 'bell')],
-                    [InlineButtons::callback($this->cache->message('support_category_other', 'سایر'), 'support:cat:other', 'chat')],
-                ],
+                'inline_keyboard' => $rows,
             ],
         ]);
     }

@@ -8,7 +8,7 @@ import { SiteImage } from '@/components/ui/SiteImage';
 import { SeminarGallerySlider } from '@/components/seminars/SeminarGallerySlider';
 import { cn } from '@/lib/cn';
 import { primarySiteImageSrc, resolveMediaUrl } from '@/lib/mediaUrl';
-import type { PublicSeminarGalleryItem, PublicSeminarSliderItem } from '@/lib/services/seminars';
+import type { PublicSeminarGalleryItem, PublicSeminarSliderItem } from '@/lib/services/seminars.types';
 
 type SeminarRecapGalleryProps = {
   items: PublicSeminarGalleryItem[];

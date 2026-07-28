@@ -12,6 +12,7 @@ import { SiteImage } from "@/components/ui/SiteImage";
 import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 import { getProductBySlug, type ProductDetail } from "@/lib/services/products";
 import { formatFa } from "@/lib/persian";
+import { formatSeminarDiscountCopy } from "@/lib/commerce/seminarDiscountCopy";
 import { buildMetadata } from "@/lib/seo";
 import { resolveProductFeaturedImage } from "@/lib/catalog/productFeaturedImage";
 import { sanitizeRichHtml } from "@/lib/sanitize";
@@ -160,7 +161,7 @@ export default async function PurchasePage({
                     />
                     {product.reference_pricing?.seminar_off ? (
                       <p className="mt-3 text-caption text-emerald">
-                        تخفیف شرکت در سمینار روی این محصول اعمال شده است.
+                        {formatSeminarDiscountCopy(product.reference_pricing.seminar_title).hint}
                       </p>
                     ) : null}
 

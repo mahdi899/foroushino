@@ -21,7 +21,7 @@ if [[ -r /proc/meminfo ]]; then
   fi
 fi
 
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}"
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
 
 # Stop crash-loop while .next is missing
 pm2 stop bahram-frontend 2>/dev/null || true

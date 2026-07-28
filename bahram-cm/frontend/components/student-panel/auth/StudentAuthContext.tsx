@@ -54,12 +54,10 @@ export function StudentAuthProvider({
   const scrollYRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!initialLoggedIn) {
-      setIsLoggedIn(false);
-      setDisplayName(null);
-      setPrefill(null);
-      return;
-    }
+    // Only sync when SSR confirmed a session. Do not force logout when
+    // initialLoggedIn is false — marketing layouts skip SSR auth and hydrate
+    // via StudentSessionBootstrap after paint.
+    if (!initialLoggedIn) return;
 
     setIsLoggedIn(true);
     if (initialDisplayName) {

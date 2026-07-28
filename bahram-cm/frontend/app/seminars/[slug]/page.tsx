@@ -14,9 +14,7 @@ import { coalesceAlt, staticAltForSrc } from '@/lib/media/altShared';
 import { primarySiteImageSrc } from '@/lib/mediaUrl';
 import { sitePhotos } from '@/lib/site-photo-paths';
 import { formatDateFa } from '@/lib/persian';
-import { buildCommentAuthorFromStudent } from '@/lib/contentComments/author';
 import { getContentCommentsFromApi } from '@/lib/services/contentComments.server';
-import { getCurrentStudent } from '@/lib/student/session';
 import { ensureStaticPageCache } from '@/lib/cache/staticPage';
 
 // Literal required for Next segment config static analysis (Next 16).
@@ -47,9 +45,8 @@ export default async function PublicSeminarPage({
 }) {
   await ensureStaticPageCache();
   const { slug } = await params;
-  const [result, student, commentsResult] = await Promise.all([
+  const [result, commentsResult] = await Promise.all([
     getPublicSeminarBySlug(slug),
-    getCurrentStudent(),
     getContentCommentsFromApi('seminar', slug),
   ]);
   if (!result.ok) notFound();
@@ -153,7 +150,6 @@ export default async function PublicSeminarPage({
         type="seminar"
         slug={seminar.slug}
         initialComments={comments}
-        initialAuthor={buildCommentAuthorFromStudent(student)}
       />
     </main>
   );

@@ -2566,6 +2566,7 @@ class BotAdminPanelService
                     'group_key' => 'default',
                     'operator' => 'all',
                 ]);
+                \App\Jobs\PushTelegramHostSyncJob::catalog();
                 $this->renderDestinationDetail(
                     $client,
                     $chatId,
@@ -2592,6 +2593,7 @@ class BotAdminPanelService
                 'group_key' => 'default',
                 'operator' => 'all',
             ]);
+            \App\Jobs\PushTelegramHostSyncJob::catalog();
             $this->renderDestinationDetail($client, $chatId, $messageId, $destination->fresh(['requirements']), '✅ شرط دسترسی: '.$product->title);
 
             return;
@@ -3868,6 +3870,7 @@ class BotAdminPanelService
             }
             $bot->refresh();
             $on = $bot->toggleFeature($flag);
+            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
             $this->renderSettings(
                 $bot->fresh() ?? $bot,
                 $client,

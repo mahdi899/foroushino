@@ -33,7 +33,9 @@ if [[ "$TOTAL_MB" -ge 30000 ]]; then
 elif [[ "$TOTAL_MB" -ge 15000 ]]; then
   BUFFER_MB=6144
 elif [[ "$TOTAL_MB" -ge 7000 ]]; then
-  BUFFER_MB=3072
+  # Shared ~8GB VPS (PHP + Next + Redis + MySQL): prefer 2GB InnoDB over 3GB
+  # so FPM/Node still have headroom under traffic.
+  BUFFER_MB=2048
 elif [[ "$TOTAL_MB" -ge 3500 ]]; then
   # Shared ~4GB VPS: leave room for Nginx/PHP/Node/Redis.
   BUFFER_MB=1024
@@ -45,6 +47,10 @@ fi
 REDIS_MB=$(( TOTAL_MB / 8 ))
 if [[ "$REDIS_MB" -lt 256 ]]; then REDIS_MB=256; fi
 if [[ "$REDIS_MB" -gt 2048 ]]; then REDIS_MB=2048; fi
+# On ~8GB shared boxes, cap Redis so MySQL+PHP+Next stay comfortable.
+if [[ "$TOTAL_MB" -ge 7000 && "$TOTAL_MB" -lt 15000 && "$REDIS_MB" -gt 768 ]]; then
+  REDIS_MB=768
+fi
 
 INSTANCES=1
 if [[ "$BUFFER_MB" -ge 4096 ]]; then
@@ -111,10 +117,10 @@ innodb_buffer_pool_size = ${BUFFER_MB}M
 innodb_buffer_pool_instances = ${INSTANCES}
 innodb_flush_method = O_DIRECT
 innodb_redo_log_capacity = 1G
-innodb_io_capacity = 600
-innodb_io_capacity_max = 2000
-innodb_read_io_threads = 4
-innodb_write_io_threads = 4
+innodb_io_capacity = 800
+innodb_io_capacity_max = 2400
+innodb_read_io_threads = 6
+innodb_write_io_threads = 6
 innodb_flush_log_at_trx_commit = 1
 innodb_file_per_table = 1
 

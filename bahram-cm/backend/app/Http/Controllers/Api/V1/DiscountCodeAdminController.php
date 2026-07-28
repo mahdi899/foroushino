@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Enums\DiscountRestriction;
 use App\Enums\DiscountType;
 use App\Http\Controllers\Controller;
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Models\DiscountCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,6 +53,7 @@ class DiscountCodeAdminController extends Controller
         $data = $this->validated($request);
         $discountCode = DiscountCode::create($data['attributes']);
         $this->syncRelations($discountCode, $data);
+        PushTelegramHostSyncJob::catalog();
 
         return response()->json(['data' => $this->detailPayload($discountCode->fresh(['products', 'users']))], 201);
     }
@@ -61,6 +63,7 @@ class DiscountCodeAdminController extends Controller
         $data = $this->validated($request, $discountCode);
         $discountCode->update($data['attributes']);
         $this->syncRelations($discountCode, $data);
+        PushTelegramHostSyncJob::catalog();
 
         return response()->json(['data' => $this->detailPayload($discountCode->fresh(['products', 'users']))]);
     }
@@ -74,6 +77,7 @@ class DiscountCodeAdminController extends Controller
         }
 
         $discountCode->delete();
+        PushTelegramHostSyncJob::catalog();
 
         return response()->json(null, 204);
     }

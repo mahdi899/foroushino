@@ -1,68 +1,26 @@
+import 'server-only';
+
+import { cache } from 'react';
 import { type ApiResult } from './api';
-import { getStudentToken } from '@/lib/student/session';
+import { getStaticJson } from './staticFetch';
+import type { PublicSeminar } from './seminars.types';
 
-export type PublicSeminarGalleryItem = {
-  type: 'image' | 'video';
-  aspect: '16:9' | '9:16';
-  src: string;
-  alt: string | null;
-  poster: string | null;
-};
-
-export type PublicSeminarSliderItem = {
-  src: string;
-  alt: string | null;
-};
-
-export type PublicSeminar = {
-  id: number;
-  title: string;
-  slug: string;
-  description: string | null;
-  cover_image: string | null;
-  cover_image_mobile: string | null;
-  date: string | null;
-  location: string | null;
-  price: number | null;
-  sale_price: number | null;
-  effective_price: number | null;
-  capacity: number | null;
-  attendees_count: number;
-  remaining_seats: number | null;
-  is_full: boolean;
-  is_ended: boolean;
-  ended_at: string | null;
-  gallery: PublicSeminarGalleryItem[];
-  gallery_slider: PublicSeminarSliderItem[];
-  product_slug: string | null;
-  is_purchasable: boolean;
-  already_purchased?: boolean;
-};
+export type {
+  PublicSeminar,
+  PublicSeminarGalleryItem,
+  PublicSeminarSliderItem,
+} from './seminars.types';
 
 type SeminarResponse = { data: PublicSeminar };
 
-export async function getPublicSeminarBySlug(slug: string): Promise<ApiResult<PublicSeminar>> {
-  const token = await getStudentToken().catch(() => undefined);
-  const headers: HeadersInit = { Accept: 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, '') || 'http://localhost:3000';
-  const url = `${base}/api/seminars/${encodeURIComponent(slug)}`;
-
-  try {
-    const res = await fetch(url, { headers, cache: 'no-store' });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => ({}));
-      return {
-        ok: false,
-        error: payload?.error?.message_fa ?? 'درخواست انجام نشد. لطفاً دوباره تلاش کن.',
-        code: payload?.error?.code,
-        status: res.status,
-      };
-    }
-    const json = (await res.json()) as SeminarResponse;
-    return { ok: true, data: json.data };
-  } catch {
-    return { ok: false, error: 'ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کن.' };
-  }
-}
+/** Public seminar landing — ISR, no cookies/auth. Ownership hydrates client-side. */
+export const getPublicSeminarBySlug = cache(async (
+  slug: string,
+): Promise<ApiResult<PublicSeminar>> => {
+  const result = await getStaticJson<SeminarResponse>(
+    `/seminars/${encodeURIComponent(slug)}`,
+    { ttlKey: 'seminars', tags: ['seminars', 'pricing', `seminar:${slug}`] },
+  );
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.data };
+});

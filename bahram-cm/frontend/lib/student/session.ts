@@ -3,52 +3,15 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { SERVER_API_URL } from '@/lib/api/config';
 import { serverFetchSignal } from '@/lib/api/serverFetch';
+import type { StudentUser } from '@/lib/student/session.types';
 
 export const STUDENT_TOKEN_COOKIE = 'bahram_student_token';
 
-export interface StudentProfile {
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  city: string | null;
-  age: number | null;
-  current_job: string | null;
-  instagram: string | null;
-  telegram: string | null;
-  experience_level: string | null;
-  income_goal: string | null;
-  avatar: string | null;
-  avatar_url: string | null;
-  avatar_version?: number | null;
-  gravatar_url: string | null;
-  default_avatar_url: string | null;
-}
-
-/** Legal identity fields — source of truth for name/city after KYC flow starts. */
-export interface StudentIdentity {
-  first_name: string | null;
-  last_name: string | null;
-  city: string | null;
-  date_of_birth: string | null;
-  gender: string | null;
-}
-
-export interface StudentUser {
-  id: number;
-  name: string;
-  mobile: string;
-  has_password: boolean;
-  first_login_at: string | null;
-  profile: StudentProfile | null;
-  identity?: StudentIdentity | null;
-  /** 1 = base, 2 = identity approved, 3 = identity + mobile ownership */
-  verification_level?: number;
-  identity_status?: string | null;
-  mobile_ownership_status?: string | null;
-  verified_bank_accounts_count?: number;
-  sat_membership_status?: string | null;
-  national_code_masked?: string | null;
-}
+export type {
+  StudentIdentity,
+  StudentProfile,
+  StudentUser,
+} from '@/lib/student/session.types';
 
 /** Read the student's Sanctum personal-access token from the httpOnly cookie. */
 export const getStudentToken = cache(async (): Promise<string | undefined> => {

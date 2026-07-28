@@ -12,8 +12,13 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
-import { MobileStickyEnrollBar } from "@/components/commerce/MobileStickyEnrollBar";
-import { ProductPurchaseCta } from "@/components/commerce/ProductPurchaseCta";
+import { HydratedMobileStickyEnrollBar } from "@/components/commerce/HydratedMobileStickyEnrollBar";
+import { HydratedProductPriceCard } from "@/components/commerce/HydratedProductPriceCard";
+import { HydratedProductPurchaseCta } from "@/components/commerce/HydratedProductPurchaseCta";
+import {
+  ProductPurchaseProvider,
+  type ProductPurchaseState,
+} from "@/components/commerce/ProductPurchaseProvider";
 import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { FeatureCard } from "@/components/ui/FeatureCard";
@@ -23,10 +28,11 @@ import { cn } from "@/lib/cn";
 import { coalesceAlt, staticAltForSrc } from "@/lib/media/altShared";
 import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { formatFa, toPersianDigits } from "@/lib/persian";
-import { getProductBySlug } from "@/lib/services/products";
+import { getPublicProductBySlug, productPurchaseInitial } from "@/lib/services/products";
 import { buildMetadata } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { sitePhotos } from "@/lib/site-photo-paths";
+import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 const referenceHero = sitePhotos.mainPathReference;
 
@@ -115,8 +121,7 @@ const faqs = [
   },
 ];
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,
@@ -124,7 +129,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const result = await getProductBySlug(`reference-${slug}`);
+  const result = await getPublicProductBySlug(`reference-${slug}`);
   if (!result.ok || result.data.type !== "reference_channel") return {};
   const product = result.data;
 
@@ -144,8 +149,9 @@ export default async function ReferenceChannelLandingPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await ensureStaticPageCache();
   const { slug } = await params;
-  const result = await getProductBySlug(`reference-${slug}`);
+  const result = await getPublicProductBySlug(`reference-${slug}`);
 
   if (!result.ok || result.data.type !== "reference_channel") {
     notFound();
@@ -153,19 +159,14 @@ export default async function ReferenceChannelLandingPage({
 
   const product = result.data;
   const productSlug = product.slug;
-  const alreadyPurchased = product.already_purchased ?? false;
-  const pricing = product.reference_pricing;
-  const listPrice = pricing?.amount ?? product.price;
-  const finalPrice = pricing?.final_amount ?? product.effective_price;
-  const seminarOff = pricing?.seminar_off ?? finalPrice < listPrice;
-  const hasDiscount = seminarOff && finalPrice < listPrice;
-  const discountPercent = hasDiscount
-    ? Math.round(((listPrice - finalPrice) / listPrice) * 100)
-    : null;
+  const purchase = productPurchaseInitial(product) as ProductPurchaseState;
+  const listPrice = purchase.listPrice;
+  const finalPrice = purchase.finalPrice;
+  const hasDiscount = purchase.hasDiscount;
   const originalPriceLabel = hasDiscount ? `${formatFa(listPrice)} تومان` : null;
-  const priceLabel = `${formatFa(finalPrice)} تومان`;
 
   return (
+    <ProductPurchaseProvider productSlug={productSlug} initial={purchase}>
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
       <link
         rel="preload"
@@ -192,9 +193,9 @@ export default async function ReferenceChannelLandingPage({
               </div>
             </div>
             <div className="flex w-full max-w-lg flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-stretch sm:justify-center md:max-w-2xl md:gap-4">
-              <ProductPurchaseCta
+              <HydratedProductPurchaseCta
+                fallback={purchase}
                 productSlug={productSlug}
-                alreadyPurchased={alreadyPurchased}
                 location="reference_channel_hero"
                 panelHref="/panel/reference-channel"
                 ownedLabel="مشاهده در پنل"
@@ -204,7 +205,7 @@ export default async function ReferenceChannelLandingPage({
                 className={heroPurchaseCtaClassName}
               >
                 ورود به کانال مرجع
-              </ProductPurchaseCta>
+              </HydratedProductPurchaseCta>
               <LinkButton
                 href="#about"
                 variant="ghost"
@@ -247,35 +248,10 @@ export default async function ReferenceChannelLandingPage({
               </Reveal>
 
               <Reveal delay={0.14}>
-                <div className="campaign-course-intro-price">
-                  {discountPercent ? (
-                    <div className="campaign-course-intro-price-ribbon">
-                      عضویت ویژه سمینار
-                    </div>
-                  ) : (
-                    <div className="campaign-course-intro-price-ribbon">عضویت ویژه</div>
-                  )}
-
-                  <div className="campaign-course-intro-price-body">
-                    {originalPriceLabel ? (
-                      <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
-                    ) : (
-                      <p className="campaign-course-intro-was num-latin">
-                        ارزش کامل: {formatFa(listPrice)} تومان
-                      </p>
-                    )}
-
-                    <p className="campaign-course-intro-now">
-                      <span className="campaign-course-intro-now__amount num-latin">
-                        {formatFa(finalPrice)}
-                      </span>
-                      <span className="campaign-course-intro-now__unit">تومان</span>
-                    </p>
-                    {hasDiscount ? (
-                      <p className="mt-2 text-caption text-emerald">قیمت ویژه شرکت‌کنندگان سمینار</p>
-                    ) : null}
-                  </div>
-                </div>
+                <HydratedProductPriceCard
+                  fallback={purchase}
+                  guestRibbonLabel="عضویت ویژه"
+                />
               </Reveal>
             </div>
           </div>
@@ -555,9 +531,9 @@ export default async function ReferenceChannelLandingPage({
                       <span className="campaign-course-intro-now__unit">تومان</span>
                     </p>
 
-                    <ProductPurchaseCta
+                    <HydratedProductPurchaseCta
+                      fallback={purchase}
                       productSlug={productSlug}
-                      alreadyPurchased={alreadyPurchased}
                       location="reference_channel_enroll"
                       panelHref="/panel/reference-channel"
                       ownedLabel="مشاهده در پنل"
@@ -567,7 +543,7 @@ export default async function ReferenceChannelLandingPage({
                       className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
                     >
                       ورود به کانال مرجع
-                    </ProductPurchaseCta>
+                    </HydratedProductPurchaseCta>
                   </div>
                 </div>
               </Reveal>
@@ -576,16 +552,15 @@ export default async function ReferenceChannelLandingPage({
         </div>
       </section>
 
-      <MobileStickyEnrollBar
-        priceLabel={priceLabel}
-        alreadyPurchased={alreadyPurchased}
+      <HydratedMobileStickyEnrollBar
+        fallback={purchase}
         productSlug={productSlug}
-        title="کانال مرجع"
         location="reference_channel_mobile_bar"
         panelHref="/panel/reference-channel"
         ownedLabel="مشاهده در پنل"
       />
     </main>
+    </ProductPurchaseProvider>
   );
 }
 

@@ -22,7 +22,7 @@ final class ResilientLiveClient
     /** @param array<string, mixed> $update */
     public function processUpdate(array $update, int $chatId, int $telegramUserId): array
     {
-        return $this->invoke($chatId, $telegramUserId, 'پردازش آپدیت روی سرور اصلی', fn () => $this->live->processUpdate($update));
+        return $this->invoke($chatId, $telegramUserId, 'پردازش آپدیت روی سرور اصلی', fn () => $this->live->processUpdate($update), showTyping: true);
     }
 
     /** @return array<string, mixed> */
@@ -33,46 +33,48 @@ final class ResilientLiveClient
             $telegramUserId,
             'نمایش دسترسی محصول',
             fn () => $this->live->productPresent($telegramUserId, $productId),
+            showTyping: false,
         );
     }
 
     /** @return array<string, mixed> */
     public function discountPreview(int $chatId, int $telegramUserId, int $productId, string $code): array
     {
-        return $this->invoke($chatId, $telegramUserId, 'بررسی کد تخفیف', fn () => $this->live->discountPreview($telegramUserId, $productId, $code));
+        return $this->invoke($chatId, $telegramUserId, 'بررسی کد تخفیف', fn () => $this->live->discountPreview($telegramUserId, $productId, $code), showTyping: false);
     }
 
     /** @return array<string, mixed> */
     public function checkoutZarinpal(int $chatId, int $telegramUserId, int $productId, ?string $coupon = null): array
     {
-        return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت زرین‌پال', fn () => $this->live->checkoutZarinpal($telegramUserId, $productId, $coupon));
+        return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت زرین‌پال', fn () => $this->live->checkoutZarinpal($telegramUserId, $productId, $coupon), showTyping: true);
     }
 
     /** @return array<string, mixed> */
     public function checkoutC2c(int $chatId, int $telegramUserId, int $productId, ?string $coupon = null): array
     {
-        return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت کارت‌به‌کارت', fn () => $this->live->checkoutC2c($telegramUserId, $chatId, $productId, $coupon));
+        return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت کارت‌به‌کارت', fn () => $this->live->checkoutC2c($telegramUserId, $chatId, $productId, $coupon), showTyping: true);
     }
 
     /** @return array<string, mixed> */
     public function satSubmit(int $chatId, int $telegramUserId, array $draft): array
     {
-        return $this->invoke($chatId, $telegramUserId, 'ثبت درخواست سات', fn () => $this->live->satSubmit($telegramUserId, $draft));
+        return $this->invoke($chatId, $telegramUserId, 'ثبت درخواست سات', fn () => $this->live->satSubmit($telegramUserId, $draft), showTyping: true);
     }
 
     /** @return array<string, mixed> */
     public function capacityCheck(int $chatId, int $telegramUserId, int $seminarId): array
     {
-        return $this->invoke($chatId, $telegramUserId, 'بررسی ظرفیت سمینار', fn () => $this->live->capacityCheck($seminarId));
+        return $this->invoke($chatId, $telegramUserId, 'بررسی ظرفیت سمینار', fn () => $this->live->capacityCheck($seminarId), showTyping: false);
     }
 
     /**
      * @param  callable(): array<string, mixed>  $call
      * @return array<string, mixed>
      */
-    private function invoke(int $chatId, int $telegramUserId, string $operation, callable $call): array
+    private function invoke(int $chatId, int $telegramUserId, string $operation, callable $call, bool $showTyping = false): array
     {
-        if ($chatId !== 0) {
+        // Typing only on checkout / admin-ish writes — not on cache-miss reads.
+        if ($showTyping && $chatId !== 0) {
             $this->api->sendChatAction($chatId, 'typing');
         }
 

@@ -32,6 +32,7 @@ export type ProductDetail = ProductListItem & {
     final_amount: number;
     seminar_discount: number;
     seminar_off: boolean;
+    seminar_title?: string | null;
   } | null;
   seminar?: {
     capacity: number | null;
@@ -103,3 +104,24 @@ export const getProductBySlug = cache(async (
     return { ok: false, error: "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کن." };
   }
 });
+
+/** Guest pricing / ownership seed for ProductPurchaseProvider. */
+export function productPurchaseInitial(product: ProductDetail) {
+  const pricing = product.reference_pricing;
+  const listPrice = pricing?.amount ?? product.price;
+  const finalPrice = pricing?.final_amount ?? product.effective_price;
+  const hasDiscount = finalPrice < listPrice;
+  const discountPercent = hasDiscount
+    ? Math.round(((listPrice - finalPrice) / listPrice) * 100)
+    : null;
+
+  return {
+    alreadyPurchased: product.already_purchased ?? false,
+    listPrice,
+    finalPrice,
+    hasDiscount,
+    discountPercent,
+    seminarOff: Boolean(pricing?.seminar_off),
+    seminarTitle: pricing?.seminar_title ?? null,
+  };
+}

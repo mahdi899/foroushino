@@ -54,6 +54,7 @@ class ProductDetailResource extends JsonResource
                 'final_amount' => (int) $referenceQuote['final_amount'],
                 'seminar_discount' => (int) $referenceQuote['seminar_discount'],
                 'seminar_off' => (bool) $referenceQuote['seminar_off'],
+                'seminar_title' => $referenceQuote['seminar_title'] ?? null,
             ] : null,
             'seminar' => $seminar ? [
                 'capacity' => $seminar->capacity,

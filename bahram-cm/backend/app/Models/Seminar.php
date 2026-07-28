@@ -13,6 +13,8 @@ class Seminar extends Model
 {
     use HasSlug;
 
+    private ?int $registeredCountMemo = null;
+
     protected $fillable = [
         'title',
         'slug',
@@ -102,7 +104,7 @@ class Seminar extends Model
 
     public function registeredCount(): int
     {
-        return $this->attendees()
+        return $this->registeredCountMemo ??= $this->attendees()
             ->where('attendance_status', '!=', 'absent')
             ->count();
     }

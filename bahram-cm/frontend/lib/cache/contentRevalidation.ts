@@ -91,11 +91,14 @@ export async function revalidatePricingSurfaces(options?: {
   await revalidatePublicContent(() => {
     revalidateTag('pricing', 'max');
     revalidateTag('products', 'max');
+    revalidateTag('seminars', 'max');
     revalidateTag('home', 'max');
     revalidatePath('/');
     revalidatePath('/courses');
     revalidatePath('/course/campaign-writing');
     revalidatePath('/reference-channels/kanal-mrgf');
+    revalidatePath('/seminars');
+    revalidatePath('/mini-courses');
     revalidatePath('/admin/commerce/products');
 
     const href = options?.landingHref?.trim();
@@ -110,6 +113,8 @@ export async function revalidatePricingSurfaces(options?: {
       } else {
         revalidatePath(`/course/${slug}`);
         revalidatePath(`/purchase/${slug}`);
+        revalidatePath(`/seminars/${slug}`);
+        revalidatePath(`/mini-courses/${slug}`);
       }
     }
   });

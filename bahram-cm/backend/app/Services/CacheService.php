@@ -55,8 +55,10 @@ class CacheService
         '/course/campaign-writing',
         '/reference-channels/kanal-mrgf',
         '/seminars',
+        '/mini-courses',
         '/sitemap.xml',
         '/robots.txt',
+        '/llms.txt',
     ];
 
     public const DEFAULT_SETTINGS = [
@@ -120,18 +122,20 @@ class CacheService
 
     public function getSettings(): array
     {
-        $stored = $this->settings->group(self::GROUP);
-        $merged = array_merge(self::DEFAULT_SETTINGS, $stored);
-        unset($merged['dev_mode_snapshot']);
-        if (! array_key_exists('cdn_auto_purge', $stored)) {
-            $legacy = filter_var($stored['arvan_auto_purge'] ?? false, FILTER_VALIDATE_BOOL)
-                || filter_var($stored['cloudflare_auto_purge'] ?? false, FILTER_VALIDATE_BOOL);
-            $merged['cdn_auto_purge'] = $legacy;
-        }
-        $merged['developer_mode'] = filter_var($merged['developer_mode'] ?? false, FILTER_VALIDATE_BOOL);
-        $merged['purge_log'] = $this->purgeLogEntries($stored['purge_log'] ?? null, true);
+        return Cache::remember('cache.settings.merged', 60, function () {
+            $stored = $this->settings->group(self::GROUP);
+            $merged = array_merge(self::DEFAULT_SETTINGS, $stored);
+            unset($merged['dev_mode_snapshot']);
+            if (! array_key_exists('cdn_auto_purge', $stored)) {
+                $legacy = filter_var($stored['arvan_auto_purge'] ?? false, FILTER_VALIDATE_BOOL)
+                    || filter_var($stored['cloudflare_auto_purge'] ?? false, FILTER_VALIDATE_BOOL);
+                $merged['cdn_auto_purge'] = $legacy;
+            }
+            $merged['developer_mode'] = filter_var($merged['developer_mode'] ?? false, FILTER_VALIDATE_BOOL);
+            $merged['purge_log'] = $this->purgeLogEntries($stored['purge_log'] ?? null, true);
 
-        return $merged;
+            return $merged;
+        });
     }
 
     public function updateSettings(array $input): array
@@ -150,10 +154,17 @@ class CacheService
             $this->settings->updateGroup(self::GROUP, array_merge($pairs, ['purge_log' => $log]));
         }
 
-        Cache::forget('cache.public.config');
-        RuntimeCache::forget('cache.public.config');
+        $this->forgetSettingsCaches();
 
         return $this->getSettings();
+    }
+
+    private function forgetSettingsCaches(): void
+    {
+        Cache::forget('cache.public.config');
+        Cache::forget('cache.settings.merged');
+        RuntimeCache::forget('cache.public.config');
+        RuntimeCache::flushSettingsMemo();
     }
 
     /** Public-safe config for Next.js middleware (no secrets). */
@@ -486,8 +497,7 @@ class CacheService
             ['group' => self::GROUP, 'key' => 'purge_log'],
             ['value' => []]
         );
-        Cache::forget('cache.public.config');
-        RuntimeCache::forget('cache.public.config');
+        $this->forgetSettingsCaches();
     }
 
     /**
@@ -522,8 +532,7 @@ class CacheService
             $this->settings->updateGroup(self::GROUP, array_merge($pairs, $extra));
 
             Cache::flush();
-            Cache::forget('cache.public.config');
-        RuntimeCache::forget('cache.public.config');
+            $this->forgetSettingsCaches();
 
             $cloudflare = $this->setCloudflareDevelopmentMode(true);
             $purge = $this->purge('all', ['warm' => false], $actor);
@@ -550,8 +559,7 @@ class CacheService
         $this->settings->updateGroup(self::GROUP, array_merge($pairs, $restored, ['purge_log' => $log]));
 
         Cache::flush();
-        Cache::forget('cache.public.config');
-        RuntimeCache::forget('cache.public.config');
+        $this->forgetSettingsCaches();
 
         $cloudflare = $this->setCloudflareDevelopmentMode(false);
         $purge = $this->purge('isr', [], $actor);
@@ -906,8 +914,7 @@ class CacheService
                 ['group' => self::GROUP, 'key' => 'purge_log'],
                 ['value' => $log]
             );
-            Cache::forget('cache.public.config');
-        RuntimeCache::forget('cache.public.config');
+            $this->forgetSettingsCaches();
         }
 
         return $log;
@@ -942,7 +949,6 @@ class CacheService
             ['group' => self::GROUP, 'key' => 'purge_log'],
             ['value' => $log]
         );
-        Cache::forget('cache.public.config');
-        RuntimeCache::forget('cache.public.config');
+        $this->forgetSettingsCaches();
     }
 }

@@ -98,8 +98,32 @@ function useDisableSmoothScrollOnMobile(): boolean {
 export function SmoothScroll({ children }: { children: ReactNode }) {
   const reduce = usePrefersReducedMotion();
   const mobileNativeScroll = useDisableSmoothScrollOnMobile();
+  const [lenisReady, setLenisReady] = useState(false);
 
-  if (reduce || mobileNativeScroll) {
+  useEffect(() => {
+    if (reduce || mobileNativeScroll) return;
+
+    let cancelled = false;
+    const enable = () => {
+      if (!cancelled) setLenisReady(true);
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(enable, { timeout: 1200 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(id);
+      };
+    }
+
+    const timer = window.setTimeout(enable, 200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [reduce, mobileNativeScroll]);
+
+  if (reduce || mobileNativeScroll || !lenisReady) {
     return (
       <>
         <NativeRouteScrollSync />

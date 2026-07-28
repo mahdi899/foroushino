@@ -124,6 +124,7 @@ class ReferenceChannelController extends Controller
                 'final_amount' => $quote['final_amount'],
                 'seminar_discount' => $quote['seminar_discount'],
                 'seminar_off' => $quote['seminar_off'],
+                'seminar_title' => $quote['seminar_title'] ?? null,
                 'seminar_badges' => $badges,
                 'owned' => false,
             ];

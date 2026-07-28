@@ -1,4 +1,4 @@
-import type { StudentIdentity, StudentProfile, StudentUser } from '@/lib/student/session';
+import type { StudentIdentity, StudentProfile, StudentUser } from '@/lib/student/session.types';
 
 type NameSource = {
   name: string;

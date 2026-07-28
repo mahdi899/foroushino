@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Support\ArticleSlug;
 use App\Support\RuntimeCache;
 use App\Models\Faq;
-use App\Models\Product;
 
 /**
  * Purge ISR + Laravel object cache when static content is published or updated.
@@ -73,16 +72,10 @@ class ContentPublishService
 
     public function revalidateProducts(?string $slug = null): void
     {
-        $paths = ['/', '/courses', '/mini-courses', '/course/campaign-writing'];
+        $paths = ['/', '/courses', '/mini-courses'];
         if ($slug) {
             $paths[] = '/courses/'.$slug;
             $paths[] = '/purchase/'.$slug;
-            $paths[] = '/course/'.$slug;
-
-            $landingHref = Product::query()->where('slug', $slug)->value('landing_href');
-            if (is_string($landingHref) && $landingHref !== '') {
-                $paths[] = $landingHref;
-            }
         }
 
         $this->purge(
@@ -166,11 +159,6 @@ class ContentPublishService
         ?callable $afterForget,
         bool $purgeMediaCdn = false,
     ): void {
-        // Always drop local RuntimeCache so price/content edits are visible even when CDN auto-purge is off.
-        if ($afterForget) {
-            $afterForget();
-        }
-
         if (! $this->shouldAutoPurge()) {
             return;
         }
@@ -181,6 +169,10 @@ class ContentPublishService
         $cdn = $this->cacheService->purgeCdnOnAutoSave($paths, $purgeMediaCdn);
 
         $this->cacheService->logAutoPurge($label, $tags, $paths, $cdn);
+
+        if ($afterForget) {
+            $afterForget();
+        }
     }
 
     private function shouldAutoPurge(): bool
@@ -257,7 +249,13 @@ class ContentPublishService
 
     private function forgetProductRuntimeCache(?string $slug = null): void
     {
-        Product::forgetPublicProductCache($slug);
+        RuntimeCache::forget('public_products:index:all');
+        RuntimeCache::forget('public_products:index:listed');
+
+        if ($slug) {
+            RuntimeCache::forget('public_products:show:'.$slug);
+            RuntimeCache::forget('public_products:payload:'.$slug);
+        }
     }
 
     private function forgetSeminarRuntimeCache(?string $slug, ?string $previousSlug = null): void

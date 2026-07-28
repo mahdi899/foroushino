@@ -2,7 +2,7 @@ import { Calendar, MapPin, Users } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { SeminarRegisterCta } from "@/components/seminars/SeminarRegisterCta";
 import { formatDateFa, formatFa } from "@/lib/persian";
-import type { PublicSeminar } from "@/lib/services/seminars";
+import type { PublicSeminar } from "@/lib/services/seminars.types";
 
 function capacityLabel(seminar: PublicSeminar): string {
   if (seminar.remaining_seats != null) {

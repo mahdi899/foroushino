@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS telegram_accounts_cache (
     owned_presents_json MEDIUMTEXT NULL,
     sat_json MEDIUMTEXT NULL,
     snapshot_synced_at DATETIME NULL,
-    updated_at DATETIME NOT NULL
+    updated_at DATETIME NOT NULL,
+    INDEX idx_accounts_cache_mobile (mobile)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS conversations (
@@ -179,4 +180,15 @@ CREATE TABLE IF NOT EXISTS support_message_maps (
     INDEX idx_support_map_target (direction, target_chat_id, target_message_id),
     INDEX idx_support_map_source (direction, source_chat_id, source_message_id),
     INDEX idx_support_map_forward (target_chat_id, forward_message_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Support user→reports forward queue (drained after webhook ACK).
+CREATE TABLE IF NOT EXISTS pending_support_forward (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    payload_json MEDIUMTEXT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    INDEX idx_pending_support_fwd_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

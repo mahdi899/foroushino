@@ -23,6 +23,7 @@ interface ReferenceChannelOffer extends ReferenceChannelCardModel {
   final_amount: number;
   seminar_discount: number;
   seminar_off: boolean;
+  seminar_title?: string | null;
 }
 
 export default async function PanelReferenceChannelsPage() {

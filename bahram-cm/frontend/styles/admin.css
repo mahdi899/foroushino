@@ -1559,7 +1559,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 }
 
 .admin-root[data-admin-theme='dark'] .site-bottom-nav.admin-bottom-nav {
-  background: color-mix(in srgb, var(--admin-glass-bg-strong) 90%, transparent);
+  background: rgba(8, 18, 22, 0.97);
   border-top-color: var(--admin-glass-border);
   box-shadow:
     inset 0 1px 0 var(--admin-glass-highlight),
