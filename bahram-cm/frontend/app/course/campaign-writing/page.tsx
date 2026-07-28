@@ -759,7 +759,7 @@ async function CampaignWritingPageContent() {
                 </div>
               </Reveal>
 
-              <Reveal delay={0.1}>
+              <Reveal delay={0.1} className="w-full min-w-0">
                 <EnrollCard
                   coursePrice={coursePrice}
                   originalPriceLabel={originalPriceLabel}
@@ -884,37 +884,39 @@ function EnrollCard({
   alreadyPurchased: boolean;
 }) {
   return (
-    <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
-      {discountPercent ? (
-        <div className="campaign-course-intro-price-ribbon">
-          {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
-        </div>
-      ) : null}
-
-      <div className="campaign-course-intro-price-body">
-        {originalPriceLabel ? (
-          <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
+    <div className="flex w-full flex-col items-stretch gap-4">
+      <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
+        {discountPercent ? (
+          <div className="campaign-course-intro-price-ribbon">
+            {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
+          </div>
         ) : null}
 
-        <p className="campaign-course-intro-now">
-          <span className="campaign-course-intro-now__amount num-latin">
-            {formatFa(coursePrice)}
-          </span>
-          <span className="campaign-course-intro-now__unit">تومان</span>
-        </p>
+        <div className="campaign-course-intro-price-body">
+          {originalPriceLabel ? (
+            <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
+          ) : null}
 
-        <ProductPurchaseCta
-          productSlug={CAMPAIGN_WRITING_SLUG}
-          alreadyPurchased={alreadyPurchased}
-          location="campaign_writing_enroll"
-          variant="vip"
-          withArrow
-          size="lg"
-          className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
-        >
-          خرید
-        </ProductPurchaseCta>
+          <p className="campaign-course-intro-now">
+            <span className="campaign-course-intro-now__amount num-latin">
+              {formatFa(coursePrice)}
+            </span>
+            <span className="campaign-course-intro-now__unit">تومان</span>
+          </p>
+        </div>
       </div>
+
+      <ProductPurchaseCta
+        productSlug={CAMPAIGN_WRITING_SLUG}
+        alreadyPurchased={alreadyPurchased}
+        location="campaign_writing_enroll"
+        variant="vip"
+        withArrow
+        size="lg"
+        className="campaign-course-price-cta relative z-[1] h-12 min-h-12 w-full max-w-none font-bold shadow-gold md:h-14 md:min-h-14"
+      >
+        خرید
+      </ProductPurchaseCta>
     </div>
   );
 }

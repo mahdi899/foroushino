@@ -74,6 +74,11 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     label: 'پیش‌نمایش مینی‌اپ سات',
     category: 'سات',
   },
+  'reference-channel-faq': {
+    src: siteStorageMedia('reference-channel-faq.webp'),
+    label: 'کانال مرجع — کنار سوالات متداول',
+    category: 'کانال مرجع',
+  },
   'app-path': { src: siteStorageMedia('app-path.svg'), label: 'اپ — مسیر', category: 'سات' },
   'app-atelier': { src: siteStorageMedia('app-atelier.svg'), label: 'اپ — آتلیه', category: 'سات' },
   'insight-1': { src: siteStorageMedia('insight-cover-1.svg'), label: 'کاور بلاگ ۱', category: 'بلاگ' },

@@ -410,18 +410,38 @@ export default async function ReferenceChannelLandingPage({
       {/* FAQ */}
       <section className="py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
-          <div className="max-w-3xl">
-            <Reveal>
-              <Eyebrow>سوالات متداول</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-5">
-                قبل از عضویت این‌ها را بخوان
-              </h2>
-            </Reveal>
-            <div className="mt-6 md:mt-10">
-              <Reveal delay={0.12}>
-                <Accordion items={faqs} />
+          <div className="grid min-w-0 items-start gap-10 md:grid-cols-12 md:gap-10 lg:items-center lg:gap-14">
+            <div className="min-w-0 md:col-span-7">
+              <Reveal>
+                <Eyebrow>سوالات متداول</Eyebrow>
+              </Reveal>
+              <Reveal delay={0.08}>
+                <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-5">
+                  قبل از عضویت این‌ها را بخوان
+                </h2>
+              </Reveal>
+              <div className="mt-6 md:mt-10">
+                <Reveal delay={0.12}>
+                  <Accordion items={faqs} />
+                </Reveal>
+              </div>
+            </div>
+
+            <div className="min-w-0 md:col-span-5">
+              <Reveal delay={0.16}>
+                <div className="relative aspect-[4/5] overflow-hidden rounded-[1.25rem] border border-bone/10 bg-charcoal/40 shadow-[0_24px_60px_-36px_rgba(0,0,0,0.75)] sm:rounded-[1.5rem]">
+                  <SiteImage
+                    src={sitePhotos.referenceChannelFaq}
+                    alt={coalesceAlt(
+                      staticAltForSrc(sitePhotos.referenceChannelFaq),
+                      "کانال مرجع — فضای تیم و فروش",
+                      sitePhotos.referenceChannelFaq,
+                    )}
+                    fill
+                    sizes="(max-width: 767px) 100vw, 40vw"
+                    className="object-cover"
+                  />
+                </div>
               </Reveal>
             </div>
           </div>
@@ -451,40 +471,42 @@ export default async function ReferenceChannelLandingPage({
                 </div>
               </Reveal>
 
-              <Reveal delay={0.1}>
-                <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
-                  {discountPercent ? (
-                    <div className="campaign-course-intro-price-ribbon">
-                      {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
-                    </div>
-                  ) : null}
-
-                  <div className="campaign-course-intro-price-body">
-                    {originalPriceLabel ? (
-                      <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
+              <Reveal delay={0.1} className="w-full min-w-0">
+                <div className="flex w-full flex-col items-stretch gap-4">
+                  <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
+                    {discountPercent ? (
+                      <div className="campaign-course-intro-price-ribbon">
+                        {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
+                      </div>
                     ) : null}
 
-                    <p className="campaign-course-intro-now">
-                      <span className="campaign-course-intro-now__amount num-latin">
-                        {formatFa(finalPrice)}
-                      </span>
-                      <span className="campaign-course-intro-now__unit">تومان</span>
-                    </p>
+                    <div className="campaign-course-intro-price-body">
+                      {originalPriceLabel ? (
+                        <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
+                      ) : null}
 
-                    <ProductPurchaseCta
-                      productSlug={productSlug}
-                      alreadyPurchased={alreadyPurchased}
-                      location="reference_channel_enroll"
-                      panelHref="/panel/reference-channel"
-                      ownedLabel="مشاهده در پنل"
-                      variant="vip"
-                      withArrow
-                      size="lg"
-                      className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
-                    >
-                      عضویت در کانال مرجع
-                    </ProductPurchaseCta>
+                      <p className="campaign-course-intro-now">
+                        <span className="campaign-course-intro-now__amount num-latin">
+                          {formatFa(finalPrice)}
+                        </span>
+                        <span className="campaign-course-intro-now__unit">تومان</span>
+                      </p>
+                    </div>
                   </div>
+
+                  <ProductPurchaseCta
+                    productSlug={productSlug}
+                    alreadyPurchased={alreadyPurchased}
+                    location="reference_channel_enroll"
+                    panelHref="/panel/reference-channel"
+                    ownedLabel="مشاهده در پنل"
+                    variant="vip"
+                    withArrow
+                    size="lg"
+                    className="campaign-course-price-cta relative z-[1] h-12 min-h-12 w-full max-w-none font-bold shadow-gold md:h-14 md:min-h-14"
+                  >
+                    عضویت در کانال مرجع
+                  </ProductPurchaseCta>
                 </div>
               </Reveal>
             </div>

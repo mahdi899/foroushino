@@ -51,6 +51,8 @@ export const sitePhotos = {
   ],
   academyStory: siteStorageMedia('academy-story.webp'),
   academyAccent: siteStorageMedia('academy-accent.jpg'),
+  /** کنار FAQ صفحه کانال مرجع */
+  referenceChannelFaq: siteStorageMedia('reference-channel-faq.webp'),
   /** پیش‌نمایش مینی‌اپ سات در بنر آکادمی */
   academyAppHome: siteStorageMedia('academy-app-home.webp'),
   academyAppPath: siteStorageMedia('story-step-02.webp'),
