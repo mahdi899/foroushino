@@ -32,7 +32,6 @@ function NavIcon({
 }
 
 export function PanelBottomNav({
-  unreadCount = 0,
   menuOpen = false,
   onMenuOpen,
 }: {
@@ -53,7 +52,6 @@ export function PanelBottomNav({
       {PANEL_BOTTOM_NAV_ITEMS.map((item) => {
         const { href, label, shortLabel, icon, exact } = item;
         const active = isActive(href, exact);
-        const showBadge = href === '/panel/notifications' && unreadCount > 0;
 
         return (
           <Link
@@ -67,11 +65,6 @@ export function PanelBottomNav({
           >
             <span className="panel-bottom-nav__icon-wrap">
               <NavIcon icon={icon} active={active} />
-              {showBadge ? (
-                <span className="panel-bottom-nav__badge" aria-hidden>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              ) : null}
             </span>
             <span className="site-bottom-nav__label">{shortLabel ?? label}</span>
           </Link>

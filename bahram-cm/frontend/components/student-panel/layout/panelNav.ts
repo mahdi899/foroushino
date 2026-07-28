@@ -36,6 +36,6 @@ export const PANEL_NAV_ITEMS: PanelNavItem[] = [
 export const PANEL_BOTTOM_NAV_ITEMS: PanelNavItem[] = [
   { href: '/panel', label: 'خانه', icon: Home, exact: true },
   { href: '/panel/courses', label: 'دوره کمپین‌نویسی', shortLabel: 'کمپین', icon: BookOpen },
-  { href: '/panel/notifications', label: 'اعلان‌ها', icon: Bell },
+  { href: '/panel/reference-channel', label: 'کانال مرجع', shortLabel: 'مرجع', icon: Radio },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
 ];

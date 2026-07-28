@@ -133,6 +133,17 @@ function StepCard({
   const surfaceClass = stepSurfaceClass(tone, state);
 
   if (item.done) {
+    // Still allow revisiting completed steps when they have an in-panel URL.
+    if (item.url && !item.url.startsWith('http') && !EXTERNAL_SHEET_KEYS.has(item.key)) {
+      return (
+        <li className={className} data-state={state}>
+          <Link href={item.url} className={cn(surfaceClass, 'panel-onboarding-step__link')}>
+            {body}
+          </Link>
+        </li>
+      );
+    }
+
     return (
       <li className={className} data-state={state}>
         <div className={surfaceClass}>{body}</div>
