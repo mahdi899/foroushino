@@ -9,7 +9,7 @@ import { buildMetadata } from '@/lib/seo';
 import { resolveMediaAlt } from '@/lib/media/alt';
 export const metadata: Metadata = buildMetadata({
   title: 'دوره‌ها',
-  description: 'دو مسیر اصلی آکادمی؛ کمپین‌نویسی و سات — هر کدام با خروجی مشخص. مینی‌دوره‌های رایگان برای شروع سریع.',
+  description: 'مسیرهای اصلی آکادمی؛ کمپین‌نویسی، سات و کانال مرجع — هر کدام با خروجی مشخص. مینی‌دوره‌های رایگان برای شروع سریع.',
   path: '/courses',
 });
 

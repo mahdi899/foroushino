@@ -8,9 +8,22 @@ import { useMobileScrollReveal } from "@/lib/useMobileScrollReveal";
 type Props = {
   priceLabel: string;
   alreadyPurchased: boolean;
+  productSlug?: string;
+  title?: string;
+  location?: string;
+  panelHref?: string;
+  ownedLabel?: string;
 };
 
-export function MobileStickyEnrollBar({ priceLabel, alreadyPurchased }: Props) {
+export function MobileStickyEnrollBar({
+  priceLabel,
+  alreadyPurchased,
+  productSlug = CAMPAIGN_WRITING_SLUG,
+  title = "دوره کمپین‌نویسی",
+  location = "campaign_writing_mobile_bar",
+  panelHref,
+  ownedLabel,
+}: Props) {
   const visible = useMobileScrollReveal();
 
   return (
@@ -24,16 +37,18 @@ export function MobileStickyEnrollBar({ priceLabel, alreadyPurchased }: Props) {
       <div className="flex items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col items-start text-right">
           <p className="mobile-sticky-enroll-bar__title text-[11px] font-medium leading-tight">
-            دوره کمپین‌نویسی
+            {title}
           </p>
           <p className="mobile-sticky-enroll-bar__price mt-1 text-base font-bold leading-tight num-latin">
             {priceLabel}
           </p>
         </div>
         <ProductPurchaseCta
-          productSlug={CAMPAIGN_WRITING_SLUG}
+          productSlug={productSlug}
           alreadyPurchased={alreadyPurchased}
-          location="campaign_writing_mobile_bar"
+          location={location}
+          panelHref={panelHref}
+          ownedLabel={ownedLabel}
           variant="sales"
           size="lg"
           className="h-12 min-h-12 min-w-[10.5rem] shrink-0 px-10 text-base font-bold"

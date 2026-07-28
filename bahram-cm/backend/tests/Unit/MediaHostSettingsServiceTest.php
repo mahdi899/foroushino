@@ -46,6 +46,11 @@ class MediaHostSettingsServiceTest extends TestCase
 
     public function test_family_cdn_rejects_club_proxy_from_database(): void
     {
+        config([
+            'bahram.media_url' => '',
+            'family.media.cdn_url' => '',
+        ]);
+
         app(MediaHostSettingsService::class)->update([
             'media_url' => 'https://cdn.rostami.app',
             'family_media_cdn_url' => 'https://rostami.club',

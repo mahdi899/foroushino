@@ -18,6 +18,10 @@ export type CourseCatalogCard = {
 const defaultPathImages: Record<string, string> = {
   '/course/campaign-writing': resolveProductSiteFeaturedImage({ slug: 'campaign-writing' }),
   '/saat': resolveProductSiteFeaturedImage({ slug: 'saat' }),
+  '/reference-channels/kanal-mrgf': resolveProductSiteFeaturedImage({
+    slug: 'reference-kanal-mrgf',
+    landing_href: '/reference-channels/kanal-mrgf',
+  }),
 };
 
 const staticPathMeta: Record<string, { level: string; duration: string; featured: boolean }> = {
@@ -29,6 +33,16 @@ const staticPathMeta: Record<string, { level: string; duration: string; featured
   '/saat': {
     level: 'سیستم عملیاتی',
     duration: 'مسیر WAP',
+    featured: false,
+  },
+  '/saat#apply': {
+    level: 'سیستم عملیاتی',
+    duration: 'مسیر WAP',
+    featured: false,
+  },
+  '/reference-channels/kanal-mrgf': {
+    level: 'شبکه فروش',
+    duration: 'گروه ۱۰۰ نفری',
     featured: false,
   },
 };
