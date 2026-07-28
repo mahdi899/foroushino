@@ -5,6 +5,11 @@ import { useEffect, type RefObject } from 'react';
 type BackgroundScrollLockOptions = {
   /** When false, touchmove on the document is blocked unless it originates inside this node. */
   allowTouchInsideRef?: RefObject<HTMLElement | null>;
+  /**
+   * `fixed` — pin `body` (iOS-safe for family feed / keyboard). Can shift sticky site chrome.
+   * `overflow` — only lock overflow + gestures; keeps the page layout/scroll position untouched.
+   */
+  strategy?: 'fixed' | 'overflow';
 };
 
 type StyleSnapshot = {
@@ -16,6 +21,7 @@ type StyleSnapshot = {
   overflow: string;
   height: string;
   minHeight: string;
+  paddingRight: string;
 };
 
 function snapshotStyles(el: HTMLElement): StyleSnapshot {
@@ -28,6 +34,7 @@ function snapshotStyles(el: HTMLElement): StyleSnapshot {
     overflow: el.style.overflow,
     height: el.style.height,
     minHeight: el.style.minHeight,
+    paddingRight: el.style.paddingRight,
   };
 }
 
@@ -40,21 +47,18 @@ function restoreStyles(el: HTMLElement, prev: StyleSnapshot) {
   el.style.overflow = prev.overflow;
   el.style.height = prev.height;
   el.style.minHeight = prev.minHeight;
+  el.style.paddingRight = prev.paddingRight;
 }
 
 /**
- * Freeze the page behind a mobile keyboard overlay:
- * - pin `body` with `position: fixed` (iOS-safe)
- * - lock `html` overflow
- * - freeze `#family-root` height so `100dvh` shrink from the keyboard does not reflow the feed
- * - lock `.family-feed-scroll` and restore its scrollTop
- * - optionally block touchmove outside an allow-list node
+ * Freeze the page behind an overlay.
+ * Prefer `strategy: 'overflow'` on the public site so sticky headers stay put.
  */
 export function useBackgroundScrollLock(
   enabled: boolean,
   options: BackgroundScrollLockOptions = {},
 ) {
-  const { allowTouchInsideRef } = options;
+  const { allowTouchInsideRef, strategy = 'fixed' } = options;
 
   useEffect(() => {
     if (!enabled || typeof document === 'undefined') return;
@@ -63,6 +67,7 @@ export function useBackgroundScrollLock(
     const root = document.documentElement;
     const familyRoot = document.getElementById('family-root');
     const windowScrollY = window.scrollY;
+    const scrollbarGap = Math.max(0, window.innerWidth - root.clientWidth);
 
     const scrollTargets = Array.from(
       document.querySelectorAll<HTMLElement>('.family-feed-scroll'),
@@ -74,7 +79,7 @@ export function useBackgroundScrollLock(
     });
 
     const bodyPrev = snapshotStyles(body);
-    const rootOverflow = root.style.overflow;
+    const rootPrev = snapshotStyles(root);
     const familyPrev = familyRoot ? snapshotStyles(familyRoot) : null;
     const feedSnapshots = scrollTargets.map((el) => ({
       el,
@@ -82,37 +87,59 @@ export function useBackgroundScrollLock(
       scrollTop: el.scrollTop,
     }));
 
-    body.style.position = 'fixed';
-    body.style.top = `-${windowScrollY}px`;
-    body.style.left = '0';
-    body.style.right = '0';
-    body.style.width = '100%';
-    body.style.overflow = 'hidden';
-    root.style.overflow = 'hidden';
-
-    if (familyRoot) {
-      const frozenHeight = Math.round(familyRoot.getBoundingClientRect().height);
-      if (frozenHeight > 0) {
-        familyRoot.style.height = `${frozenHeight}px`;
-        familyRoot.style.minHeight = `${frozenHeight}px`;
+    if (strategy === 'overflow') {
+      root.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+      if (scrollbarGap > 0) {
+        // Keep layout width stable when the scrollbar disappears.
+        root.style.paddingRight = rootPrev.paddingRight || `${scrollbarGap}px`;
       }
-      familyRoot.style.overflow = 'hidden';
+    } else {
+      body.style.position = 'fixed';
+      body.style.top = `-${windowScrollY}px`;
+      body.style.left = '0';
+      body.style.right = '0';
+      body.style.width = '100%';
+      body.style.overflow = 'hidden';
+      root.style.overflow = 'hidden';
+      if (scrollbarGap > 0) {
+        body.style.paddingRight = bodyPrev.paddingRight || `${scrollbarGap}px`;
+      }
+
+      if (familyRoot) {
+        const frozenHeight = Math.round(familyRoot.getBoundingClientRect().height);
+        if (frozenHeight > 0) {
+          familyRoot.style.height = `${frozenHeight}px`;
+          familyRoot.style.minHeight = `${frozenHeight}px`;
+        }
+        familyRoot.style.overflow = 'hidden';
+      }
+
+      for (const { el } of feedSnapshots) {
+        el.style.overflow = 'hidden';
+      }
     }
 
-    for (const { el } of feedSnapshots) {
-      el.style.overflow = 'hidden';
-    }
+    const allowEvent = (target: EventTarget | null) => {
+      const allow = allowTouchInsideRef?.current;
+      return Boolean(allow && target instanceof Node && allow.contains(target));
+    };
 
     const blockTouch = (event: TouchEvent) => {
-      const allow = allowTouchInsideRef?.current;
-      if (allow?.contains(event.target as Node)) return;
+      if (allowEvent(event.target)) return;
       event.preventDefault();
     };
+    const blockWheel = (event: WheelEvent) => {
+      if (allowEvent(event.target)) return;
+      event.preventDefault();
+    };
+
     document.addEventListener('touchmove', blockTouch, { passive: false });
+    document.addEventListener('wheel', blockWheel, { passive: false });
 
     return () => {
       restoreStyles(body, bodyPrev);
-      root.style.overflow = rootOverflow;
+      restoreStyles(root, rootPrev);
       if (familyRoot && familyPrev) restoreStyles(familyRoot, familyPrev);
 
       for (const { el, overflow, scrollTop } of feedSnapshots) {
@@ -121,7 +148,16 @@ export function useBackgroundScrollLock(
       }
 
       document.removeEventListener('touchmove', blockTouch);
-      window.scrollTo(0, windowScrollY);
+      document.removeEventListener('wheel', blockWheel);
+
+      // Only the fixed strategy moves window scroll; overflow leaves it alone.
+      if (strategy === 'fixed') {
+        const html = document.documentElement;
+        const prevBehavior = html.style.scrollBehavior;
+        html.style.scrollBehavior = 'auto';
+        window.scrollTo(0, windowScrollY);
+        html.style.scrollBehavior = prevBehavior;
+      }
     };
-  }, [allowTouchInsideRef, enabled]);
+  }, [allowTouchInsideRef, enabled, strategy]);
 }

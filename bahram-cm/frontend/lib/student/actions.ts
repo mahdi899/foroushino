@@ -9,16 +9,34 @@ import { extractValidationMessage } from '@/lib/services/api';
 import { STUDENT_TOKEN_COOKIE } from './session';
 
 export interface OtpAuthState {
-  step: 'mobile' | 'otp';
+  step: 'mobile' | 'otp' | 'done';
   mobile?: string;
   error?: string;
   info?: string;
+  displayName?: string;
 }
 
 type StudentAuthPayload = {
   token?: string;
   message?: string;
+  user?: {
+    name?: string | null;
+    profile?: { first_name?: string | null; last_name?: string | null } | null;
+    identity?: { first_name?: string | null; last_name?: string | null } | null;
+  };
 };
+
+function displayNameFromAuthPayload(data?: StudentAuthPayload): string | undefined {
+  const user = data?.user;
+  if (!user) return undefined;
+  const fromIdentity = [user.identity?.first_name, user.identity?.last_name].filter(Boolean).join(' ').trim();
+  if (fromIdentity) return fromIdentity;
+  const fromProfile = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
+  if (fromProfile) return fromProfile;
+  const name = user.name?.trim();
+  if (name && name !== 'دانشجو') return name;
+  return undefined;
+}
 
 async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boolean; data?: StudentAuthPayload; message?: string }> {
   try {
@@ -109,6 +127,7 @@ export async function sendSatApplyOtpAction(
 export async function verifyOtpAction(_prev: OtpAuthState, formData: FormData): Promise<OtpAuthState> {
   const mobile = String(formData.get('mobile') ?? '').trim();
   const code = String(formData.get('code') ?? '').trim();
+  const stay = String(formData.get('stay') ?? '').trim() === '1';
 
   if (!mobile) return { step: 'mobile', error: 'شماره موبایل نامعتبر است.' };
   if (!code) return { step: 'otp', mobile, error: 'کد تایید را وارد کنید.' };
@@ -120,16 +139,28 @@ export async function verifyOtpAction(_prev: OtpAuthState, formData: FormData): 
   if (!token) return { step: 'otp', mobile, error: 'پاسخ سرور نامعتبر بود.' };
 
   await setStudentTokenCookie(token);
+
+  if (stay) {
+    return {
+      step: 'done',
+      mobile,
+      displayName: displayNameFromAuthPayload(result.data),
+    };
+  }
+
   redirect(await resolveStudentLoginRedirect(formData));
 }
 
 export interface PasswordAuthState {
   error?: string;
+  ok?: boolean;
+  displayName?: string;
 }
 
 export async function loginPasswordAction(_prev: PasswordAuthState, formData: FormData): Promise<PasswordAuthState> {
   const mobile = String(formData.get('mobile') ?? '').trim();
   const password = String(formData.get('password') ?? '');
+  const stay = String(formData.get('stay') ?? '').trim() === '1';
 
   if (!mobile || !password) return { error: 'شماره موبایل و رمز عبور را وارد کنید.' };
 
@@ -148,6 +179,14 @@ export async function loginPasswordAction(_prev: PasswordAuthState, formData: Fo
   if (!token) return { error: 'پاسخ سرور نامعتبر بود.' };
 
   await setStudentTokenCookie(token);
+
+  if (stay) {
+    return {
+      ok: true,
+      displayName: displayNameFromAuthPayload(result.data),
+    };
+  }
+
   redirect(await resolveStudentLoginRedirect(formData));
 }
 

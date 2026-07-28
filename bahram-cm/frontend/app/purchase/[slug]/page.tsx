@@ -77,7 +77,8 @@ export default async function PurchasePage({
 
   const product = result.data;
   const alreadyPurchased = product.already_purchased ?? false;
-  const seminarFull = product.seminar?.is_full ?? false;
+  const seminarEnded = product.seminar?.is_ended ?? false;
+  const seminarFull = (product.seminar?.is_full ?? false) || seminarEnded;
   const backLink = purchaseBackLink(product);
 
   return (
@@ -121,8 +122,10 @@ export default async function PurchasePage({
                     )}
                     {product.seminar ? (
                       <p className="mt-4 text-sm text-bone-dim">
-                        {seminarFull
-                          ? "ظرفیت این سمینار تکمیل شده است."
+                        {seminarEnded
+                          ? "این سمینار برگزار شده و ثبت‌نام بسته است."
+                          : seminarFull
+                            ? "ظرفیت این سمینار تکمیل شده است."
                           : product.seminar.remaining_seats != null
                             ? `${formatFa(product.seminar.remaining_seats)} جای خالی باقی مانده`
                             : "ظرفیت نامحدود"}
@@ -172,7 +175,9 @@ export default async function PurchasePage({
                     </div>
                   ) : seminarFull ? (
                     <div className="mt-auto rounded-tile border border-gold/30 bg-gold/8 px-4 py-4 text-sm text-gold">
-                      ظرفیت سمینار تکمیل شده و امکان خرید وجود ندارد.
+                      {seminarEnded
+                        ? "این سمینار برگزار شده و امکان ثبت‌نام وجود ندارد."
+                        : "ظرفیت سمینار تکمیل شده و امکان خرید وجود ندارد."}
                     </div>
                   ) : (
                     <div className="mt-auto w-full min-w-0 pt-6">

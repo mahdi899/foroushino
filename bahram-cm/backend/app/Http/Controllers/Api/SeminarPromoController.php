@@ -17,6 +17,7 @@ class SeminarPromoController extends Controller
                 ->with('product')
                 ->where('promo_enabled', true)
                 ->where('status', 'published')
+                ->whereNull('ended_at')
                 ->whereNotNull('product_id')
                 ->where('date', '>=', now())
                 ->whereHas('product', fn ($q) => $q->active())

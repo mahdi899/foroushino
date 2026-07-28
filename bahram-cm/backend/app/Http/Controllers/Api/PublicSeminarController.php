@@ -9,6 +9,7 @@ use App\Services\PurchaseGuardService;
 use App\Support\MediaUrl;
 use App\Support\OptionalStudent;
 use App\Support\RuntimeCache;
+use App\Support\SeminarGallery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -45,6 +46,7 @@ class PublicSeminarController extends Controller
                 $price = (int) ($seminar->price ?? 0);
                 $salePrice = $seminar->sale_price !== null ? (int) $seminar->sale_price : null;
                 $effectivePrice = $salePrice !== null && $salePrice > 0 && $salePrice < $price ? $salePrice : $price;
+                $isEnded = $seminar->isEnded();
 
                 return [
                     'id' => $seminar->id,
@@ -62,10 +64,14 @@ class PublicSeminarController extends Controller
                     'attendees_count' => $seminar->registeredCount(),
                     'remaining_seats' => $seminar->remainingSeats(),
                     'is_full' => $seminar->isFull(),
+                    'is_ended' => $isEnded,
+                    'ended_at' => $seminar->ended_at?->toIso8601String(),
+                    'gallery' => $isEnded ? SeminarGallery::resolve($seminar->gallery) : [],
+                    'gallery_slider' => $isEnded ? SeminarGallery::resolveSlider($seminar->gallery_slider) : [],
                     'product_id' => $seminar->product_id,
                     'product_slug' => $seminar->purchaseSlug(),
                     'product_is_active' => (bool) $seminar->product?->is_active,
-                    'is_purchasable' => $price > 0 && $seminar->product_id && $seminar->product?->is_active,
+                    'is_purchasable' => ! $isEnded && $price > 0 && $seminar->product_id && $seminar->product?->is_active,
                 ];
             },
             'services',
