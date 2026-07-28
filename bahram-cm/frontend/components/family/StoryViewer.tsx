@@ -164,16 +164,20 @@ export function StoryViewer({
   }, [finish, index, stories.length]);
 
   const goPrev = useCallback(() => {
+    // Already on first slide — do nothing. Resetting ready flags here would
+    // leave the viewer stuck on loading (same story id → load effect won't re-run).
+    if (index <= 0) return;
+
     lastImageScheduleKeyRef.current = '';
     lastVideoSetupKeyRef.current = '';
-    setIndex((i) => Math.max(0, i - 1));
+    setIndex((i) => i - 1);
     setSlideProgress(0);
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
     setImageReady(false);
     setPreviewReady(false);
     setImageError(false);
-  }, []);
+  }, [index]);
 
   const clearSlideTimers = useCallback(() => {
     if (advanceTimerRef.current != null) {

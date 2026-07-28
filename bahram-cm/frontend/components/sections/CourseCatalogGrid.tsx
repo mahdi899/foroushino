@@ -21,10 +21,6 @@ const catalogMeta: Record<
   },
 };
 
-function isReferenceChannelHref(href: string): boolean {
-  return href.startsWith("/reference-channels/");
-}
-
 function CatalogCard({
   course,
   delay,
@@ -59,28 +55,11 @@ function CatalogCard({
 }
 
 export function CourseCatalogGrid({ courses }: { courses: CourseCatalogCard[] }) {
-  const primary = courses.filter((course) => !isReferenceChannelHref(course.href));
-  const secondary = courses.filter((course) => isReferenceChannelHref(course.href));
-
   return (
-    <div className="flex flex-col gap-4 md:gap-5 lg:gap-6">
-      <div className="grid items-stretch gap-4 md:grid-cols-2 md:gap-5 lg:gap-6">
-        {primary.map((course, i) => (
-          <CatalogCard key={course.href} course={course} delay={0.08 + i * 0.06} />
-        ))}
-      </div>
-
-      {secondary.length > 0 ? (
-        <div className="mx-auto w-full max-w-3xl">
-          {secondary.map((course, i) => (
-            <CatalogCard
-              key={course.href}
-              course={course}
-              delay={0.08 + (primary.length + i) * 0.06}
-            />
-          ))}
-        </div>
-      ) : null}
+    <div className="grid items-stretch gap-4 md:grid-cols-2 md:gap-5 lg:gap-6">
+      {courses.map((course, i) => (
+        <CatalogCard key={course.href} course={course} delay={0.08 + i * 0.06} />
+      ))}
     </div>
   );
 }

@@ -16,11 +16,17 @@ export function ReferralHeroBanner({ code, link }: { code: string; link: string 
 
   return (
     <section className="panel-referral-hero">
-      <div className="panel-referral-hero__glow -left-6 top-0 h-32 w-32 opacity-60" style={{ background: 'var(--color-gold-soft)' }} />
-      <div className="panel-referral-hero__glow -bottom-8 right-8 h-28 w-28 opacity-50" style={{ background: 'var(--color-primary-soft)' }} />
+      <div
+        className="panel-referral-hero__glow -left-6 top-0 h-32 w-32 opacity-60"
+        style={{ background: 'var(--color-gold-soft)' }}
+      />
+      <div
+        className="panel-referral-hero__glow -bottom-8 right-8 h-28 w-28 opacity-50"
+        style={{ background: 'var(--color-primary-soft)' }}
+      />
 
-      <div className="relative z-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div>
+      <div className="panel-referral-hero__top relative z-10">
+        <div className="panel-referral-hero__intro min-w-0">
           <div className="mb-3 flex items-center gap-2">
             <span className="panel-referral-hero__icon" aria-hidden>
               <Gift size={20} strokeWidth={2} />
@@ -31,33 +37,53 @@ export function ReferralHeroBanner({ code, link }: { code: string; link: string 
             کش‌بک برای هر معرفی موفق
           </h1>
           <p className="mt-2 max-w-lg text-sm leading-relaxed text-text-muted">
-            لینک یا کد اختصاصی‌ات را به اشتراک بگذار؛ با هر خرید موفق، پاداش نقدی بر اساس محصول خریداری‌شده دریافت می‌کنی.
+            لینک یا کد اختصاصی‌ات را به اشتراک بگذار؛ با هر خرید موفق، پاداش نقدی بر اساس محصول
+            خریداری‌شده دریافت می‌کنی.
           </p>
         </div>
 
-        <div className="panel-referral-hero__gift lg:self-auto">
+        <div className="panel-referral-hero__gift">
           <AnimatedEmoji notoKey="gift" size={56} mode="loop" label="هدیه" />
         </div>
       </div>
 
-      <div className="relative z-10 mt-6 grid gap-3 sm:grid-cols-2">
+      <div className="panel-referral-hero__fields relative z-10">
         <div className="panel-referral-hero__field">
           <p className="panel-text-meta mb-2 text-text-muted">کد اختصاصی شما</p>
-          <div className="flex items-center justify-between gap-2">
-            <span className="tabular-nums text-lg font-bold text-text" dir="ltr">{code}</span>
-            <button type="button" onClick={() => copy(code, 'code')} className="btn btn-secondary panel-text-caption min-h-9 py-1">
+          <div className="panel-referral-hero__copy-row">
+            <span className="panel-referral-hero__value panel-referral-hero__value--code" dir="ltr">
+              {code}
+            </span>
+            <button
+              type="button"
+              onClick={() => copy(code, 'code')}
+              className="panel-referral-hero__copy-btn"
+              aria-label={copied === 'code' ? 'کپی شد' : 'کپی کد'}
+            >
               {copied === 'code' ? <Check size={14} /> : <Copy size={14} />}
-              {copied === 'code' ? 'کپی شد' : 'کپی'}
+              <span className="panel-referral-hero__copy-label">
+                {copied === 'code' ? 'کپی شد' : 'کپی'}
+              </span>
             </button>
           </div>
         </div>
 
         <div className="panel-referral-hero__field">
           <p className="panel-text-meta mb-2 text-text-muted">لینک دعوت شما</p>
-          <div className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-sm text-text" dir="ltr">{link}</span>
-            <button type="button" onClick={() => copy(link, 'link')} className="btn btn-secondary panel-text-caption min-h-9 shrink-0 py-1">
+          <div className="panel-referral-hero__copy-row">
+            <span className="panel-referral-hero__value panel-referral-hero__value--link" dir="ltr" title={link}>
+              {link}
+            </span>
+            <button
+              type="button"
+              onClick={() => copy(link, 'link')}
+              className="panel-referral-hero__copy-btn"
+              aria-label={copied === 'link' ? 'کپی شد' : 'کپی لینک'}
+            >
               {copied === 'link' ? <Check size={14} /> : <Copy size={14} />}
+              <span className="panel-referral-hero__copy-label">
+                {copied === 'link' ? 'کپی شد' : 'کپی'}
+              </span>
             </button>
           </div>
         </div>

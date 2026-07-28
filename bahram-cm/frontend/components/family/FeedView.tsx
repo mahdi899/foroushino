@@ -32,6 +32,7 @@ import {
   getLenisDistanceFromBottom,
   pinFeedElementBottomUntilSettled,
   restoreFeedScrollPosition,
+  restoreFeedScrollPositionUntilSettled,
   scrollFeedToElement,
   scrollFeedToLatest,
   type FeedScrollRestoreSnapshot,
@@ -269,8 +270,11 @@ export function FeedView({
   const anchoredToBottomRef = useRef(false);
   const historyReadyRef = useRef(false);
   const loadingHistoryRef = useRef(false);
-  /** Snapshot taken before older-page prepend — restored once after layout (no multi-frame pin). */
+  /** Snapshot taken before older-page prepend — held through measure settle so mobile doesn't jump. */
   const scrollRestoreRef = useRef<FeedScrollRestoreSnapshot | null>(null);
+  /** True while history prepend restore is re-pinning after layout/measure. */
+  const historySettleActiveRef = useRef(false);
+  const historySettleGenRef = useRef(0);
   const pinNavigateRef = useRef(false);
   /** True after a far "jump to post" replaced the loaded window and the tip is no longer loaded. */
   const isJumpedAwayRef = useRef(false);
@@ -1018,6 +1022,19 @@ export function FeedView({
       markFeedUserScrollIntent(true);
     }
     if (pinNavigateRef.current) return;
+
+    // While older history is loading / settling, keep the captured post locked in place
+    // so upward fling cannot leave the waiting edge or land on a newly prepended row.
+    const historyPin = scrollRestoreRef.current;
+    if (historyPin && (loadingHistoryRef.current || historySettleActiveRef.current)) {
+      const ctx = getScrollCtx();
+      const top = ctx.root?.scrollTop ?? 0;
+      // Hold the top waiting edge; don't yank someone who scrolled back into the feed.
+      if (historySettleActiveRef.current || top < 180) {
+        restoreFeedScrollPosition(historyPin, ctx);
+      }
+    }
+
     if (mediaWarmupRafRef.current == null) {
       mediaWarmupRafRef.current = requestAnimationFrame(() => {
         mediaWarmupRafRef.current = null;
@@ -1187,11 +1204,14 @@ export function FeedView({
       loadingHistoryRef.current = false;
       return;
     }
-    // Fetch ended without a length change — drop the pin on the next frame so a
-    // same-tick posts.length update can still restore in useLayoutEffect first.
+    // Fetch ended without a length change — drop the pin after layout has had a
+    // chance to claim a successful prepend. Never clear mid-settle.
     const id = requestAnimationFrame(() => {
-      scrollRestoreRef.current = null;
-      loadingHistoryRef.current = false;
+      requestAnimationFrame(() => {
+        if (historySettleActiveRef.current) return;
+        scrollRestoreRef.current = null;
+        loadingHistoryRef.current = false;
+      });
     });
     return () => cancelAnimationFrame(id);
   }, [isValidating]);
@@ -1199,8 +1219,8 @@ export function FeedView({
   /**
    * Older pages arrive as a prepend. TanStack `anchorTo: 'end'` re-pins by estimated
    * sizes, but at scrollTop≈0 (ceiling) that often under-corrects — the viewport jumps
-   * onto the newly loaded oldest posts. Capture the first visible post before fetch and
-   * restore it once after layout. No multi-timeout pin: that fought active fling before.
+   * onto the newly loaded oldest posts. Keep the first visible post pinned through
+   * estimate→measure settle so mobile fling + row measure cannot yank the viewport.
    */
   useLayoutEffect(() => {
     const snapshot = scrollRestoreRef.current;
@@ -1209,8 +1229,22 @@ export function FeedView({
 
     const { root, lenis } = getScrollCtx();
     restoreFeedScrollPosition(snapshot, { root, lenis });
-    scrollRestoreRef.current = null;
-    loadingHistoryRef.current = false;
+
+    const gen = ++historySettleGenRef.current;
+    historySettleActiveRef.current = true;
+    void restoreFeedScrollPositionUntilSettled(snapshot, {
+      getScrollCtx,
+      maxPasses: 8,
+      isCancelled: () => gen !== historySettleGenRef.current,
+      onPass: () => {
+        virtualListRef.current?.measureNewRows();
+      },
+    }).finally(() => {
+      if (gen !== historySettleGenRef.current) return;
+      historySettleActiveRef.current = false;
+      scrollRestoreRef.current = null;
+      loadingHistoryRef.current = false;
+    });
   }, [getScrollCtx, posts.length]);
 
   // Keep catching up to bottom after media/layout settles (caught-up sessions only).
@@ -1848,7 +1882,8 @@ export function FeedView({
                   {!isPreview && hasMore && (
                     <div
                       ref={topSentinelRef}
-                      className="flex min-h-10 items-center justify-center py-3"
+                      // Fixed reserved height so spinner appearance does not shift scroll.
+                      className="flex min-h-16 items-center justify-center py-4"
                       aria-busy={isValidating && posts.length > 0}
                     >
                       {isValidating && posts.length > 0 ? (

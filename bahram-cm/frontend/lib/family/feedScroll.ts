@@ -229,6 +229,32 @@ export function captureFeedScrollRestore(
   };
 }
 
+/** Remaining pixel drift after a restore attempt (0 ≈ settled). */
+export function feedScrollRestoreDrift(
+  previous: FeedScrollRestoreSnapshot,
+  {
+    root,
+    lenis,
+  }: {
+    root: HTMLElement | null;
+    lenis?: Lenis | null;
+  },
+): number {
+  if (!root) return 0;
+
+  if (previous.mode === 'anchor' && previous.anchorId && previous.offsetFromRootTop != null) {
+    const el = document.getElementById(previous.anchorId);
+    if (el) {
+      const rootTop = root.getBoundingClientRect().top;
+      const currentOffset = el.getBoundingClientRect().top - rootTop;
+      return currentOffset - previous.offsetFromRootTop;
+    }
+  }
+
+  const expectedTop = previous.top + (root.scrollHeight - previous.height);
+  return getFeedScrollTop(root, lenis) - expectedTop;
+}
+
 export function restoreFeedScrollPosition(
   previous: FeedScrollRestoreSnapshot,
   {
@@ -260,4 +286,47 @@ export function restoreFeedScrollPosition(
   if (delta === 0) return;
   const nextTop = previous.top + delta;
   scrollFeedTo(nextTop, 'auto', { root, lenis });
+}
+
+/**
+ * Re-apply history prepend restore until row measure / virtualizer settle.
+ * Safe while the user is waiting at the loaded top — keeps the same posts in view.
+ */
+export async function restoreFeedScrollPositionUntilSettled(
+  previous: FeedScrollRestoreSnapshot,
+  {
+    getScrollCtx,
+    maxPasses = 8,
+    isCancelled,
+    onPass,
+  }: {
+    getScrollCtx: () => { root: HTMLElement | null; lenis?: Lenis | null };
+    maxPasses?: number;
+    isCancelled?: () => boolean;
+    onPass?: () => void;
+  },
+): Promise<void> {
+  const waitFrame = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
+  for (let i = 0; i < maxPasses; i += 1) {
+    if (isCancelled?.()) return;
+    const { root, lenis } = getScrollCtx();
+    if (lenis) lenis.resize();
+    onPass?.();
+    restoreFeedScrollPosition(previous, { root, lenis });
+    await waitFrame();
+    if (isCancelled?.()) return;
+    const drift = feedScrollRestoreDrift(previous, getScrollCtx());
+    if (Math.abs(drift) < 1.5) {
+      await waitFrame();
+      if (isCancelled?.()) return;
+      onPass?.();
+      restoreFeedScrollPosition(previous, getScrollCtx());
+      const again = feedScrollRestoreDrift(previous, getScrollCtx());
+      if (Math.abs(again) < 1.5) return;
+    }
+  }
 }

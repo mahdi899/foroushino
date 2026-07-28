@@ -36,7 +36,7 @@ export function PanelShellLoading() {
 
         <main className="panel-main-content">
           <div className="panel-page-wrap site-route-loading site-route-loading--panel-inset">
-            <SiteLoader size="md" variant="page" label="در حال بارگذاری..." />
+            <SiteLoader size="md" variant="page" label="" ariaLabel="در حال بارگذاری" />
           </div>
         </main>
       </div>

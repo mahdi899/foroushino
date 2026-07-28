@@ -45,10 +45,6 @@ const pathMeta: Record<
   },
 };
 
-function isReferenceChannelHref(href: string): boolean {
-  return href.startsWith("/reference-channels/");
-}
-
 export function MainPaths({
   pathOverrides = {},
 }: {
@@ -66,9 +62,6 @@ export function MainPaths({
       image: pathImages[item.href] ?? meta.image,
     };
   });
-
-  const primary = items.filter((item) => !isReferenceChannelHref(item.href));
-  const secondary = items.filter((item) => isReferenceChannelHref(item.href));
 
   return (
     <section
@@ -95,24 +88,12 @@ export function MainPaths({
           </Reveal>
         </div>
 
-        <div className="relative mt-8 flex flex-col gap-4 md:mt-10 md:gap-5 lg:gap-6">
-          <div className="grid items-stretch gap-4 md:grid-cols-2 md:gap-5 lg:gap-6">
-            {primary.map((path, i) => (
-              <Reveal key={path.href} delay={0.12 + i * 0.06} className="h-full">
-                <PathCard {...path} />
-              </Reveal>
-            ))}
-          </div>
-
-          {secondary.length > 0 ? (
-            <div className="mx-auto w-full max-w-3xl">
-              {secondary.map((path, i) => (
-                <Reveal key={path.href} delay={0.12 + (primary.length + i) * 0.06} className="h-full">
-                  <PathCard {...path} />
-                </Reveal>
-              ))}
-            </div>
-          ) : null}
+        <div className="relative mt-8 grid items-stretch gap-4 md:mt-10 md:grid-cols-2 md:gap-5 lg:gap-6">
+          {items.map((path, i) => (
+            <Reveal key={path.href} delay={0.12 + i * 0.06} className="h-full">
+              <PathCard {...path} />
+            </Reveal>
+          ))}
         </div>
       </div>
     </section>

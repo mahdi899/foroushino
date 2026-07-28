@@ -36,6 +36,14 @@ function pointDistance(a: Vec2, b: Vec2) {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
+function focalFromCenter(viewport: HTMLElement, center: Vec2): Vec2 {
+  const rect = viewport.getBoundingClientRect();
+  return {
+    x: center.x - rect.left - rect.width / 2,
+    y: center.y - rect.top - rect.height / 2,
+  };
+}
+
 export function ImageZoomLightbox({
   url,
   urls,
@@ -62,32 +70,86 @@ export function ImageZoomLightbox({
   const { src: displayUrl } = useFamilyImageSrc(activeUrl, activeMediaId);
   const isGallery = sources.length > 1;
   const viewportRef = useRef<HTMLDivElement>(null);
+  const transformLayerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState<Vec2>({ x: 0, y: 0 });
-  const [isGesturing, setIsGesturing] = useState(false);
 
   const scaleRef = useRef(1);
   const offsetRef = useRef<Vec2>({ x: 0, y: 0 });
+  const gesturingRef = useRef(false);
+  const commitRafRef = useRef<number | null>(null);
   const pinchRef = useRef<{
     distance: number;
     scale: number;
     center: Vec2;
     offset: Vec2;
   } | null>(null);
-  const panRef = useRef<{ start: Vec2; offset: Vec2; moved: boolean } | null>(null);
+  const panRef = useRef<{
+    pointerId: number;
+    start: Vec2;
+    offset: Vec2;
+    moved: boolean;
+  } | null>(null);
   const swipeRef = useRef<{ start: Vec2; moved: boolean } | null>(null);
   const lastTapRef = useRef<{ time: number; point: Vec2 } | null>(null);
 
-  const syncTransform = useCallback((nextScale: number, nextOffset: Vec2) => {
-    scaleRef.current = nextScale;
-    offsetRef.current = nextOffset;
-    setScale(nextScale);
-    setOffset(nextOffset);
+  const paintTransform = useCallback((nextScale: number, nextOffset: Vec2) => {
+    const layer = transformLayerRef.current;
+    if (!layer) return;
+    layer.style.transform = `translate3d(${nextOffset.x}px, ${nextOffset.y}px, 0) scale(${nextScale})`;
   }, []);
 
+  const setTransitionEnabled = useCallback((enabled: boolean) => {
+    const layer = transformLayerRef.current;
+    if (!layer) return;
+    layer.style.transition = enabled ? 'transform 200ms ease-out' : 'none';
+  }, []);
+
+  const scheduleScaleCommit = useCallback((nextScale: number) => {
+    if (commitRafRef.current != null) return;
+    commitRafRef.current = requestAnimationFrame(() => {
+      commitRafRef.current = null;
+      setScale(nextScale);
+    });
+  }, []);
+
+  const syncTransform = useCallback(
+    (nextScale: number, nextOffset: Vec2, options?: { commit?: boolean }) => {
+      scaleRef.current = nextScale;
+      offsetRef.current = nextOffset;
+      paintTransform(nextScale, nextOffset);
+      if (options?.commit === false) {
+        scheduleScaleCommit(nextScale);
+        return;
+      }
+      if (commitRafRef.current != null) {
+        cancelAnimationFrame(commitRafRef.current);
+        commitRafRef.current = null;
+      }
+      setScale(nextScale);
+    },
+    [paintTransform, scheduleScaleCommit],
+  );
+
+  const beginGesture = useCallback(() => {
+    gesturingRef.current = true;
+    setTransitionEnabled(false);
+  }, [setTransitionEnabled]);
+
+  const endGesture = useCallback(() => {
+    gesturingRef.current = false;
+    if (scaleRef.current <= MIN_SCALE + 0.001) {
+      scaleRef.current = MIN_SCALE;
+      offsetRef.current = { x: 0, y: 0 };
+      paintTransform(MIN_SCALE, { x: 0, y: 0 });
+    }
+    setScale(scaleRef.current);
+    setTransitionEnabled(true);
+  }, [paintTransform, setTransitionEnabled]);
+
   const resetTransform = useCallback(() => {
+    setTransitionEnabled(true);
     syncTransform(MIN_SCALE, { x: 0, y: 0 });
-  }, [syncTransform]);
+  }, [setTransitionEnabled, syncTransform]);
 
   const goTo = useCallback(
     (nextIndex: number) => {
@@ -109,33 +171,59 @@ export function ImageZoomLightbox({
   }, [goTo, index]);
 
   const zoomAt = useCallback(
-    (nextScale: number, center: Vec2) => {
+    (nextScale: number, center: Vec2, options?: { commit?: boolean }) => {
       const currentScale = scaleRef.current;
       const currentOffset = offsetRef.current;
       const clamped = clamp(nextScale, MIN_SCALE, MAX_SCALE);
 
-      if (clamped <= MIN_SCALE + 0.001) {
+      if (clamped <= MIN_SCALE + 0.001 && !gesturingRef.current) {
         resetTransform();
         return;
       }
 
       const viewport = viewportRef.current;
-      if (!viewport) {
-        syncTransform(clamped, currentOffset);
+      if (!viewport || currentScale <= 0) {
+        syncTransform(clamped, clamped <= MIN_SCALE + 0.001 ? { x: 0, y: 0 } : currentOffset, options);
         return;
       }
 
-      const rect = viewport.getBoundingClientRect();
-      const focalX = center.x - rect.left - rect.width / 2;
-      const focalY = center.y - rect.top - rect.height / 2;
+      const focal = focalFromCenter(viewport, center);
       const ratio = clamped / currentScale;
 
-      syncTransform(clamped, {
-        x: focalX - (focalX - currentOffset.x) * ratio,
-        y: focalY - (focalY - currentOffset.y) * ratio,
-      });
+      syncTransform(
+        clamped,
+        {
+          x: focal.x - (focal.x - currentOffset.x) * ratio,
+          y: focal.y - (focal.y - currentOffset.y) * ratio,
+        },
+        options,
+      );
     },
     [resetTransform, syncTransform],
+  );
+
+  const applyPinchFrame = useCallback(
+    (distance: number, center: Vec2) => {
+      const pinch = pinchRef.current;
+      const viewport = viewportRef.current;
+      if (!pinch || !viewport || pinch.distance <= 0) return;
+
+      const nextScale = clamp(pinch.scale * (distance / pinch.distance), MIN_SCALE, MAX_SCALE);
+      const ratio = nextScale / pinch.scale;
+      const startFocal = focalFromCenter(viewport, pinch.center);
+      const dx = center.x - pinch.center.x;
+      const dy = center.y - pinch.center.y;
+
+      syncTransform(
+        nextScale,
+        {
+          x: startFocal.x - (startFocal.x - pinch.offset.x) * ratio + dx,
+          y: startFocal.y - (startFocal.y - pinch.offset.y) * ratio + dy,
+        },
+        { commit: false },
+      );
+    },
+    [syncTransform],
   );
 
   const zoomBy = useCallback(
@@ -154,13 +242,14 @@ export function ImageZoomLightbox({
 
   const toggleDoubleTap = useCallback(
     (point: Vec2) => {
+      setTransitionEnabled(true);
       if (scaleRef.current > 1.15) {
         resetTransform();
         return;
       }
       zoomAt(DOUBLE_TAP_SCALE, point);
     },
-    [resetTransform, zoomAt],
+    [resetTransform, setTransitionEnabled, zoomAt],
   );
 
   const registerTap = useCallback(
@@ -181,6 +270,19 @@ export function ImageZoomLightbox({
     [toggleDoubleTap],
   );
 
+  const clearPanAndSwipe = useCallback((viewport?: HTMLDivElement | null) => {
+    const pan = panRef.current;
+    if (pan && viewport?.hasPointerCapture(pan.pointerId)) {
+      try {
+        viewport.releasePointerCapture(pan.pointerId);
+      } catch {
+        // capture may already be released
+      }
+    }
+    panRef.current = null;
+    swipeRef.current = null;
+  }, []);
+
   useEffect(() => {
     const root = document.getElementById('family-root');
     root?.classList.add(IMMERSIVE_CLASS);
@@ -192,6 +294,12 @@ export function ImageZoomLightbox({
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (commitRafRef.current != null) cancelAnimationFrame(commitRafRef.current);
     };
   }, []);
 
@@ -308,8 +416,9 @@ export function ImageZoomLightbox({
         className="relative min-h-0 flex-1 touch-none overflow-hidden"
         onClick={(event) => event.stopPropagation()}
         onTouchStart={(event) => {
-          if (event.touches.length !== 2) return;
-          setIsGesturing(true);
+          if (event.touches.length < 2) return;
+          clearPanAndSwipe(viewportRef.current);
+          beginGesture();
           pinchRef.current = {
             distance: touchDistance(event.touches[0], event.touches[1]),
             scale: scaleRef.current,
@@ -319,27 +428,36 @@ export function ImageZoomLightbox({
         }}
         onTouchMove={(event) => {
           const pinch = pinchRef.current;
-          if (!pinch || event.touches.length !== 2) return;
+          if (!pinch || event.touches.length < 2) return;
           event.preventDefault();
-          const distance = touchDistance(event.touches[0], event.touches[1]);
-          const center = touchCenter(event.touches[0], event.touches[1]);
-          const nextScale = clamp(pinch.scale * (distance / pinch.distance), MIN_SCALE, MAX_SCALE);
-          zoomAt(nextScale, center);
+          applyPinchFrame(
+            touchDistance(event.touches[0], event.touches[1]),
+            touchCenter(event.touches[0], event.touches[1]),
+          );
         }}
-        onTouchEnd={() => {
+        onTouchEnd={(event) => {
+          if (event.touches.length >= 2) return;
+          if (!pinchRef.current) return;
           pinchRef.current = null;
-          setIsGesturing(false);
+          endGesture();
         }}
         onTouchCancel={() => {
+          if (!pinchRef.current) return;
           pinchRef.current = null;
-          setIsGesturing(false);
+          endGesture();
         }}
         onPointerDown={(event) => {
           if (event.pointerType === 'mouse' && event.button !== 0) return;
           if (pinchRef.current) return;
+          // Second finger: pointer events must not start a competing pan.
+          if (panRef.current && panRef.current.pointerId !== event.pointerId) {
+            clearPanAndSwipe(event.currentTarget);
+            return;
+          }
 
           event.currentTarget.setPointerCapture(event.pointerId);
           panRef.current = {
+            pointerId: event.pointerId,
             start: { x: event.clientX, y: event.clientY },
             offset: scaleRef.current > 1 ? { ...offsetRef.current } : { x: 0, y: 0 },
             moved: false,
@@ -349,9 +467,11 @@ export function ImageZoomLightbox({
           } else {
             swipeRef.current = null;
           }
-          if (scaleRef.current > 1) setIsGesturing(true);
+          if (scaleRef.current > 1) beginGesture();
         }}
         onPointerMove={(event) => {
+          if (pinchRef.current) return;
+
           const pan = panRef.current;
           const swipe = swipeRef.current;
           if (swipe && scaleRef.current <= 1) {
@@ -360,23 +480,31 @@ export function ImageZoomLightbox({
             if (Math.abs(dx) > 4 || Math.abs(dy) > 4) swipe.moved = true;
           }
 
-          if (!pan || scaleRef.current <= 1) return;
+          if (!pan || pan.pointerId !== event.pointerId || scaleRef.current <= 1) return;
 
           const dx = event.clientX - pan.start.x;
           const dy = event.clientY - pan.start.y;
           if (Math.abs(dx) > 2 || Math.abs(dy) > 2) pan.moved = true;
 
-          syncTransform(scaleRef.current, {
-            x: pan.offset.x + dx,
-            y: pan.offset.y + dy,
-          });
+          syncTransform(
+            scaleRef.current,
+            {
+              x: pan.offset.x + dx,
+              y: pan.offset.y + dy,
+            },
+            { commit: false },
+          );
         }}
         onPointerUp={(event) => {
+          if (pinchRef.current) return;
+
           const pan = panRef.current;
           const swipe = swipeRef.current;
+          if (pan && pan.pointerId !== event.pointerId) return;
+
           panRef.current = null;
           swipeRef.current = null;
-          setIsGesturing(false);
+          if (gesturingRef.current) endGesture();
 
           if (swipe && scaleRef.current <= 1 && isGallery) {
             const dx = event.clientX - swipe.start.x;
@@ -392,10 +520,12 @@ export function ImageZoomLightbox({
             registerTap({ x: event.clientX, y: event.clientY });
           }
         }}
-        onPointerCancel={() => {
+        onPointerCancel={(event) => {
+          if (pinchRef.current) return;
+          if (panRef.current && panRef.current.pointerId !== event.pointerId) return;
           panRef.current = null;
           swipeRef.current = null;
-          setIsGesturing(false);
+          if (gesturingRef.current) endGesture();
         }}
         onDoubleClick={(event) => {
           event.preventDefault();
@@ -404,12 +534,11 @@ export function ImageZoomLightbox({
       >
         <div className="flex h-full w-full items-center justify-center p-4 pb-20">
           <div
-            className={cn(
-              'will-change-transform',
-              !isGesturing && 'transition-transform duration-200 ease-out',
-            )}
+            ref={transformLayerRef}
+            className="will-change-transform"
             style={{
-              transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
+              transform: 'translate3d(0px, 0px, 0) scale(1)',
+              transition: 'transform 200ms ease-out',
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

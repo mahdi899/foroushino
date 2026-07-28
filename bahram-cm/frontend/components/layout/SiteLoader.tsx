@@ -3,7 +3,10 @@
 import { cn } from '@/lib/cn';
 
 type Props = {
+  /** Visible caption under the spinner. Pass empty string to hide. */
   label?: string;
+  /** Overrides aria-label when visible label is empty. */
+  ariaLabel?: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'inline' | 'page';
@@ -16,12 +19,14 @@ const sizeMap = {
 } as const;
 
 export function SiteLoader({
-  label = 'در حال بارگذاری',
+  label = '',
+  ariaLabel,
   className,
   size = 'md',
   variant = 'inline',
 }: Props) {
-  const accessibleLabel = label.trim() || 'در حال بارگذاری';
+  const visibleLabel = label.trim();
+  const accessibleLabel = (ariaLabel ?? (visibleLabel || 'در حال بارگذاری')).trim();
 
   return (
     <div
@@ -39,8 +44,8 @@ export function SiteLoader({
         <span className="site-loader__arc" />
         <span className="site-loader__core" />
       </div>
-      {variant === 'page' && label.trim() ? (
-        <p className="site-loader__label">{label}</p>
+      {variant === 'page' && visibleLabel ? (
+        <p className="site-loader__label">{visibleLabel}</p>
       ) : null}
     </div>
   );
