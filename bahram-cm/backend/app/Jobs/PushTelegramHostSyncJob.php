@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class PushTelegramHostSyncJob implements ShouldQueue
 {
@@ -50,34 +51,46 @@ class PushTelegramHostSyncJob implements ShouldQueue
         };
 
         if (! $ok) {
+            // Local host (php -S) is single-threaded: pushing host-sync while still
+            // inside process-update deadlocks/times out. Soft-fail so admin UX and
+            // scheduled reconcile can retry; production still throws for queue retries.
+            if (app()->environment('local', 'testing')) {
+                Log::channel('telegram')->warning('Telegram host push failed (local — ignored).', [
+                    'action' => $this->action,
+                ]);
+
+                return;
+            }
+
             throw new \RuntimeException('Telegram host push failed: '.$this->action);
         }
     }
 
     public static function bootstrap(): void
     {
-        self::dispatch('refresh_bootstrap');
+        self::dispatchAfterResponse('refresh_bootstrap');
     }
 
     public static function catalog(): void
     {
-        self::dispatch('refresh_catalog');
+        self::dispatchAfterResponse('refresh_catalog');
     }
 
     public static function all(): void
     {
-        self::dispatch('refresh_all');
+        self::dispatchAfterResponse('refresh_all');
     }
 
     /** @param  array<string, mixed>  $account */
     public static function account(array $account): void
     {
-        self::dispatch('push_account', ['account' => $account]);
+        // After response: avoid host deadlock when Iran is still answering process-update.
+        self::dispatchAfterResponse('push_account', ['account' => $account]);
     }
 
     public static function notifyUser(int $telegramUserId, string $text, array $options = []): void
     {
-        self::dispatch('notify_user', [
+        self::dispatchAfterResponse('notify_user', [
             'telegram_user_id' => $telegramUserId,
             'text' => $text,
             'options' => $options,
@@ -87,10 +100,16 @@ class PushTelegramHostSyncJob implements ShouldQueue
     /** @param  list<int>  $ownedProductIds */
     public static function mobileAccess(string $mobile, array $ownedProductIds, ?string $displayName = null): void
     {
-        self::dispatch('push_mobile_access', [
+        self::dispatchAfterResponse('push_mobile_access', [
             'mobile' => $mobile,
             'owned_product_ids' => $ownedProductIds,
             'display_name' => $displayName,
         ]);
+    }
+
+    /** @param  array<string, mixed>  $extra */
+    private static function dispatchAfterResponse(string $action, array $extra = []): void
+    {
+        self::dispatch($action, $extra)->afterResponse();
     }
 }

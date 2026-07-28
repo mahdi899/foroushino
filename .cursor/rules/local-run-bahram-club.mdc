@@ -87,9 +87,12 @@ Every session:
 ```bash
 cd telegram
 php -S 127.0.0.1:8088 router.php
-# other terminal:
+# other terminal — only ONE of these (not both, not two local-poll windows):
 php bin/local-poll.php
 ```
+
+- Optional: `TELEGRAM_LOCAL_POLL_BOT_TOKEN=` in `backend/.env` + `php telegram/_local_refresh_token.php` so local poll uses a **dev bot** and does not fight production `telegram:reconcile-webhook` every 2 minutes on `@RostamiAppBot`.
+- Local Laravel: `TELEGRAM_WEBHOOK_RECONCILE=false` so `schedule:work` does not re-register webhook while polling.
 
 - `router.php` preserves `Authorization` for PHP built-in server (needed by `host-sync.php`).
 - `bin/local-poll.php` deletes the Telegram webhook, long-polls via the proxy, POSTs updates to local `/public/webhook.php`.

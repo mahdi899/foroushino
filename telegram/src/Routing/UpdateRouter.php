@@ -39,9 +39,9 @@ final class UpdateRouter
         }
 
         if ($this->delegation->shouldRelayToIran($update)) {
-            $this->iranSync->enqueue($update);
-
             if (! $this->delegation->isPrivateUserFacing($update)) {
+                $this->iranSync->enqueue($update);
+
                 return;
             }
 
@@ -61,6 +61,8 @@ final class UpdateRouter
                 if ($timeout > 5) {
                     return;
                 }
+            } else {
+                $this->iranSync->enqueue($update);
             }
         }
 

@@ -381,9 +381,31 @@ final class MessageHandler
             return;
         }
 
-        $this->api->sendMessage($chatId, (string) $result['text'], [
-            'reply_markup' => (array) ($result['reply_markup'] ?? []),
-        ]);
+        $this->api->sendMessage($chatId, (string) $result['text'], $this->cachedSnapshotMessageOptions($result));
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     * @return array<string, mixed>
+     */
+    private function cachedSnapshotMessageOptions(array $result): array
+    {
+        $options = ['parse_mode' => 'HTML'];
+        $markup = $result['reply_markup'] ?? null;
+        if (! is_array($markup)) {
+            return $options;
+        }
+
+        // Laravel stores linkMarkup() which wraps inline_keyboard in reply_markup.
+        if (isset($markup['reply_markup']) && is_array($markup['reply_markup'])) {
+            return array_merge($options, $markup);
+        }
+
+        if (isset($markup['inline_keyboard'])) {
+            $options['reply_markup'] = $markup;
+        }
+
+        return $options;
     }
 
     private function sendReferral(int $chatId, int $telegramUserId): void
@@ -409,9 +431,7 @@ final class MessageHandler
             return;
         }
 
-        $this->api->sendMessage($chatId, (string) $result['text'], [
-            'reply_markup' => (array) ($result['reply_markup'] ?? []),
-        ]);
+        $this->api->sendMessage($chatId, (string) $result['text'], $this->cachedSnapshotMessageOptions($result));
     }
 
     private function openSupportHub(int $chatId): void

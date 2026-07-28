@@ -437,7 +437,7 @@ final class HostDestinationsFlow
         $skipTitles = [
             'احراز هویت سطح ۲',
             'ورود به پنل دانشجو',
-            'باشگاه مشتریان در پنل',
+            'ورود به باشگاه',
         ];
 
         $out = [];

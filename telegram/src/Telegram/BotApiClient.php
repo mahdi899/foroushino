@@ -172,6 +172,18 @@ final class BotApiClient
         ]);
     }
 
+    /**
+     * @param  list<array{type: string, emoji?: string, custom_emoji_id?: string}>  $reaction
+     */
+    public function setMessageReaction(int|string $chatId, int $messageId, array $reaction = [['type' => 'emoji', 'emoji' => '✅']]): void
+    {
+        $this->call('setMessageReaction', [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'reaction' => array_values($reaction),
+        ], false, 4);
+    }
+
     public function setWebhook(string $url, ?string $secretToken = null): void
     {
         $params = array_filter([

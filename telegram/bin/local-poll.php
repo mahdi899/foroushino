@@ -38,9 +38,31 @@ if ($token === '' || $secret === '') {
     exit(1);
 }
 
+$lockPath = __DIR__.'/../storage/local-poll.lock';
+if (! is_dir(dirname($lockPath))) {
+    mkdir(dirname($lockPath), 0775, true);
+}
+$lockFp = fopen($lockPath, 'c+');
+if ($lockFp === false) {
+    fwrite(STDERR, "Cannot open lock file: {$lockPath}\n");
+    exit(1);
+}
+if (! flock($lockFp, LOCK_EX | LOCK_NB)) {
+    fwrite(STDERR, "Another local-poll is already running (lock: {$lockPath}). Stop it first.\n");
+    exit(1);
+}
+ftruncate($lockFp, 0);
+fwrite($lockFp, (string) getmypid());
+
+register_shutdown_function(static function () use ($lockFp): void {
+    flock($lockFp, LOCK_UN);
+    fclose($lockFp);
+});
+
 $api = new BotApiClient($token);
 
 fwrite(STDOUT, "Deleting Telegram webhook so getUpdates can run…\n");
+fwrite(STDOUT, "Tip: set TELEGRAM_LOCAL_POLL_BOT_TOKEN in backend/.env + run php _local_refresh_token.php to avoid production webhook fights.\n");
 try {
     $api->deleteWebhook(false);
 } catch (Throwable $e) {
@@ -59,12 +81,10 @@ while (true) {
         $msg = $e->getMessage();
         fwrite(STDERR, '['.date('H:i:s').'] getUpdates: '.$msg."\n");
 
-        // Laravel schedule / admin "register webhook" often re-sets the production
-        // webhook and kills getUpdates — clear it and keep polling locally.
+        // Production reconcile / admin "register webhook" re-sets webhook on the same token.
         if (
             str_contains($msg, 'webhook is active')
             || str_contains($msg, 'terminated by setWebhook')
-            || str_contains($msg, 'Conflict:')
         ) {
             try {
                 $api->deleteWebhook(false);
@@ -74,6 +94,24 @@ while (true) {
                 fwrite(STDERR, '['.date('H:i:s').'] deleteWebhook heal failed: '.$delErr->getMessage()."\n");
                 sleep(2);
             }
+            if ($once) {
+                exit(1);
+            }
+            continue;
+        }
+
+        // Two poll processes (local-poll + artisan telegram:poll) — do not delete webhook.
+        if (str_contains($msg, 'other getUpdates request')) {
+            fwrite(STDERR, '['.date('H:i:s')."] only one poll allowed — stop duplicate local-poll or telegram:poll\n");
+            sleep(5);
+            if ($once) {
+                exit(1);
+            }
+            continue;
+        }
+
+        if (str_contains($msg, 'Conflict:')) {
+            sleep(2);
             if ($once) {
                 exit(1);
             }

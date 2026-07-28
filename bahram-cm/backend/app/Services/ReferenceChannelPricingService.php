@@ -68,39 +68,74 @@ class ReferenceChannelPricingService
 
     public function maxSeminarDiscount(?User $user, ?string $rawPhone = null): int
     {
-        $userIds = $this->resolveUserIds($user, $rawPhone);
-        if ($userIds === []) {
+        $badges = $this->qualifyingSeminarBadges($user, $rawPhone);
+        if ($badges === []) {
             return 0;
         }
 
-        $fromAttendance = (int) SeminarAttendee::query()
-            ->whereIn('user_id', $userIds)
-            ->where('attendance_status', '!=', 'absent')
-            ->join('seminars', 'seminars.id', '=', 'seminar_attendees.seminar_id')
-            ->max('seminars.reference_discount_amount');
+        return max(array_map(static fn (array $row): int => (int) $row['discount_amount'], $badges));
+    }
 
-        $seminarProductIds = Seminar::query()
-            ->whereNotNull('product_id')
-            ->where('reference_discount_amount', '>', 0)
-            ->pluck('product_id', 'id');
-
-        $fromOwnership = 0;
-        if ($seminarProductIds->isNotEmpty()) {
-            $guard = app(PurchaseGuardService::class);
-            $phone = Mobile::normalize((string) ($rawPhone ?? $user?->mobile ?? ''));
-
-            foreach (Seminar::query()->whereIn('id', $seminarProductIds->keys())->get() as $seminar) {
-                $product = Product::query()->find($seminar->product_id);
-                if ($product === null) {
-                    continue;
-                }
-                if ($guard->ownsProduct($user, (string) ($phone ?? ''), $product)) {
-                    $fromOwnership = max($fromOwnership, (int) $seminar->reference_discount_amount);
-                }
-            }
+    /**
+     * Seminars that unlock the professional badge / reference-channel discount for this user.
+     *
+     * @return list<array{id: int, title: string, label: string, discount_amount: int}>
+     */
+    public function qualifyingSeminarBadges(?User $user, ?string $rawPhone = null): array
+    {
+        $userIds = $this->resolveUserIds($user, $rawPhone);
+        if ($userIds === []) {
+            return [];
         }
 
-        return max(0, $fromAttendance, $fromOwnership);
+        $attendedIds = SeminarAttendee::query()
+            ->whereIn('user_id', $userIds)
+            ->where('attendance_status', '!=', 'absent')
+            ->pluck('seminar_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $seminars = Seminar::query()
+            ->where('reference_discount_amount', '>', 0)
+            ->orderByDesc('reference_discount_amount')
+            ->get();
+
+        if ($seminars->isEmpty()) {
+            return [];
+        }
+
+        $guard = app(PurchaseGuardService::class);
+        $phone = Mobile::normalize((string) ($rawPhone ?? $user?->mobile ?? ''));
+        $badges = [];
+
+        foreach ($seminars as $seminar) {
+            $qualifies = in_array((int) $seminar->id, $attendedIds, true);
+
+            if (! $qualifies && $seminar->product_id) {
+                $product = Product::query()->find($seminar->product_id);
+                if ($product !== null && $guard->ownsProduct($user, (string) ($phone ?? ''), $product)) {
+                    $qualifies = true;
+                }
+            }
+
+            if (! $qualifies) {
+                continue;
+            }
+
+            $title = trim((string) $seminar->title);
+            if ($title === '') {
+                continue;
+            }
+
+            $badges[] = [
+                'id' => (int) $seminar->id,
+                'title' => $title,
+                'label' => 'شرکت‌کننده حرفه‌ای '.$title,
+                'discount_amount' => (int) $seminar->reference_discount_amount,
+            ];
+        }
+
+        return $badges;
     }
 
     /**

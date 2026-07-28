@@ -4117,16 +4117,15 @@ class BotAdminPanelService
      */
     private function dispatchHostCatalogAndBootstrapSync(): bool
     {
-        $ok = true;
+        // Always queue after the current HTTP response so local php -S host
+        // is free to accept host-sync (no deadlock with process-update).
+        try {
+            \App\Jobs\PushTelegramHostSyncJob::catalog();
+            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
 
-        foreach (['refresh_catalog', 'refresh_bootstrap'] as $action) {
-            try {
-                \App\Jobs\PushTelegramHostSyncJob::dispatch($action);
-            } catch (\Throwable) {
-                $ok = false;
-            }
+            return true;
+        } catch (\Throwable) {
+            return false;
         }
-
-        return $ok;
     }
 }

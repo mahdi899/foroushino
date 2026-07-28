@@ -16,6 +16,8 @@ use App\Services\ReferenceChannelPricingService;
 
 /**
  * «کانال مرجع» bot UX: sell / KYC gate / destination invite.
+ *
+ * Caption order (always): title → description → price (when selling) → short ownership footer (when owned).
  */
 class TelegramReferenceChannelPresenter
 {
@@ -24,6 +26,7 @@ class TelegramReferenceChannelPresenter
         private readonly ReferenceChannelAccessService $access,
         private readonly ReferenceChannelPricingService $pricing,
         private readonly DestinationInviteLinkService $inviteLinks,
+        private readonly BotMessageCatalog $messages,
     ) {}
 
     public function resolvePublishedChannel(): ?ReferenceChannel
@@ -64,6 +67,42 @@ class TelegramReferenceChannelPresenter
     }
 
     /**
+     * Full caption for the reference-channel screen.
+     *
+     * @return array{text: string, options: array<string, mixed>}
+     */
+    public function presentScreen(TelegramBot $bot, TelegramAccount $account, ReferenceChannel $channel, bool $owned): array
+    {
+        $blocks = [
+            $this->titleBlock($channel),
+            $this->descriptionBlock($bot, $channel),
+        ];
+
+        $options = ['parse_mode' => 'HTML'];
+
+        if ($owned) {
+            $ownedView = $this->presentOwned($bot, $account, $channel);
+            $footer = trim((string) ($ownedView['text'] ?? ''));
+            if ($footer !== '') {
+                $blocks[] = $footer;
+            }
+            $ownedOptions = (array) ($ownedView['options'] ?? []);
+            if ($ownedOptions !== []) {
+                $options = array_merge($options, $ownedOptions);
+            }
+        } else {
+            $blocks[] = $this->priceBlock($channel, $account);
+        }
+
+        return [
+            'text' => implode("\n\n", array_values(array_filter($blocks, static fn (string $b): bool => trim($b) !== ''))),
+            'options' => array_filter($options),
+        ];
+    }
+
+    /**
+     * Status + keyboard only (no title/description/price) — used in host snapshots too.
+     *
      * @return array{text: string, options: array<string, mixed>}
      */
     public function presentOwned(TelegramBot $bot, TelegramAccount $account, ReferenceChannel $channel): array
@@ -81,24 +120,9 @@ class TelegramReferenceChannelPresenter
         }
 
         $identityReady = $this->hasIdentityLevel2($account);
-        $description = trim(strip_tags((string) ($channel->description ?? '')));
-        $lines = [
-            TelegramCustomEmoji::tag('check').' <b>دسترسی کانال مرجع شما فعال است</b>',
-            '',
-            TelegramCustomEmoji::tag('channel').' '.TelegramHtml::bold(trim((string) $channel->title)),
-            '──────────────',
-        ];
-
-        if ($description !== '') {
-            $lines[] = TelegramHtml::escape(\Illuminate\Support\Str::limit($description, 400));
-            $lines[] = '──────────────';
-        }
-
         $keyboard = [];
 
         if (! $identityReady) {
-            $lines[] = TelegramCustomEmoji::tag('lock').' <b>احراز هویت سطح ۲ لازم است</b>';
-            $lines[] = 'بعد از تأیید کارشناس، لینک عضویت گروه مرجع برایتان فعال می‌شود.';
             foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
                 $keyboard[] = $row;
             }
@@ -107,7 +131,7 @@ class TelegramReferenceChannelPresenter
             }
 
             return [
-                'text' => implode("\n", $lines),
+                'text' => TelegramCustomEmoji::tag('lock').' احراز هویت سطح ۲ لازم است تا لینک عضویت گروه مرجع فعال شود.',
                 'options' => array_filter([
                     'parse_mode' => 'HTML',
                     'reply_markup' => $keyboard !== [] ? ['inline_keyboard' => $keyboard] : null,
@@ -116,6 +140,8 @@ class TelegramReferenceChannelPresenter
         }
 
         $destination = $channel->telegramDestination;
+        $lines = [];
+
         if ($destination === null) {
             $lines[] = 'مقصد تلگرام هنوز تنظیم نشده است. با پشتیبانی در ارتباط باشید.';
         } else {
@@ -126,8 +152,7 @@ class TelegramReferenceChannelPresenter
             if ($status === 'member') {
                 $lines[] = TelegramCustomEmoji::tag('check').' شما عضو گروه مرجع هستید.';
             } elseif (filled($inviteUrl)) {
-                $lines[] = TelegramCustomEmoji::tag('pin').' <b>لینک عضویت اختصاصی شما</b>';
-                $lines[] = 'این لینک فقط برای همین اکانت تلگرام است. روی دکمه بزنید و درخواست عضویت دهید.';
+                $lines[] = TelegramCustomEmoji::tag('pin').' لینک عضویت اختصاصی شما آماده است — فقط با همین اکانت درخواست بدهید.';
                 foreach (TelegramSiteUrl::urlKeyboardRow('عضویت در گروه مرجع', (string) $inviteUrl, 'success', 'channel') as $row) {
                     $keyboard[] = $row;
                 }
@@ -159,5 +184,81 @@ class TelegramReferenceChannelPresenter
             $account->user,
             (string) ($account->mobile ?? $account->user?->mobile ?? ''),
         );
+    }
+
+    private function titleBlock(ReferenceChannel $channel): string
+    {
+        $title = trim((string) $channel->title);
+        if ($title === '') {
+            $title = 'کانال مرجع';
+        }
+
+        return TelegramCustomEmoji::tag('channel').' '.TelegramHtml::bold($title);
+    }
+
+    private function descriptionBlock(TelegramBot $bot, ReferenceChannel $channel): string
+    {
+        $fromChannel = $this->plainText((string) ($channel->description ?? ''));
+        if ($this->isUsableDescription($fromChannel)) {
+            return TelegramHtml::escape($fromChannel);
+        }
+
+        $fromBot = $this->descriptionFromBotMessage($bot);
+        if ($fromBot !== '') {
+            return $fromBot;
+        }
+
+        return 'با عضویت در کانال مرجع از آپدیت‌ها و فرصت‌های ویژه جا نمی‌مانید.';
+    }
+
+    private function priceBlock(ReferenceChannel $channel, TelegramAccount $account): string
+    {
+        $quote = $this->quote($channel, $account);
+        $listPrice = (int) $quote['amount'];
+        $finalPrice = (int) $quote['final_amount'];
+
+        if ($quote['seminar_off'] && $finalPrice < $listPrice) {
+            return TelegramCustomEmoji::tag('gift').' <b>چون در سمینار حضور داشتید</b>'."\n"
+                .TelegramCustomEmoji::tag('money').' قیمت: <s>'.number_format($listPrice).' تومان</s>'."\n"
+                .TelegramCustomEmoji::tag('fire').' با تخفیف سمینار: <b>'.number_format($finalPrice).' تومان</b>';
+        }
+
+        return TelegramCustomEmoji::tag('cart').' <b>قیمت دسترسی</b>'."\n"
+            .TelegramCustomEmoji::tag('money').' <b>'.number_format($listPrice).' تومان</b>'."\n"
+            .'اگر در سمینار شرکت کرده باشید، تخفیف ویژه روی حسابتان اعمال می‌شود.';
+    }
+
+    private function descriptionFromBotMessage(TelegramBot $bot): string
+    {
+        $raw = trim($this->messages->get($bot, 'reference_channel_description'));
+        if ($raw === '') {
+            return '';
+        }
+
+        // Older defaults started with a title line — keep only the body for this slot.
+        $raw = preg_replace('/^(?:<tg-emoji[^>]*>.*?<\/tg-emoji>\s*)?<b>[^<]+<\/b>\s*/u', '', $raw) ?? $raw;
+        $raw = preg_replace('/^📣\s*<b>[^<]+<\/b>\s*/u', '', $raw) ?? $raw;
+
+        return trim($raw);
+    }
+
+    private function plainText(string $value): string
+    {
+        $text = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace("/[ \t]+/u", ' ', $text) ?? $text;
+        $text = preg_replace("/\n{3,}/u", "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function isUsableDescription(string $text): bool
+    {
+        if ($text === '' || mb_strlen($text) < 8) {
+            return false;
+        }
+
+        $normalized = mb_strtolower($text);
+
+        return ! in_array($normalized, ['/start', 'start', '-', 'null', 'n/a'], true);
     }
 }
