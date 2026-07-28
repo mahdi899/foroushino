@@ -21,7 +21,7 @@ import {
   validateIdentityStep1,
 } from '@/lib/student/identityVerificationErrors';
 import { SELFIE_VIDEO_MAX_BYTES, selfieVideoFileName } from '@/lib/media/recorder';
-import { optimizeSelfieVideo } from '@/lib/media/optimizeSelfieVideo';
+import { optimizeSelfieVideo, pickSmallerVideoBlob } from '@/lib/media/optimizeSelfieVideo';
 import { maxBirthDateForMinAge, MIN_IDENTITY_AGE } from '@/lib/student/age';
 import { IdentityReviewStep } from './IdentityReviewStep';
 import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
@@ -197,12 +197,14 @@ export function IdentityVerificationWizard({
     startTransition(async () => {
       try {
         const optimized = await optimizeSelfieVideo(videoBlob);
-        if (optimized.size > SELFIE_VIDEO_MAX_BYTES) {
+        // If re-encode grew the file, keep the original (whichever is smaller).
+        const toUpload = pickSmallerVideoBlob(videoBlob, optimized);
+        if (toUpload.size > SELFIE_VIDEO_MAX_BYTES) {
           setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
           setError(IDENTITY_CLIENT_ERRORS.videoTooLarge);
           return;
         }
-        setVideoBlob(optimized);
+        setVideoBlob(toUpload);
         setPendingLabel('در حال ارسال…');
 
         // Upload the video as a draft artifact first so the final submit stays small.
@@ -210,7 +212,7 @@ export function IdentityVerificationWizard({
         // Next.js bodySizeLimit and crash the panel page on mobile.
         const videoFd = new FormData();
         videoFd.set('type', 'selfie_video');
-        videoFd.set('file', optimized, selfieVideoFileName(optimized));
+        videoFd.set('file', toUpload, selfieVideoFileName(toUpload));
         videoFd.set('submission_id', String(activeDraftSubmissionId));
         const uploadRes = await uploadIdentityArtifactAction(videoFd);
         if (uploadRes.error) {

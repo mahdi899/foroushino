@@ -221,15 +221,22 @@ async function reencodeSelfiePass(source: Blob, pass: OptimizePass): Promise<Blo
 }
 
 /**
+ * Always prefer the smaller recording — never upload a "optimized" file that grew.
+ */
+export function pickSmallerVideoBlob(original: Blob, candidate: Blob): Blob {
+  if (!candidate?.size) return original;
+  return candidate.size < original.size ? candidate : original;
+}
+
+/**
  * Shrink a selfie recording before upload.
- * Returns the original blob when already small enough or when re-encode is unsupported.
+ * Always returns the smaller of the original and any successful re-encode.
  */
 export async function optimizeSelfieVideo(
   blob: Blob,
-  options?: { targetBytes?: number; maxBytes?: number },
+  options?: { targetBytes?: number },
 ): Promise<Blob> {
   const targetBytes = options?.targetBytes ?? SELFIE_VIDEO_TARGET_BYTES;
-  const maxBytes = options?.maxBytes ?? SELFIE_VIDEO_MAX_BYTES;
 
   if (blob.size <= targetBytes) {
     return blob;
@@ -242,17 +249,11 @@ export async function optimizeSelfieVideo(
     if (!next || next.size === 0) {
       continue;
     }
-    if (next.size < best.size) {
-      best = next;
-    }
+    best = pickSmallerVideoBlob(best, next);
     if (best.size <= targetBytes) {
       break;
     }
   }
 
-  if (best.size > maxBytes && best === blob) {
-    return blob;
-  }
-
-  return best.size <= blob.size ? best : blob;
+  return pickSmallerVideoBlob(blob, best);
 }

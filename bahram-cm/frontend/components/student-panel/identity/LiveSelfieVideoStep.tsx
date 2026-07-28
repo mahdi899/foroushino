@@ -23,9 +23,9 @@ const MIN_SEC = 5;
 const MAX_SEC = 20;
 
 const TIPS = [
-  'ویدیو باید زنده از دوربین ضبط شود؛ آپلود فایل مجاز نیست.',
-  `مدت ضبط بین ${MIN_SEC.toLocaleString('fa-IR')} تا ${MAX_SEC.toLocaleString('fa-IR')} ثانیه باشد.`,
-  'متن نمایش‌داده‌شده را با صدای واضح و رو به دوربین بخوانید.',
+  'فقط ضبط زنده از دوربین؛ آپلود فایل مجاز نیست.',
+  `مدت: ${MIN_SEC.toLocaleString('fa-IR')} تا ${MAX_SEC.toLocaleString('fa-IR')} ثانیه.`,
+  'متن را با صدای واضح رو به دوربین بخوانید.',
 ] as const;
 
 async function waitForVideoElement(
@@ -314,36 +314,34 @@ export function LiveSelfieVideoStep({
       </div>
 
       <div className="panel-identity-selfie-video__body">
-        <aside className="panel-identity-selfie-video__aside">
-          <div className="panel-identity-selfie-video__prompt">
-            <p className="panel-identity-selfie-video__prompt-label">
-              <Mic size={14} aria-hidden />
-              متنی که باید با صدای بلند بخوانید
-            </p>
-            {prompt ? (
-              <p className="panel-identity-selfie-video__prompt-text">{prompt}</p>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-secondary panel-identity-selfie-video__prompt-btn"
-                disabled={loadingPrompt}
-                onClick={() => void loadPrompt()}
-              >
-                {loadingPrompt ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                دریافت متن ویدیو
-              </button>
-            )}
-          </div>
+        <ul className="panel-identity-selfie-video__tips">
+          {TIPS.map((tip) => (
+            <li key={tip}>
+              <CheckCircle2 size={14} aria-hidden />
+              <span>{tip}</span>
+            </li>
+          ))}
+        </ul>
 
-          <ul className="panel-identity-selfie-video__tips">
-            {TIPS.map((tip) => (
-              <li key={tip}>
-                <CheckCircle2 size={14} aria-hidden />
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
-        </aside>
+        <div className="panel-identity-selfie-video__prompt">
+          <p className="panel-identity-selfie-video__prompt-label">
+            <Mic size={14} aria-hidden />
+            متنی که باید با صدای بلند بخوانید
+          </p>
+          {prompt ? (
+            <p className="panel-identity-selfie-video__prompt-text">{prompt}</p>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary panel-identity-selfie-video__prompt-btn"
+              disabled={loadingPrompt}
+              onClick={() => void loadPrompt()}
+            >
+              {loadingPrompt ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              دریافت متن ویدیو
+            </button>
+          )}
+        </div>
 
         <div className="panel-identity-selfie-video__stage">
           {!previewUrl ? (
