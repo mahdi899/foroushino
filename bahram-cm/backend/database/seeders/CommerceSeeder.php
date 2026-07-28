@@ -218,23 +218,6 @@ HTML,
         Payment::query()->where('order_id', $pendingOrder->id)->delete();
 
         $this->call(StudentTestimonialSeeder::class);
-        $this->seedReferenceChannel();
-    }
-
-    private function seedReferenceChannel(): void
-    {
-        $channel = \App\Models\ReferenceChannel::query()->updateOrCreate(
-            ['slug' => 'academy-reference'],
-            [
-                'title' => 'کانال مرجع آکادمی بهرام',
-                'description' => '<p>دسترسی به گروه مرجع و منابع اختصاصی آکادمی.</p>',
-                'status' => 'published',
-                'show_in_panel' => true,
-                'show_in_telegram' => true,
-                'price' => 30_000_000,
-            ],
-        );
-
-        app(\App\Services\ReferenceChannelProductService::class)->syncProduct($channel->fresh());
+        $this->call(ReferenceChannelSeeder::class);
     }
 }

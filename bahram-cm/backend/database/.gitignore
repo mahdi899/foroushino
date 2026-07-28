@@ -1,1 +1,10 @@
 *.sqlite*
+
+# Local dumps / PII imports — keep out of git
+*.sql
+*.sql.gz
+!data/.gitkeep
+
+# Explicitly track reference-channel seeder assets if added under data/
+!data/reference_channel.json
+
