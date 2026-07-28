@@ -253,11 +253,11 @@ export function StudentOrdersList({ orders }: { orders: StudentOrder[] }) {
                 <StatusBadge variant={orderStatusVariant(order.status)}>
                   {STATUS_LABELS[order.status] ?? order.status}
                 </StatusBadge>
-                <ChevronDown
-                  className={cn('panel-order-card__chevron', open && 'panel-order-card__chevron--open')}
-                  aria-hidden
-                />
               </span>
+              <ChevronDown
+                className={cn('panel-order-card__chevron', open && 'panel-order-card__chevron--open')}
+                aria-hidden
+              />
             </button>
             {open ? <OrderDetails order={order} /> : null}
           </li>
