@@ -1,4 +1,4 @@
-import { BadgeCheck, Lock, Radio, Trophy } from 'lucide-react';
+import { BadgeCheck, Lock, Trophy } from 'lucide-react';
 import { VerificationActionCta } from '@/components/student-panel/profile/VerificationActionCta';
 import { ACCOUNT_STATUS_HINT_FA, accountStatusLabel, SAT_MEMBERSHIP_FA } from '@/lib/student/identityLabels';
 import { resolveVerificationCard } from '@/lib/student/verificationCard';
@@ -39,7 +39,6 @@ export function ProfileAccountOverview({ user }: { user: StudentUser }) {
   const identityVerified = level >= 2;
   const identityStatus = user.identity_status ?? 'not_started';
   const showAccountHintInChip = level === 1 && identityStatus === 'not_started';
-  const showReferenceChip = !identityVerified;
   const footerHint = verification.hint && !showAccountHintInChip ? verification.hint : null;
 
   return (
@@ -58,11 +57,6 @@ export function ProfileAccountOverview({ user }: { user: StudentUser }) {
           tone={level >= 3 ? 'success' : identityVerified ? 'success' : 'default'}
           className={showAccountHintInChip ? 'panel-profile-chip--account' : undefined}
         />
-        {showReferenceChip ? (
-          <StatusChip icon={Lock} title="کانال مرجع" subtitle="پس از تأیید هویت" tone="locked" />
-        ) : (
-          <StatusChip icon={Radio} title="کانال مرجع" subtitle="خرید و دسترسی در پنل" tone="success" />
-        )}
         <StatusChip
           icon={satStatus === 'active' ? Trophy : Lock}
           title="عضویت سات"

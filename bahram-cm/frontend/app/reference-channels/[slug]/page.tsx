@@ -180,6 +180,7 @@ export default async function ReferenceChannelLandingPage({
           mobileSrc={referenceHero}
           desktopAlt={heroAlt}
           mobileAlt={heroAlt}
+          mobileImageClassName="object-[left_22%]"
         >
           <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center overflow-visible px-4 pb-8 pt-16 sm:bottom-4 sm:pb-7 sm:pt-24 md:bottom-0 md:pb-8 md:pt-28">
             <div className="campaign-course-hero-headline-outer">
@@ -627,7 +628,7 @@ function ImageSplitSection({
                     alt={imageAlt}
                     fallbackAlt={imageAlt}
                     fill
-                    className="object-cover"
+                    className="object-cover object-[left_center] md:object-center"
                     sizes="(max-width: 768px) 100vw, 40vw"
                   />
                   <div aria-hidden className="photo-scrim-bottom" />

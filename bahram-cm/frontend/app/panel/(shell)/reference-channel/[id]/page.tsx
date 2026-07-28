@@ -24,7 +24,6 @@ interface ReferenceChannelDetail {
   invite_status: string;
   invite_url: string | null;
   destination_title: string | null;
-  seminar_badges?: Array<{ id: number; title: string; label: string }>;
   owned?: boolean;
 }
 
@@ -42,18 +41,20 @@ export default async function PanelReferenceChannelDetailPage({
   if (!channel) notFound();
 
   return (
-    <div className="panel-page-inner panel-page-inner--rc flex flex-col gap-5">
+    <div className="panel-page-inner flex flex-col gap-5">
       <PanelPageHeader
         icon={Radio}
         title={channel.title}
-        description={channel.destination_title ? `گروه: ${channel.destination_title}` : 'دسترسی کانال مرجع'}
+        description={channel.destination_title ? `گروه: ${channel.destination_title}` : undefined}
       />
 
-      <ReferenceChannelShowcase channel={{ ...channel, owned: true }} />
+      <div className="panel-card-grid">
+        <ReferenceChannelShowcase channel={{ ...channel, owned: true }} />
+      </div>
 
       <div>
         <Link href="/panel/reference-channel" className="btn btn-ghost">
-          بازگشت به کانال مرجع
+          بازگشت
         </Link>
       </div>
     </div>

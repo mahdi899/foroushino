@@ -4,7 +4,6 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState } fro
 import { UserRound } from 'lucide-react';
 import { ProfileAvatarField } from '@/components/student-panel/profile/ProfileAvatarField';
 import { ProfileAccountOverview } from '@/components/student-panel/profile/ProfileAccountOverview';
-import { ReferenceChannelCard } from '@/components/student-panel/profile/ReferenceChannelCard';
 import { ProfileCardHead } from '@/components/student-panel/profile/ProfileCardHead';
 import { ProfileExtrasBundle } from '@/components/student-panel/profile/ProfileExtrasBundle';
 import { VerifiedIdentitySection } from '@/components/student-panel/profile/VerifiedIdentitySection';
@@ -112,7 +111,6 @@ export function ProfileForm({ user }: { user: StudentUser }) {
         <div className="panel-profile-main">
           <div className="panel-profile-sections">
           <ProfileAccountOverview user={user} />
-          <ReferenceChannelCard user={user} />
 
           <section className="card panel-profile-basic panel-profile-section--wide">
             <ProfileCardHead icon={UserRound} title="اطلاعات پایه" />

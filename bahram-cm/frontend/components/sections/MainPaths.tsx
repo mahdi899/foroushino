@@ -15,6 +15,7 @@ const pathMeta: Record<
     tone: "gold" | "teal";
     image: string;
     imageAlt: string;
+    imageClassName?: string;
   }
 > = {
   "/course/campaign-writing": {
@@ -40,6 +41,7 @@ const pathMeta: Record<
     tone: "gold",
     image: sitePhotos.mainPathReference,
     imageAlt: "کارت کانال مرجع — محصول آماده، آموزش فروش و درآمد مستقیم",
+    imageClassName: "object-[left_center] md:object-center",
   },
 };
 

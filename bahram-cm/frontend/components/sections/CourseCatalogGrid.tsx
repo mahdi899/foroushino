@@ -7,11 +7,18 @@ import { Reveal } from "@/components/motion/Reveal";
 import { PathCard } from "@/components/sections/PathCard";
 import type { CourseCatalogCard } from "@/lib/catalog/courseListings";
 
-const catalogMeta: Record<string, { icon: LucideIcon; tone: "gold" | "teal" }> = {
+const catalogMeta: Record<
+  string,
+  { icon: LucideIcon; tone: "gold" | "teal"; imageClassName?: string }
+> = {
   "/course/campaign-writing": { icon: PencilLine, tone: "gold" },
   "/saat": { icon: Phone, tone: "teal" },
   "/saat#apply": { icon: Phone, tone: "teal" },
-  "/reference-channels/kanal-mrgf": { icon: Radio, tone: "gold" },
+  "/reference-channels/kanal-mrgf": {
+    icon: Radio,
+    tone: "gold",
+    imageClassName: "object-[left_center] md:object-center",
+  },
 };
 
 function isReferenceChannelHref(href: string): boolean {
@@ -42,6 +49,7 @@ function CatalogCard({
         tone={meta.tone}
         image={course.image}
         imageAlt={course.imageAlt}
+        imageClassName={meta.imageClassName}
         featured={course.featured}
         level={course.level}
         duration={course.duration}

@@ -6,7 +6,7 @@ export function PanelShellLoading() {
     <div className="panel-shell h-[100dvh]">
       <aside
         aria-hidden
-        className="panel-sidebar fixed inset-y-0 right-0 z-20 hidden w-64 flex-col border-s lg:flex"
+        className="panel-sidebar fixed inset-y-0 right-0 z-20 hidden w-64 flex-col border-s border-border lg:flex"
       >
         <div className="panel-sidebar__scroll space-y-2 p-4">
           <div className="mb-4 flex items-center gap-3 px-2 py-2">

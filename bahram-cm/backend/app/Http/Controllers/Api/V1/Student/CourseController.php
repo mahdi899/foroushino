@@ -110,7 +110,7 @@ class CourseController extends Controller
             }
 
             $product = $license->product;
-            if (! $product instanceof Product || $product->isSeminarProduct() || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
+            if (! $product instanceof Product || $this->shouldExcludeFromCourseList($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -128,7 +128,7 @@ class CourseController extends Controller
             }
 
             $product = $order->product;
-            if (! $product instanceof Product || $product->isSeminarProduct() || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
+            if (! $product instanceof Product || $this->shouldExcludeFromCourseList($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -144,7 +144,7 @@ class CourseController extends Controller
 
         foreach ($accesses as $access) {
             $product = $access->product;
-            if (! $product instanceof Product || $product->isSeminarProduct() || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
+            if (! $product instanceof Product || $this->shouldExcludeFromCourseList($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -175,6 +175,14 @@ class CourseController extends Controller
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
+    }
+
+    /** @param  \Illuminate\Support\Collection<int, int>  $miniCourseProductIds */
+    private function shouldExcludeFromCourseList(Product $product, $miniCourseProductIds): bool
+    {
+        return $product->isSeminarProduct()
+            || $product->isReferenceChannelProduct()
+            || $this->isMiniCourseProduct($product, $miniCourseProductIds);
     }
 
     /** @param  \Illuminate\Support\Collection<int, int>  $miniCourseProductIds */

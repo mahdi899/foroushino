@@ -40,7 +40,10 @@ export function SitePhotoHeroFrame({
           loading="eager"
           fetchPriority="high"
           decoding="async"
-          className={cn("object-cover object-[center_22%]", mobileImageClassName)}
+          className={cn(
+            "object-cover",
+            mobileImageClassName ?? "object-[center_22%]",
+          )}
         />
       </div>
       <div className="absolute inset-0 z-0 hidden overflow-hidden md:block">

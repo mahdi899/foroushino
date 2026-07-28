@@ -43,7 +43,7 @@ class CourseAccessService
             }
 
             $product = $order->product;
-            if ($product instanceof Product && $product->isSeminarProduct()) {
+            if ($product instanceof Product && ($product->isSeminarProduct() || $product->isReferenceChannelProduct())) {
                 continue;
             }
 
@@ -71,7 +71,7 @@ class CourseAccessService
             }
 
             $product = $license->product;
-            if ($product instanceof Product && $product->isSeminarProduct()) {
+            if ($product instanceof Product && ($product->isSeminarProduct() || $product->isReferenceChannelProduct())) {
                 continue;
             }
 
@@ -82,7 +82,7 @@ class CourseAccessService
     private function ensureAccessForProduct(User $user, int $productId, ?Order $order): void
     {
         $product = $order?->product ?? Product::query()->find($productId);
-        if ($product instanceof Product && $product->isSeminarProduct()) {
+        if ($product instanceof Product && ($product->isSeminarProduct() || $product->isReferenceChannelProduct())) {
             return;
         }
 
@@ -131,7 +131,7 @@ class CourseAccessService
             ->filter(function (Order $order) {
                 $product = $order->product;
 
-                return ! ($product instanceof Product && $product->isSeminarProduct());
+                return ! ($product instanceof Product && ($product->isSeminarProduct() || $product->isReferenceChannelProduct()));
             })
             ->values();
     }

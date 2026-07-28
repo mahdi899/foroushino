@@ -4,7 +4,6 @@ import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHead
 import {
   ReferenceChannelShowcase,
   type ReferenceChannelCardModel,
-  type SeminarBadge,
 } from '@/components/student-panel/reference-channel/ReferenceChannelShowcase';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 
@@ -48,59 +47,51 @@ export default async function PanelReferenceChannelsPage() {
     }
   }
 
-  const seminarBadges: SeminarBadge[] =
-    channels.find((c) => (c.seminar_badges?.length ?? 0) > 0)?.seminar_badges ??
-    offers.find((o) => (o.seminar_badges?.length ?? 0) > 0)?.seminar_badges ??
-    [];
+  const description =
+    channels.length > 0
+      ? `${channels.length.toLocaleString('fa-IR')} دسترسی فعال`
+      : offers.length > 0
+        ? 'خرید و فعال‌سازی دسترسی'
+        : 'دسترسی به گروه مرجع';
+
+  if (channels.length === 0 && offers.length === 0) {
+    return (
+      <div className="panel-page-inner flex flex-col gap-6">
+        <PanelPageHeader icon={Radio} title="کانال مرجع" description={description} />
+        <div className="panel-empty-state card flex flex-col items-center gap-4 p-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Radio size={32} />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-text">کانال مرجعی یافت نشد</h2>
+            <p className="panel-card-text mt-2">فعلاً کانال مرجعی برای خرید یا دسترسی شما فعال نیست.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="panel-page-inner panel-page-inner--rc flex flex-col gap-6">
-      <PanelPageHeader
-        icon={Radio}
-        title="کانال مرجع"
-        description="خرید دسترسی به گروه مرجع، یا مدیریت عضویت پس از خرید"
-      />
-
-      {offers.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold text-text">خرید کانال مرجع</h2>
-            <p className="text-sm text-text-muted">عنوان، توضیحات و قیمت ویژه شما در یک نمای واحد.</p>
-          </div>
-          {offers.map((offer) => (
-            <ReferenceChannelShowcase key={offer.id} channel={{ ...offer, owned: false }} />
-          ))}
-        </section>
-      ) : null}
-
-      {channels.length === 0 && offers.length === 0 ? (
-        <div className="panel-empty-state card flex flex-col items-center gap-3 p-10 text-center">
-          <Radio size={32} className="text-text-muted" />
-          <p className="text-sm text-text-muted">
-            فعلاً کانال مرجعی برای خرید یا دسترسی شما فعال نیست. اگر اخیراً خرید کرده‌اید، چند لحظه بعد صفحه را
-            تازه کنید.
-          </p>
-        </div>
-      ) : null}
+    <div className="panel-page-inner flex flex-col gap-6">
+      <PanelPageHeader icon={Radio} title="کانال مرجع" description={description} />
 
       {channels.length > 0 ? (
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold text-text">دسترسی‌های فعال شما</h2>
-            <p className="text-sm text-text-muted">وضعیت عضویت و مسیر ورود به گروه مرجع.</p>
-          </div>
+        <div className="panel-card-grid">
           {channels.map((channel) => (
             <ReferenceChannelShowcase
               key={channel.id}
-              channel={{
-                ...channel,
-                owned: true,
-                seminar_badges: channel.seminar_badges?.length ? channel.seminar_badges : seminarBadges,
-              }}
-              detailHref={`/panel/reference-channel/${channel.id}`}
+              channel={{ ...channel, owned: true }}
             />
           ))}
-        </section>
+        </div>
+      ) : null}
+
+      {offers.length > 0 ? (
+        <div className="panel-card-grid">
+          {offers.map((offer) => (
+            <ReferenceChannelShowcase key={offer.id} channel={{ ...offer, owned: false }} />
+          ))}
+        </div>
       ) : null}
     </div>
   );
