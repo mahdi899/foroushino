@@ -79,19 +79,38 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         try {
             return (array) $this->call('sendMessage', ['chat_id' => $chatId, 'text' => $text, ...$options]);
         } catch (TelegramApiException $e) {
-            // Invalid custom emoji ids break the whole bot update — strip and retry once.
-            if (! str_contains($e->getMessage(), 'DOCUMENT_INVALID')) {
+            $msg = $e->getMessage();
+            $emoji = \App\Modules\TelegramBot\Support\TelegramCustomEmoji::class;
+
+            if (str_contains($msg, "can't parse entities") || str_contains($msg, 'Unclosed start tag')) {
+                try {
+                    return (array) $this->call('sendMessage', [
+                        'chat_id' => $chatId,
+                        'text' => $emoji::sanitizeHtmlKeepCustomEmoji($text),
+                        ...$options,
+                    ]);
+                } catch (TelegramApiException $e2) {
+                    $e = $e2;
+                    $msg = $e->getMessage();
+                }
+            }
+
+            if (! $emoji::isCustomEmojiFailure($msg)
+                && ! str_contains($msg, "can't parse entities")
+                && ! str_contains($msg, 'Unclosed start tag')) {
                 throw $e;
             }
 
-            $safeText = \App\Modules\TelegramBot\Support\TelegramCustomEmoji::stripHtmlTags($text);
-            $safeOptions = \App\Modules\TelegramBot\Support\TelegramCustomEmoji::stripButtonIcons($options);
-
-            Log::channel('telegram')->warning('sendMessage DOCUMENT_INVALID — retrying without custom emoji.', [
+            Log::channel('telegram')->warning('sendMessage custom-emoji failure — retrying with unicode fallbacks.', [
                 'chat_id' => $chatId,
+                'error' => $msg,
             ]);
 
-            return (array) $this->call('sendMessage', ['chat_id' => $chatId, 'text' => $safeText, ...$safeOptions]);
+            return (array) $this->call('sendMessage', [
+                'chat_id' => $chatId,
+                'text' => $emoji::stripHtmlTags($text),
+                ...$emoji::degradeButtonIcons($options),
+            ]);
         }
     }
 

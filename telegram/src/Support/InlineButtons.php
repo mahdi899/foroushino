@@ -11,7 +11,7 @@ final class InlineButtons
     public static function buy(int $productId, string $label = 'خرید امن و آنی'): array
     {
         return [
-            'text' => $label,
+            'text' => TelegramCustomEmoji::buttonText($label, 'cart'),
             'callback_data' => 'buy:'.$productId,
             'style' => 'success',
             ...TelegramCustomEmoji::buttonIcon('cart'),
@@ -22,7 +22,7 @@ final class InlineButtons
     public static function callback(string $text, string $data, string $iconKey, string $style = ''): array
     {
         $btn = [
-            'text' => $text,
+            'text' => TelegramCustomEmoji::buttonText($text, $iconKey),
             'callback_data' => $data,
             ...TelegramCustomEmoji::buttonIcon($iconKey),
         ];
@@ -37,7 +37,7 @@ final class InlineButtons
     public static function url(string $text, string $url, string $iconKey = 'globe', string $style = ''): array
     {
         $btn = [
-            'text' => $text,
+            'text' => TelegramCustomEmoji::buttonText($text, $iconKey),
             'url' => $url,
             ...TelegramCustomEmoji::buttonIcon($iconKey),
         ];

@@ -35,8 +35,23 @@ export function isLiveMediaStream(stream: MediaStream | null | undefined): boole
   return stream.getTracks().some((track) => track.readyState === 'live');
 }
 
+/** Target bitrate keeps ~20s selfie clips well under the 25MB upload cap. */
+export const SELFIE_VIDEO_BITS_PER_SECOND = 800_000;
+export const SELFIE_AUDIO_BITS_PER_SECOND = 64_000;
+
+/** Max selfie upload size — must stay aligned with bahram.identity.selfie_max_mb. */
+export const SELFIE_VIDEO_MAX_BYTES = 25 * 1024 * 1024;
+
+export type MediaRecorderBitrateOptions = {
+  videoBitsPerSecond?: number;
+  audioBitsPerSecond?: number;
+};
+
 /** Pick the first MediaRecorder config that works with this stream. */
-export function createMediaRecorder(stream: MediaStream): MediaRecorder {
+export function createMediaRecorder(
+  stream: MediaStream,
+  bitrate: MediaRecorderBitrateOptions = {},
+): MediaRecorder {
   if (!isMediaRecorderSupported()) {
     throw new Error('MediaRecorder unsupported');
   }
@@ -45,12 +60,24 @@ export function createMediaRecorder(stream: MediaStream): MediaRecorder {
     throw new Error('MediaStream inactive');
   }
 
+  const bitRateOptions = {
+    videoBitsPerSecond: bitrate.videoBitsPerSecond ?? SELFIE_VIDEO_BITS_PER_SECOND,
+    audioBitsPerSecond: bitrate.audioBitsPerSecond ?? SELFIE_AUDIO_BITS_PER_SECOND,
+  };
+
   let lastError: unknown;
   for (const mimeType of recorderMimeAttempts()) {
     try {
-      return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      return mimeType
+        ? new MediaRecorder(stream, { mimeType, ...bitRateOptions })
+        : new MediaRecorder(stream, bitRateOptions);
     } catch (err) {
       lastError = err;
+      try {
+        return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      } catch (fallbackErr) {
+        lastError = fallbackErr;
+      }
     }
   }
 

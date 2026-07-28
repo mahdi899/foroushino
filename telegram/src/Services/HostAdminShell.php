@@ -33,11 +33,11 @@ final class HostAdminShell
 
     public const MESSAGES = 'پیام‌ها';
 
-    public const REFERENCE_CHANNEL = 'کانال مرجع';
+    public const REFERENCE_CHANNEL = '📡 کانال مرجع';
 
-    public const COURSES = 'دوره‌ها';
+    public const COURSES = '🎓 دوره‌ها';
 
-    public const SEMINARS = 'سمینارها';
+    public const SEMINARS = '🎤 سمینارها';
 
     public const EXPORT = 'خروجی کاربران';
 

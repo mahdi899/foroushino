@@ -9,6 +9,7 @@ export const STATIC_CONTENT_PREFIXES = [
   '/articles',
   '/transformations',
   '/faq',
+  '/namad',
   '/courses',
   '/course',
   '/reference-channels',

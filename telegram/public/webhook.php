@@ -168,6 +168,7 @@ try {
         $messageHandler,
         $callbackHandler,
         $support,
+        $mainMenu,
     );
 
     (new Bot($router))->handle($update);

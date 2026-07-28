@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Seminar;
 use App\Models\SeminarAttendee;
@@ -249,6 +250,77 @@ class OrderService
         }
 
         return $user->id;
+    }
+
+    /**
+     * Cancel unpaid pending_payment orders older than the TTL (default 1 hour).
+     *
+     * @return array{cancelled: int}
+     */
+    public function expireStalePendingOrders(?int $ttlMinutes = null): array
+    {
+        $minutes = $ttlMinutes ?? (int) config('bahram.orders.pending_ttl_minutes', 60);
+        $cutoff = now()->subMinutes(max(1, $minutes));
+
+        $cancelled = 0;
+
+        Order::query()
+            ->where('status', 'pending_payment')
+            ->whereNull('paid_at')
+            ->where('created_at', '<=', $cutoff)
+            ->orderBy('id')
+            ->chunkById(100, function ($orders) use (&$cancelled): void {
+                foreach ($orders as $order) {
+                    if ($order->isPaid()) {
+                        continue;
+                    }
+
+                    $order->update([
+                        'status' => 'cancelled',
+                        'payment_status' => 'canceled',
+                    ]);
+
+                    Payment::query()
+                        ->where('order_id', $order->id)
+                        ->where('status', 'pending')
+                        ->update(['status' => 'canceled']);
+
+                    $cancelled++;
+                }
+            });
+
+        return ['cancelled' => $cancelled];
+    }
+
+    /**
+     * Permanently delete cancelled unpaid orders older than the retention window (default 7 days).
+     *
+     * @return array{deleted: int}
+     */
+    public function purgeCancelledOrders(?int $days = null): array
+    {
+        $retentionDays = $days ?? (int) config('bahram.orders.cancelled_purge_days', 7);
+        $cutoff = now()->subDays(max(1, $retentionDays));
+
+        $query = Order::query()
+            ->where('status', 'cancelled')
+            ->whereNull('paid_at')
+            ->where('updated_at', '<=', $cutoff);
+
+        $deleted = 0;
+
+        $query->orderBy('id')->chunkById(100, function ($orders) use (&$deleted): void {
+            foreach ($orders as $order) {
+                if ($order->isPaid()) {
+                    continue;
+                }
+
+                $order->delete();
+                $deleted++;
+            }
+        });
+
+        return ['deleted' => $deleted];
     }
 
     private function generateOrderNumber(): string

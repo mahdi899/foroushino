@@ -86,6 +86,15 @@ return [
         ), '/'),
     ],
 
+    /*
+     * Unpaid checkout drafts: cancel after pending_ttl, hard-delete cancelled
+     * rows after purge_after (frees coupon reservations / seminar capacity).
+     */
+    'orders' => [
+        'pending_ttl_minutes' => (int) env('ORDER_PENDING_TTL_MINUTES', 60),
+        'cancelled_purge_days' => (int) env('ORDER_CANCELLED_PURGE_DAYS', 7),
+    ],
+
     'chatbot' => [
         'retention_days' => (int) env('CHATBOT_RETENTION_DAYS', 60),
     ],

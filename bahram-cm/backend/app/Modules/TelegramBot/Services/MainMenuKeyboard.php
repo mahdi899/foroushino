@@ -150,10 +150,11 @@ class MainMenuKeyboard
 
         foreach ($this->rows($account, $bot) as $row) {
             $keyboard[] = array_map(function (string $text) use ($actionsByLabel) {
-                $button = ['text' => $text];
                 $action = $actionsByLabel[$text] ?? null;
                 $iconKey = $action !== null ? (self::ACTION_ICONS[$action] ?? null) : null;
+                $button = ['text' => $text];
                 if ($iconKey !== null) {
+                    $button['text'] = TelegramCustomEmoji::buttonText($text, $iconKey);
                     $button = [...$button, ...TelegramCustomEmoji::buttonIcon($iconKey)];
                 }
 
@@ -258,6 +259,7 @@ class MainMenuKeyboard
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = str_replace(["\r\n", "\r"], "\n", trim($text));
         $firstLine = trim(explode("\n", $text, 2)[0] ?? '');
+        $firstLine = TelegramCustomEmoji::stripLeadingFallback($firstLine);
 
         if (mb_strlen($firstLine) > 64) {
             return mb_substr($firstLine, 0, 64);

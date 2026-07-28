@@ -17,6 +17,7 @@ import {
   recorderErrorMessage,
   startMediaRecorder,
 } from '@/lib/media/recorder';
+import { SELFIE_CAMERA_CONSTRAINTS } from '@/lib/media/optimizeSelfieVideo';
 
 const MIN_SEC = 5;
 const MAX_SEC = 20;
@@ -217,7 +218,7 @@ export function LiveSelfieVideoStep({
     setRequestingCamera(true);
     try {
       stopStream();
-      const stream = await requestCameraAndMicrophone();
+      const stream = await requestCameraAndMicrophone(SELFIE_CAMERA_CONSTRAINTS);
       await attachStream(stream);
     } catch (err) {
       setError(isMediaAccessError(err) ? mediaPermissionErrorMessage(err) : cameraAttachErrorMessage(err));

@@ -8543,112 +8543,164 @@ button.panel-notification-toast__card {
   opacity: 0.85;
 }
 
-.panel-root .rmdp-wrapper {
+/*
+ * Date picker may portal into #panel-root or document.body.
+ * Style via .jalali-rmdp so year/month overlays stay opaque even when
+ * --color-surface is glass (rgba) in dark theme.
+ */
+.panel-root .rmdp-wrapper,
+.jalali-rmdp.rmdp-wrapper {
   direction: rtl;
   font-family: var(--font-body);
-  background-color: var(--color-surface);
+  background-color: var(--color-surface-soft);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft, 0 12px 32px rgba(0, 59, 64, 0.12));
   color: var(--color-text);
 }
 
-.panel-root .rmdp-calendar {
+.panel-root .rmdp-calendar,
+.jalali-rmdp .rmdp-calendar {
+  position: relative;
   border-radius: 16px;
   border: none;
-  background: var(--color-surface);
-  overflow: hidden;
+  background: var(--color-surface-soft);
 }
 
 .panel-root .rmdp-month-picker,
-.panel-root .rmdp-year-picker {
-  background-color: var(--color-surface);
+.panel-root .rmdp-year-picker,
+.jalali-rmdp .rmdp-month-picker,
+.jalali-rmdp .rmdp-year-picker {
+  position: absolute;
+  inset: 2px;
+  z-index: 2;
+  /* Must stay opaque — dark --color-surface is rgba glass and bleeds day grid */
+  background-color: var(--color-surface-soft);
   color: var(--color-text);
+}
+
+.panel-root .rmdp-ym .rmdp-day span,
+.jalali-rmdp .rmdp-ym .rmdp-day span {
+  border-radius: 10px;
 }
 
 .panel-root .rmdp-header-values,
 .panel-root .rmdp-day,
-.panel-root .rmdp-week-day {
+.panel-root .rmdp-week-day,
+.jalali-rmdp .rmdp-header-values,
+.jalali-rmdp .rmdp-day,
+.jalali-rmdp .rmdp-week-day {
   color: var(--color-text);
 }
 
-.panel-root .rmdp-week-day {
+.panel-root .rmdp-week-day,
+.jalali-rmdp .rmdp-week-day {
   color: var(--color-text-muted);
   font-weight: 600;
   font-size: 0.75rem;
 }
 
 .panel-root .rmdp-day.rmdp-deactive,
-.panel-root .rmdp-day.rmdp-disabled {
+.panel-root .rmdp-day.rmdp-disabled,
+.jalali-rmdp .rmdp-day.rmdp-deactive,
+.jalali-rmdp .rmdp-day.rmdp-disabled {
   color: var(--color-text-muted);
   opacity: 0.55;
 }
 
-.panel-root .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span {
+.panel-root .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span,
+.jalali-rmdp .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span {
   border-radius: 10px;
   transition: background 140ms ease, color 140ms ease;
 }
 
-.panel-root .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+.panel-root .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover,
+.jalali-rmdp .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
   background: var(--color-primary-soft);
   color: var(--color-primary-dark);
 }
 
-.panel-root .rmdp-day.rmdp-selected span:not(.highlight) {
+.panel-root .rmdp-day.rmdp-selected span:not(.highlight),
+.jalali-rmdp .rmdp-day.rmdp-selected span:not(.highlight) {
   background: var(--color-primary);
   box-shadow: none;
   color: #fff;
 }
 
-.panel-root .rmdp-day.rmdp-today span {
+.panel-root .rmdp-day.rmdp-today span,
+.jalali-rmdp .rmdp-day.rmdp-today span {
   background: var(--color-accent-soft);
   color: var(--color-primary-dark);
 }
 
-.panel-root .rmdp-arrow-container:hover {
+.panel-root .rmdp-arrow-container:hover,
+.jalali-rmdp .rmdp-arrow-container:hover {
   background: var(--color-primary);
   box-shadow: none;
 }
 
-.panel-root .rmdp-arrow-container:hover .rmdp-arrow {
+.panel-root .rmdp-arrow-container:hover .rmdp-arrow,
+.jalali-rmdp .rmdp-arrow-container:hover .rmdp-arrow {
   border-color: #fff;
 }
 
-.panel-root .rmdp-arrow {
+.panel-root .rmdp-arrow,
+.jalali-rmdp .rmdp-arrow {
   border-color: var(--color-text-muted);
 }
 
-.panel-root .rmdp-container .rmdp-ep-arrow::after {
-  background-color: var(--color-surface);
+.panel-root .rmdp-container .rmdp-ep-arrow::after,
+.jalali-rmdp .rmdp-container .rmdp-ep-arrow::after,
+.rmdp-container:has(.jalali-rmdp) .rmdp-ep-arrow::after {
+  background-color: var(--color-surface-soft);
 }
 
-.panel-root .rmdp-container .rmdp-ep-arrow[direction='top'] {
-  border-bottom-color: var(--color-surface);
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='top'],
+.rmdp-container:has(.jalali-rmdp) .rmdp-ep-arrow[direction='top'] {
+  border-bottom-color: var(--color-surface-soft);
 }
 
-.panel-root .rmdp-container .rmdp-ep-arrow[direction='bottom'] {
-  border-top-color: var(--color-surface);
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='bottom'],
+.rmdp-container:has(.jalali-rmdp) .rmdp-ep-arrow[direction='bottom'] {
+  border-top-color: var(--color-surface-soft);
 }
 
-.panel-root .rmdp-container .rmdp-ep-arrow[direction='left'] {
-  border-right-color: var(--color-surface);
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='left'],
+.rmdp-container:has(.jalali-rmdp) .rmdp-ep-arrow[direction='left'] {
+  border-right-color: var(--color-surface-soft);
 }
 
-.panel-root .rmdp-container .rmdp-ep-arrow[direction='right'] {
-  border-left-color: var(--color-surface);
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='right'],
+.rmdp-container:has(.jalali-rmdp) .rmdp-ep-arrow[direction='right'] {
+  border-left-color: var(--color-surface-soft);
 }
 
-.panel-root[data-panel-theme='dark'] .rmdp-day.rmdp-today span {
+.panel-root[data-panel-theme='dark'] .rmdp-day.rmdp-today span,
+.panel-root[data-panel-theme='dark'] .jalali-rmdp .rmdp-day.rmdp-today span,
+html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-day.rmdp-today span {
   background: var(--color-primary-soft);
   color: var(--color-text);
 }
 
-.panel-root[data-panel-theme='dark'] .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+.panel-root[data-panel-theme='dark'] .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover,
+.panel-root[data-panel-theme='dark'] .jalali-rmdp .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover,
+html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
   background: var(--color-primary-soft);
   color: var(--color-text);
 }
 
-.panel-root[data-panel-theme='dark'] .rmdp-day.rmdp-selected span:not(.highlight) {
+.panel-root[data-panel-theme='dark'] .rmdp-day.rmdp-selected span:not(.highlight),
+html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-day.rmdp-selected span:not(.highlight) {
   color: #fff;
+}
+
+/* Body-portal fallback: panel CSS variables are not inherited from body */
+html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp.rmdp-wrapper,
+html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-calendar,
+html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-month-picker,
+html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-year-picker {
+  background-color: #0c1519;
+  color: #f4f8fb;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Transient form feedback toasts */

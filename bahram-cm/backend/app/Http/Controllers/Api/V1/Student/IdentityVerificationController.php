@@ -50,7 +50,7 @@ class IdentityVerificationController extends Controller
             'latest_submission' => $latest ? $this->submissionPayload($latest) : null,
             'can_submit' => $this->canSubmit($profile, $user->id),
             'requires_phone_for_selfie' => true,
-            'is_phone_client' => MobileClient::isPhone($request->userAgent()),
+            'is_phone_client' => MobileClient::isPhone(MobileClient::requestUserAgent($request)),
         ]);
     }
 

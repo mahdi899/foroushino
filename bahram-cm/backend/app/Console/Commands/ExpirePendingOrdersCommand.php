@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Services\OrderService;
+use Illuminate\Console\Command;
+
+class ExpirePendingOrdersCommand extends Command
+{
+    protected $signature = 'orders:expire-pending
+                            {--ttl= : Override pending TTL in minutes}
+                            {--purge-days= : Override cancelled purge retention in days}
+                            {--skip-purge : Only cancel stale pending orders}';
+
+    protected $description = 'Cancel unpaid pending orders after TTL, then purge old cancelled orders';
+
+    public function handle(OrderService $orders): int
+    {
+        $ttl = $this->option('ttl');
+        $purgeDays = $this->option('purge-days');
+
+        $expired = $orders->expireStalePendingOrders(
+            is_numeric($ttl) ? (int) $ttl : null,
+        );
+
+        $this->info("Cancelled {$expired['cancelled']} stale pending order(s).");
+
+        if ($this->option('skip-purge')) {
+            return self::SUCCESS;
+        }
+
+        $purged = $orders->purgeCancelledOrders(
+            is_numeric($purgeDays) ? (int) $purgeDays : null,
+        );
+
+        $this->info("Deleted {$purged['deleted']} cancelled order(s).");
+
+        return self::SUCCESS;
+    }
+}

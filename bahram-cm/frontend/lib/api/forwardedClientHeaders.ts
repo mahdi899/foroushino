@@ -18,6 +18,9 @@ export async function forwardedClientHeaders(): Promise<Record<string, string>> 
     out['X-Real-IP'] = ip;
   }
   if (ua) {
+    // Laravel MobileClient / audit logs read User-Agent; also send X-Forwarded-*
+    // so proxies that rewrite UA still expose the browser string.
+    out['User-Agent'] = ua;
     out['X-Forwarded-User-Agent'] = ua;
   }
   return out;

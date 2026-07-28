@@ -48,10 +48,10 @@ final class MainMenu
 
     /** @var array<string, list<string>> */
     private const LEGACY_ALIASES = [
-        self::ACTION_COURSES => ['دوره‌ها 🎓', 'دوره کمپین نویسی 🎓', 'دوره‌ها'],
+        self::ACTION_COURSES => ['دوره‌ها 🎓', 'دوره کمپین نویسی 🎓', 'دوره‌ها', 'کمپین نویسی', 'دوره کمپین نویسی'],
         self::ACTION_SEMINARS => ['سمینارها 🎤', 'سمینارها'],
         self::ACTION_SAT => ['سات ☎️', 'سات'],
-        self::ACTION_CHANNEL => ['کانال مرجع 📣', 'کانال مرجع'],
+        self::ACTION_CHANNEL => ['کانال مرجع 📣', 'کانال مرجع', 'کانال‌مرجع'],
         self::ACTION_FAMILY => ['خانواده 👨‍👩‍👧‍👦', 'خانواده'],
         self::ACTION_REFERRAL => ['معرفی دوستان 🎁', 'معرفی دوستان'],
         self::ACTION_SUPPORT => ['پشتیبانی 🎫', 'پشتیبانی'],
@@ -66,15 +66,16 @@ final class MainMenu
 
     public function resolveAction(string $text): ?string
     {
-        $text = trim($text);
+        $text = $this->normalizeButtonText($text);
         if ($text === '') {
             return null;
         }
 
         foreach (self::ACTION_KEYS as $action => $key) {
-            $label = $this->cache->message($key, $action);
+            $label = $this->normalizeButtonText($this->cache->message($key, $action));
             $legacy = self::LEGACY_ALIASES[$action] ?? [];
-            if ($text === $label || in_array($text, $legacy, true)) {
+            $legacyNormalized = array_map(fn (string $alias): string => $this->normalizeButtonText($alias), $legacy);
+            if ($text === $label || in_array($text, $legacyNormalized, true)) {
                 return $action;
             }
         }
@@ -122,10 +123,34 @@ final class MainMenu
     {
         $key = self::ACTION_KEYS[$action] ?? $action;
         $iconKey = self::ACTION_ICONS[$action] ?? null;
+        $label = $this->normalizeButtonText($this->cache->message($key, $action));
 
+        if ($iconKey === null) {
+            return ['text' => $label];
+        }
+
+        // Unicode in text so the menu still looks right if Premium icons are
+        // rejected; icon_custom_emoji_id adds the animated premium glyph when allowed.
         return [
-            'text' => $this->cache->message($key, $action),
-            ...($iconKey !== null ? TelegramCustomEmoji::buttonIcon($iconKey) : []),
+            'text' => TelegramCustomEmoji::buttonText($label, $iconKey),
+            ...TelegramCustomEmoji::buttonIcon($iconKey),
         ];
+    }
+
+    private function normalizeButtonText(string $text): string
+    {
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // ZWNJ / Arabic presentation forms that break exact menu matching.
+        $text = str_replace(["\u{200c}", "\u{200d}", "\u{feff}", 'ي', 'ك'], ['', '', '', 'ی', 'ک'], $text);
+        $text = preg_replace('/\s+/u', ' ', trim($text)) ?? trim($text);
+        $firstLine = trim(explode("\n", $text, 2)[0] ?? '');
+        $firstLine = TelegramCustomEmoji::stripLeadingFallback($firstLine);
+
+        if (mb_strlen($firstLine) > 64) {
+            return mb_substr($firstLine, 0, 64);
+        }
+
+        return $firstLine;
     }
 }

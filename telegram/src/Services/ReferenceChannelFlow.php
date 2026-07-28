@@ -270,11 +270,28 @@ final class ReferenceChannelFlow
     private function deliverCaption(int $chatId, string $caption, string $photo, array $options): void
     {
         if ($photo !== '') {
-            $this->api->sendPhoto($chatId, $photo, $caption, $options);
+            try {
+                $this->api->sendPhoto($chatId, $photo, $caption, $options);
 
-            return;
+                return;
+            } catch (\Throwable $e) {
+                // Cover URL often unreachable from Telegram/Bot API proxy — never
+                // leave «کانال مرجع» silent; fall back to text.
+                error_log('[telegram-host] reference channel photo failed: '.$e->getMessage());
+            }
         }
 
-        $this->api->sendMessage($chatId, $caption, $options);
+        try {
+            $this->api->sendMessage($chatId, $caption, $options);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] reference channel text failed: '.$e->getMessage());
+            $this->api->sendMessage(
+                $chatId,
+                'کانال مرجع موقتاً نمایش داده نشد. لطفاً دوباره تلاش کنید.',
+                array_filter([
+                    'reply_markup' => $options['reply_markup'] ?? null,
+                ]),
+            );
+        }
     }
 }

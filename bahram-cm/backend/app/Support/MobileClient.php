@@ -30,9 +30,22 @@ final class MobileClient
         return (bool) preg_match('/mobile|iphone|ipod|android.*mobile|blackberry|iemobile|opera mini|webos/i', $ua);
     }
 
+    /**
+     * Prefer the browser UA forwarded by Next.js server actions; fall back to the hop UA.
+     */
+    public static function requestUserAgent(Request $request): ?string
+    {
+        $forwarded = trim((string) $request->header('X-Forwarded-User-Agent'));
+        if ($forwarded !== '') {
+            return $forwarded;
+        }
+
+        return $request->userAgent();
+    }
+
     public static function denyUnlessPhone(Request $request, ?string $message = null): ?JsonResponse
     {
-        if (self::isPhone($request->userAgent())) {
+        if (self::isPhone(self::requestUserAgent($request))) {
             return null;
         }
 

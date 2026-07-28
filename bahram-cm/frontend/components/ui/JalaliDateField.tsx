@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import DatePicker from 'react-multi-date-picker';
+import 'react-multi-date-picker/styles/colors/teal.css';
 import { CalendarDays } from 'lucide-react';
 import type DateObject from 'react-date-object';
 import {
@@ -58,6 +59,7 @@ export function JalaliDateField({
       calendarPosition="bottom-right"
       arrow={false}
       required={required}
+      className="jalali-rmdp teal"
       containerClassName="jalali-date-field"
       portal
       portalTarget={portalTarget}

@@ -142,7 +142,14 @@ final class TelegramCustomEmoji
             return null;
         }
 
-        return self::IDS[$key] ?? null;
+        $id = self::IDS[$key] ?? null;
+
+        return $id !== null ? (string) $id : null;
+    }
+
+    public static function fallback(string $key): string
+    {
+        return self::FALLBACKS[$key] ?? '✨';
     }
 
     /** @return array{icon_custom_emoji_id?: string} */
@@ -151,6 +158,39 @@ final class TelegramCustomEmoji
         $id = self::id($key);
 
         return $id !== null ? ['icon_custom_emoji_id' => $id] : [];
+    }
+
+    public static function buttonText(string $label, string $iconKey): string
+    {
+        $label = trim($label);
+        $fallback = self::fallback($iconKey);
+        if ($fallback === '' || $label === '') {
+            return $label !== '' ? $label : $fallback;
+        }
+        if (str_starts_with($label, $fallback) || str_contains($label, $fallback)) {
+            return $label;
+        }
+
+        return $fallback.' '.$label;
+    }
+
+    /** Strip a leading menu unicode fallback so «🎓 دوره‌ها» still resolves to courses. */
+    public static function stripLeadingFallback(string $text): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $fallbacks = array_values(self::FALLBACKS);
+        usort($fallbacks, static fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+        foreach ($fallbacks as $fallback) {
+            if ($fallback !== '' && str_starts_with($text, $fallback)) {
+                return trim(mb_substr($text, mb_strlen($fallback)));
+            }
+        }
+
+        return $text;
     }
 
     /** Strip tg-emoji tags / icon fields for safe retry after DOCUMENT_INVALID. */
@@ -162,16 +202,54 @@ final class TelegramCustomEmoji
         return $html;
     }
 
+    public static function sanitizeHtmlKeepCustomEmoji(string $html): string
+    {
+        $allowed = 'tg-emoji|b|strong|i|em|u|s|code|pre|a';
+
+        return preg_replace('/<\/?(?!'.$allowed.')\w+(?:\s[^>]*)?>/i', '', $html) ?? $html;
+    }
+
+    public static function isCustomEmojiFailure(string $message): bool
+    {
+        $message = strtolower($message);
+
+        return str_contains($message, 'document_invalid')
+            || str_contains($message, 'custom emoji')
+            || str_contains($message, 'icon_custom_emoji')
+            || str_contains($message, 'button_icon_invalid')
+            || str_contains($message, 'sticker_invalid');
+    }
+
     /**
      * @param  array<string, mixed>  $options
      * @return array<string, mixed>
      */
     public static function stripButtonIcons(array $options): array
     {
+        return self::transformButtonIcons($options, prefixFallback: false);
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public static function degradeButtonIcons(array $options): array
+    {
+        return self::transformButtonIcons($options, prefixFallback: true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    private static function transformButtonIcons(array $options, bool $prefixFallback): array
+    {
         $markup = $options['reply_markup'] ?? null;
         if (! is_array($markup)) {
             return $options;
         }
+
+        $idToFallback = array_flip(self::IDS);
 
         foreach (['inline_keyboard', 'keyboard'] as $kind) {
             if (! isset($markup[$kind]) || ! is_array($markup[$kind])) {
@@ -182,9 +260,24 @@ final class TelegramCustomEmoji
                     continue;
                 }
                 foreach ($row as $c => $btn) {
-                    if (is_array($btn)) {
-                        unset($markup[$kind][$r][$c]['icon_custom_emoji_id']);
+                    if (! is_array($btn) || ! isset($btn['icon_custom_emoji_id'])) {
+                        continue;
                     }
+                    $id = (string) $btn['icon_custom_emoji_id'];
+                    unset($markup[$kind][$r][$c]['icon_custom_emoji_id']);
+                    if (! $prefixFallback) {
+                        continue;
+                    }
+                    $key = $idToFallback[$id] ?? null;
+                    $fallback = $key !== null ? (self::FALLBACKS[$key] ?? '') : '';
+                    if ($fallback === '') {
+                        continue;
+                    }
+                    $text = trim((string) ($btn['text'] ?? ''));
+                    if ($text === '' || str_starts_with($text, $fallback) || str_contains($text, $fallback)) {
+                        continue;
+                    }
+                    $markup[$kind][$r][$c]['text'] = $fallback.' '.$text;
                 }
             }
         }

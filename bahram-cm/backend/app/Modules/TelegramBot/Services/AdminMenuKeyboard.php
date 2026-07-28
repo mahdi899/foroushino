@@ -26,11 +26,11 @@ class AdminMenuKeyboard
 
     public const MESSAGES = 'پیام‌ها';
 
-    public const REFERENCE_CHANNEL = 'کانال مرجع';
+    public const REFERENCE_CHANNEL = '📡 کانال مرجع';
 
-    public const COURSES = 'دوره‌ها';
+    public const COURSES = '🎓 دوره‌ها';
 
-    public const SEMINARS = 'سمینارها';
+    public const SEMINARS = '🎤 سمینارها';
 
     public const EXPORT = 'خروجی کاربران';
 
@@ -80,9 +80,9 @@ class AdminMenuKeyboard
         self::DISCOUNTS => ['🎟 کد تخفیف'],
         self::TICKETS => ['🎫 تیکت‌ها'],
         self::MESSAGES => ['💬 پیام‌ها'],
-        self::REFERENCE_CHANNEL => ['📡 کانال مرجع'],
-        self::COURSES => ['🎓 دوره‌ها'],
-        self::SEMINARS => ['🎤 سمینارها'],
+        self::REFERENCE_CHANNEL => ['مدیریت کانال مرجع'],
+        self::COURSES => ['مدیریت دوره‌ها'],
+        self::SEMINARS => ['مدیریت سمینارها'],
         self::EXPORT => ['📤 خروجی کاربران'],
         self::PROFILE => ['🤖 پروفایل بات'],
         self::SETTINGS => ['⚙️ تنظیمات'],

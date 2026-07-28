@@ -27,6 +27,7 @@ type Props = {
   serverCardArtifactId?: number | null;
   videoBlob: Blob | null;
   pending: boolean;
+  pendingLabel?: string;
   onBack: () => void;
   onSubmit: () => void;
 };
@@ -38,6 +39,7 @@ export function IdentityReviewStep({
   serverCardArtifactId = null,
   videoBlob,
   pending,
+  pendingLabel = 'ارسال برای بررسی',
   onBack,
   onSubmit,
 }: Props) {
@@ -168,7 +170,7 @@ export function IdentityReviewStep({
         </button>
         <button type="button" className="btn btn-primary" disabled={pending || !cardReady || !videoBlob} onClick={onSubmit}>
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          ارسال برای بررسی
+          {pending ? pendingLabel : 'ارسال برای بررسی'}
         </button>
       </div>
     </div>

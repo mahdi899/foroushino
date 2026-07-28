@@ -284,10 +284,10 @@ export const site = {
       {
         id: "enamad",
         alt: "نماد اعتماد الکترونیکی",
-        href: "https://trustseal.enamad.ir/?id=7021219&Code=iJwNC35mKYjZEuZ1zJ3Caldlg8ZFW7gb",
+        href: "/namad",
       },
-      { id: "samandehi", alt: "ساماندهی", href: "https://samandehi.ir/" },
-      { id: "zarinpal", alt: "درگاه پرداخت زرین‌پال", href: "https://www.zarinpal.com/" },
+      { id: "samandehi", alt: "ساماندهی", href: "/namad" },
+      { id: "zarinpal", alt: "درگاه پرداخت زرین‌پال", href: "/namad" },
     ],
   },
 } as const;

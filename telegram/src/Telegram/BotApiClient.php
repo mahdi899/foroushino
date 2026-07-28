@@ -54,25 +54,28 @@ final class BotApiClient
             return $this->resultOf($this->call('sendMessage', $payload, true));
         } catch (TelegramApiException $e) {
             if ($this->shouldRetryWithoutHtml($e)) {
-                return $this->resultOf($this->call('sendMessage', array_merge([
-                    'chat_id' => $chatId,
-                    'text' => TelegramCustomEmoji::stripHtmlTags($text),
-                    'parse_mode' => 'HTML',
-                ], TelegramCustomEmoji::stripButtonIcons($params)), true));
+                try {
+                    // Keep premium <tg-emoji> — only drop unrelated broken tags.
+                    return $this->resultOf($this->call('sendMessage', array_merge([
+                        'chat_id' => $chatId,
+                        'text' => TelegramCustomEmoji::sanitizeHtmlKeepCustomEmoji($text),
+                        'parse_mode' => 'HTML',
+                    ], $params), true));
+                } catch (TelegramApiException $e2) {
+                    $e = $e2;
+                }
             }
 
-            if (! str_contains($e->getMessage(), 'DOCUMENT_INVALID')) {
+            if (! TelegramCustomEmoji::isCustomEmojiFailure($e->getMessage()) && ! $this->shouldRetryWithoutHtml($e)) {
                 throw $e;
             }
 
-            $safeText = TelegramCustomEmoji::stripHtmlTags($text);
-            $safeParams = TelegramCustomEmoji::stripButtonIcons($params);
-
+            // Last resort: unicode fallbacks (owner without Premium / invalid sticker ids).
             return $this->resultOf($this->call('sendMessage', array_merge([
                 'chat_id' => $chatId,
-                'text' => $safeText,
+                'text' => TelegramCustomEmoji::stripHtmlTags($text),
                 'parse_mode' => 'HTML',
-            ], $safeParams), true));
+            ], TelegramCustomEmoji::degradeButtonIcons($params)), true));
         }
     }
 
@@ -116,29 +119,30 @@ final class BotApiClient
             $this->call('sendPhoto', $payload);
         } catch (TelegramApiException $e) {
             if ($this->shouldRetryWithoutHtml($e)) {
-                $this->call('sendPhoto', array_merge([
-                    'chat_id' => $chatId,
-                    'photo' => $photo,
-                    'caption' => TelegramCustomEmoji::stripHtmlTags($caption),
-                    'parse_mode' => 'HTML',
-                ], TelegramCustomEmoji::stripButtonIcons($params)));
+                try {
+                    $this->call('sendPhoto', array_merge([
+                        'chat_id' => $chatId,
+                        'photo' => $photo,
+                        'caption' => TelegramCustomEmoji::sanitizeHtmlKeepCustomEmoji($caption),
+                        'parse_mode' => 'HTML',
+                    ], $params));
 
-                return;
+                    return;
+                } catch (TelegramApiException $e2) {
+                    $e = $e2;
+                }
             }
 
-            if (! str_contains($e->getMessage(), 'DOCUMENT_INVALID')) {
+            if (! TelegramCustomEmoji::isCustomEmojiFailure($e->getMessage()) && ! $this->shouldRetryWithoutHtml($e)) {
                 throw $e;
             }
-
-            $safeCaption = TelegramCustomEmoji::stripHtmlTags($caption);
-            $safeParams = TelegramCustomEmoji::stripButtonIcons($params);
 
             $this->call('sendPhoto', array_merge([
                 'chat_id' => $chatId,
                 'photo' => $photo,
-                'caption' => $safeCaption,
+                'caption' => TelegramCustomEmoji::stripHtmlTags($caption),
                 'parse_mode' => 'HTML',
-            ], $safeParams));
+            ], TelegramCustomEmoji::degradeButtonIcons($params)));
         }
     }
 
@@ -332,7 +336,7 @@ final class BotApiClient
         curl_setopt_array($ch, [
             CURLOPT_URL => self::$apiBaseUrl."/bot{$this->token}/{$method}",
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($params, JSON_UNESCAPED_UNICODE),
+            CURLOPT_POSTFIELDS => json_encode($params, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => min(3, $timeout),

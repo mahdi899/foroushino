@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { studentFetch } from '@/lib/student/session';
 import { getStudentToken } from '@/lib/student/session';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { resolveIdentityApiError, resolveIdentityApiErrorDetail } from '@/lib/student/identityVerificationErrors';
 
 export interface SimpleFormState {
@@ -25,6 +26,7 @@ async function studentUpload<T>(path: string, formData: FormData): Promise<T> {
     method: 'POST',
     headers: {
       Accept: 'application/json',
+      ...(await forwardedClientHeaders()),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData,

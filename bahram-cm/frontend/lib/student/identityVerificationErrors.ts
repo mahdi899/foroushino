@@ -43,6 +43,8 @@ export const IDENTITY_CLIENT_ERRORS = {
   artifacts: 'برای ارسال پرونده، تصویر کارت ملی و ویدیوی سلفی را تکمیل کنید.',
   cardMissing: 'تصویر کارت ملی را بارگذاری کنید.',
   videoMissing: 'ویدیوی سلفی را ضبط و تأیید کنید.',
+  videoTooLarge:
+    'حجم ویدیوی سلفی بیش از حد مجاز است. لطفاً ویدیوی کوتاه‌تر ضبط کنید و دوباره ارسال کنید.',
 } as const;
 
 type ApiErrorPayload = {

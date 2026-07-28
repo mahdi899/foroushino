@@ -10,6 +10,7 @@ use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
 use TelegramHost\Services\HostSupportService;
+use TelegramHost\Services\MainMenu;
 use TelegramHost\Telegram\BotApiClient;
 use TelegramHost\Support\TelegramCustomEmoji;
 
@@ -26,6 +27,7 @@ final class UpdateRouter
         private readonly MessageHandler $messages,
         private readonly CallbackQueryHandler $callbacks,
         private readonly HostSupportService $support,
+        private readonly MainMenu $mainMenu,
     ) {}
 
     /** @param array<string, mixed> $update */
@@ -38,7 +40,14 @@ final class UpdateRouter
             }
         }
 
-        if ($this->delegation->shouldRelayToIran($update)) {
+        // Main-menu labels (e.g. «کانال مرجع») must never be swallowed by admin
+        // Iran relay — same wording used to collide with admin hub buttons.
+        $mainMenuText = trim((string) ($update['message']['text'] ?? ''));
+        $isMainMenuTap = $mainMenuText !== ''
+            && $this->delegation->isPrivateUserFacing($update)
+            && $this->mainMenu->resolveAction($mainMenuText) !== null;
+
+        if (! $isMainMenuTap && $this->delegation->shouldRelayToIran($update)) {
             if (! $this->delegation->isPrivateUserFacing($update)) {
                 $this->iranSync->enqueue($update);
 

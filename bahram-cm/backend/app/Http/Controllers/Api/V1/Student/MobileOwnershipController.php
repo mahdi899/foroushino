@@ -28,7 +28,7 @@ class MobileOwnershipController extends Controller
             'verified_at' => $profile->mobile_ownership_verified_at?->toIso8601String(),
             'verification_level' => $profile->verification_level,
             'requires_phone' => true,
-            'is_phone_client' => MobileClient::isPhone($request->userAgent()),
+            'is_phone_client' => MobileClient::isPhone(MobileClient::requestUserAgent($request)),
         ]);
     }
 

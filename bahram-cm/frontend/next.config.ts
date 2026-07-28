@@ -18,7 +18,7 @@ const SECURITY_HEADERS = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com https://static.cloudflareinsights.com https://www.zarinpal.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
@@ -174,7 +174,9 @@ const config: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      // Identity selfie videos allow up to 25MB (bahram.identity.selfie_max_mb + nginx).
+      // Exceeding this limit fails before the action runs and can crash the panel page on mobile.
+      bodySizeLimit: '25mb',
       /** dev:local proxy sets x-forwarded-host (lvh.me) while Origin may differ — without this, Server Actions abort. */
       allowedOrigins: [...new Set(serverActionAllowedOrigins)],
     },

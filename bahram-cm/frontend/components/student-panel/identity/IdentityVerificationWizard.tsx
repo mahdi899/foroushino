@@ -17,9 +17,11 @@ import { identityStatusLabel } from '@/lib/student/identityLabels';
 import {
   IDENTITY_CLIENT_ERRORS,
   IDENTITY_CLIENT_ERROR_TITLES,
+  IDENTITY_ERROR_TITLE_BY_CODE,
   validateIdentityStep1,
 } from '@/lib/student/identityVerificationErrors';
-import { selfieVideoFileName } from '@/lib/media/recorder';
+import { SELFIE_VIDEO_MAX_BYTES, selfieVideoFileName } from '@/lib/media/recorder';
+import { optimizeSelfieVideo } from '@/lib/media/optimizeSelfieVideo';
 import { maxBirthDateForMinAge, MIN_IDENTITY_AGE } from '@/lib/student/age';
 import { IdentityReviewStep } from './IdentityReviewStep';
 import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
@@ -75,6 +77,7 @@ export function IdentityVerificationWizard({
   const [videoPrompt, setVideoPrompt] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
+  const [pendingLabel, setPendingLabel] = useState('ارسال برای بررسی');
   const [pending, startTransition] = useTransition();
   const maxBirthDate = useMemo(() => maxBirthDateForMinAge(MIN_IDENTITY_AGE), []);
 
@@ -183,25 +186,57 @@ export function IdentityVerificationWizard({
       setError(IDENTITY_CLIENT_ERRORS.videoMissing);
       return;
     }
+    if (!activeDraftSubmissionId) {
+      setErrorTitle(IDENTITY_ERROR_TITLE_BY_CODE.draft_required);
+      setError(IDENTITY_CLIENT_ERRORS.step1Incomplete);
+      return;
+    }
     setError(null);
     setErrorTitle(null);
-    const fd = new FormData();
-    Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
-    if (cardFile) {
-      fd.set('national_card', cardFile);
-    }
-    fd.set('selfie_video', videoBlob, selfieVideoFileName(videoBlob));
-    if (videoPrompt) fd.set('expected_video_text', videoPrompt);
-    if (activeDraftSubmissionId) fd.set('draft_submission_id', String(activeDraftSubmissionId));
+    setPendingLabel('در حال بهینه‌سازی ویدیو…');
     startTransition(async () => {
-      const res = await submitIdentityVerificationAction(fd);
-      if (res.error) {
-        setErrorTitle(res.errorTitle ?? null);
-        setError(res.error);
-        return;
+      try {
+        const optimized = await optimizeSelfieVideo(videoBlob);
+        if (optimized.size > SELFIE_VIDEO_MAX_BYTES) {
+          setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
+          setError(IDENTITY_CLIENT_ERRORS.videoTooLarge);
+          return;
+        }
+        setVideoBlob(optimized);
+        setPendingLabel('در حال ارسال…');
+
+        // Upload the video as a draft artifact first so the final submit stays small.
+        // Shipping the full selfie through the submit Server Action used to exceed
+        // Next.js bodySizeLimit and crash the panel page on mobile.
+        const videoFd = new FormData();
+        videoFd.set('type', 'selfie_video');
+        videoFd.set('file', optimized, selfieVideoFileName(optimized));
+        videoFd.set('submission_id', String(activeDraftSubmissionId));
+        const uploadRes = await uploadIdentityArtifactAction(videoFd);
+        if (uploadRes.error) {
+          setErrorTitle(uploadRes.errorTitle ?? null);
+          setError(uploadRes.error);
+          return;
+        }
+
+        const fd = new FormData();
+        Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
+        if (videoPrompt) fd.set('expected_video_text', videoPrompt);
+        fd.set('draft_submission_id', String(activeDraftSubmissionId));
+        const res = await submitIdentityVerificationAction(fd);
+        if (res.error) {
+          setErrorTitle(res.errorTitle ?? null);
+          setError(res.error);
+          return;
+        }
+        setSubmitted(true);
+        router.refresh();
+      } catch {
+        setErrorTitle('خطا در انجام درخواست');
+        setError('ارسال پرونده تأیید هویت ناموفق بود. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.');
+      } finally {
+        setPendingLabel('ارسال برای بررسی');
       }
-      setSubmitted(true);
-      router.refresh();
     });
   }
 
@@ -390,6 +425,7 @@ export function IdentityVerificationWizard({
             serverCardArtifactId={cardReadyOnServer ? activeCardArtifactId : null}
             videoBlob={videoBlob}
             pending={pending}
+            pendingLabel={pendingLabel}
             onBack={() => setStep(2)}
             onSubmit={submitAll}
           />
