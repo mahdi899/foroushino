@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProductType;
+use App\Support\RuntimeCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -85,6 +86,27 @@ class Product extends Model
                 $product->description = Purify::clean($product->description);
             }
         });
+
+        static::saved(function (Product $product): void {
+            self::forgetPublicProductCache($product->slug);
+            $originalSlug = $product->getOriginal('slug');
+            if (is_string($originalSlug) && $originalSlug !== '' && $originalSlug !== $product->slug) {
+                self::forgetPublicProductCache($originalSlug);
+            }
+        });
+
+        static::deleted(function (Product $product): void {
+            self::forgetPublicProductCache($product->slug);
+        });
+    }
+
+    public static function forgetPublicProductCache(?string $slug = null): void
+    {
+        RuntimeCache::forget('public_products:index:all');
+        RuntimeCache::forget('public_products:index:listed');
+        if ($slug) {
+            RuntimeCache::forget('public_products:show:'.$slug);
+        }
     }
 
     public function getSlugOptions(): SlugOptions

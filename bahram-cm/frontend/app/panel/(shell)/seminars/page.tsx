@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { CalendarDays } from 'lucide-react';
 import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
-import { SeminarFeaturedBanner, SeminarVideoList } from '@/components/student-panel/seminars/SeminarArchive';
+import { SeminarFeaturedBanner } from '@/components/student-panel/seminars/SeminarArchive';
 import { SeminarStatsRibbon } from '@/components/student-panel/seminars/SeminarStatsRibbon';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 
@@ -51,7 +51,6 @@ export default async function PanelSeminarsPage() {
           <div className="panel-aside-layout">
             <div className="flex flex-col gap-5">
               {active ? <SeminarFeaturedBanner seminar={active} /> : null}
-              <SeminarVideoList seminars={seminars} />
             </div>
 
             <aside className="card p-5">

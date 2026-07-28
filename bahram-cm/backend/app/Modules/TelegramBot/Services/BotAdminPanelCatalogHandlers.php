@@ -12,6 +12,7 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramConversation;
 use App\Modules\TelegramBot\Support\TelegramHtml;
+use App\Services\ContentPublishService;
 use App\Services\ReferenceChannelProductService;
 use App\Services\SeminarProductService;
 use App\Services\TelegramHostCatalogRevision;
@@ -49,11 +50,15 @@ trait BotAdminPanelCatalogHandlers
         return $channel;
     }
 
-    private function bumpTelegramCatalog(): void
+    private function bumpTelegramCatalog(?string $productSlug = null): void
     {
         // Revision first; host push runs afterResponse (see PushTelegramHostSyncJob)
         // so it does not deadlock the single-threaded local host during process-update.
         app(TelegramHostCatalogRevision::class)->bump(scope: 'all');
+
+        if ($productSlug) {
+            app(ContentPublishService::class)->revalidateProducts($productSlug);
+        }
     }
 
     private function formatToman(int $amount): string
@@ -434,7 +439,7 @@ trait BotAdminPanelCatalogHandlers
             }
         }
 
-        $this->bumpTelegramCatalog();
+        $this->bumpTelegramCatalog($product->slug);
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
         ]);

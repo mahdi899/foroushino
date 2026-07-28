@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronLeft, MapPin, PlayCircle, Video } from 'lucide-react';
+import { ChevronLeft, MapPin, PlayCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 
 export interface SeminarListItem {
@@ -43,39 +43,5 @@ export function SeminarFeaturedBanner({ seminar }: { seminar: SeminarListItem })
         </span>
       </div>
     </Link>
-  );
-}
-
-export function SeminarVideoList({ seminars }: { seminars: SeminarListItem[] }) {
-  return (
-    <div className="card overflow-hidden">
-      <div className="border-b border-border/60 p-4">
-        <h3 className="panel-card-title flex items-center gap-2">
-          <Video size={16} className="text-primary" />
-          آرشیو ویدیوهای سمینار
-        </h3>
-      </div>
-      <ul className="divide-y divide-border">
-        {seminars.map((seminar) => (
-          <li key={seminar.id}>
-            <Link
-              href={`/panel/seminars/${seminar.id}`}
-              className="flex items-center gap-3 p-4 transition-colors hover:bg-surface-soft"
-            >
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-surface-soft text-primary">
-                <PlayCircle size={18} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-text">{seminar.title}</p>
-                {seminar.date ? (
-                  <p className="panel-text-caption mt-0.5 text-text-subtle">{new Date(seminar.date).toLocaleDateString('fa-IR')}</p>
-                ) : null}
-              </div>
-              <ChevronLeft size={16} className="shrink-0 text-text-muted" />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
