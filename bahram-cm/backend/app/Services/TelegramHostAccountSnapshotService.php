@@ -59,7 +59,7 @@ class TelegramHostAccountSnapshotService
             'mobile' => $account->mobile,
             'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
             'display_name' => $account->display_name,
-            'is_bot_admin' => (bool) $account->is_bot_admin,
+            'is_bot_admin' => $account->isBotAdmin(),
             'snapshot' => $this->buildSnapshot($account),
         ];
     }

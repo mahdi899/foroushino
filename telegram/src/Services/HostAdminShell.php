@@ -33,6 +33,12 @@ final class HostAdminShell
 
     public const MESSAGES = 'پیام‌ها';
 
+    public const REFERENCE_CHANNEL = 'کانال مرجع';
+
+    public const COURSES = 'دوره‌ها';
+
+    public const SEMINARS = 'سمینارها';
+
     public const EXPORT = 'خروجی کاربران';
 
     public const PROFILE = 'پروفایل بات';
@@ -51,12 +57,14 @@ final class HostAdminShell
     private const ROWS = [
         [self::USERS, self::ADMINS],
         [self::STATS, self::BROADCAST],
-        [self::TICKETS, self::MESSAGES],
+        [self::REFERENCE_CHANNEL, self::COURSES],
+        [self::SEMINARS, self::MESSAGES],
+        [self::TICKETS, self::DISCOUNTS],
         [self::REQUIRED_CHATS, self::DESTINATIONS],
-        [self::DISCOUNTS, self::EXPORT],
-        [self::PROFILE, self::SETTINGS],
-        [self::EVENTS, self::LOGS],
-        [self::HOME, self::EXIT],
+        [self::EXPORT, self::PROFILE],
+        [self::SETTINGS, self::LOGS],
+        [self::EVENTS, self::HOME],
+        [self::EXIT],
     ];
 
     /** @var array<string, list<string>> */

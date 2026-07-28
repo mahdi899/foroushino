@@ -23,7 +23,7 @@ final class IranSyncRelay
     /**
      * @param array<string, mixed> $update
      */
-    public function tryRelay(int $chatId, int $telegramUserId, array $update): bool
+    public function tryRelay(int $chatId, int $telegramUserId, array $update, int $timeoutSeconds = 5): bool
     {
         if ($chatId !== 0) {
             $this->api->sendChatAction($chatId, 'typing');
@@ -31,7 +31,7 @@ final class IranSyncRelay
 
         try {
             // Single attempt, short-enough for UX: no 8s+8s retry storm.
-            $result = $this->live->processUpdate($update, 5, false);
+            $result = $this->live->processUpdate($update, max(5, $timeoutSeconds), false);
             if (($result['ok'] ?? false) === true) {
                 return true;
             }

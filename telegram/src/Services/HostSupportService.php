@@ -134,16 +134,27 @@ final class HostSupportService
 
         if ($this->forwardQueue !== null) {
             $this->forwardQueue->push($payload);
-
-            return;
         }
 
-        // Fallback when queue is not wired (older bootstraps).
+        // Process immediately after ack. The queue is a retry buffer for the
+        // next webhook drain if Telegram forward fails transiently — waiting
+        // only on post-response drain was too easy to miss on PHP built-in
+        // servers and left support looking "broken" with zero maps.
         try {
             $this->processQueuedForward($payload);
+            // Successful sync path — drop the queued copy so drain won't double-send.
+            if ($this->forwardQueue !== null) {
+                foreach ($this->forwardQueue->popBatch(10) as $item) {
+                    $queuedUser = (int) ($item['payload']['telegram_user_id'] ?? 0);
+                    $queuedSrc = (int) ($item['payload']['source_message_id'] ?? 0);
+                    if ($queuedUser === $telegramUserId && $queuedSrc === $sourceMessageId) {
+                        $this->forwardQueue->delete($item['id']);
+                    }
+                }
+            }
         } catch (\Throwable $e) {
             error_log('[telegram-host] support forward failed (category='.$category.', user='.$telegramUserId.'): '.$e->getMessage());
-            $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی به گروه گزارشات ناموفق بود. لطفاً دوباره از منو «پشتیبانی» را بزنید.');
+            // Queued row (if any) remains for BackgroundSupportForward retry.
         }
     }
 
@@ -179,8 +190,19 @@ final class HostSupportService
         }
 
         try {
-            $forwarded = $this->api->forwardMessage($reportsChat, $chatId, $sourceMessageId, $forwardOptions);
-            $forwardMessageId = (int) ($forwarded['message_id'] ?? 0);
+            $forwardMessageId = 0;
+            try {
+                $forwarded = $this->api->forwardMessage($reportsChat, $chatId, $sourceMessageId, $forwardOptions);
+                $forwardMessageId = (int) ($forwarded['message_id'] ?? 0);
+            } catch (\Throwable $forwardError) {
+                error_log('[telegram-host] support forwardMessage: '.$forwardError->getMessage());
+            }
+
+            if ($forwardMessageId <= 0) {
+                // Privacy / forward restrictions — copy still delivers content to staff.
+                $copied = $this->api->copyMessage($reportsChat, $chatId, $sourceMessageId, $forwardOptions);
+                $forwardMessageId = (int) ($copied['message_id'] ?? 0);
+            }
             if ($forwardMessageId <= 0) {
                 throw new \RuntimeException('forward_failed');
             }

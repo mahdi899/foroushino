@@ -352,6 +352,45 @@ class BotMessageCatalog
         return $rows;
     }
 
+    /** @return list<string> */
+    public static function messageCategories(bool $excludeReferenceChannel = false): array
+    {
+        $order = ['ثبت‌نام', 'منو', 'منو دکمه‌ها', 'خرید', 'کانال مرجع', 'پشتیبانی', 'خطا'];
+        $present = [];
+        foreach (self::defaults() as $meta) {
+            $cat = $meta['category'];
+            if ($excludeReferenceChannel && $cat === 'کانال مرجع') {
+                continue;
+            }
+            $present[$cat] = true;
+        }
+
+        $out = [];
+        foreach ($order as $cat) {
+            if (isset($present[$cat])) {
+                $out[] = $cat;
+            }
+        }
+        foreach (array_keys($present) as $cat) {
+            if (! in_array($cat, $out, true)) {
+                $out[] = $cat;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<array{key: string, label: string, category: string, body: string, is_custom: bool}>
+     */
+    public function listForBotInCategory(TelegramBot $bot, string $category): array
+    {
+        return array_values(array_filter(
+            $this->listForBot($bot),
+            static fn (array $row): bool => $row['category'] === $category,
+        ));
+    }
+
     private function cacheKey(int $botId, string $key): string
     {
         return "telegram_bot_msg:{$botId}:{$key}";

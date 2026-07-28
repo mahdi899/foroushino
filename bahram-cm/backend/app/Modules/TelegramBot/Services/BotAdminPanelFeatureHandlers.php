@@ -290,21 +290,45 @@ trait BotAdminPanelFeatureHandlers
         int $chatId,
         int $messageId = 0,
         int $page = 0,
+        ?string $categoryFilter = null,
     ): void {
-        $rows = $this->messageCatalog->listForBot($bot);
+        if ($categoryFilter === null) {
+            $categories = BotMessageCatalog::messageCategories(excludeReferenceChannel: true);
+            $text = "💬 <b>پیام‌های ربات</b>\n\n"
+                ."دسته را انتخاب کنید. پیام‌های «کانال مرجع» داخل دکمه «کانال مرجع» هستند.\n"
+                ."دوره/سمینار: بخش «خرید» + هاب دوره‌ها و سمینارها.";
+
+            $keyboard = [];
+            foreach ($categories as $index => $label) {
+                $keyboard[] = [[
+                    'text' => $label,
+                    'callback_data' => 'admin:msg:c:'.$index.':p:0',
+                ]];
+            }
+            $keyboard[] = [['text' => '🏠 داشبورد', 'callback_data' => 'admin:h']];
+            $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+
+            return;
+        }
+
+        $categories = BotMessageCatalog::messageCategories(excludeReferenceChannel: false);
+        $category = in_array($categoryFilter, $categories, true)
+            ? $categoryFilter
+            : ($categories[0] ?? 'منو');
+
+        $rows = $this->messageCatalog->listForBotInCategory($bot, $category);
         $perPage = 8;
         $slice = array_slice($rows, $page * $perPage, $perPage);
         $total = count($rows);
+        $catIndex = array_search($category, $categories, true);
+        if ($catIndex === false) {
+            $catIndex = 0;
+        }
 
-        $text = "💬 پیام‌های قابل ویرایش بات\n"
-            ."صفحه ".($page + 1)." — یکی را برای ویرایش انتخاب کنید.\n\n"
-            ."برای کانال مرجع: متن «توضیح کانال مرجع» را ویرایش کنید یا عکس کاور را عوض کنید.";
+        $text = "💬 پیام‌ها — {$category}\n"
+            .'صفحه '.($page + 1)." — یکی را برای ویرایش انتخاب کنید.";
 
         $keyboard = [];
-        $keyboard[] = [[
-            'text' => '🖼 کانال مرجع — عکس کاور',
-            'callback_data' => 'admin:msg:refcover',
-        ]];
         foreach ($slice as $row) {
             $mark = $row['is_custom'] ? '✏️' : '📄';
             $keyboard[] = [[
@@ -315,15 +339,18 @@ trait BotAdminPanelFeatureHandlers
 
         $nav = [];
         if ($page > 0) {
-            $nav[] = ['text' => '◀️', 'callback_data' => 'admin:msg:p:'.($page - 1)];
+            $nav[] = ['text' => '◀️', 'callback_data' => 'admin:msg:c:'.$catIndex.':p:'.($page - 1)];
         }
         if (($page + 1) * $perPage < $total) {
-            $nav[] = ['text' => '▶️', 'callback_data' => 'admin:msg:p:'.($page + 1)];
+            $nav[] = ['text' => '▶️', 'callback_data' => 'admin:msg:c:'.$catIndex.':p:'.($page + 1)];
         }
         if ($nav !== []) {
             $keyboard[] = $nav;
         }
-        $keyboard[] = [['text' => '🏠 داشبورد', 'callback_data' => 'admin:h']];
+        $keyboard[] = [
+            ['text' => '◀️ دسته‌ها', 'callback_data' => 'admin:msg:hub'],
+            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+        ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
     }
@@ -341,7 +368,23 @@ trait BotAdminPanelFeatureHandlers
         }
 
         $parts = explode(':', $data);
-        $action = $parts[2] ?? 'p';
+        $action = $parts[2] ?? 'hub';
+
+        if ($action === 'hub') {
+            $this->openMessagesSection($bot, $account, $client, $chatId, $messageId);
+
+            return;
+        }
+
+        if ($action === 'c') {
+            $catIndex = (int) ($parts[3] ?? 0);
+            $page = (int) ($parts[5] ?? 0);
+            $categories = BotMessageCatalog::messageCategories(excludeReferenceChannel: false);
+            $category = $categories[$catIndex] ?? $categories[0] ?? 'منو';
+            $this->openMessagesSection($bot, $account, $client, $chatId, $messageId, $page, $category);
+
+            return;
+        }
 
         if ($action === 'p') {
             $this->openMessagesSection($bot, $account, $client, $chatId, $messageId, (int) ($parts[3] ?? 0));
@@ -416,10 +459,7 @@ trait BotAdminPanelFeatureHandlers
                         ['text' => '✏️ ویرایش', 'callback_data' => 'admin:msg:e:'.$key],
                         ['text' => '↩️ پیش‌فرض', 'callback_data' => 'admin:msg:rst:'.$key],
                     ],
-                    ...($key === 'reference_channel_description'
-                        ? [[['text' => '🖼 ویرایش عکس کاور', 'callback_data' => 'admin:msg:refcover']]]
-                        : []),
-                    [['text' => '◀️ لیست', 'callback_data' => 'admin:msg:p:0']],
+                    [['text' => '◀️ دسته‌ها', 'callback_data' => 'admin:msg:hub']],
                 ],
             ],
         );

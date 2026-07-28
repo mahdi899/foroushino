@@ -105,6 +105,10 @@ class TelegramHostPayloadBuilder
                 'features' => $features,
                 'is_active' => (bool) $bot->is_active,
                 'reports_group_chat_id' => $bot->reportsGroupChatId(),
+                'permanent_admin_user_ids' => array_values(array_map(
+                    'intval',
+                    (array) config('telegram_bot.permanent_admins.telegram_user_ids', []),
+                )),
             ],
             'messages' => $messages,
             'required_chats' => $requiredChats,

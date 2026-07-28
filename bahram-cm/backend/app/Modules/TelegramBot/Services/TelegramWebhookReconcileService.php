@@ -39,6 +39,13 @@ class TelegramWebhookReconcileService
             return ['skipped' => true, 'reason' => 'disabled'];
         }
 
+        // Local host uses telegram/bin/local-poll.php (getUpdates). Re-registering
+        // a production webhook here fights the poller and makes support/menus look
+        // dead until the next deleteWebhook.
+        if (app()->environment('local', 'testing')) {
+            return ['skipped' => true, 'reason' => 'local_environment'];
+        }
+
         $bot = $this->botResolver->resolve($botKey);
 
         if (! filled($bot->resolveToken())) {

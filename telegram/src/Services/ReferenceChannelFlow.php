@@ -85,7 +85,10 @@ final class ReferenceChannelFlow
         if ($product === null) {
             $this->api->sendMessage(
                 $chatId,
-                $this->cache->message('purchase_catalog_empty', 'هنوز کانال مرجعی برای خرید فعال نیست.'),
+                $this->cache->message(
+                    'reference_channel_catalog_empty',
+                    'هنوز کانال مرجعی برای خرید فعال نیست.',
+                ),
             );
 
             return;
@@ -95,13 +98,17 @@ final class ReferenceChannelFlow
         $title = trim((string) ($product['title'] ?? $this->cache->message('__reference_channel_title', 'کانال مرجع آکادمی بهرام')));
         $safeTitle = htmlspecialchars($title !== '' ? $title : 'کانال مرجع آکادمی بهرام', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
+        // Prefer the editable bot message; fall back to product description from admin.
+        $customCaption = trim($this->cache->message('reference_channel_description', ''));
         $productDescription = trim($this->cache->message('__reference_channel_product_description', ''));
-        $defaultBody = TelegramCustomEmoji::tag('channel').' <b>'.$safeTitle."</b>\n\n"
-            .($productDescription !== ''
-                ? htmlspecialchars($productDescription, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                : 'با خرید کانال مرجع به گروه اختصاصی منابع دسترسی پیدا می‌کنید.');
-
-        $caption = $this->cache->message('reference_channel_description', $defaultBody);
+        if ($customCaption !== '') {
+            $caption = $customCaption;
+        } else {
+            $caption = TelegramCustomEmoji::tag('channel').' <b>'.$safeTitle."</b>\n\n"
+                .($productDescription !== ''
+                    ? htmlspecialchars($productDescription, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                    : 'با خرید کانال مرجع به گروه اختصاصی منابع دسترسی پیدا می‌کنید.');
+        }
 
         $keyboard = [
             [InlineButtons::buy($productId, $this->cache->message('reference_channel_buy_btn', 'خرید'))],

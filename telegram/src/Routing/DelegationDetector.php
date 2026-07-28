@@ -111,6 +111,26 @@ final class DelegationDetector
         return false;
     }
 
+    /**
+     * Admin photo/document uploads download from Telegram + store media on Iran —
+     * needs more headroom than a short text relay.
+     *
+     * @param array<string, mixed> $update
+     */
+    public function syncRelayTimeoutSeconds(array $update): int
+    {
+        $message = $update['message'] ?? null;
+        if (! is_array($message)) {
+            return 5;
+        }
+
+        if (isset($message['photo']) || isset($message['document'])) {
+            return 25;
+        }
+
+        return 5;
+    }
+
     /** @param array<string, mixed> $update */
     public function isPrivateUserFacing(array $update): bool
     {

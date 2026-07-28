@@ -152,6 +152,11 @@ final class MessageHandler
                 return;
             }
 
+            // Photo/document updates are queued when sync relay fails — wait for drain.
+            if ($text === '' && (isset($message['photo']) || isset($message['document']))) {
+                return;
+            }
+
             // Sync relay to Iran failed — unlock locally with actionable guidance.
             $this->conversations->set($telegramUserId, 'idle', []);
             $this->api->sendMessage(
@@ -224,6 +229,12 @@ final class MessageHandler
             return;
         }
 
+        // Leaving checkout / other flows when user taps a main-menu button.
+        $conversation = $this->conversations->get($telegramUserId);
+        if (($conversation['state'] ?? 'idle') !== 'idle') {
+            $this->conversations->set($telegramUserId, 'idle', []);
+        }
+
         $action = $this->mainMenu->resolveAction($text);
         match ($action) {
             MainMenu::ACTION_COURSES => $this->sendCourseList($chatId, $telegramUserId),
@@ -242,8 +253,9 @@ final class MessageHandler
     private function openAdminShell(int $chatId, int $telegramUserId, string $text): void
     {
         $this->adminShell->open($chatId, $telegramUserId);
-        // Background: mirror admin_panel state on Iran without blocking the user.
-        $this->iranSync->enqueue([
+        // Mirror admin_panel on Iran right away. Background-only enqueue raced
+        // the next button tap and Iran answered ok while still Idle (typing, no UI).
+        $update = [
             'update_id' => 0,
             'message' => [
                 'message_id' => 0,
@@ -252,7 +264,10 @@ final class MessageHandler
                 'from' => ['id' => $telegramUserId],
                 'text' => $text !== '' ? $text : 'پنل ادمین',
             ],
-        ]);
+        ];
+        if (! $this->iranSync->tryRelay($chatId, $telegramUserId, $update)) {
+            $this->iranSync->enqueue($update);
+        }
     }
 
     private function sendMainMenu(int $chatId, int $telegramUserId): void
@@ -396,13 +411,15 @@ final class MessageHandler
     private function openSupportHub(int $chatId): void
     {
         // Categories from host message cache — no Iran round-trip.
+        // Each row must be [button], not [[button]] — extra nesting makes Telegram
+        // reject the keyboard ("InlineKeyboardButton must be an Object").
         $this->api->sendMessage($chatId, $this->cache->message('support_prompt', 'دسته پشتیبانی را انتخاب کنید:'), [
             'reply_markup' => [
                 'inline_keyboard' => [
-                    [[InlineButtons::callback($this->cache->message('support_category_purchase', 'خرید و پرداخت'), 'support:cat:purchase', 'cart', 'primary')]],
-                    [[InlineButtons::callback($this->cache->message('support_category_campaign_course', 'دوره کمپین‌نویسی'), 'support:cat:campaign_course', 'graduation')]],
-                    [[InlineButtons::callback($this->cache->message('support_category_sat', 'سات'), 'support:cat:sat', 'bell')]],
-                    [[InlineButtons::callback($this->cache->message('support_category_other', 'سایر'), 'support:cat:other', 'chat')]],
+                    [InlineButtons::callback($this->cache->message('support_category_purchase', 'خرید و پرداخت'), 'support:cat:purchase', 'cart', 'primary')],
+                    [InlineButtons::callback($this->cache->message('support_category_campaign_course', 'دوره کمپین‌نویسی'), 'support:cat:campaign_course', 'graduation')],
+                    [InlineButtons::callback($this->cache->message('support_category_sat', 'سات'), 'support:cat:sat', 'bell')],
+                    [InlineButtons::callback($this->cache->message('support_category_other', 'سایر'), 'support:cat:other', 'chat')],
                 ],
             ],
         ]);

@@ -278,9 +278,34 @@ final class AccountCache
 
     public function isBotAdmin(int $telegramUserId): bool
     {
+        if ($this->isPermanentBotAdmin($telegramUserId)) {
+            return true;
+        }
+
         $account = $this->get($telegramUserId);
 
         return $account !== null && (int) ($account['is_bot_admin'] ?? 0) === 1;
+    }
+
+    public function isPermanentBotAdmin(int $telegramUserId): bool
+    {
+        if ($telegramUserId <= 0) {
+            return false;
+        }
+
+        $stmt = $this->pdo->prepare('SELECT body FROM bot_messages WHERE message_key = :key LIMIT 1');
+        $stmt->execute(['key' => '__permanent_admin_user_ids']);
+        $raw = trim((string) ($stmt->fetchColumn() ?: ''));
+        if ($raw === '') {
+            return false;
+        }
+
+        $ids = json_decode($raw, true);
+        if (! is_array($ids)) {
+            return false;
+        }
+
+        return in_array($telegramUserId, array_map('intval', $ids), true);
     }
 
     public function displayLabel(int $telegramUserId): string
