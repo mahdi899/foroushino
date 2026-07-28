@@ -10,6 +10,28 @@ import { CreateSeminarForm } from './CreateSeminarForm';
 
 export const dynamic = 'force-dynamic';
 
+function SeminarStatusBadges({
+  status,
+  isEnded,
+  isFull,
+}: {
+  status: string | null;
+  isEnded: boolean;
+  isFull: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {isEnded ? <Badge tone="default">برگزار شد</Badge> : null}
+      {isFull && !isEnded ? <Badge tone="danger">ظرفیت پر</Badge> : null}
+      {status === 'published' ? (
+        <Badge tone="success">منتشر</Badge>
+      ) : status === 'draft' ? (
+        <Badge tone="default">پیش‌نویس</Badge>
+      ) : null}
+    </div>
+  );
+}
+
 export default async function SeminarsPage() {
   const { items: seminars, error } = await getSeminars();
 
@@ -72,14 +94,15 @@ export default async function SeminarsPage() {
               mobile={seminars.map((s) => (
                 <AdminTableCard
                   key={s.id}
-                  title={
-                    <span className="flex flex-wrap items-center gap-2">
-                      {s.title}
-                      {s.is_full ? <Badge tone="danger">ظرفیت پر</Badge> : null}
-                      {s.status === 'published' ? <Badge tone="success">منتشر</Badge> : null}
-                    </span>
-                  }
+                  title={s.title}
                   fields={[
+                    {
+                      label: 'وضعیت',
+                      value: (
+                        <SeminarStatusBadges status={s.status} isEnded={s.is_ended} isFull={s.is_full} />
+                      ),
+                    },
+                    { label: 'مکان', value: s.location || '—' },
                     { label: 'تاریخ', value: formatDateTime(s.date) },
                     { label: 'قیمت', value: s.price ? formatToman(s.price) : '—' },
                     {
@@ -94,26 +117,30 @@ export default async function SeminarsPage() {
             >
               {seminars.map((s) => (
                 <tr key={s.id} className="hover:bg-surface-soft/40">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{s.title}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {s.is_full ? <span className="text-caption text-error">ظرفیت پر</span> : null}
-                      {s.status === 'published' ? (
-                        <Badge tone="success">منتشر</Badge>
-                      ) : s.status === 'draft' ? (
-                        <Badge tone="default">پیش‌نویس</Badge>
+                  <td className="max-w-[16rem] px-4 py-3.5 align-middle xl:max-w-[20rem]">
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="truncate font-medium leading-snug text-text" title={s.title}>
+                        {s.title}
+                      </p>
+                      {s.location ? (
+                        <p className="truncate text-caption text-text-muted">{s.location}</p>
                       ) : null}
+                      <SeminarStatusBadges status={s.status} isEnded={s.is_ended} isFull={s.is_full} />
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-caption">{formatDateTime(s.date)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-caption">
+                  <td className="whitespace-nowrap px-4 py-3.5 text-caption text-text-muted">
+                    {formatDateTime(s.date)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3.5 text-caption">
                     {s.price ? formatToman(s.price) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-caption">
+                  <td className="px-4 py-3.5 text-caption">
                     {s.capacity != null ? `${s.attendees_count} / ${s.capacity}` : 'نامحدود'}
                   </td>
-                  <td className="px-4 py-3">{s.attendees_count.toLocaleString('fa-IR')}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5 tabular-nums">
+                    {s.attendees_count.toLocaleString('fa-IR')}
+                  </td>
+                  <td className="px-4 py-3.5">
                     <EditLink href={`/admin/academy/seminars/${s.id}`} />
                   </td>
                 </tr>

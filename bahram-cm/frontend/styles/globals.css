@@ -602,6 +602,84 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Public seminar about — lighter reading rhythm */
+  .seminar-about-prose :where(h2) {
+    margin-top: 1.75rem;
+    margin-bottom: 0.65rem;
+    font-size: clamp(1.15rem, 0.4vw + 1.05rem, 1.35rem);
+    line-height: 1.45;
+    color: var(--color-bone);
+    font-weight: 600;
+  }
+  .seminar-about-prose :where(h2:first-child) {
+    margin-top: 0;
+  }
+  .seminar-about-prose :where(h3) {
+    margin-top: 1.4rem;
+    margin-bottom: 0.5rem;
+    font-size: clamp(1.05rem, 0.25vw + 0.98rem, 1.15rem);
+    line-height: 1.5;
+    color: var(--color-bone);
+    font-weight: 600;
+  }
+  .seminar-about-prose :where(p) {
+    margin-bottom: 1rem;
+    font-size: inherit;
+    line-height: inherit;
+  }
+  .seminar-about-prose :where(ul, ol) {
+    margin: 0.85rem 0 1.15rem;
+    padding-inline-start: 1.15rem;
+    display: grid;
+    gap: 0.55rem;
+  }
+  .seminar-about-prose :where(li) {
+    padding-inline-start: 0.15rem;
+  }
+  .seminar-about-prose :where(li::marker) {
+    color: color-mix(in oklab, var(--color-gold) 75%, transparent);
+  }
+  .seminar-about-prose :where(strong) {
+    color: var(--color-bone);
+    font-weight: 600;
+  }
+  .seminar-about-prose--panel :where(ul, ol) {
+    margin: 0;
+    padding-inline-start: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.7rem;
+  }
+  .seminar-about-prose--panel :where(li) {
+    position: relative;
+    padding-inline-start: 1.15rem;
+    padding-block: 0.1rem;
+  }
+  .seminar-about-prose--panel :where(li::before) {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0.72em;
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-gold) 80%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-gold) 16%, transparent);
+  }
+  @media (min-width: 640px) {
+    .seminar-about-prose :where(h2) {
+      margin-top: 2.1rem;
+    }
+    .seminar-about-prose :where(ul, ol) {
+      gap: 0.65rem;
+      padding-inline-start: 1.35rem;
+    }
+    .seminar-about-prose--panel :where(ul, ol) {
+      gap: 0.8rem;
+      padding-inline-start: 0;
+    }
+  }
+
   /* Insight article — split hero (reference layout) */
   .insight-hero-split-section {
     --insight-hero-bg: var(--color-ink);

@@ -7,13 +7,14 @@ namespace TelegramHost\Services;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
+use TelegramHost\Queue\PendingSupportForward;
 use TelegramHost\Queue\PendingTicketSync;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
  * Support tickets run entirely on the foreign host:
- * user message → reports group (forward + identity) → staff reply → user.
- * No Iran round-trip required.
+ * user message → ack instantly → queue forward → reports group → staff reply → user.
+ * CRM ticket sync to Iran runs after the webhook response.
  */
 final class HostSupportService
 {
@@ -44,6 +45,7 @@ final class HostSupportService
         private readonly MainMenu $mainMenu,
         private readonly \PDO $pdo,
         private readonly ?PendingTicketSync $ticketSync = null,
+        private readonly ?PendingSupportForward $forwardQueue = null,
     ) {}
 
     public function prepare(int $telegramUserId, string $category): void
@@ -107,7 +109,7 @@ final class HostSupportService
             return;
         }
 
-        // Ack first so the user is never blocked on forward/identity Telegram RTTs.
+        // Ack first — never wait on forward/identity Telegram RTTs in the webhook.
         $this->conversations->set($telegramUserId, 'idle', []);
         $ack = $this->api->sendMessageResult(
             $chatId,
@@ -118,6 +120,57 @@ final class HostSupportService
             ],
         );
         $ackId = (int) ($ack['message_id'] ?? 0);
+
+        $payload = [
+            'chat_id' => $chatId,
+            'telegram_user_id' => $telegramUserId,
+            'source_message_id' => $sourceMessageId,
+            'category' => $category,
+            'text' => $text,
+            'has_media' => $hasMedia,
+            'ack_id' => $ackId,
+            'reports_chat' => $reportsChat,
+        ];
+
+        if ($this->forwardQueue !== null) {
+            $this->forwardQueue->push($payload);
+
+            return;
+        }
+
+        // Fallback when queue is not wired (older bootstraps).
+        try {
+            $this->processQueuedForward($payload);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] support forward failed (category='.$category.', user='.$telegramUserId.'): '.$e->getMessage());
+            $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی به گروه گزارشات ناموفق بود. لطفاً دوباره از منو «پشتیبانی» را بزنید.');
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function processQueuedForward(array $payload): void
+    {
+        $chatId = (int) ($payload['chat_id'] ?? 0);
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $sourceMessageId = (int) ($payload['source_message_id'] ?? 0);
+        $category = (string) ($payload['category'] ?? 'other');
+        $text = (string) ($payload['text'] ?? '');
+        $hasMedia = (bool) ($payload['has_media'] ?? false);
+        $ackId = (int) ($payload['ack_id'] ?? 0);
+        $reportsChat = trim((string) ($payload['reports_chat'] ?? ''));
+
+        if ($reportsChat === '') {
+            $reportsChat = (string) ($this->refreshedReportsGroupChatId() ?? '');
+        }
+        if ($reportsChat === '' || $chatId <= 0 || $telegramUserId <= 0 || $sourceMessageId <= 0) {
+            throw new \RuntimeException('invalid_support_forward_payload');
+        }
+
+        if (! isset(self::CATEGORY_LABELS[$category])) {
+            $category = 'other';
+        }
 
         $topicId = $this->cache->supportTopicId($category);
         $forwardOptions = [];
@@ -174,7 +227,10 @@ final class HostSupportService
             ]);
         } catch (\Throwable $e) {
             error_log('[telegram-host] support forward failed (category='.$category.', user='.$telegramUserId.'): '.$e->getMessage());
-            $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی به گروه گزارشات ناموفق بود. لطفاً دوباره از منو «پشتیبانی» را بزنید.');
+            if ($chatId > 0) {
+                $this->api->sendMessage($chatId, 'ارسال پیام پشتیبانی به گروه گزارشات ناموفق بود. لطفاً دوباره از منو «پشتیبانی» را بزنید.');
+            }
+            throw $e;
         }
     }
 

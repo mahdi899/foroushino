@@ -30,11 +30,12 @@ final class HostRegistrationFlow
     ) {}
 
     /**
-     * Short enough that a slow/unreachable Iran never makes the user feel a
-     * lag — on timeout we fall back to finishing registration locally (see
-     * contact()/name()) instead of making them wait or showing an error.
+     * Keep Iran sync tight. A long ACK+wait (old 8s path) felt broken: user
+     * saw "در حال احراز هویت…" then another message, then sometimes the menu.
+     * On timeout we finish locally; known users still get Iran's replies when
+     * the call lands within this window (local Laravel is usually <200ms).
      */
-    private const REGISTRATION_TIMEOUT_SECONDS = 8;
+    private const REGISTRATION_TIMEOUT_SECONDS = 3;
 
     /**
      * Welcome + phone keyboard from host MySQL only (no registration/start API).
@@ -88,14 +89,6 @@ final class HostRegistrationFlow
         // pending-access lookup below, sent to Iran, or stored locally.
         $phone = MobileNormalizer::normalizeOrOriginal($rawPhone);
 
-        // Immediate ACK — Iran round-trip can take a few seconds (geo +
-        // encrypt + DB). Without this the chat looks frozen and users think
-        // the bot is dead.
-        $this->api->sendMessage($chatId, $this->cache->message(
-            'registration_verifying',
-            "⏳ شماره دریافت شد.\nدر حال احراز هویت و دریافت اطلاعات شما از سرور…",
-        ), ['reply_markup' => ['remove_keyboard' => true]]);
-
         // Access already purchased on the website (before this /start) may
         // have been pre-provisioned by Iran, keyed by mobile — merge it in
         // right away, from local DB only, regardless of whether Iran is
@@ -103,9 +96,11 @@ final class HostRegistrationFlow
         // "دسترسی به محض استارت" work even when Iran is briefly unreachable.
         $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
+        // No "⏳ verifying…" ACK: that added a full Bot-API RTT (via foreign
+        // proxy) before Iran even ran, so users got 2–3 staggered messages.
+        // Try Iran first (short timeout); one apply() batch of replies. If
+        // Iran is down, a single ask-name message — never a loading stub.
         try {
-            // No SyncClient retry here: a second multi-second hang after the
-            // ACK still feels broken. Prefer the offline-name path quickly.
             $response = $this->sync->call('registration/contact', [
                 'telegram_user_id' => $telegramUserId,
                 'phone' => $phone,
@@ -118,10 +113,6 @@ final class HostRegistrationFlow
             error_log('[telegram-host] registration/contact: '.$e->getMessage());
         }
 
-        // Iran unreachable within the short timeout above — don't leave the
-        // user stuck or show an error. Store the phone locally and continue
-        // the form (name) right away; the account is reconciled with Iran in
-        // the background once it's reachable again.
         $this->accounts->storePendingContact($telegramUserId, $phone);
         $this->conversations->set($telegramUserId, 'waiting_for_name', [
             'mobile' => $phone,
@@ -130,7 +121,7 @@ final class HostRegistrationFlow
         $this->api->sendMessage($chatId, $this->cache->message(
             'registration_ask_name_offline',
             'شماره شما ثبت شد. لطفاً نام و نام خانوادگی خود را بفرستید تا ادامه دهیم.',
-        ));
+        ), ['reply_markup' => ['remove_keyboard' => true]]);
     }
 
     private function mergePendingAccessByMobile(int $telegramUserId, string $mobile): void
@@ -163,11 +154,8 @@ final class HostRegistrationFlow
 
     public function name(int $chatId, int $telegramUserId, string $name): void
     {
-        $this->api->sendMessage($chatId, $this->cache->message(
-            'registration_syncing',
-            '⏳ در حال تکمیل ثبت‌نام و همگام‌سازی اطلاعات شما…',
-        ));
-
+        // Same as contact(): no loading stub — one Iran round-trip then replies,
+        // or a single local menu if Iran is unreachable.
         try {
             $response = $this->sync->call('registration/name', [
                 'telegram_user_id' => $telegramUserId,
@@ -180,9 +168,6 @@ final class HostRegistrationFlow
             error_log('[telegram-host] registration/name: '.$e->getMessage());
         }
 
-        // Iran unreachable — finish registration locally right away so the
-        // user isn't stuck waiting or forced to restart; a background account
-        // sync reconciles the real record once Iran is reachable again.
         $conversation = $this->conversations->get($telegramUserId);
         $mobile = (string) ($conversation['context']['mobile'] ?? '');
         $this->accounts->storeLocalOnlyRegistration($telegramUserId, $mobile, $name);
@@ -210,11 +195,6 @@ final class HostRegistrationFlow
 
     public function verifyOtp(int $chatId, int $telegramUserId, string $mobile, string $code, string $displayName = ''): void
     {
-        $this->api->sendMessage($chatId, $this->cache->message(
-            'registration_verifying_otp',
-            '⏳ در حال تایید کد و دریافت اطلاعات حساب…',
-        ));
-
         try {
             $response = $this->sync->call('otp/verify', [
                 'telegram_user_id' => $telegramUserId,

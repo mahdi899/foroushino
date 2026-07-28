@@ -27,7 +27,8 @@ final class IranCircuitBreaker
 {
     private const OPEN_AFTER_FAILURES = 2;
 
-    private const COOLDOWN_SECONDS = 20;
+    /** Shorter cool-down so admin panel / OTP recover faster after a brief Iran blip. */
+    private const COOLDOWN_SECONDS = 12;
 
     private const RENOTIFY_AFTER_SECONDS = 600; // 10 minutes
 
@@ -117,6 +118,30 @@ final class IranCircuitBreaker
 
             return $wasDown;
         });
+    }
+
+    /** Force-close the circuit (diagnose.php / deploy checklist). */
+    public function reset(): void
+    {
+        $this->withLock(function (array $state, callable $save): void {
+            $save(['consecutive_failures' => 0, 'last_failure_at' => 0, 'notified_at' => 0]);
+        });
+        if (is_file($this->file)) {
+            @unlink($this->file);
+        }
+    }
+
+    /** @return array{open: bool, consecutive_failures: int, last_failure_at: int, file: string} */
+    public function status(): array
+    {
+        $state = $this->read();
+
+        return [
+            'open' => $this->isOpen(),
+            'consecutive_failures' => (int) ($state['consecutive_failures'] ?? 0),
+            'last_failure_at' => (int) ($state['last_failure_at'] ?? 0),
+            'file' => $this->file,
+        ];
     }
 
     /** @return array<string, int> */

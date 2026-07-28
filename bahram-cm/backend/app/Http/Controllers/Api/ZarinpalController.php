@@ -75,9 +75,17 @@ class ZarinpalController extends Controller
 
         $result = $this->zarinpal->verify($authority);
         $order = $result['order'];
+
+        // Network blip while order is still pending — never mint a false "failed" receipt.
+        if (! empty($result['pending_verify']) && $order && ! $order->isPaid()) {
+            return redirect()->away($this->paymentResultUrl('pending', $order, $authority));
+        }
+
         $queryStatus = $result['success'] ? 'success' : 'failed';
 
-        if ($result['success'] && $order?->needsProfileCompletion()) {
+        // Telegram (and other linked) checkouts already carry phone + identity on the user —
+        // don't bounce them to /payment/complete when fulfillment already ran.
+        if ($result['success'] && $order?->needsProfileCompletion() && $this->shouldCollectProfile($order)) {
             $completionToken = $this->completionTokens->issue($order);
 
             return redirect()->away(
@@ -88,12 +96,31 @@ class ZarinpalController extends Controller
         return redirect()->away($this->paymentResultUrl($queryStatus, $order));
     }
 
-    private function paymentResultUrl(string $status, ?Order $order): string
+    private function shouldCollectProfile(?Order $order): bool
+    {
+        if ($order === null) {
+            return false;
+        }
+
+        // Linked account with a real mobile already verified in Telegram/site login —
+        // fulfillment + bot notify don't need the guest name form.
+        if ($order->user_id && filled($order->customer_phone)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function paymentResultUrl(string $status, ?Order $order, ?string $authority = null): string
     {
         $order?->loadMissing('product');
         $token = $this->receiptTokens->issue($order, $status);
         $frontendUrl = rtrim((string) config('app.frontend_url'), '/');
+        $url = "{$frontendUrl}/payment/result?token=".urlencode($token);
+        if ($authority !== null && $authority !== '') {
+            $url .= '&authority='.urlencode($authority);
+        }
 
-        return "{$frontendUrl}/payment/result?token=".urlencode($token);
+        return $url;
     }
 }

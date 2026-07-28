@@ -38,6 +38,7 @@ export type ProductDetail = ProductListItem & {
     attendees_count: number;
     remaining_seats: number | null;
     is_full: boolean;
+    is_ended?: boolean;
     date: string | null;
     location: string | null;
   } | null;

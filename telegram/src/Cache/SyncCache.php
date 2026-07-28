@@ -122,6 +122,7 @@ final class SyncCache
                 'sale_price' => $channel['sale_price'] ?? null,
                 'photo' => $channel['photo'] ?? null,
                 'product_type' => 'reference_channel',
+                'description' => (string) ($channel['description'] ?? ''),
             ];
         }
 
@@ -451,6 +452,8 @@ final class SyncCache
     {
         foreach ($this->courses() as $course) {
             if ((int) $course['id'] === $productId) {
+                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+
                 return $course;
             }
         }
@@ -462,7 +465,7 @@ final class SyncCache
                     'title' => $seminar['title'],
                     'price' => $seminar['price'] ?? 0,
                     'sale_price' => $seminar['sale_price'] ?? null,
-                    'photo' => $seminar['photo'] ?? null,
+                    'photo' => $seminar['photo'] ?? $seminar['photo_url'] ?? null,
                 ];
             }
         }
@@ -607,14 +610,16 @@ final class SyncCache
             $this->storeMessages([
                 '__reference_channel_product_id' => '',
                 '__reference_channel_title' => '',
+                '__reference_channel_product_description' => '',
             ]);
 
             return;
         }
 
         $this->storeMessages([
-            '__reference_channel_product_id' => (string) (int) ($primary['product_id'] ?? 0),
+            '__reference_channel_product_id' => (string) (int) ($primary['product_id'] ?? $primary['id'] ?? 0),
             '__reference_channel_title' => (string) ($primary['title'] ?? ''),
+            '__reference_channel_product_description' => (string) ($primary['description'] ?? ''),
         ]);
     }
 

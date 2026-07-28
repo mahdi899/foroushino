@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\SeminarProductService;
 use App\Support\MediaUrl;
 use App\Support\Mobile;
+use App\Support\SeminarGallery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -47,6 +48,8 @@ class SeminarAdminController extends Controller
             'description' => $seminar->description,
             'cover_image' => $seminar->cover_image,
             'cover_image_mobile' => $seminar->cover_image_mobile,
+            'gallery' => is_array($seminar->gallery) ? $seminar->gallery : [],
+            'gallery_slider' => is_array($seminar->gallery_slider) ? $seminar->gallery_slider : [],
             'attendees' => $seminar->attendees->map(fn (SeminarAttendee $a) => [
                 'id' => $a->id,
                 'user_id' => $a->user_id,
@@ -199,7 +202,18 @@ class SeminarAdminController extends Controller
             'description' => ['nullable', 'string'],
             'cover_image' => ['nullable', 'string', 'max:500'],
             'cover_image_mobile' => ['nullable', 'string', 'max:500'],
+            'gallery' => ['nullable', 'array', 'max:48'],
+            'gallery.*.type' => ['required_with:gallery', 'string', 'in:image,video'],
+            'gallery.*.aspect' => ['required_with:gallery', 'string', 'in:16:9,9:16'],
+            'gallery.*.src' => ['required_with:gallery', 'string', 'max:500'],
+            'gallery.*.alt' => ['nullable', 'string', 'max:255'],
+            'gallery.*.poster' => ['nullable', 'string', 'max:500'],
+            'gallery_slider' => ['nullable', 'array', 'max:6'],
+            'gallery_slider.*.src' => ['required_with:gallery_slider', 'string', 'max:500'],
+            'gallery_slider.*.alt' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'in:draft,published'],
+            'ended_at' => ['nullable', 'date'],
+            'is_ended' => ['nullable', 'boolean'],
             'price' => ['nullable', 'integer', 'min:0'],
             'sale_price' => ['nullable', 'integer', 'min:0'],
             'capacity' => ['nullable', 'integer', 'min:1'],
@@ -217,6 +231,23 @@ class SeminarAdminController extends Controller
             if (array_key_exists($imageKey, $data) && filled($data[$imageKey])) {
                 $data[$imageKey] = MediaUrl::reference($data[$imageKey]) ?? $data[$imageKey];
             }
+        }
+
+        if (array_key_exists('gallery', $data)) {
+            $data['gallery'] = SeminarGallery::normalize($data['gallery']);
+        }
+
+        if (array_key_exists('gallery_slider', $data)) {
+            $data['gallery_slider'] = SeminarGallery::normalizeSlider($data['gallery_slider']);
+        }
+
+        if (array_key_exists('is_ended', $data)) {
+            $data['ended_at'] = $data['is_ended'] ? ($data['ended_at'] ?? now()) : null;
+            unset($data['is_ended']);
+        }
+
+        if (array_key_exists('ended_at', $data) && $data['ended_at'] === '') {
+            $data['ended_at'] = null;
         }
 
         if (array_key_exists('sale_price', $data) && $data['sale_price'] === 0) {
@@ -238,6 +269,8 @@ class SeminarAdminController extends Controller
             'date' => $s->date?->toIso8601String(),
             'location' => $s->location,
             'status' => $s->status,
+            'ended_at' => $s->ended_at?->toIso8601String(),
+            'is_ended' => $s->isEnded(),
             'price' => $s->price,
             'sale_price' => $s->sale_price,
             'capacity' => $s->capacity,
@@ -247,6 +280,8 @@ class SeminarAdminController extends Controller
             'banner_full_mobile' => $s->banner_full_mobile,
             'cover_image' => $s->cover_image,
             'cover_image_mobile' => $s->cover_image_mobile,
+            'gallery' => is_array($s->gallery) ? $s->gallery : [],
+            'gallery_slider' => is_array($s->gallery_slider) ? $s->gallery_slider : [],
             'promo_enabled' => (bool) $s->promo_enabled,
             'reference_discount_amount' => (int) ($s->reference_discount_amount ?? 0),
             'product_id' => $s->product_id,

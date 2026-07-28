@@ -332,7 +332,8 @@ class BotAdminPanelService
         }
 
         $admin = (array) ($conversation->context['admin'] ?? []);
-        if (($admin['flow'] ?? '') !== 'profile_photo') {
+        $flow = (string) ($admin['flow'] ?? '');
+        if (! in_array($flow, ['profile_photo', 'reference_channel_cover'], true)) {
             return false;
         }
 
@@ -348,6 +349,11 @@ class BotAdminPanelService
         }
 
         $client = $this->clients->forBot($bot);
+
+        if ($flow === 'reference_channel_cover') {
+            return $this->handleReferenceChannelCoverPhoto($bot, $account, $conversation, $client, $chatId, $fileId);
+        }
+
         $jpgPath = null;
 
         try {
@@ -383,6 +389,97 @@ class BotAdminPanelService
                 @unlink($jpgPath);
             }
             if (isset($tmp) && is_string($tmp) && is_file($tmp)) {
+                @unlink($tmp);
+            }
+        }
+
+        return true;
+    }
+
+    private function handleReferenceChannelCoverPhoto(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $fileId,
+    ): bool {
+        $tmp = null;
+
+        try {
+            $channel = \App\Models\ReferenceChannel::query()
+                ->where('status', 'published')
+                ->whereNotNull('product_id')
+                ->orderByDesc('id')
+                ->first()
+                ?? \App\Models\ReferenceChannel::query()->orderByDesc('id')->first();
+
+            if ($channel === null) {
+                throw new RuntimeException('کانال مرجعی در سیستم ثبت نشده است.');
+            }
+
+            $file = $client->getFile($fileId);
+            $filePath = $file['file_path'] ?? null;
+            if (! is_string($filePath) || $filePath === '') {
+                throw new RuntimeException('دریافت فایل از تلگرام ناموفق بود.');
+            }
+
+            $bytes = $client->downloadFile($filePath);
+            $tmp = tempnam(sys_get_temp_dir(), 'tg_ref_cover_');
+            if ($tmp === false) {
+                throw new RuntimeException('ایجاد فایل موقت ناموفق بود.');
+            }
+            $jpgPath = $tmp.'.jpg';
+            file_put_contents($jpgPath, $bytes);
+            @unlink($tmp);
+            $tmp = $jpgPath;
+
+            $uploaded = new \Illuminate\Http\UploadedFile(
+                $jpgPath,
+                'reference-channel-cover.jpg',
+                'image/jpeg',
+                null,
+                true,
+            );
+
+            $media = app(\App\Services\MediaService::class)->storePublic(
+                $uploaded,
+                alt: 'کاور کانال مرجع',
+                userId: $account->user_id ? (int) $account->user_id : null,
+                category: 'کانال مرجع',
+            );
+
+            $coverRef = \App\Support\MediaUrl::fromDiskPath($media->path)
+                ?? \App\Support\MediaUrl::reference('/storage/'.$media->path)
+                ?? '/storage/'.$media->path;
+
+            $channel->forceFill(['cover_image' => $coverRef])->save();
+            app(\App\Services\ReferenceChannelProductService::class)->syncProduct($channel->fresh());
+
+            $product = $channel->fresh()?->product;
+            if ($product !== null) {
+                $product->forceFill([
+                    'telegram_photo_file_id' => $fileId,
+                    'telegram_photo_source' => (string) $product->featured_image,
+                ])->saveQuietly();
+            }
+
+            \App\Jobs\PushTelegramHostSyncJob::catalog();
+            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
+
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+
+            $client->sendMessage($chatId, '✅ عکس کاور کانال مرجع ذخیره و به هاست خارج همگام شد.', [
+                'reply_markup' => $this->adminMenuMarkup($account),
+            ]);
+        } catch (Throwable $e) {
+            $client->sendMessage($chatId, 'آپلود کاور ناموفق بود: '.$e->getMessage(), [
+                'reply_markup' => $this->adminMenuMarkup($account),
+            ]);
+        } finally {
+            if (is_string($tmp) && is_file($tmp)) {
                 @unlink($tmp);
             }
         }

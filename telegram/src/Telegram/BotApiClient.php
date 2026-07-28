@@ -12,7 +12,25 @@ final class BotApiClient
     /** Reused across calls in the same request so repeated sends (e.g. course lists) keep-alive the TCP/TLS connection to api.telegram.org. */
     private static ?\CurlHandle $handle = null;
 
+    /** Override for Iran: e.g. https://bahram.rahai.online/bahram (foreign Bot API proxy). */
+    private static string $apiBaseUrl = 'https://api.telegram.org';
+
+    /** Bearer required by deploy/host-proxy when using a custom API base. */
+    private static ?string $apiBearer = null;
+
     public function __construct(private readonly string $token) {}
+
+    public static function configure(?string $apiBaseUrl, ?string $apiBearer = null): void
+    {
+        $base = trim((string) $apiBaseUrl);
+        if ($base !== '') {
+            self::$apiBaseUrl = rtrim($base, '/');
+        }
+        $bearer = trim((string) $apiBearer);
+        self::$apiBearer = $bearer !== '' ? $bearer : null;
+        // Base/headers changed — drop keep-alive handle so the next call reconnects cleanly.
+        self::$handle = null;
+    }
 
     /** @param array<string, mixed> $params */
     public function sendMessage(int|string $chatId, string $text, array $params = []): void
@@ -172,6 +190,40 @@ final class BotApiClient
         $this->call('setWebhook', $params);
     }
 
+    public function deleteWebhook(bool $dropPendingUpdates = false): void
+    {
+        $this->call('deleteWebhook', [
+            'drop_pending_updates' => $dropPendingUpdates,
+        ]);
+    }
+
+    /**
+     * Long-poll getUpdates — used by bin/local-poll.php when Telegram cannot
+     * reach a public webhook URL (e.g. local Iran without a tunnel).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getUpdates(int $offset = 0, int $timeoutSeconds = 25): array
+    {
+        $timeout = max(0, min(50, $timeoutSeconds));
+        $decoded = $this->call('getUpdates', [
+            'offset' => $offset,
+            'timeout' => $timeout,
+            'allowed_updates' => [
+                'message',
+                'edited_message',
+                'callback_query',
+                'chat_member',
+                'my_chat_member',
+                'chat_join_request',
+            ],
+        ], true, $timeout + 10);
+
+        $result = $decoded['result'] ?? [];
+
+        return is_array($result) ? array_values(array_filter($result, 'is_array')) : [];
+    }
+
     /** @return array<string, mixed> */
     public function getChatMember(int|string $chatId, int $userId): array
     {
@@ -213,11 +265,16 @@ final class BotApiClient
         $ch = self::$handle;
 
         $timeout = max(1, $timeoutSeconds);
+        $headers = ['Content-Type: application/json'];
+        if (self::$apiBearer !== null) {
+            $headers[] = 'Authorization: Bearer '.self::$apiBearer;
+        }
+
         curl_setopt_array($ch, [
-            CURLOPT_URL => "https://api.telegram.org/bot{$this->token}/{$method}",
+            CURLOPT_URL => self::$apiBaseUrl."/bot{$this->token}/{$method}",
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($params, JSON_UNESCAPED_UNICODE),
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => min(3, $timeout),
             CURLOPT_TIMEOUT => $timeout,
@@ -229,8 +286,12 @@ final class BotApiClient
         $raw = curl_exec($ch);
 
         if (! is_string($raw)) {
+            $err = curl_error($ch);
             if ($return) {
                 return [];
+            }
+            if ($err !== '') {
+                throw new TelegramApiException('Telegram API unreachable: '.$err);
             }
 
             return [];

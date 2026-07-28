@@ -1,0 +1,130 @@
+---
+description: How AI must boot Bahram site + Club (Family) + local Telegram host safely
+alwaysApply: true
+---
+
+# Local run — Bahram + Club + Telegram host
+
+When the user asks to run / boot / start the Bahram site, Club (خانواده), or local Telegram bot, follow this playbook. Do **not** invent ports or deploy polling to production.
+
+## Stack map (Windows / Laragon)
+
+| Piece | Path | Port / URL |
+|-------|------|------------|
+| Laravel API | `bahram-cm/backend` | `http://127.0.0.1:8010` |
+| Next (internal) | via `dev:local` | `:3010` (do not open) |
+| سایت بهرام | dual-domain proxy | **http://app.lvh.me:3000** |
+| کلاب / خانواده PWA | dual-domain proxy | **http://club.lvh.me:3001** |
+| Family Manager (Flutter) | `bahram-family-manager` | **http://localhost:7357** |
+| Telegram host app | `telegram/` | **http://127.0.0.1:8088** |
+| MySQL | Laragon | `127.0.0.1:3306` — `bahram_backend` + `telegram_host_local` |
+| Redis | Laragon | `127.0.0.1:6379` (optional if `QUEUE_CONNECTION=sync`) |
+
+`lvh.me` resolves to `127.0.0.1` — no hosts file edit.
+
+## Boot order (required)
+
+1. Confirm MySQL (and Redis if queue≠sync) is up.
+2. Backend: `cd bahram-cm/backend` → `php artisan serve --host=127.0.0.1 --port=8010`
+3. Frontend dual-domain: `cd bahram-cm/frontend` → `npm run dev:local` (script: `scripts/dev-local.mjs`)
+4. Optional manager: `npm run dev:family` from repo root (or `bahram-family-manager/scripts/run.ps1`)
+5. Optional queues: only if `.env` has `QUEUE_CONNECTION=redis` → `php artisan queue:work`
+6. Health: `curl http://127.0.0.1:8010/up`, open both lvh.me URLs.
+
+If ports are busy, stop the old listeners first; do not switch to random ports.
+
+## Frontend `.env.local` for dual-domain local
+
+Must match `dev-local.mjs` Host headers:
+
+```
+BACKEND_PROXY_URL=http://127.0.0.1:8010
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=http://app.lvh.me:3000
+NEXT_PUBLIC_APP_DOMAIN=app.lvh.me
+NEXT_PUBLIC_FAMILY_DOMAIN=club.lvh.me
+```
+
+**Never** leave production `rostami.app` / `rostami.club` as `NEXT_PUBLIC_*_DOMAIN` while running `dev:local` — middleware Host checks will break Club rewrites.
+
+Backend `.env`: `APP_ENV=local`, `FRONTEND_URL` can stay `http://localhost:3000` or list lvh origins in CORS/Sanctum if cookies fail.
+
+## First-time / after pull
+
+```bash
+cd bahram-cm/backend
+php artisan migrate
+php artisan db:seed
+php artisan storage:link
+php artisan media:sync
+```
+
+Admin default (if seeded): `admin@bahram.local` / `password`. OTP local: `OTP_DEV_MODE=true`, code `12345`.
+
+## Telegram — preferred: local `telegram/` host app
+
+Prefer running the standalone host (`telegram/`) on this machine over Laravel `telegram:poll`. Iran cannot reach `api.telegram.org` or usually Cloudflare quick tunnels; use the foreign Bot API proxy + local long-poll.
+
+Backend `.env` (Bot API + Iran→host push):
+
+```
+TELEGRAM_API_BASE_URL=https://bahram.rahai.online/bahram
+PROXY_SHARED_TOKEN=<same as deploy/host-proxy>
+TELEGRAM_HOST_PUSH_URL=http://127.0.0.1:8088/public/host-sync.php
+```
+
+One-time / when secrets change:
+
+```bash
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS telegram_host_local CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+cmd /c "mysql -u root telegram_host_local < telegram\db\schema.sql"
+
+php telegram/_local_enable_host.php
+```
+
+Every session:
+
+```bash
+cd telegram
+php -S 127.0.0.1:8088 router.php
+# other terminal:
+php bin/local-poll.php
+```
+
+- `router.php` preserves `Authorization` for PHP built-in server (needed by `host-sync.php`).
+- `bin/local-poll.php` deletes the Telegram webhook, long-polls via the proxy, POSTs updates to local `/public/webhook.php`.
+- Sync Iran ↔ host uses `127.0.0.1:8010` and `127.0.0.1:8088` on the same PC.
+
+### Fallback — Laravel `telegram:poll` (not host mode)
+
+```bash
+cd bahram-cm/backend
+php artisan telegram:poll
+```
+
+Only when `APP_ENV` is `local`/`testing`. Deletes webhook; ingest goes through Laravel pipeline, not `telegram/`.
+
+### Safety — never break production webhook
+
+- Local poll / `local-poll.php` **deletes** the webhook on that bot token.
+- Prefer a **dev/test bot token** in local panel for daily work.
+- After testing: restore webhook from admin or `php artisan telegram:webhook:set` on the **Iran server**.
+- Never add poll/local-poll to production schedule, deploy, Supervisor/Horizon.
+
+## What AI must not do
+
+- Do not `telegram:webhook:set` pointing localhost/ngrok into production bot without explicit user ask.
+- Do not change production `APP_ENV` / deploy polling.
+- Do not put site images in `frontend/public/` — follow `site-media-images` rule.
+- Do not start only Next without Laravel — Club/admin/API will 502.
+
+## Quick verify
+
+| Check | Expect |
+|-------|--------|
+| `http://127.0.0.1:8010/up` | 200 |
+| `http://app.lvh.me:3000` | سایت بهرام |
+| `http://club.lvh.me:3001` | خانواده (rewrite به `/family`) |
+| `http://localhost:7357` | Flutter manager (optional) |
+| host-sync push | `refreshAll()` → ok |
+| `php bin/local-poll.php` | running; updates POSTed locally |

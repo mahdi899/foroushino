@@ -240,6 +240,17 @@ class TelegramInfrastructureService
             return $this->proxySharedToken();
         }
 
+        // Local/Iran: when TELEGRAM_API_BASE_URL points at the foreign Bot API
+        // proxy (not api.telegram.org), still send PROXY_SHARED_TOKEN.
+        $api = trim((string) config('telegram_bot.api_base_url', ''));
+        if (
+            $api !== ''
+            && $api !== self::DEFAULT_BASE_URL
+            && ! str_contains($api, 'api.telegram.org')
+        ) {
+            return $this->proxySharedToken();
+        }
+
         return null;
     }
 

@@ -360,13 +360,12 @@ export function MediaLibraryGrid({
   const toolbarBlock = (
     <div
       className={cn(
-        toolbarPlacement === 'above-card' ? 'mb-4' : 'border-b border-border px-4 py-3',
+        toolbarPlacement === 'above-card' ? 'mb-4' : 'border-b border-border bg-surface-soft/70 px-3 py-3 sm:px-4',
       )}
     >
       <div
         className={cn(
           'admin-media-toolbar flex flex-col gap-2.5 sm:flex-row sm:items-center',
-          toolbarPlacement === 'inside' && 'mb-3',
         )}
       >
         {paginated && (
@@ -377,14 +376,14 @@ export function MediaLibraryGrid({
               value={paginated.search}
               onChange={(e) => paginated.onSearchChange(e.target.value)}
               placeholder="جستجو در عنوان یا توضیحات…"
-              className="field-input field-input--icon-start w-full border-transparent bg-surface text-small shadow-none focus:border-primary/30"
+              className="field-input field-input--icon-start w-full bg-surface text-small"
             />
           </div>
         )}
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <label
             className={cn(
-              'admin-upload-btn btn btn-primary relative min-w-[9.5rem] justify-center overflow-hidden px-6 py-2.5 text-small shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]',
+              'admin-upload-btn btn btn-primary relative min-w-[8.5rem] justify-center overflow-hidden px-4 py-2 text-small',
               uploading && 'is-uploading pointer-events-none',
             )}
           >
@@ -399,7 +398,7 @@ export function MediaLibraryGrid({
                 ? uploadQueue.length > 1
                   ? `بهینه‌سازی ${(queueIndex + 1).toLocaleString('fa-IR')} از ${uploadQueue.length.toLocaleString('fa-IR')}…`
                   : 'بهینه‌سازی…'
-                : 'آپلود تصاویر'}
+                : 'آپلود'}
             </span>
             <input
               ref={inputRef}
@@ -416,7 +415,7 @@ export function MediaLibraryGrid({
               type="button"
               onClick={onAiGenerate}
               disabled={aiLoading}
-              className="btn btn-secondary shrink-0 justify-center px-4 py-2.5 text-caption"
+              className="btn btn-secondary shrink-0 justify-center px-3 py-2 text-caption"
             >
               {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
               تولید AI
@@ -436,7 +435,7 @@ export function MediaLibraryGrid({
           <button
             type="button"
             onClick={() => setTrashOpen(true)}
-            className="relative inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-caption text-text-muted transition hover:bg-surface-soft hover:text-text"
+            className="relative inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-caption text-text-muted transition hover:bg-surface hover:text-text"
             aria-label="سطل زباله"
           >
             <Trash2 className="h-4 w-4" />
@@ -528,8 +527,8 @@ export function MediaLibraryGrid({
                     className="absolute inset-0 h-full w-full object-contain p-2"
                   />
                 </div>
-                <div className="absolute inset-x-0 bottom-0 z-[5] bg-black/75 px-1.5 py-1">
-                  <p className="truncate admin-text-caption text-white">{item.label}</p>
+                <div className="absolute inset-x-0 bottom-0 z-[5] border-t border-border bg-surface/92 px-1.5 py-1 backdrop-blur-[2px]">
+                  <p className="truncate admin-text-caption text-text">{item.label}</p>
                 </div>
                 {isSelected && mode === 'pick' && (
                   <span className="absolute inset-0 z-[15] flex items-center justify-center bg-primary/35">

@@ -85,7 +85,8 @@ final class HostAdminShell
         $this->api->sendMessage(
             $chatId,
             TelegramCustomEmoji::tag('shield').' <b>پنل ادمین</b>'
-            ."\nاز دکمه‌های زیر استفاده کنید. بخش‌های دیتادار از سرور اصلی بارگذاری می‌شوند.",
+            ."\nاز دکمه‌های زیر استفاده کنید. بخش‌های دیتادار از سرور اصلی بارگذاری می‌شوند."
+            ."\nاگر دکمه‌ها جواب ندادند: اتصال هاست↔ایران را از diagnose.php چک کنید.",
             [
                 'parse_mode' => 'HTML',
                 'reply_markup' => $this->replyMarkup(),

@@ -100,7 +100,7 @@ class ZarinpalPaymentService
     }
 
     /**
-     * @return array{success: bool, message: string, ref_id: ?string, order: ?Order}
+     * @return array{success: bool, pending_verify?: bool, message: string, ref_id: ?string, order: ?Order}
      */
     public function verify(string $authority): array
     {
@@ -137,7 +137,13 @@ class ZarinpalPaymentService
                 'order_id' => $order->id,
             ]);
 
-            return ['success' => false, 'message' => 'ارتباط با درگاه پرداخت برای تایید تراکنش برقرار نشد.', 'ref_id' => null, 'order' => $order];
+            return [
+                'success' => false,
+                'pending_verify' => true,
+                'message' => 'ارتباط با درگاه پرداخت برای تایید تراکنش برقرار نشد.',
+                'ref_id' => null,
+                'order' => $order,
+            ];
         }
 
         $body = $response->json();

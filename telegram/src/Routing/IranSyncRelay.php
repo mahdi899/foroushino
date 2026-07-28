@@ -10,7 +10,7 @@ use TelegramHost\Services\IranFailureReporter;
 use TelegramHost\Support\IranSyncFailureException;
 use TelegramHost\Telegram\BotApiClient;
 
-/** Tries Iran process-update; failures are queued silently (no user-facing outage text). */
+/** Tries Iran process-update; on failure queues for later drain (admin gets a clear local unlock message). */
 final class IranSyncRelay
 {
     public function __construct(

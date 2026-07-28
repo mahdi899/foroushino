@@ -202,21 +202,19 @@ class DatabaseBackupService
         $gzPath = $dir.DIRECTORY_SEPARATOR.$filename;
         $sqlPath = $dir.DIRECTORY_SEPARATOR."backup_{$config['database']}_{$timestamp}.sql";
 
-        $command = [
-            $binary,
-            '--host='.$config['host'],
-            '--port='.(string) $config['port'],
-            '--user='.$config['username'],
-            '--single-transaction',
-            '--routines',
-            '--triggers',
-            '--result-file='.$sqlPath,
-            $config['database'],
-        ];
+        $command = array_merge(
+            [$binary],
+            $this->mysqlCliArguments($config),
+            [
+                '--single-transaction',
+                '--routines',
+                '--triggers',
+                '--result-file='.$sqlPath,
+                $config['database'],
+            ],
+        );
 
-        $env = array_filter([
-            'MYSQL_PWD' => $config['password'] !== '' ? $config['password'] : null,
-        ]);
+        $env = $this->mysqlProcessEnv($config);
 
         $process = new Process($command, null, $env, null, 300);
         $process->run();
@@ -323,36 +321,228 @@ class DatabaseBackupService
     {
         $this->ensureMysql();
 
-        $binary = $this->mysqlBinary();
-        if ($binary === null) {
-            throw new RuntimeException('ابزار mysql یافت نشد. مسیر MYSQL_PATH را در env تنظیم کنید.');
-        }
-
         $sql = $this->readSqlPayload($file);
         if ($sql === '') {
             throw new RuntimeException('فایل بکاپ خالی است.');
         }
 
+        $tmpPath = $this->writeRestoreTempSql($sql);
+
+        try {
+            $cliError = null;
+            $binary = $this->mysqlBinary();
+            if ($binary !== null) {
+                try {
+                    $this->restoreViaMysqlCli($binary, $tmpPath);
+
+                    return;
+                } catch (RuntimeException $e) {
+                    $cliError = $e->getMessage();
+                    Log::warning('Database restore via mysql CLI failed, trying PHP driver.', [
+                        'message' => $cliError,
+                    ]);
+                }
+            }
+
+            try {
+                $this->restoreViaMysqli($sql);
+
+                return;
+            } catch (Throwable $e) {
+                $detail = $e->getMessage();
+                if ($cliError !== null) {
+                    $detail = 'CLI: '.$cliError.' | PHP: '.$detail;
+                }
+
+                throw new RuntimeException('بازیابی دیتابیس ناموفق بود: '.$detail);
+            }
+        } finally {
+            @unlink($tmpPath);
+        }
+    }
+
+    private function writeRestoreTempSql(string $sql): string
+    {
+        $tmpDir = $this->backupDirectory();
+        File::ensureDirectoryExists($tmpDir);
+        $tmpPath = $tmpDir.DIRECTORY_SEPARATOR.'restore_'.now()->format('Ymd_His').'_'.uniqid('', true).'.sql';
+
+        if (file_put_contents($tmpPath, $sql) === false) {
+            throw new RuntimeException('نوشتن فایل موقت بازیابی ناموفق بود.');
+        }
+
+        @chmod($tmpPath, 0600);
+
+        $backupReal = realpath($tmpDir);
+        $fileReal = realpath($tmpPath);
+        if ($backupReal === false || $fileReal === false || ! str_starts_with($fileReal, $backupReal)) {
+            @unlink($tmpPath);
+
+            throw new RuntimeException('مسیر فایل موقت بازیابی نامعتبر است.');
+        }
+
+        return $tmpPath;
+    }
+
+    private function restoreViaMysqlCli(string $binary, string $tmpPath): void
+    {
         $config = $this->mysqlConfig();
-        $command = [
-            $binary,
-            '--host='.$config['host'],
-            '--port='.(string) $config['port'],
-            '--user='.$config['username'],
-            $config['database'],
-        ];
+        $sourcePath = str_replace('\\', '/', $tmpPath);
+        $env = $this->mysqlProcessEnv($config);
+        $errors = [];
 
-        $env = array_filter([
-            'MYSQL_PWD' => $config['password'] !== '' ? $config['password'] : null,
-        ]);
+        foreach ($this->mysqlCliArgumentVariants($config) as $variant) {
+            $command = array_merge(
+                [$binary],
+                $variant,
+                [$config['database'], '--execute', 'source '.$sourcePath],
+            );
 
-        $process = new Process($command, null, $env, null, 600);
-        $process->setInput($sql);
+            $process = new Process($command, null, $env, null, 3600);
+            $process->run();
+
+            if ($process->isSuccessful()) {
+                return;
+            }
+
+            $errors[] = trim($process->getErrorOutput() ?: $process->getOutput());
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            try {
+                $this->restoreViaMysqlCliStdinRedirect($binary, $config, $tmpPath);
+
+                return;
+            } catch (RuntimeException $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        throw new RuntimeException(implode(' | ', array_filter($errors)) ?: 'mysql CLI restore failed');
+    }
+
+    /** @param  array{host: string, port: int|string, database: string, username: string, password: string, socket: string}  $config */
+    private function restoreViaMysqlCliStdinRedirect(string $binary, array $config, string $tmpPath): void
+    {
+        $env = $this->mysqlProcessEnv($config);
+        $parts = array_merge(
+            [$this->quoteShellArg($binary)],
+            array_map(fn (string $arg) => $this->quoteShellArg($arg), $this->mysqlCliArguments($config)),
+            [$this->quoteShellArg($config['database'])],
+        );
+
+        $redirect = PHP_OS_FAMILY === 'Windows'
+            ? '< '.$this->quoteShellArg($tmpPath)
+            : '< '.escapeshellarg($tmpPath);
+
+        $process = Process::fromShellCommandline(implode(' ', $parts).' '.$redirect, null, $env, null, 3600);
         $process->run();
 
         if (! $process->isSuccessful()) {
-            throw new RuntimeException('بازیابی دیتابیس ناموفق بود: '.trim($process->getErrorOutput() ?: $process->getOutput()));
+            throw new RuntimeException(trim($process->getErrorOutput() ?: $process->getOutput()));
         }
+    }
+
+    private function quoteShellArg(string $value): string
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            return '"'.str_replace('"', '""', $value).'"';
+        }
+
+        return escapeshellarg($value);
+    }
+
+    /** @param  array{host: string, port: int|string, database: string, username: string, password: string, socket: string}  $config
+     * @return list<list<string>>
+     */
+    private function mysqlCliArgumentVariants(array $config): array
+    {
+        $variants = [$this->mysqlCliArguments($config)];
+
+        $socket = $config['socket'] !== '' ? $config['socket'] : $this->discoverWindowsMysqlSocket();
+        if ($socket !== null) {
+            $variants[] = [
+                '--default-character-set=utf8mb4',
+                '--socket='.$socket,
+                '--user='.$config['username'],
+            ];
+        }
+
+        return $variants;
+    }
+
+    private function discoverWindowsMysqlSocket(): ?string
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return null;
+        }
+
+        foreach (glob('C:\\laragon\\data\\mysql-*\\mysql.sock') ?: [] as $path) {
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private function restoreViaMysqli(string $sql): void
+    {
+        if (! extension_loaded('mysqli')) {
+            throw new RuntimeException('درایور mysqli در PHP فعال نیست.');
+        }
+
+        $config = $this->mysqlConfig();
+        $host = $config['host'];
+        $port = (int) $config['port'];
+        $socket = $config['socket'] !== '' ? $config['socket'] : ($this->discoverWindowsMysqlSocket() ?? '');
+
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+        try {
+            if ($socket !== '') {
+                $mysqli = new \mysqli($host, $config['username'], $config['password'], $config['database'], $port, $socket);
+            } else {
+                $mysqli = new \mysqli($host, $config['username'], $config['password'], $config['database'], $port);
+            }
+        } catch (\mysqli_sql_exception $e) {
+            throw new RuntimeException('اتصال mysqli برای بازیابی ناموفق بود: '.$e->getMessage());
+        }
+
+        try {
+            $mysqli->set_charset('utf8mb4');
+            $mysqli->query('SET FOREIGN_KEY_CHECKS=0');
+            $mysqli->query('SET NAMES utf8mb4');
+            $mysqli->query('SET SESSION max_allowed_packet=1073741824');
+
+            $payload = $this->normalizeDumpSqlForMysqli($sql);
+
+            if (! $mysqli->multi_query($payload)) {
+                throw new RuntimeException($mysqli->error);
+            }
+
+            do {
+                $result = $mysqli->store_result();
+                if ($result instanceof \mysqli_result) {
+                    $result->free();
+                }
+            } while ($mysqli->more_results() && $mysqli->next_result());
+
+            if ($mysqli->errno !== 0) {
+                throw new RuntimeException($mysqli->error);
+            }
+
+            $mysqli->query('SET FOREIGN_KEY_CHECKS=1');
+        } finally {
+            $mysqli->close();
+        }
+    }
+
+    private function normalizeDumpSqlForMysqli(string $sql): string
+    {
+        $sql = preg_replace('/^DELIMITER\s+\S+\s*$/m', '', $sql) ?? $sql;
+
+        return str_replace('$$', ';', $sql);
     }
 
     /** @param  array{path: string, filename: string, size_bytes: int}  $artifact */
@@ -460,19 +650,71 @@ class DatabaseBackupService
         }
     }
 
-    /** @return array{host: string, port: int|string, database: string, username: string, password: string} */
+    /** @return array{host: string, port: int|string, database: string, username: string, password: string, socket: string} */
     private function mysqlConfig(): array
     {
         $connection = config('database.default');
         $config = config("database.connections.{$connection}");
+        $host = (string) ($config['host'] ?? '127.0.0.1');
+        $port = $config['port'] ?? 3306;
+
+        if (preg_match('/^(.*):(\d+)$/', trim($host), $matches)
+            && substr_count($host, ':') === 1
+            && ! str_contains($host, ']')) {
+            $host = $matches[1];
+            $port = $matches[2];
+        }
 
         return [
-            'host' => (string) ($config['host'] ?? '127.0.0.1'),
-            'port' => $config['port'] ?? 3306,
+            'host' => $this->normalizeMysqlHost($host),
+            'port' => $port,
             'database' => (string) ($config['database'] ?? ''),
             'username' => (string) ($config['username'] ?? ''),
             'password' => (string) ($config['password'] ?? ''),
+            'socket' => trim((string) ($config['unix_socket'] ?? '')),
         ];
+    }
+
+    /** @param  array{host: string, port: int|string, database: string, username: string, password: string, socket: string}  $config
+     * @return list<string>
+     */
+    private function mysqlCliArguments(array $config): array
+    {
+        $args = ['--default-character-set=utf8mb4'];
+
+        if ($config['socket'] !== '') {
+            $args[] = '--socket='.$config['socket'];
+
+            return array_merge($args, ['--user='.$config['username']]);
+        }
+
+        $args[] = '--host='.$config['host'];
+        $args[] = '--port='.(string) $config['port'];
+
+        return array_merge($args, ['--user='.$config['username']]);
+    }
+
+    /** @param  array{password: string}  $config
+     * @return array<string, string>
+     */
+    private function mysqlProcessEnv(array $config): array
+    {
+        return array_filter([
+            'MYSQL_PWD' => $config['password'] !== '' ? $config['password'] : null,
+        ]);
+    }
+
+    private function normalizeMysqlHost(string $host): string
+    {
+        $host = trim($host);
+
+        // Windows/Laragon: "localhost" often breaks TCP clients (HY000 2004). Linux keeps
+        // "localhost" so mysql CLI can use the socket when configured that way.
+        if (PHP_OS_FAMILY === 'Windows' && ($host === '' || strtolower($host) === 'localhost')) {
+            return '127.0.0.1';
+        }
+
+        return $host !== '' ? $host : '127.0.0.1';
     }
 
     private function databaseName(): string
@@ -491,6 +733,14 @@ class DatabaseBackupService
 
     private function mysqlBinary(): ?string
     {
+        $dump = $this->mysqldumpBinary();
+        if ($dump !== null) {
+            $paired = preg_replace('/mysqldump(\.exe)?$/i', 'mysql$1', $dump);
+            if (is_string($paired) && $paired !== $dump && is_file($paired)) {
+                return $paired;
+            }
+        }
+
         return $this->resolveMysqlTool(
             configured: trim((string) config('bahram.backup.mysql_path', '')),
             fallbacks: ['mysql', 'mysql.exe'],

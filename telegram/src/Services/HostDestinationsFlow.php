@@ -14,9 +14,9 @@ use TelegramHost\Telegram\BotApiClient;
 /**
  * «حساب من» destinations on the foreign host.
  *
- * Membership is decided ONLY by this host bot calling Telegram
- * getChatMember (api.telegram.org) with the bot token — never Iran,
- * never a cached snapshot membership flag.
+ * Membership is decided by this host bot calling Telegram getChatMember
+ * (api.telegram.org) with the bot token — never Iran. Short-lived local
+ * MembershipCheckCache avoids repeating slow API calls on every «حساب من» tap.
  */
 final class HostDestinationsFlow
 {
@@ -29,6 +29,7 @@ final class HostDestinationsFlow
         private readonly AccountCache $accounts,
         private readonly PendingMembershipSync $membershipQueue,
         private readonly string $siteBaseUrl,
+        private readonly ?MembershipCheckCache $membershipCache = null,
     ) {}
 
     /**
@@ -165,6 +166,11 @@ final class HostDestinationsFlow
             return false;
         }
 
+        $cached = $this->membershipCache?->get($telegramUserId, $chatId);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         try {
             $member = $this->api->getChatMember($chatId, $telegramUserId);
             $status = strtolower(trim((string) ($member['status'] ?? '')));
@@ -177,6 +183,7 @@ final class HostDestinationsFlow
                     $telegramUserId,
                     $status === '' ? '(empty)' : $status,
                 ));
+                $this->membershipCache?->remember($telegramUserId, $chatId, false);
 
                 return false;
             }
@@ -189,6 +196,7 @@ final class HostDestinationsFlow
                 $status,
                 $isMember ? 'member' : 'not member',
             ));
+            $this->membershipCache?->remember($telegramUserId, $chatId, $isMember);
 
             return $isMember;
         } catch (\Throwable $e) {
@@ -199,6 +207,7 @@ final class HostDestinationsFlow
                 $telegramUserId,
                 $e->getMessage(),
             ));
+            $this->membershipCache?->remember($telegramUserId, $chatId, false);
 
             return false;
         }

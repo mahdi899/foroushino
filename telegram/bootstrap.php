@@ -30,4 +30,10 @@ if (! is_file($configPath)) {
 /** @var array<string, mixed> $config */
 $config = require $configPath;
 
+// Optional Iran→foreign Bot API proxy (see config.sample.php).
+\TelegramHost\Telegram\BotApiClient::configure(
+    isset($config['telegram_api_base_url']) ? (string) $config['telegram_api_base_url'] : null,
+    isset($config['telegram_api_bearer']) ? (string) $config['telegram_api_bearer'] : null,
+);
+
 return $config;
