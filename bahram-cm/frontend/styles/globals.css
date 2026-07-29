@@ -3027,8 +3027,9 @@ html[data-theme="light"] .newsletter-cta-band__surface {
   }
 
   .newsletter-cta-band__form-wrap {
-    max-width: 22rem;
+    max-width: 24rem;
     flex-shrink: 0;
+    width: 100%;
   }
 }
 

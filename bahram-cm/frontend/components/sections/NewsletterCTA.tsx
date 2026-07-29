@@ -1,6 +1,6 @@
 import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { NewsletterForm } from "@/components/ui/NewsletterForm";
+import { NewsletterJoinButton } from "@/components/sections/NewsletterJoinButton";
 
 export function NewsletterCTA() {
   return (
@@ -24,12 +24,12 @@ export function NewsletterCTA() {
                 هر هفته، یک نگاه تازه.
               </h2>
               <p className="newsletter-cta-band__lead mx-auto mt-3 max-w-md text-sm leading-relaxed md:mx-0 md:text-body">
-                کمپین و رشد حرفه‌ای — مستقیم در ایمیل، بدون اسپم.
+                کمپین و رشد حرفه‌ای — با شماره موبایل عضو شو، بدون اسپم.
               </p>
             </Reveal>
 
             <Reveal delay={0.08} className="newsletter-cta-band__form-wrap w-full min-w-0">
-              <NewsletterForm tone="band" />
+              <NewsletterJoinButton />
             </Reveal>
           </div>
         </div>

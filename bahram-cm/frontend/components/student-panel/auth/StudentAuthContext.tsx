@@ -3,10 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { StudentFormPrefill } from '@/lib/student/formPrefill';
 
+type LoginPurpose = 'default' | 'comment' | 'newsletter';
+
 type OpenLoginOptions = {
   redirectTo?: string;
   context?: 'panel' | 'family';
-  purpose?: 'default' | 'comment';
+  purpose?: LoginPurpose;
   /** When set (e.g. comment flow), login stays on-page and then runs this. */
   onSuccess?: () => void;
   /** Preserve page scroll across open/close (avoids jump-to-opener). */
@@ -20,7 +22,7 @@ type StudentAuthContextValue = {
   loginOpen: boolean;
   redirectTo: string;
   loginContext: 'panel' | 'family';
-  loginPurpose: 'default' | 'comment';
+  loginPurpose: LoginPurpose;
   openLogin: (options?: OpenLoginOptions) => void;
   closeLogin: () => void;
   markLoggedIn: (displayName?: string, prefill?: StudentFormPrefill | null) => void;
@@ -49,7 +51,7 @@ export function StudentAuthProvider({
   const [loginOpen, setLoginOpen] = useState(false);
   const [redirectTo, setRedirectTo] = useState('/panel');
   const [loginContext, setLoginContext] = useState<'panel' | 'family'>('panel');
-  const [loginPurpose, setLoginPurpose] = useState<'default' | 'comment'>('default');
+  const [loginPurpose, setLoginPurpose] = useState<LoginPurpose>('default');
   const onSuccessRef = useRef<(() => void) | null>(null);
   const scrollYRef = useRef<number | null>(null);
 
