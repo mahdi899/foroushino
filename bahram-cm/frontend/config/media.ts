@@ -61,8 +61,23 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   },
   'reference-channel-hero': {
     src: siteStorageMedia('reference-channel-hero.webp'),
-    label: 'هیرو و تامبنیل کانال مرجع',
+    label: 'هیرو کانال مرجع — دسکتاپ',
     category: 'دوره‌ها',
+  },
+  'reference-channel-hero-mobile': {
+    src: siteStorageMedia('reference-channel-hero-mobile.webp'),
+    label: 'هیرو کانال مرجع — موبایل',
+    category: 'دوره‌ها',
+  },
+  'seminar-zaferaniyeh-cover': {
+    src: siteStorageMedia('seminar-zaferaniyeh-cover.webp'),
+    label: 'سمینار زعفرانیه — کاور دسکتاپ',
+    category: 'سمینار',
+  },
+  'seminar-zaferaniyeh-cover-mobile': {
+    src: siteStorageMedia('seminar-zaferaniyeh-cover-mobile.webp'),
+    label: 'سمینار زعفرانیه — کاور موبایل',
+    category: 'سمینار',
   },
   'founder': { src: siteStorageMedia('founder-portrait.svg'), label: 'تصویر بهرام', category: 'درباره' },
   'logo-bahram': {
@@ -74,9 +89,29 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   'og-default': { src: siteStorageMedia('og-default.svg'), label: 'تصویر اشتراک‌گذاری', category: 'سئو' },
   'course-mockup': { src: siteStorageMedia('course-mockup.svg'), label: 'ماکاپ دوره', category: 'دوره‌ها' },
   'app-home': { src: siteStorageMedia('app-home.svg'), label: 'اپ — صفحه اصلی', category: 'سات' },
+  'saat-hero': {
+    src: siteStorageMedia('saat-hero.webp'),
+    label: 'هیرو سات — هر تماس، یک فروش',
+    category: 'سات',
+  },
+  'main-path-saat': {
+    src: siteStorageMedia('main-path-saat.webp'),
+    label: 'کارت مسیر سات — انقلابی در فروش تلفنی',
+    category: 'سات',
+  },
   'academy-app-home': {
     src: siteStorageMedia('academy-app-home.webp'),
     label: 'پیش‌نمایش مینی‌اپ سات',
+    category: 'سات',
+  },
+  'academy-app-leads': {
+    src: siteStorageMedia('academy-app-leads.webp'),
+    label: 'اپ سات — لیدها / مشتریان تیم',
+    category: 'سات',
+  },
+  'academy-app-sales': {
+    src: siteStorageMedia('academy-app-sales.webp'),
+    label: 'اپ سات — فروش‌ها',
     category: 'سات',
   },
   'app-path': { src: siteStorageMedia('app-path.svg'), label: 'اپ — مسیر', category: 'سات' },

@@ -72,6 +72,7 @@ class ReferenceChannelController extends Controller
                 'title' => $channel->title,
                 'description' => $channel->description,
                 'cover_image' => $this->coverImage($channel),
+                'cover_image_mobile' => $this->coverImageMobile($channel),
                 'product_slug' => $channel->product?->slug,
                 'identity_ready' => $level >= 2,
                 'verification_level' => $level,
@@ -118,6 +119,7 @@ class ReferenceChannelController extends Controller
                 'title' => $channel->title,
                 'description' => $channel->description,
                 'cover_image' => $this->coverImage($channel),
+                'cover_image_mobile' => $this->coverImageMobile($channel),
                 'product_slug' => $channel->product?->slug,
                 'purchase_path' => '/purchase/'.$channel->product->slug,
                 'amount' => $quote['amount'],
@@ -182,6 +184,7 @@ class ReferenceChannelController extends Controller
             'slug' => $model->slug,
             'description' => $model->description,
             'cover_image' => $this->coverImage($model),
+            'cover_image_mobile' => $this->coverImageMobile($model),
             'product_slug' => $model->product?->slug,
             'identity_ready' => $identityReady,
             'verification_level' => $level,
@@ -202,6 +205,21 @@ class ReferenceChannelController extends Controller
             ?: $channel->product?->featured_image
             ?: null;
 
+        return $this->resolveCoverUrl($raw);
+    }
+
+    private function coverImageMobile(ReferenceChannel $channel): ?string
+    {
+        $raw = $channel->cover_image_mobile
+            ?: $channel->cover_image
+            ?: $channel->product?->featured_image
+            ?: null;
+
+        return $this->resolveCoverUrl($raw);
+    }
+
+    private function resolveCoverUrl(mixed $raw): ?string
+    {
         if (! filled($raw)) {
             return null;
         }

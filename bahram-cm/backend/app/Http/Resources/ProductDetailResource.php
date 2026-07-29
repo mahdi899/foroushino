@@ -26,6 +26,7 @@ class ProductDetailResource extends JsonResource
         $effectivePrice = is_array($referenceQuote)
             ? (int) $referenceQuote['final_amount']
             : (int) $this->effective_price;
+        $mobileCover = $this->resolveReferenceCoverMobile($altResolver);
 
         return [
             'id' => $this->id,
@@ -41,6 +42,8 @@ class ProductDetailResource extends JsonResource
             'featured_image_alt' => $imageRef
                 ? $altResolver->resolve($imageRef, $this->title)
                 : null,
+            'featured_image_mobile' => $mobileCover['url'],
+            'featured_image_mobile_alt' => $mobileCover['alt'],
             'show_on_courses' => (bool) $this->show_on_courses,
             'featured_listing' => (bool) $this->featured_listing,
             'course_level' => $this->course_level,
@@ -65,6 +68,37 @@ class ProductDetailResource extends JsonResource
                 'date' => $seminar->date?->toIso8601String(),
                 'location' => $seminar->location,
             ] : null,
+        ];
+    }
+
+    /**
+     * Mobile hero for reference-channel products (falls back to desktop cover).
+     *
+     * @return array{url: ?string, alt: ?string}
+     */
+    private function resolveReferenceCoverMobile(MediaAltResolver $altResolver): array
+    {
+        if (! $this->resource->isReferenceChannelProduct()) {
+            return ['url' => null, 'alt' => null];
+        }
+
+        $this->loadMissing('referenceChannel');
+        $raw = $this->referenceChannel?->cover_image_mobile
+            ?: $this->referenceChannel?->cover_image
+            ?: $this->featured_image;
+
+        if (! filled($raw)) {
+            return ['url' => null, 'alt' => null];
+        }
+
+        $ref = MediaUrl::fromDiskPath((string) $raw) ?? MediaUrl::reference((string) $raw);
+        if (! $ref) {
+            return ['url' => null, 'alt' => null];
+        }
+
+        return [
+            'url' => MediaUrl::resolve($ref),
+            'alt' => $altResolver->resolve($ref, $this->title),
         ];
     }
 }

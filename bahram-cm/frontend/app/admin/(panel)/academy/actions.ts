@@ -455,6 +455,7 @@ export async function createReferenceChannel(input: {
   price: number;
   telegram_destination_id?: number | null;
   cover_image?: string | null;
+  cover_image_mobile?: string | null;
 }) {
   try {
     const res = await adminFetch<{ data: { id: number } }>('/reference-channels', { method: 'POST', body: input });
@@ -467,8 +468,17 @@ export async function createReferenceChannel(input: {
 
 export async function updateReferenceChannel(id: number, input: Record<string, unknown>) {
   try {
-    await adminFetch(`/reference-channels/${id}`, { method: 'PATCH', body: input });
+    const res = await adminFetch<{
+      data: { product_slug?: string | null; slug?: string | null };
+    }>(`/reference-channels/${id}`, { method: 'PATCH', body: input });
     revalidateAcademy();
+    const productSlug = res.data?.product_slug ?? null;
+    const channelSlug = res.data?.slug ?? null;
+    const { revalidatePricingSurfaces } = await import('@/lib/cache/contentRevalidation');
+    await revalidatePricingSurfaces({
+      productSlug,
+      landingHref: channelSlug ? `/reference-channels/${channelSlug}` : null,
+    });
     return { ok: true as const };
   } catch (e) {
     return actionError(e, 'ذخیره کانال مرجع ناموفق بود.');

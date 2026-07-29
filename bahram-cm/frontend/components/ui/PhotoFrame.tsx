@@ -38,6 +38,8 @@ type Props = {
   priority?: boolean;
   /** وقتی عکس هست: زیرنویس پایین، وسط، یا بدون متن روی عکس */
   photoCaption?: "bottom" | "center" | "none";
+  /** سایه/گرادیان تیره روی عکس — برای اسکرین‌شات‌ها false کنید */
+  imageOverlay?: boolean;
   /** کلاس اضافه برای پاراگراف hint (مثلاً `max-md:hidden`) */
   hintClassName?: string;
   /** کلاس اضافه برای برچسب نام روی عکس */
@@ -66,6 +68,7 @@ export function PhotoFrame({
   sizes,
   priority,
   photoCaption = "bottom",
+  imageOverlay = true,
   hintClassName,
   labelClassName,
   interactive = false,
@@ -132,14 +135,16 @@ export function PhotoFrame({
               interactive && "group-hover:scale-[1.08]",
             )}
           />
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(80%_80%_at_50%_85%,rgba(0,0,0,0.65)_0%,transparent_55%),linear-gradient(180deg,rgba(0,0,0,0.2)_0%,transparent_40%)]",
-              interactive && "transition-opacity duration-500 group-hover:opacity-60",
-            )}
-          />
-          {interactive ? (
+          {imageOverlay ? (
+            <div
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(80%_80%_at_50%_85%,rgba(0,0,0,0.65)_0%,transparent_55%),linear-gradient(180deg,rgba(0,0,0,0.2)_0%,transparent_40%)]",
+                interactive && "transition-opacity duration-500 group-hover:opacity-60",
+              )}
+            />
+          ) : null}
+          {imageOverlay && interactive ? (
             <div
               aria-hidden
               className={cn(

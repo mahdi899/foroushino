@@ -130,6 +130,7 @@ class ReferenceChannelAdminController extends Controller
             'price' => [$partial ? 'sometimes' : 'required', 'integer', 'min:0'],
             'telegram_destination_id' => ['nullable', 'integer', 'exists:telegram_destinations,id'],
             'cover_image' => ['nullable', 'string', 'max:500'],
+            'cover_image_mobile' => ['nullable', 'string', 'max:500'],
         ];
 
         $data = $request->validate($rules);
@@ -140,8 +141,10 @@ class ReferenceChannelAdminController extends Controller
             }
         }
 
-        if (array_key_exists('cover_image', $data) && filled($data['cover_image'])) {
-            $data['cover_image'] = MediaUrl::reference($data['cover_image']) ?? $data['cover_image'];
+        foreach (['cover_image', 'cover_image_mobile'] as $coverKey) {
+            if (array_key_exists($coverKey, $data) && filled($data[$coverKey])) {
+                $data[$coverKey] = MediaUrl::reference($data[$coverKey]) ?? $data[$coverKey];
+            }
         }
 
         return $data;
@@ -191,6 +194,7 @@ class ReferenceChannelAdminController extends Controller
             'telegram_destination_id' => $c->telegram_destination_id,
             'telegram_destination_title' => $c->telegramDestination?->title,
             'cover_image' => $c->cover_image,
+            'cover_image_mobile' => $c->cover_image_mobile,
             'entitlements_count' => $c->entitlements_count ?? $c->entitlements()->count(),
         ];
     }

@@ -25,6 +25,7 @@ class ReferenceChannel extends Model
         'product_id',
         'telegram_destination_id',
         'cover_image',
+        'cover_image_mobile',
     ];
 
     protected $casts = [

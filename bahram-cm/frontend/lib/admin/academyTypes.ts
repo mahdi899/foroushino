@@ -176,6 +176,7 @@ export type AdminReferenceChannel = {
   telegram_destination_id: number | null;
   telegram_destination_title: string | null;
   cover_image: string | null;
+  cover_image_mobile?: string | null;
   entitlements_count: number;
 };
 

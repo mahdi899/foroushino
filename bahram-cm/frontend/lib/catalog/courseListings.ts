@@ -1,5 +1,5 @@
 import { site } from '@/content/site';
-import { getProducts, type ProductListItem } from '@/lib/services/products';
+import { getProducts, getPublicProductBySlug, type ProductListItem } from '@/lib/services/products';
 import { resolveProductFeaturedImage, resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
 
 export type CourseCatalogCard = {
@@ -22,6 +22,13 @@ const defaultPathImages: Record<string, string> = {
     slug: 'reference-kanal-mrgf',
     landing_href: '/reference-channels/kanal-mrgf',
   }),
+};
+
+/** Products that power path cards even when `show_on_courses` is false. */
+const pathProductSlugs: Record<string, string> = {
+  '/course/campaign-writing': 'campaign-writing',
+  '/saat': 'saat',
+  '/reference-channels/kanal-mrgf': 'reference-kanal-mrgf',
 };
 
 const staticPathMeta: Record<string, { level: string; duration: string; featured: boolean }> = {
@@ -64,8 +71,27 @@ async function getListedProductsByHref(): Promise<Map<string, ProductListItem>> 
   return map;
 }
 
+/**
+ * Merge listed courses with marketing-path products (e.g. reference channel)
+ * so admin cover updates appear on /courses and home path cards.
+ */
+async function getPathProductsByHref(): Promise<Map<string, ProductListItem>> {
+  const map = await getListedProductsByHref();
+
+  await Promise.all(
+    Object.entries(pathProductSlugs).map(async ([href, slug]) => {
+      if (map.has(href)) return;
+      const result = await getPublicProductBySlug(slug);
+      if (!result.ok) return;
+      map.set(href, result.data);
+    }),
+  );
+
+  return map;
+}
+
 export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
-  const byHref = await getListedProductsByHref();
+  const byHref = await getPathProductsByHref();
 
   return site.mainPaths.items.map((item) => {
     const product = byHref.get(item.href);
@@ -101,7 +127,7 @@ export async function getCoursePathOverrides(): Promise<{
   labels: Record<string, string>;
   taglines: Record<string, string>;
 }> {
-  const byHref = await getListedProductsByHref();
+  const byHref = await getPathProductsByHref();
   const images: Record<string, string> = {};
   const labels: Record<string, string> = {};
   const taglines: Record<string, string> = {};

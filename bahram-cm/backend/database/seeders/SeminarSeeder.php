@@ -43,7 +43,8 @@ class SeminarSeeder extends Seeder
 <h2>نکته مهم درباره ظرفیت</h2>
 <p>ظرفیت حضور محدود است و ثبت‌نام تنها تا تکمیل ظرفیت ادامه دارد. اگر تصمیم‌ات جدی است، بهتر است زودتر جا رزرو کنی.</p>
 HTML,
-                'cover_image' => '/storage/media/site/social-01.jpg',
+                'cover_image' => '/storage/media/site/seminar-zaferaniyeh-cover.webp',
+                'cover_image_mobile' => '/storage/media/site/seminar-zaferaniyeh-cover-mobile.webp',
                 'status' => 'published',
                 'ended_at' => '2026-07-24 23:59:00',
                 'gallery' => [

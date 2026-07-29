@@ -16,6 +16,8 @@ class ReferenceChannelSeeder extends Seeder
 
     public const COVER_IMAGE = '/storage/media/site/reference-channel-hero.webp';
 
+    public const COVER_IMAGE_MOBILE = '/storage/media/site/reference-channel-hero-mobile.webp';
+
     public function run(): void
     {
         $channel = ReferenceChannel::query()->updateOrCreate(
@@ -37,6 +39,7 @@ class ReferenceChannelSeeder extends Seeder
 <p>برای شروع فروش لازم نیست همه‌چیز را از صفر بسازی. ما محصول و آموزش را می‌دهیم؛ تو کانالت را می‌سازی، محتوا و کمپین اجرا می‌کنی و از فروش‌های خودت سهم می‌گیری.</p>
 HTML,
                 'cover_image' => self::COVER_IMAGE,
+                'cover_image_mobile' => self::COVER_IMAGE_MOBILE,
                 'status' => 'published',
                 'show_in_panel' => true,
                 'show_in_telegram' => true,

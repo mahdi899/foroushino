@@ -265,31 +265,19 @@ export default async function SaatPage() {
 
             <div className="md:col-span-6 lg:col-span-7">
               <Reveal delay={0.14}>
-                <div className="relative mx-auto max-w-lg md:ms-auto md:me-0">
+                <div className="relative mx-auto max-w-md md:ms-auto md:me-0">
                   <PhotoFrame
-                    ratio="landscape"
+                    ratio="portrait"
                     variant="radial"
                     rounded="card-lg"
-                    label="پیش‌نمایش سات"
+                    label="سات"
                     badge="سات"
                     className="border-gold/25 shadow-black/35 neon-surface-framed ring-1 ring-gold/18"
-                    src={sitePhotos.academyStory}
-                    alt="پیش‌نمایش مینی‌اپ سات"
+                    src={sitePhotos.saatHero}
+                    alt="سات — هر تماس، یک فروش"
                     photoCaption="none"
                     priority
                   />
-                  <div className="pointer-events-none absolute -bottom-4 -start-3 z-[3] hidden w-32 rotate-[-3deg] sm:block md:-start-6 md:w-40">
-                    <PhotoFrame
-                      ratio="square"
-                      variant="soft"
-                      rounded="card"
-                      className="border-gold/22 shadow-xl shadow-black/45"
-                      showIcon={false}
-                      src={sitePhotos.academyAccent}
-                      alt="فضای تیم فروش"
-                      photoCaption="none"
-                    />
-                  </div>
                 </div>
               </Reveal>
             </div>
