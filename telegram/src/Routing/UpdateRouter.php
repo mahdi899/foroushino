@@ -10,6 +10,7 @@ use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
+use TelegramHost\Services\GroupJoinMessageCleaner;
 use TelegramHost\Services\HostAdminShell;
 use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
@@ -32,6 +33,7 @@ final class UpdateRouter
         private readonly MainMenu $mainMenu,
         private readonly ConversationRepository $conversations,
         private readonly HostAdminShell $adminShell,
+        private readonly GroupJoinMessageCleaner $groupJoinCleaner,
     ) {}
 
     /** @param array<string, mixed> $update */
@@ -40,6 +42,10 @@ final class UpdateRouter
         // Reports-group support replies are handled locally — no Iran needed.
         if (isset($update['message']) && ! $this->delegation->isPrivateUserFacing($update)) {
             if ($this->support->tryHandleGroupMessage($update['message'])) {
+                return;
+            }
+
+            if ($this->groupJoinCleaner->tryDeleteJoinMessage($update['message'])) {
                 return;
             }
         }

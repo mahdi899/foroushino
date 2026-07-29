@@ -120,6 +120,7 @@ try {
     $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $siteBaseUrl);
     $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
+    $groupJoinCleaner = new \TelegramHost\Services\GroupJoinMessageCleaner($api);
     $membershipSync = new \TelegramHost\Queue\PendingMembershipSync($pdo);
     $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $membershipCache);
 
@@ -171,6 +172,7 @@ try {
         $mainMenu,
         $conversations,
         $adminShell,
+        $groupJoinCleaner,
     );
 
     (new Bot($router))->handle($update);
