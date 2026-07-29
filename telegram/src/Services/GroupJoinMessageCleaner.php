@@ -21,11 +21,18 @@ final class GroupJoinMessageCleaner
         'was added to the group',
         'was invited to the group',
         'was invited into the group',
+        'your request to join the group was approved',
+        'request to join the group was approved',
+        'your join request was approved',
         'به گروه پیوست',
         'به گروه اضافه شد',
         'به گروه پذیرفته شد',
         'وارد گروه شد',
         'به گروه دعوت شد',
+        'درخواست شما برای پیوستن به گروه تأیید شد',
+        'درخواست شما برای پیوستن به گروه تایید شد',
+        'درخواست پیوستن شما تأیید شد',
+        'درخواست پیوستن شما تایید شد',
     ];
 
     public function __construct(private readonly BotApiClient $api) {}

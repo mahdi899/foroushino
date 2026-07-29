@@ -299,6 +299,24 @@ class RegistrationFlowService
             return;
         }
 
+        $account = $this->accountLinks->reclaimVerifiedAccountByMobile($bot, $account, $mobile);
+        $conversation = $this->conversations->forAccount($account);
+
+        if ($account->hasVerifiedMobile()) {
+            $knownName = filled($account->display_name) ? trim((string) $account->display_name) : '';
+            if ($knownName !== '') {
+                $this->queueMessage(
+                    $bot,
+                    $account->telegram_user_id,
+                    'سلام '.TelegramHtml::escape($knownName)."!\nشماره شما در سیستم پیدا شد.",
+                    ['parse_mode' => 'HTML', 'remove_keyboard' => true],
+                );
+            }
+            $this->completeRegistration($bot, $account->fresh(), $conversation);
+
+            return;
+        }
+
         $account->update(['mobile' => $mobile]);
 
         if ($bot->featureEnabled(BotFeatureFlag::SmsOtpVerification)) {

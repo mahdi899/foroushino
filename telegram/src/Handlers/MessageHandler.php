@@ -107,7 +107,11 @@ final class MessageHandler
             }
             if ($this->support->isCancelText($text)) {
                 $this->conversations->set($telegramUserId, 'idle', []);
-                $this->sendMainMenu($chatId, $telegramUserId);
+                if (! $this->accounts->isVerified($telegramUserId)) {
+                    $this->registration->showLocalWelcome($chatId, $telegramUserId);
+                } else {
+                    $this->sendMainMenu($chatId, $telegramUserId);
+                }
 
                 return;
             }
@@ -194,6 +198,13 @@ final class MessageHandler
 
         if ($conversation['state'] === 'waiting_for_discount_code' && $text !== '') {
             $this->purchaseFlow->applyDiscountCode($chatId, $telegramUserId, $text);
+
+            return;
+        }
+
+        // Unverified users must only see the phone keyboard — never the main menu.
+        if (! $this->accounts->isVerified($telegramUserId)) {
+            $this->registration->showLocalWelcome($chatId, $telegramUserId);
 
             return;
         }
@@ -290,6 +301,7 @@ final class MessageHandler
 
     private function sendMainMenu(int $chatId, int $telegramUserId): void
     {
+        // Sending main-menu reply_markup replaces any leftover contact keyboard.
         $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
             'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
         ]);

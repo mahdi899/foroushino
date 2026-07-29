@@ -149,6 +149,27 @@ class TelegramHostRegistrationService
             ], $conversation, $account);
         }
 
+        $normalized = $this->mobileNormalizer->normalize(
+            $phone,
+            $bot->featureEnabled(BotFeatureFlag::IranMobileOnly),
+        );
+
+        if ($normalized !== null) {
+            $account = $this->accountLinks->reclaimVerifiedAccountByMobile($bot, $account, $normalized);
+            $conversation = $this->conversations->forAccount($account);
+
+            if ($account->hasVerifiedMobile()) {
+                $knownName = filled($account->display_name) ? trim((string) $account->display_name) : '';
+
+                return $this->completeRegistration($bot, $account->fresh(), $conversation, $knownName !== '' ? [
+                    $this->reply(
+                        'سلام '.TelegramHtml::escape($knownName)."!\nشماره شما در سیستم پیدا شد.",
+                        ['parse_mode' => 'HTML', 'remove_keyboard' => true],
+                    ),
+                ] : []);
+            }
+        }
+
         return $this->processPhone($bot, $account, $conversation, $phone, fromContact: true);
     }
 

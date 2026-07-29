@@ -145,6 +145,126 @@ final class AccountCache
         ]));
 
         unset($this->rowMemo[$telegramUserId], $this->ownedPresentsMemo[$telegramUserId]);
+
+        $mobile = trim((string) ($params['mobile'] ?? ''));
+        if ($mobile !== '') {
+            $this->purgeDuplicateMobileRows($mobile, $telegramUserId);
+        }
+    }
+
+    /**
+     * Move a verified cache row from an old Telegram numeric ID to a new one
+     * (user deleted Telegram and recreated with the same phone number).
+     */
+    public function rekeyTelegramUserId(int $oldId, int $newId): bool
+    {
+        if ($oldId <= 0 || $newId <= 0 || $oldId === $newId) {
+            return false;
+        }
+
+        $legacy = $this->get($oldId);
+        if ($legacy === null || empty($legacy['mobile_verified_at'])) {
+            return false;
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+
+            // Drop any empty stub already keyed by the new ID.
+            $del = $this->pdo->prepare('DELETE FROM telegram_accounts_cache WHERE telegram_user_id = :id');
+            $del->execute(['id' => $newId]);
+            $delConv = $this->pdo->prepare('DELETE FROM conversations WHERE telegram_user_id = :id');
+            $delConv->execute(['id' => $newId]);
+
+            $this->ensureSatColumn();
+
+            $insert = $this->pdo->prepare(
+                'INSERT INTO telegram_accounts_cache (
+                    telegram_user_id, user_id, mobile, mobile_verified_at, display_name, is_bot_admin,
+                    snapshot_revision, owned_product_ids, profile_json, referral_json, family_json,
+                    owned_presents_json, sat_json, snapshot_synced_at, updated_at
+                 ) VALUES (
+                    :id, :user_id, :mobile, :verified_at, :display_name, :is_admin,
+                    :snap_rev, :owned, :profile, :referral, :family, :presents, :sat, :snap_at, NOW()
+                 )',
+            );
+            $insert->execute([
+                'id' => $newId,
+                'user_id' => $legacy['user_id'] ?? null,
+                'mobile' => $legacy['mobile'] ?? null,
+                'verified_at' => $legacy['mobile_verified_at'] ?? null,
+                'display_name' => $legacy['display_name'] ?? null,
+                'is_admin' => (int) ($legacy['is_bot_admin'] ?? 0),
+                'snap_rev' => $legacy['snapshot_revision'] ?? null,
+                'owned' => $legacy['owned_product_ids'] ?? null,
+                'profile' => $legacy['profile_json'] ?? null,
+                'referral' => $legacy['referral_json'] ?? null,
+                'family' => $legacy['family_json'] ?? null,
+                'presents' => $legacy['owned_presents_json'] ?? null,
+                'sat' => $legacy['sat_json'] ?? null,
+                'snap_at' => $legacy['snapshot_synced_at'] ?? null,
+            ]);
+
+            $this->pdo->prepare('DELETE FROM telegram_accounts_cache WHERE telegram_user_id = :id')
+                ->execute(['id' => $oldId]);
+
+            // Move conversation row if present.
+            $conv = $this->pdo->prepare('SELECT state, context_json FROM conversations WHERE telegram_user_id = :id');
+            $conv->execute(['id' => $oldId]);
+            $convRow = $conv->fetch();
+            if ($convRow !== false) {
+                $this->pdo->prepare(
+                    'INSERT INTO conversations (telegram_user_id, state, context_json, updated_at)
+                     VALUES (:id, :state, :ctx, NOW())
+                     ON DUPLICATE KEY UPDATE state = :state2, context_json = :ctx2, updated_at = NOW()',
+                )->execute([
+                    'id' => $newId,
+                    'state' => 'idle',
+                    'ctx' => $convRow['context_json'] ?? null,
+                    'state2' => 'idle',
+                    'ctx2' => $convRow['context_json'] ?? null,
+                ]);
+                $this->pdo->prepare('DELETE FROM conversations WHERE telegram_user_id = :id')
+                    ->execute(['id' => $oldId]);
+            }
+
+            $mobile = trim((string) ($legacy['mobile'] ?? ''));
+            if ($mobile !== '') {
+                $this->purgeDuplicateMobileRows($mobile, $newId);
+            }
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            error_log('[telegram-host] rekeyTelegramUserId failed: '.$e->getMessage());
+
+            return false;
+        }
+
+        unset($this->rowMemo[$oldId], $this->rowMemo[$newId]);
+        unset($this->ownedPresentsMemo[$oldId], $this->ownedPresentsMemo[$newId]);
+
+        return true;
+    }
+
+    public function purgeDuplicateMobileRows(string $mobile, int $keepTelegramUserId): void
+    {
+        $mobile = trim($mobile);
+        if ($mobile === '' || $keepTelegramUserId <= 0) {
+            return;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'DELETE FROM telegram_accounts_cache
+                 WHERE mobile = :mobile AND telegram_user_id != :keep',
+            );
+            $stmt->execute(['mobile' => $mobile, 'keep' => $keepTelegramUserId]);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] purgeDuplicateMobileRows: '.$e->getMessage());
+        }
     }
 
     /** @return array<string, mixed>|null */

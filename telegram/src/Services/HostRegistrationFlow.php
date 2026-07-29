@@ -108,6 +108,16 @@ final class HostRegistrationFlow
             return;
         }
 
+        // Same phone already verified under an old Telegram numeric ID
+        // (user deleted Telegram and recreated) — rekey local cache first.
+        $legacy = $this->accounts->findVerifiedByMobile($phone);
+        if ($legacy !== null) {
+            $oldId = (int) ($legacy['telegram_user_id'] ?? 0);
+            if ($oldId > 0 && $oldId !== $telegramUserId) {
+                $this->accounts->rekeyTelegramUserId($oldId, $telegramUserId);
+            }
+        }
+
         // No "⏳ verifying…" ACK: that added a full Bot-API RTT (via foreign
         // proxy) before Iran even ran, so users got 2–3 staggered messages.
         // Try Iran first (short timeout); one apply() batch of replies. If
@@ -119,10 +129,18 @@ final class HostRegistrationFlow
                 'contact_user_id' => $contactUserId,
             ], self::REGISTRATION_TIMEOUT_SECONDS, allowRetry: false);
             $this->apply($chatId, $telegramUserId, $response);
+            $this->accounts->purgeDuplicateMobileRows($phone, $telegramUserId);
 
             return;
         } catch (\Throwable $e) {
             error_log('[telegram-host] registration/contact: '.$e->getMessage());
+        }
+
+        // Iran unreachable — if we already rekeyed a verified legacy row, open menu.
+        if ($this->accounts->isVerified($telegramUserId)) {
+            $this->showMainMenu($chatId, $telegramUserId);
+
+            return;
         }
 
         $knownName = $this->resolveLocalStudentName($telegramUserId, $phone, $pending);
@@ -186,7 +204,7 @@ final class HostRegistrationFlow
             }
         }
 
-        $byMobile = $this->accounts->findVerifiedByMobile($mobile, $telegramUserId);
+        $byMobile = $this->accounts->findVerifiedByMobile($mobile);
         if ($byMobile !== null) {
             $name = trim((string) ($byMobile['display_name'] ?? ''));
             if ($name !== '') {
@@ -200,6 +218,7 @@ final class HostRegistrationFlow
     private function finishLocalRegistration(int $chatId, int $telegramUserId, string $mobile, string $displayName): void
     {
         $this->accounts->storeLocalOnlyRegistration($telegramUserId, $mobile, $displayName);
+        $this->accounts->purgeDuplicateMobileRows($mobile, $telegramUserId);
         $this->conversations->set($telegramUserId, 'idle', []);
         $this->api->sendMessage($chatId, $this->cache->message(
             'main_menu_hint',

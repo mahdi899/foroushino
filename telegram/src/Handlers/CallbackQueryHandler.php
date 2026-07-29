@@ -66,6 +66,11 @@ final class CallbackQueryHandler
 
         if (str_starts_with($data, 'support:cat:')) {
             $this->consumeSourceMessage($chatId, $messageId);
+            if (! $this->accounts->isVerified($telegramUserId)) {
+                $this->registration->showLocalWelcome($chatId, $telegramUserId);
+
+                return;
+            }
             $this->handleSupportCategory($chatId, $telegramUserId, substr($data, strlen('support:cat:')));
 
             return;
@@ -74,9 +79,13 @@ final class CallbackQueryHandler
         if ($data === 'support:cancel') {
             $this->consumeSourceMessage($chatId, $messageId);
             $this->conversations->set($telegramUserId, 'idle', []);
-            $this->api->sendMessage($chatId, 'پشتیبانی لغو شد.', [
-                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-            ]);
+            if (! $this->accounts->isVerified($telegramUserId)) {
+                $this->registration->showLocalWelcome($chatId, $telegramUserId);
+            } else {
+                $this->api->sendMessage($chatId, 'پشتیبانی لغو شد.', [
+                    'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+                ]);
+            }
 
             return;
         }
@@ -159,6 +168,11 @@ final class CallbackQueryHandler
         }
 
         if ($data === 'membership:recheck') {
+            if (! $this->accounts->isVerified($telegramUserId)) {
+                $this->registration->showLocalWelcome($chatId, $telegramUserId);
+
+                return;
+            }
             $this->membership->clearCacheForUser($telegramUserId);
             if ($this->membership->isSatisfied($telegramUserId)) {
                 $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('check').' عضویت تأیید شد.', [
