@@ -49,7 +49,7 @@ final class CallbackQueryHandler
         if ($data === 'reg:share_contact') {
             $this->api->answerCallbackQuery(
                 $callbackId,
-                'برای تأیید شماره، دکمه «ارسال شماره تماس» در پایین صفحه را بزنید.',
+                'برای تأیید شماره، منوی پایین را باز کنید و «ارسال شماره تماس» را بزنید.',
                 true,
             );
 

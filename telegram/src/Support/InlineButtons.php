@@ -55,6 +55,25 @@ final class InlineButtons
     }
 
     /** @return array<string, mixed> */
+    public static function shareContactReplyMarkup(): array
+    {
+        return [
+            'keyboard' => [[
+                [
+                    'text' => TelegramCustomEmoji::buttonText('ارسال شماره تماس', 'phone'),
+                    'request_contact' => true,
+                    'style' => 'primary',
+                    ...TelegramCustomEmoji::buttonIcon('phone'),
+                ],
+            ]],
+            'resize_keyboard' => true,
+            'one_time_keyboard' => false,
+            'is_persistent' => true,
+            'input_field_placeholder' => 'روی «ارسال شماره تماس» بزنید',
+        ];
+    }
+
+    /** @return array<string, mixed> */
     public static function shareContactInlineMarkup(): array
     {
         return [

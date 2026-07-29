@@ -201,15 +201,14 @@ class RegistrationFlowService
     ): void {
         $this->conversations->transition($conversation, ConversationState::WaitingForMobile);
 
-        $base = $message ?? $this->messages->get($bot, 'registration_ask_mobile');
-        $e = static fn (string $key): string => \App\Modules\TelegramBot\Support\TelegramCustomEmoji::tag($key);
-        $hint = "\n\n".$e('warning').' تایپ شماره پذیرفته نمی‌شود — فقط دکمه پایین.';
+        $text = $message ?? $this->messages->get($bot, 'registration_ask_mobile');
 
         if ($bot->featureEnabled(BotFeatureFlag::IranMobileOnly)) {
-            $hint .= "\n".$e('check').' فقط شماره موبایل ایران پذیرفته می‌شود.';
+            $e = static fn (string $key): string => \App\Modules\TelegramBot\Support\TelegramCustomEmoji::tag($key);
+            $text .= "\n\n".$e('check').' فقط شماره موبایل ایران پذیرفته می‌شود.';
         }
 
-        $this->queueMessage($bot, $account->telegram_user_id, $base.$hint, array_merge(
+        $this->queueMessage($bot, $account->telegram_user_id, $text, array_merge(
             ['parse_mode' => 'HTML'],
             $this->phoneStepMarkup($bot),
         ));
@@ -226,7 +225,7 @@ class RegistrationFlowService
             $bot,
             $account->telegram_user_id,
             $e('warning').' تایپ شماره ممکن نیست.'."\n"
-            .$e('point_up').' لطفاً فقط دکمه <b>ارسال شماره تماس</b> را بزنید.',
+            .$e('point_up').' منوی پایین را باز کنید و دکمه <b>ارسال شماره تماس</b> را بزنید.',
             array_merge(
                 ['parse_mode' => 'HTML'],
                 $this->phoneStepMarkup($bot),

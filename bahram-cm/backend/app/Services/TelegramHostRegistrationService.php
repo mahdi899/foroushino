@@ -400,14 +400,13 @@ class TelegramHostRegistrationService
     ): array {
         $this->conversations->transition($conversation, ConversationState::WaitingForMobile);
 
-        $base = $message ?? $this->messages->get($bot, 'registration_ask_mobile');
-        $hint = "\n\n".'⚠️ تایپ شماره پذیرفته نمی‌شود — فقط دکمه پایین.';
+        $text = $message ?? $this->messages->get($bot, 'registration_ask_mobile');
         if ($bot->featureEnabled(BotFeatureFlag::IranMobileOnly)) {
-            $hint .= "\n".'✅ فقط شماره موبایل ایران پذیرفته می‌شود.';
+            $text .= "\n\n".'✅ فقط شماره موبایل ایران پذیرفته می‌شود.';
         }
 
         return $this->ok([
-            $this->reply($base.$hint, [
+            $this->reply($text, [
                 'parse_mode' => 'HTML',
                 ...$this->registrationKeyboard->phoneStepOptions(withBack: false),
             ]),

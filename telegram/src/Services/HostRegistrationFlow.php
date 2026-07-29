@@ -47,7 +47,10 @@ final class HostRegistrationFlow
 
         $text = $this->cache->message(
             'registration_ask_mobile',
-            "به ربات آکادمی بهرام خوش آمدید.\n\nبرای ادامه، شماره موبایل را با دکمه زیر بفرستید.",
+            "📱 تأیید شماره موبایل\n\n"
+            ."برای ادامه ثبت‌نام، شماره موبایل ایران خود را تأیید کنید.\n\n"
+            ."👇 منوی پایین صفحه را باز کنید و روی «ارسال شماره تماس» بزنید.\n"
+            ."❗️ شماره را تایپ نکنید — فقط همان دکمه.",
         );
 
         $this->sendPhoneStepMessage($chatId, $text);
@@ -58,14 +61,7 @@ final class HostRegistrationFlow
     {
         $result = $this->api->sendMessageResult($chatId, $text, array_merge([
             'parse_mode' => 'HTML',
-            'reply_markup' => [
-                'keyboard' => [[[
-                    'text' => '📱 ارسال شماره تماس',
-                    'request_contact' => true,
-                ]]],
-                'resize_keyboard' => true,
-                'one_time_keyboard' => true,
-            ],
+            'reply_markup' => InlineButtons::shareContactReplyMarkup(),
         ], $extraOptions));
 
         $messageId = (int) ($result['message_id'] ?? 0);

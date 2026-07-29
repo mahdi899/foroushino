@@ -10,6 +10,8 @@ class RegistrationKeyboard
 
     public const CONTACT_LABEL = 'ارسال شماره تماس';
 
+    public const CONTACT_INPUT_PLACEHOLDER = 'روی «ارسال شماره تماس» بزنید';
+
     public const SHARE_CONTACT_CALLBACK = 'reg:share_contact';
 
     /** @return array<string, mixed> */
@@ -19,6 +21,7 @@ class RegistrationKeyboard
             [
                 'text' => self::CONTACT_LABEL,
                 'request_contact' => true,
+                'style' => 'primary',
                 ...TelegramCustomEmoji::buttonIcon('phone'),
             ],
         ]];
@@ -33,7 +36,9 @@ class RegistrationKeyboard
         return [
             'keyboard' => $rows,
             'resize_keyboard' => true,
-            'one_time_keyboard' => ! $withBack,
+            'one_time_keyboard' => false,
+            'is_persistent' => true,
+            'input_field_placeholder' => self::CONTACT_INPUT_PLACEHOLDER,
         ];
     }
 
