@@ -34,6 +34,30 @@ final class AccountCache
         return $resolved;
     }
 
+    /** @return array<string, mixed>|null */
+    public function findVerifiedByMobile(string $mobile, ?int $telegramUserId = null): ?array
+    {
+        $mobile = trim($mobile);
+        if ($mobile === '') {
+            return null;
+        }
+
+        $sql = 'SELECT * FROM telegram_accounts_cache
+                WHERE mobile = :mobile AND mobile_verified_at IS NOT NULL';
+        $params = ['mobile' => $mobile];
+        if ($telegramUserId !== null && $telegramUserId > 0) {
+            $sql .= ' AND telegram_user_id = :id';
+            $params['id'] = $telegramUserId;
+        }
+        $sql .= ' ORDER BY updated_at DESC LIMIT 1';
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : $row;
+    }
+
     /** @param array<string, mixed> $account */
     public function store(int $telegramUserId, array $account): void
     {
@@ -208,13 +232,16 @@ final class AccountCache
      */
     public function mergeOwnedProductIds(int $telegramUserId, array $ownedProductIds, ?string $displayNameHint = null): void
     {
-        if ($ownedProductIds === []) {
+        $nameHint = is_string($displayNameHint) ? trim($displayNameHint) : '';
+        if ($ownedProductIds === [] && $nameHint === '') {
             return;
         }
 
         $existing = $this->get($telegramUserId);
         $current = $existing !== null ? $this->decodeIntList((string) ($existing['owned_product_ids'] ?? '[]')) : [];
-        $merged = array_values(array_unique(array_merge($current, $ownedProductIds)));
+        $merged = $ownedProductIds === []
+            ? $current
+            : array_values(array_unique(array_merge($current, $ownedProductIds)));
         $ownedJson = json_encode($merged, JSON_UNESCAPED_UNICODE);
 
         $hasDisplayName = $existing !== null && trim((string) ($existing['display_name'] ?? '')) !== '';

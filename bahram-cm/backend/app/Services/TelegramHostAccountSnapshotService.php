@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\CourseAccessStatus;
 use App\Enums\Family\FamilyPostStatus;
 use App\Enums\SatApplicationStatus;
+use App\Models\CourseAccess;
 use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
 use App\Models\FamilyPostView;
@@ -62,6 +64,56 @@ class TelegramHostAccountSnapshotService
             'is_bot_admin' => $account->isBotAdmin(),
             'snapshot' => $this->buildSnapshot($account),
         ];
+    }
+
+    /**
+     * Lightweight payload for registration/contact — skips heavy present/family
+     * rendering so the host gets menu + owned IDs in one fast round-trip.
+     * Full snapshot follows via {@see TelegramHostAccountSync::queuePush()}.
+     *
+     * @return array<string, mixed>
+     */
+    public function accountPayloadForRegistration(TelegramAccount $account): array
+    {
+        $account->loadMissing(['user', 'bot']);
+
+        return [
+            'telegram_user_id' => (int) $account->telegram_user_id,
+            'user_id' => $account->user_id,
+            'mobile' => $account->mobile,
+            'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
+            'display_name' => $account->display_name,
+            'is_bot_admin' => $account->isBotAdmin(),
+            'snapshot' => $this->buildRegistrationSnapshot($account),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function buildRegistrationSnapshot(TelegramAccount $account): array
+    {
+        return [
+            'revision' => $this->newRevision(),
+            'owned_product_ids' => $this->ownedProductIdsFast($account),
+        ];
+    }
+
+    /** @return list<int> */
+    private function ownedProductIdsFast(TelegramAccount $account): array
+    {
+        if (! $account->user_id) {
+            return [];
+        }
+
+        return CourseAccess::query()
+            ->where('user_id', $account->user_id)
+            ->where('status', CourseAccessStatus::Active)
+            ->pluck('product_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

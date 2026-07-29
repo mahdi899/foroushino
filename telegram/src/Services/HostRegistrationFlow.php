@@ -102,7 +102,11 @@ final class HostRegistrationFlow
         // right away, from local DB only, regardless of whether Iran is
         // reachable for the registration call below. This is what makes
         // "دسترسی به محض استارت" work even when Iran is briefly unreachable.
-        $this->mergePendingAccessByMobile($telegramUserId, $phone);
+        $pending = $this->mergePendingAccessByMobile($telegramUserId, $phone);
+
+        if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
+            return;
+        }
 
         // No "⏳ verifying…" ACK: that added a full Bot-API RTT (via foreign
         // proxy) before Iran even ran, so users got 2–3 staggered messages.
@@ -121,6 +125,13 @@ final class HostRegistrationFlow
             error_log('[telegram-host] registration/contact: '.$e->getMessage());
         }
 
+        $knownName = $this->resolveLocalStudentName($telegramUserId, $phone, $pending);
+        if ($knownName !== '') {
+            $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $knownName);
+
+            return;
+        }
+
         $this->accounts->storePendingContact($telegramUserId, $phone);
         $this->conversations->set($telegramUserId, 'waiting_for_name', [
             'mobile' => $phone,
@@ -132,24 +143,84 @@ final class HostRegistrationFlow
         ), ['reply_markup' => ['remove_keyboard' => true]]);
     }
 
-    private function mergePendingAccessByMobile(int $telegramUserId, string $mobile): void
+    /** @return array{owned_product_ids: list<int>, display_name: ?string}|null */
+    private function mergePendingAccessByMobile(int $telegramUserId, string $mobile): ?array
     {
         if ($mobile === '' || $this->pendingMobileAccess === null) {
-            return;
+            return null;
         }
 
         try {
             $pending = $this->pendingMobileAccess->get($mobile);
-            if ($pending !== null && $pending['owned_product_ids'] !== []) {
+            if ($pending !== null) {
                 $this->accounts->mergeOwnedProductIds(
                     $telegramUserId,
                     $pending['owned_product_ids'],
                     $pending['display_name'],
                 );
             }
+
+            return $pending;
         } catch (\Throwable $e) {
             error_log('[telegram-host] pending mobile access merge: '.$e->getMessage());
+
+            return null;
         }
+    }
+
+    /** @param array{owned_product_ids: list<int>, display_name: ?string}|null $pending */
+    private function resolveLocalStudentName(int $telegramUserId, string $mobile, ?array $pending): string
+    {
+        if ($pending !== null) {
+            $name = trim((string) ($pending['display_name'] ?? ''));
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        $account = $this->accounts->get($telegramUserId);
+        if ($account !== null) {
+            $name = trim((string) ($account['display_name'] ?? ''));
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        $byMobile = $this->accounts->findVerifiedByMobile($mobile, $telegramUserId);
+        if ($byMobile !== null) {
+            $name = trim((string) ($byMobile['display_name'] ?? ''));
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        return '';
+    }
+
+    private function finishLocalRegistration(int $chatId, int $telegramUserId, string $mobile, string $displayName): void
+    {
+        $this->accounts->storeLocalOnlyRegistration($telegramUserId, $mobile, $displayName);
+        $this->conversations->set($telegramUserId, 'idle', []);
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'main_menu_hint',
+            'ثبت‌نام شما ثبت شد. منوی اصلی آکادمی بهرام',
+        ), [
+            'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+        ]);
+    }
+
+    private function tryShowVerifiedLocalAccount(int $chatId, int $telegramUserId, string $mobile): bool
+    {
+        $account = $this->accounts->get($telegramUserId);
+        if ($account !== null
+            && ! empty($account['mobile_verified_at'])
+            && trim((string) ($account['mobile'] ?? '')) === $mobile) {
+            $this->showMainMenu($chatId, $telegramUserId);
+
+            return true;
+        }
+
+        return false;
     }
 
     private function showMainMenu(int $chatId, int $telegramUserId): void
@@ -178,14 +249,7 @@ final class HostRegistrationFlow
 
         $conversation = $this->conversations->get($telegramUserId);
         $mobile = (string) ($conversation['context']['mobile'] ?? '');
-        $this->accounts->storeLocalOnlyRegistration($telegramUserId, $mobile, $name);
-        $this->conversations->set($telegramUserId, 'idle', []);
-        $this->api->sendMessage($chatId, $this->cache->message(
-            'main_menu_hint',
-            'ثبت‌نام شما ثبت شد. منوی اصلی آکادمی بهرام',
-        ), [
-            'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-        ]);
+        $this->finishLocalRegistration($chatId, $telegramUserId, $mobile, $name);
     }
 
     public function callback(int $chatId, int $telegramUserId, string $data): void

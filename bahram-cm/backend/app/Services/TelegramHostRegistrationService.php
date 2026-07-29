@@ -386,7 +386,7 @@ class TelegramHostRegistrationService
                 'remove_keyboard' => true,
                 'show_main_menu' => true,
             ]),
-        ], $conversation, $account, includeAccount: true);
+        ], $conversation, $account, includeAccount: true, registrationSnapshot: true);
     }
 
     /**
@@ -438,6 +438,7 @@ class TelegramHostRegistrationService
         TelegramConversation $conversation,
         TelegramAccount $account,
         bool $includeAccount = false,
+        bool $registrationSnapshot = false,
     ): array {
         $conversation->refresh();
 
@@ -454,7 +455,10 @@ class TelegramHostRegistrationService
             // Full snapshot (owned products, profile, presents, …) in the same
             // registration response — the host must not wait for a second
             // account/fetch or the async queuePush to know what the user owns.
-            $payload['account'] = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
+            $fresh = $account->fresh(['user', 'bot']);
+            $payload['account'] = $registrationSnapshot
+                ? $this->snapshots->accountPayloadForRegistration($fresh)
+                : $this->snapshots->accountPayload($fresh);
         }
 
         return $payload;
