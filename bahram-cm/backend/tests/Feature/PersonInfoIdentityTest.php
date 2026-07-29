@@ -255,6 +255,30 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertNotEmpty($submission->mobile_match_message);
     }
 
+    public function test_person_info_birth_date_mismatch_shows_registry_message(): void
+    {
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Mismatched,
+                provider_message: 'اطلاعاتی برای این کد ملی یافت نشد.',
+            ),
+            OwnershipVerificationResult::Matched,
+        );
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110010']);
+
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
+
+        $this->assertSame('matched', $submission->mobile_match_status);
+        $this->assertSame('mismatched', $submission->registry_match_status);
+        $this->assertNull($submission->registry_first_name);
+        $this->assertSame('اطلاعاتی برای این کد ملی یافت نشد.', $submission->registry_message);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+    }
+
     public function test_person_info_skipped_when_shahkar_unavailable(): void
     {
         $this->bindProviders(

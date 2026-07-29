@@ -214,6 +214,18 @@ class SubmitIdentityVerification
         if (! $result || $result->isTechnicalFailure()) {
             $submission->update([
                 'registry_match_status' => 'unavailable',
+                'registry_message' => $result?->provider_message
+                    ?: 'سرویس استعلام مشخصات هویتی (PersonInfo) در دسترس نبود.',
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
+        }
+
+        if ($result->normalized_result === OwnershipVerificationResult::Mismatched) {
+            $submission->update([
+                'registry_match_status' => 'mismatched',
+                'registry_message' => $result->provider_message ?: IdentityVerificationMessages::REGISTRY_NOT_FOUND,
                 'registry_checked_at' => now(),
             ]);
 
@@ -223,6 +235,8 @@ class SubmitIdentityVerification
         if ($result->normalized_result !== OwnershipVerificationResult::Matched || ! $result->hasNames()) {
             $submission->update([
                 'registry_match_status' => 'unavailable',
+                'registry_message' => $result->provider_message
+                    ?: 'پاسخ استعلام مشخصات هویتی ناقص بود (نام در پاسخ سرویس موجود نیست).',
                 'registry_checked_at' => now(),
             ]);
 
@@ -239,6 +253,9 @@ class SubmitIdentityVerification
             'registry_gender' => $result->gender,
             'registry_alive' => $result->alive,
             'registry_match_status' => $namesEqual ? 'matched' : 'mismatched',
+            'registry_message' => $namesEqual
+                ? null
+                : 'نام یا نام‌خانوادگی واردشده با استعلام رسمی مطابقت ندارد.',
             'registry_checked_at' => now(),
         ]);
 

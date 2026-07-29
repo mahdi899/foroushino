@@ -33,6 +33,7 @@ export type IdentityRegistrySnapshot = {
   father_name: string | null;
   gender: string | null;
   alive: boolean | null;
+  message: string | null;
   checked_at: string | null;
 };
 

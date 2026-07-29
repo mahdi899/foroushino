@@ -102,6 +102,7 @@ class IdentityVerificationAdminController extends Controller
                 'father_name' => $submission->registry_father_name,
                 'gender' => $submission->registry_gender,
                 'alive' => $submission->registry_alive,
+                'message' => $submission->registry_message,
                 'checked_at' => $submission->registry_checked_at?->toIso8601String(),
             ],
             'mobile_match' => [

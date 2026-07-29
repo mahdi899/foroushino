@@ -94,7 +94,7 @@ export default async function IdentityVerificationDetailPage({
                 </div>
               ) : null}
 
-              {item.registry?.match_status === 'mismatched' ? (
+              {item.registry?.match_status === 'mismatched' && item.registry.first_name && item.registry.last_name ? (
                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
                   <p className="mb-2 font-bold">اختلاف نام با استعلام مشخصات هویتی (PersonInfo)</p>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -120,13 +120,25 @@ export default async function IdentityVerificationDetailPage({
                     در صورت تأیید، نام، نام‌خانوادگی و نام پدر استعلام رسمی در پروفایل ثبت می‌شود.
                   </p>
                 </div>
+              ) : item.registry?.match_status === 'mismatched' ? (
+                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
+                  <p className="mb-1 font-bold">کد ملی با تاریخ تولد در استعلام رسمی یافت نشد</p>
+                  <p>
+                    {item.registry.message ??
+                      'احتمالاً تاریخ تولد واردشده با کد ملی مطابقت ندارد. کاربر باید تاریخ تولد را مطابق کارت ملی (شمسی) اصلاح کند؛ پرونده برای بررسی دستی در صف است.'}
+                  </p>
+                </div>
               ) : item.registry?.match_status === 'matched' ? (
                 <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-small text-success">
                   نام کاربر با استعلام مشخصات هویتی مطابقت داشت — پرونده در صف بررسی کارشناس است.
                 </div>
               ) : item.registry?.match_status === 'unavailable' ? (
                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
-                  استعلام مشخصات هویتی (PersonInfo) در دسترس نبود — بررسی دستی لازم است.
+                  <p className="mb-1 font-bold">استعلام مشخصات هویتی (PersonInfo) انجام نشد</p>
+                  <p>
+                    {item.registry.message ??
+                      'سرویس PersonInfo در دسترس نبود یا پاسخ ناقص بود — بررسی دستی لازم است.'}
+                  </p>
                 </div>
               ) : null}
               <dl className="grid gap-3 sm:grid-cols-2 text-small">

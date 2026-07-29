@@ -34,6 +34,7 @@ class IdentityVerificationSubmission extends Model
         'registry_alive',
         'registry_match_status',
         'registry_checked_at',
+        'registry_message',
         'mobile_match_status',
         'mobile_match_provider_code',
         'mobile_match_message',
