@@ -17,7 +17,7 @@ const catalogMeta: Record<
   "/reference-channels/kanal-mrgf": {
     icon: Radio,
     tone: "gold",
-    imageClassName: "object-[left_center] md:object-center",
+    imageClassName: "object-[center_22%]",
   },
 };
 

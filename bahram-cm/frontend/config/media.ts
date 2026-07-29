@@ -71,7 +71,7 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   },
   'reference-channel-why': {
     src: siteStorageMedia('reference-channel-why.webp'),
-    label: 'کانال مرجع — قیف فروش و اجرا',
+    label: 'کارت و سکشن کانال مرجع — قیف فروش (عمودی)',
     category: 'دوره‌ها',
   },
   'seminar-zaferaniyeh-cover': {

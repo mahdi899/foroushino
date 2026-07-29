@@ -26,12 +26,14 @@ export const sitePhotos = {
   founderLetter: siteStorageMedia('founder-letter.webp'),
   mainPathCampaign: siteStorageMedia('main-path-campaign.webp'),
   mainPathSaat: siteStorageMedia('main-path-saat.webp'),
-  /** تامبنیل و هیرو کانال مرجع — دسکتاپ */
-  mainPathReference: siteStorageMedia('reference-channel-hero.webp'),
-  /** هیرو کانال مرجع — موبایل */
+  /** تامبنیل کارت کانال مرجع (خانه / دوره‌ها) — عمودی قیف فروش */
+  mainPathReference: siteStorageMedia('reference-channel-why.webp'),
+  /** هیرو صفحه کانال مرجع — موبایل */
   mainPathReferenceMobile: siteStorageMedia('reference-channel-hero-mobile.webp'),
-  /** سکشن میانی صفحه کانال مرجع — قیف فروش */
+  /** سکشن میانی صفحه کانال مرجع — همان کاور عمودی کارت */
   referenceChannelWhy: siteStorageMedia('reference-channel-why.webp'),
+  /** هیرو دسکتاپ صفحه کانال مرجع */
+  referenceChannelHero: siteStorageMedia('reference-channel-hero.webp'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
   landscapeSession: siteStorageMedia('landscape-session.webp'),
   /** هیرو دوره کمپین‌نویسی — موبایل (۹:۱۶) */
