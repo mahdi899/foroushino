@@ -245,6 +245,46 @@ final class CallbackQueryHandler
             return;
         }
 
+        $matchedSeminar = null;
+        $closedStatus = null;
+        foreach ($this->cache->seminars() as $seminar) {
+            if ((int) ($seminar['product_id'] ?? 0) !== $productId) {
+                continue;
+            }
+            $matchedSeminar = $seminar;
+            if (! empty($seminar['is_ended'])) {
+                $closedStatus = 'برگزار شده';
+            } else {
+                $capacityHint = $seminar['capacity_hint'] ?? null;
+                $isFull = ! empty($seminar['is_full'])
+                    || ($capacityHint !== null && $capacityHint !== '' && (int) $capacityHint <= 0);
+                if ($isFull) {
+                    $closedStatus = 'تکمیل ظرفیت شده';
+                }
+            }
+            break;
+        }
+        if ($closedStatus !== null) {
+            $title = (string) ($product['title'] ?? 'سمینار');
+            $options = [];
+            $slug = trim((string) ($matchedSeminar['slug'] ?? ''));
+            if ($closedStatus === 'برگزار شده' && $slug !== '') {
+                $base = rtrim($this->cache->siteUrl('home', 'https://rostami.app'), '/');
+                $options['reply_markup'] = [
+                    'inline_keyboard' => [[
+                        InlineButtons::url('مشاهده صفحه سمینار', $base.'/seminars/'.ltrim($slug, '/'), 'globe', 'primary'),
+                    ]],
+                ];
+            }
+            $this->api->sendMessage(
+                $chatId,
+                "⛔ سمینار «{$title}» {$closedStatus}.\n\nمنتظر سمینارهای آینده باشید.",
+                $options,
+            );
+
+            return;
+        }
+
         $title = (string) ($product['title'] ?? 'محصول');
         $base = (int) ($product['price'] ?? 0);
         $sale = isset($product['sale_price']) && $product['sale_price'] !== null && $product['sale_price'] !== ''
@@ -294,8 +334,49 @@ final class CallbackQueryHandler
         $product = $this->cache->findProduct($productId);
         $isReference = is_array($product)
             && (string) ($product['product_type'] ?? '') === 'reference_channel';
+        $isSeminar = is_array($product)
+            && (
+                (string) ($product['product_type'] ?? '') === 'seminar'
+                || $this->cacheHasSeminarProduct($productId)
+            );
+
+        if ($isSeminar) {
+            $present = $this->stripSpotPlayerPendingFromPresent($present);
+        }
 
         return $isReference ? $present : $this->stripIdentityGateFromPresent($present);
+    }
+
+    private function cacheHasSeminarProduct(int $productId): bool
+    {
+        foreach ($this->cache->seminars() as $seminar) {
+            if ((int) ($seminar['product_id'] ?? 0) === $productId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $present
+     * @return array<string, mixed>
+     */
+    private function stripSpotPlayerPendingFromPresent(array $present): array
+    {
+        $text = (string) ($present['text'] ?? '');
+        $lines = preg_split("/\r\n|\n|\r/", $text) ?: [];
+        $kept = [];
+        foreach ($lines as $line) {
+            $plain = strip_tags((string) $line);
+            if (str_contains($plain, 'کلید اسپات‌پلیر هنوز آماده نیست')) {
+                continue;
+            }
+            $kept[] = $line;
+        }
+        $present['text'] = trim((string) preg_replace("/\n{3,}/", "\n\n", implode("\n", $kept)));
+
+        return $present;
     }
 
     /**

@@ -49,6 +49,18 @@ final class ResilientLiveClient
         return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت زرین‌پال', fn () => $this->live->checkoutZarinpal($telegramUserId, $productId, $coupon), showTyping: true);
     }
 
+    /** Best-effort: invalidate open bot payment links when leaving checkout. */
+    public function checkoutRevokeOpen(int $chatId, int $telegramUserId): array
+    {
+        return $this->invoke(
+            $chatId,
+            $telegramUserId,
+            'باطل‌سازی لینک پرداخت',
+            fn () => $this->live->checkoutRevokeOpen($telegramUserId),
+            showTyping: false,
+        );
+    }
+
     /** @return array<string, mixed> */
     public function checkoutC2c(int $chatId, int $telegramUserId, int $productId, ?string $coupon = null): array
     {

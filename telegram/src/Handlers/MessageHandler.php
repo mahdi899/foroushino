@@ -234,6 +234,8 @@ final class MessageHandler
         if (($conversation['state'] ?? 'idle') !== 'idle') {
             $this->conversations->set($telegramUserId, 'idle', []);
         }
+        // Best-effort: kill open pay tokens when navigating away via menu.
+        $this->live->checkoutRevokeOpen($chatId, $telegramUserId);
 
         $action = $this->mainMenu->resolveAction($text);
         match ($action) {
@@ -320,33 +322,93 @@ final class MessageHandler
 
         $lines = [TelegramCustomEmoji::tag('mic').' <b>سمینارها</b>', ''];
         $keyboard = [];
+        $hasClosedWithoutAccess = false;
+
         foreach (array_slice($seminars, 0, 8) as $seminar) {
             $productId = (int) ($seminar['product_id'] ?? 0);
             $title = trim((string) ($seminar['title'] ?? 'سمینار'));
-            $capacityHint = $seminar['capacity_hint'] ?? null;
-            $capacitySuffix = '';
-            if ($capacityHint !== null && $capacityHint !== '') {
-                $capacitySuffix = (int) $capacityHint > 0
-                    ? ' — '.number_format((int) $capacityHint).' صندلی باقی‌مانده'
-                    : ' — ظرفیت تکمیل';
+            $owns = $productId > 0 && $this->accounts->ownsProduct($telegramUserId, $productId);
+            $closedStatus = $this->seminarClosedStatus($seminar);
+
+            if ($closedStatus !== null && ! $owns) {
+                $hasClosedWithoutAccess = true;
+                $lines[] = '• <b>'.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8').'</b>';
+                $lines[] = '  سمینار '.$closedStatus.'.';
+                $pageUrl = $this->seminarPageUrl($seminar);
+                if ($pageUrl !== null && ! empty($seminar['is_ended'])) {
+                    $keyboard[] = [InlineButtons::url(
+                        mb_substr('مشاهده: '.$title, 0, 64),
+                        $pageUrl,
+                        'globe',
+                        'primary',
+                    )];
+                }
+                continue;
             }
+
+            $capacitySuffix = '';
+            if ($owns) {
+                $capacitySuffix = ' — دسترسی شما فعال است';
+            } elseif ($closedStatus === null) {
+                $capacityHint = $seminar['capacity_hint'] ?? null;
+                if ($capacityHint !== null && $capacityHint !== '') {
+                    $capacitySuffix = (int) $capacityHint > 0
+                        ? ' — '.number_format((int) $capacityHint).' صندلی باقی‌مانده'
+                        : '';
+                }
+            }
+
             $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8').$capacitySuffix;
-            // No separate "check capacity" step — capacity is already synced
-            // locally from Iran, so tapping the seminar goes straight to the
-            // purchase flow (which re-verifies with Iran at payment time).
             if ($productId > 0) {
                 $keyboard[] = [[
-                    'text' => mb_substr($title, 0, 64),
+                    'text' => mb_substr($owns ? 'دسترسی: '.$title : $title, 0, 64),
                     'callback_data' => 'buy:'.$productId,
-                    'style' => 'success',
+                    'style' => $owns ? 'primary' : 'success',
                 ]];
             }
         }
 
-        $this->api->sendMessage($chatId, implode("\n", $lines), [
-            'parse_mode' => 'HTML',
-            'reply_markup' => ['inline_keyboard' => $keyboard],
-        ]);
+        if ($hasClosedWithoutAccess) {
+            $lines[] = '';
+            $lines[] = 'منتظر سمینارهای آینده باشید.';
+        }
+
+        $options = ['parse_mode' => 'HTML'];
+        if ($keyboard !== []) {
+            $options['reply_markup'] = ['inline_keyboard' => $keyboard];
+        }
+
+        $this->api->sendMessage($chatId, implode("\n", $lines), $options);
+    }
+
+    /** @param array<string, mixed> $seminar */
+    private function seminarClosedStatus(array $seminar): ?string
+    {
+        if (! empty($seminar['is_ended'])) {
+            return 'برگزار شده';
+        }
+
+        $capacityHint = $seminar['capacity_hint'] ?? null;
+        $isFull = ! empty($seminar['is_full'])
+            || ($capacityHint !== null && $capacityHint !== '' && (int) $capacityHint <= 0);
+
+        return $isFull ? 'تکمیل ظرفیت شده' : null;
+    }
+
+    /** @param array<string, mixed> $seminar */
+    private function seminarPageUrl(array $seminar): ?string
+    {
+        $slug = trim((string) ($seminar['slug'] ?? ''));
+        if ($slug === '') {
+            return null;
+        }
+
+        $base = rtrim($this->siteBaseUrl, '/');
+        if ($base === '') {
+            return null;
+        }
+
+        return $base.'/seminars/'.ltrim($slug, '/');
     }
 
     /** @param array<string, mixed> $present */

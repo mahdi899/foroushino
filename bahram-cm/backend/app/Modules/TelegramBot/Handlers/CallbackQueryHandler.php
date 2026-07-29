@@ -19,6 +19,7 @@ use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 
 class CallbackQueryHandler implements UpdateHandlerInterface
 {
@@ -175,8 +176,8 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
-        if ($data === 'seminar:full') {
-            $this->answer($client, $callbackId, 'ظرفیت این سمینار تکمیل شده است.', true);
+        if ($data === 'seminar:full' || $data === 'seminar:closed') {
+            $this->answer($client, $callbackId, 'این سمینار دیگر برای ثبت‌نام باز نیست.', true);
 
             return;
         }
@@ -288,11 +289,36 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         }
 
         $product->loadMissing('seminar');
-        if ($product->seminar && $product->seminar->isFull()) {
-            $this->answer($client, $callbackId, 'ظرفیت این سمینار تکمیل شده است.', true);
-            $this->outbound->reply($bot, $chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
+        if ($product->seminar) {
+            $seminar = $product->seminar;
+            if ($seminar->isEnded() || $seminar->isFull()) {
+                $status = $seminar->isEnded() ? 'برگزار شده' : 'تکمیل ظرفیت شده';
+                $this->answer($client, $callbackId, 'این سمینار '.$status.' است.', true);
+                $options = [];
+                if ($seminar->isEnded()) {
+                    $pageUrl = TelegramSiteUrl::seminarPage($seminar->slug);
+                    if (filled($pageUrl)) {
+                        $options = [
+                            'reply_markup' => [
+                                'inline_keyboard' => TelegramSiteUrl::urlKeyboardRow(
+                                    'مشاهده صفحه سمینار',
+                                    $pageUrl,
+                                    'primary',
+                                    'globe',
+                                ),
+                            ],
+                        ];
+                    }
+                }
+                $this->outbound->reply(
+                    $bot,
+                    $chatId,
+                    "⛔ سمینار «{$seminar->title}» {$status}.\n\nمنتظر سمینارهای آینده باشید.",
+                    $options,
+                );
 
-            return;
+                return;
+            }
         }
 
         $zp = $this->checkout->zarinpalEnabled($bot);
@@ -318,7 +344,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         }
 
         $priceBlock = ($sale !== null && $sale > 0 && $sale < $base)
-            ? 'قیمت اصلی: '.number_format($base)." تومان\nقیمت با تخفیف: ".number_format($sale).' تومان'
+            ? 'قیمت اصلی: <s>'.number_format($base).' تومان</s>'."\nقیمت با تخفیف: <b>".number_format($sale).' تومان</b>'
             : 'مبلغ: '.number_format($sale ?: $base).' تومان';
 
         $this->answer($client, $callbackId, 'کد تخفیف؟');
@@ -329,6 +355,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             ."اگر کد تخفیف دارید همین‌جا بفرستید (همان کدهای پنل سایت).\n"
             .'کد معرف هم اگر با لینک معرفی وارد شده باشید خودکار اعمال می‌شود.',
             [
+                'parse_mode' => 'HTML',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [['text' => '⏭ بدون کد تخفیف', 'callback_data' => 'buy:skip:'.$productId]],

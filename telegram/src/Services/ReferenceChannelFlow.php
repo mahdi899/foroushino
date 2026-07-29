@@ -79,6 +79,7 @@ final class ReferenceChannelFlow
             if ($presentOptions !== []) {
                 $options = array_merge($options, $presentOptions);
             }
+            $options = $this->withoutReferencePanelButton($options);
             $photo = $this->resolvePhoto($product, $present) ?: $photo;
         } else {
             $statusText = TelegramCustomEmoji::tag('check').' شما عضو گروه مرجع هستید.';
@@ -264,6 +265,52 @@ final class ReferenceChannelFlow
         }
 
         return trim((string) ($product['photo'] ?? $product['photo_url'] ?? ''));
+    }
+
+    /**
+     * Drop legacy «پنل کانال مرجع» glass buttons from stale owned_present snapshots.
+     *
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    private function withoutReferencePanelButton(array $options): array
+    {
+        $keyboard = $options['reply_markup']['inline_keyboard'] ?? null;
+        if (! is_array($keyboard) || $keyboard === []) {
+            return $options;
+        }
+
+        $filtered = [];
+        foreach ($keyboard as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $buttons = [];
+            foreach ($row as $button) {
+                if (! is_array($button)) {
+                    continue;
+                }
+                $text = (string) ($button['text'] ?? '');
+                $url = (string) ($button['url'] ?? '');
+                if (str_contains($text, 'پنل کانال مرجع') || str_contains($url, '/panel/reference-channel')) {
+                    continue;
+                }
+                $buttons[] = $button;
+            }
+            if ($buttons !== []) {
+                $filtered[] = $buttons;
+            }
+        }
+
+        if ($filtered === []) {
+            unset($options['reply_markup']);
+
+            return $options;
+        }
+
+        $options['reply_markup'] = ['inline_keyboard' => $filtered];
+
+        return $options;
     }
 
     /** @param  array<string, mixed>  $options */

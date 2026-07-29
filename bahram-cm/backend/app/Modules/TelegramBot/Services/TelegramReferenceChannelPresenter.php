@@ -126,9 +126,6 @@ class TelegramReferenceChannelPresenter
             foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
                 $keyboard[] = $row;
             }
-            foreach (TelegramSiteUrl::urlKeyboardRow('پنل کانال مرجع', TelegramSiteUrl::page('panel/reference-channel'), 'primary', 'channel') as $row) {
-                $keyboard[] = $row;
-            }
 
             return [
                 'text' => TelegramCustomEmoji::tag('lock').' احراز هویت سطح ۲ لازم است تا لینک عضویت گروه مرجع فعال شود.',
@@ -162,10 +159,6 @@ class TelegramReferenceChannelPresenter
                     $keyboard[] = $row;
                 }
             }
-        }
-
-        foreach (TelegramSiteUrl::urlKeyboardRow('پنل کانال مرجع', TelegramSiteUrl::page('panel/reference-channel'), 'primary', 'channel') as $row) {
-            $keyboard[] = $row;
         }
 
         return [

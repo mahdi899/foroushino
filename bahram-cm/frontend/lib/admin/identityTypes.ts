@@ -113,6 +113,15 @@ export const IDENTITY_STATUS_LABELS: Record<string, string> = {
   rejected: 'ردشده',
 };
 
+export const IDENTITY_GENDER_LABELS: Record<string, string> = {
+  male: 'مرد',
+  female: 'زن',
+  m: 'مرد',
+  f: 'زن',
+  مرد: 'مرد',
+  زن: 'زن',
+};
+
 export const IDENTITY_REASON_LABELS: Record<string, string> = {
   national_card_unreadable: 'تصویر کارت ملی خوانا نیست',
   national_card_not_yours: 'کارت ملی متعلق به شما نیست',

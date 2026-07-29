@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PublicSeminarController;
 use App\Http\Controllers\Api\ReferralCodeController;
 use App\Http\Controllers\Api\SeminarPromoController;
+use App\Http\Controllers\Api\TelegramPaymentLinkController;
 use App\Http\Controllers\Api\ZarinpalController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -100,6 +101,9 @@ Route::post('/orders/post-payment-login/verify-otp', [OrderController::class, 'p
 Route::post('/payments/zarinpal/request', [ZarinpalController::class, 'request'])
     ->middleware('throttle:10,1');
 Route::get('/payments/zarinpal/callback', [ZarinpalController::class, 'callback'])->name('api.payments.zarinpal.callback');
+Route::match(['get', 'post'], '/payments/telegram/{token}', [TelegramPaymentLinkController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:30,1');
 
 // Leads
 Route::post('/leads', [LeadController::class, 'store'])->middleware('throttle:leads');

@@ -186,6 +186,9 @@ class TelegramHostPayloadBuilder
                 'date' => $s->date?->toIso8601String(),
                 'location' => $s->location,
                 'capacity_hint' => $s->remainingSeats(),
+                'is_full' => $s->isFull(),
+                'is_ended' => $s->isEnded(),
+                'slug' => (string) ($s->slug ?? ''),
                 'price' => $base,
                 'sale_price' => $sale,
                 'photo' => $photo,
@@ -287,6 +290,10 @@ class TelegramHostPayloadBuilder
                     }
                 }
 
+                $requiresIdentityLevel2 = ReferenceChannel::query()
+                    ->where('telegram_destination_id', $destination->id)
+                    ->exists();
+
                 return [
                     'id' => (int) $destination->id,
                     'title' => (string) $destination->title,
@@ -296,6 +303,7 @@ class TelegramHostPayloadBuilder
                     'product_ids' => $productIds,
                     'product_titles' => $productTitles,
                     'sat_membership' => $satMembership,
+                    'requires_identity_level_2' => $requiresIdentityLevel2,
                 ];
             })
             ->values()

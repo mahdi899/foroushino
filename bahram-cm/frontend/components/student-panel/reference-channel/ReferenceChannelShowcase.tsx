@@ -121,7 +121,14 @@ export function ReferenceChannelShowcase({
           </Link>
         ) : null}
 
-        {owned && channel.invite_url ? (
+        {owned && !channel.identity_ready ? (
+          <Link href="/panel/identity-verification" className="btn btn-primary w-full">
+            <ShieldCheck size={16} />
+            احراز هویت
+          </Link>
+        ) : null}
+
+        {owned && channel.identity_ready && channel.invite_url ? (
           <a
             href={channel.invite_url}
             target="_blank"
@@ -133,7 +140,10 @@ export function ReferenceChannelShowcase({
           </a>
         ) : null}
 
-        {owned && !channel.invite_url && channel.bot_start_url ? (
+        {owned &&
+        channel.identity_ready &&
+        !channel.invite_url &&
+        channel.bot_start_url ? (
           <a
             href={channel.bot_start_url}
             target="_blank"
@@ -145,17 +155,7 @@ export function ReferenceChannelShowcase({
           </a>
         ) : null}
 
-        {owned && !channel.invite_url && !channel.bot_start_url && !channel.identity_ready ? (
-          <Link href="/panel/identity-verification" className="btn btn-primary w-full">
-            <ShieldCheck size={16} />
-            احراز هویت
-          </Link>
-        ) : null}
-
-        {owned &&
-        !channel.invite_url &&
-        !channel.bot_start_url &&
-        channel.identity_ready ? (
+        {owned && channel.identity_ready && !channel.invite_url && !channel.bot_start_url ? (
           <span className="panel-text-meta flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
             لینک دعوت به‌زودی فعال می‌شود
           </span>

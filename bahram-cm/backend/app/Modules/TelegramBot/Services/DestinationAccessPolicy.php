@@ -6,6 +6,7 @@ use App\Models\CourseAccess;
 use App\Models\Product;
 use App\Models\ReferenceChannel;
 use App\Models\ReferenceChannelEntitlement;
+use App\Models\User;
 use App\Services\Sat\SatParticipantAccessService;
 use App\Modules\TelegramBot\Models\TelegramAccessDenial;
 use App\Modules\TelegramBot\Models\TelegramAccessGrant;
@@ -14,6 +15,8 @@ use App\Modules\TelegramBot\Models\TelegramDestinationRequirement;
 
 class DestinationAccessPolicy
 {
+    public const REASON_REFERENCE_IDENTITY_REQUIRED = 'احراز هویت سطح ۲ لازم است تا عضو گروه مرجع شوید.';
+
     /**
      * @return array{allowed: bool, reason: string}
      */
@@ -32,6 +35,14 @@ class DestinationAccessPolicy
             ->where('user_id', $userId)
             ->exists()) {
             return ['allowed' => false, 'reason' => 'دسترسی شما به این مقصد مسدود شده است.'];
+        }
+
+        // Reference group: L2 always required (even with manual grant).
+        if ($this->isReferenceDestination($destination) && ! $this->hasIdentityLevel2($userId)) {
+            return [
+                'allowed' => false,
+                'reason' => self::REASON_REFERENCE_IDENTITY_REQUIRED,
+            ];
         }
 
         if (TelegramAccessGrant::query()
@@ -71,6 +82,27 @@ class DestinationAccessPolicy
         }
 
         return ['allowed' => true, 'reason' => 'requirements_met'];
+    }
+
+    public function isReferenceDestination(TelegramDestination $destination): bool
+    {
+        return ReferenceChannel::query()
+            ->where('telegram_destination_id', $destination->id)
+            ->exists();
+    }
+
+    public static function isIdentityRequiredReason(string $reason): bool
+    {
+        return str_contains($reason, self::REASON_REFERENCE_IDENTITY_REQUIRED)
+            || str_contains($reason, 'احراز هویت سطح ۲');
+    }
+
+    private function hasIdentityLevel2(int $userId): bool
+    {
+        $user = User::query()->with('identityProfile')->find($userId);
+        $level = (int) ($user?->identityProfile?->verification_level ?? 0);
+
+        return $level >= 2;
     }
 
     /**

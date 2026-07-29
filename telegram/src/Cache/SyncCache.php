@@ -188,6 +188,7 @@ final class SyncCache
                     ? array_values(array_map('strval', $productTitles))
                     : [],
                 'sat_membership' => ! empty($row['sat_membership']),
+                'requires_identity_level_2' => ! empty($row['requires_identity_level_2']),
             ];
         }
 
@@ -206,10 +207,10 @@ final class SyncCache
         $stmt = $this->pdo->prepare(
             'INSERT INTO destinations_cache (
                 id, title, chat_id, invite_mode, shared_invite_url,
-                product_ids_json, product_titles_json, sat_membership, synced_at
+                product_ids_json, product_titles_json, sat_membership, requires_identity_level_2, synced_at
              ) VALUES (
                 :id, :title, :chat_id, :invite_mode, :shared_url,
-                :product_ids, :product_titles, :sat_membership, NOW()
+                :product_ids, :product_titles, :sat_membership, :requires_identity, NOW()
              )',
         );
 
@@ -227,6 +228,7 @@ final class SyncCache
                 'product_ids' => json_encode(array_values(array_map('intval', (array) ($destination['product_ids'] ?? []))), JSON_UNESCAPED_UNICODE),
                 'product_titles' => json_encode(array_values(array_map('strval', (array) ($destination['product_titles'] ?? []))), JSON_UNESCAPED_UNICODE),
                 'sat_membership' => ! empty($destination['sat_membership']) ? 1 : 0,
+                'requires_identity' => ! empty($destination['requires_identity_level_2']) ? 1 : 0,
             ]);
         }
     }
@@ -247,9 +249,15 @@ final class SyncCache
                 product_ids_json TEXT NULL,
                 product_titles_json TEXT NULL,
                 sat_membership TINYINT(1) NOT NULL DEFAULT 0,
+                requires_identity_level_2 TINYINT(1) NOT NULL DEFAULT 0,
                 synced_at DATETIME NOT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4',
         );
+        try {
+            $this->pdo->exec('ALTER TABLE destinations_cache ADD COLUMN requires_identity_level_2 TINYINT(1) NOT NULL DEFAULT 0');
+        } catch (\Throwable) {
+            // column already exists
+        }
         $ready = true;
     }
 
@@ -506,6 +514,10 @@ final class SyncCache
                     'price' => $seminar['price'] ?? 0,
                     'sale_price' => $seminar['sale_price'] ?? null,
                     'photo' => $seminar['photo'] ?? $seminar['photo_url'] ?? null,
+                    'product_type' => 'seminar',
+                    'is_full' => ! empty($seminar['is_full']),
+                    'is_ended' => ! empty($seminar['is_ended']),
+                    'capacity_hint' => $seminar['capacity_hint'] ?? null,
                 ];
             }
         }
@@ -679,6 +691,7 @@ final class SyncCache
     {
         $this->ensureCatalogProductTypeColumn();
         $this->ensureSeminarDiscountColumn();
+        $this->ensureSeminarAvailabilityColumns();
 
         $this->pdo->exec('DELETE FROM catalog_products');
         $this->pdo->exec('DELETE FROM catalog_seminars');
@@ -700,17 +713,24 @@ final class SyncCache
         }
 
         $seminarStmt = $this->pdo->prepare(
-            'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, price, sale_price, photo_url, reference_discount_amount, synced_at)
-             VALUES (:id, :product_id, :title, :date, :location, :capacity_hint, :price, :sale_price, :photo_url, :reference_discount_amount, NOW())',
+            'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, is_full, is_ended, slug, price, sale_price, photo_url, reference_discount_amount, synced_at)
+             VALUES (:id, :product_id, :title, :date, :location, :capacity_hint, :is_full, :is_ended, :slug, :price, :sale_price, :photo_url, :reference_discount_amount, NOW())',
         );
         foreach ($seminars as $seminar) {
+            $capacityHint = $seminar['capacity_hint'] ?? null;
+            $isFull = ! empty($seminar['is_full'])
+                || ($capacityHint !== null && $capacityHint !== '' && (int) $capacityHint <= 0);
+            $isEnded = ! empty($seminar['is_ended']);
             $seminarStmt->execute([
                 'id' => (int) $seminar['id'],
                 'product_id' => $seminar['product_id'] ?? null,
-                'title' => (string) $seminar['title'],
+                'title' => (string) ($seminar['title']),
                 'date' => $this->toMysqlDateTime($seminar['date'] ?? null),
                 'location' => $seminar['location'] ?? null,
-                'capacity_hint' => $seminar['capacity_hint'] ?? null,
+                'capacity_hint' => $capacityHint,
+                'is_full' => $isFull ? 1 : 0,
+                'is_ended' => $isEnded ? 1 : 0,
+                'slug' => (string) ($seminar['slug'] ?? ''),
                 'price' => $seminar['price'] ?? null,
                 'sale_price' => $seminar['sale_price'] ?? null,
                 'photo_url' => $seminar['photo'] ?? null,
@@ -764,6 +784,22 @@ final class SyncCache
             $this->pdo->exec('ALTER TABLE catalog_seminars ADD COLUMN reference_discount_amount BIGINT NOT NULL DEFAULT 0');
         } catch (\Throwable) {
             // column already exists
+        }
+        $ready = true;
+    }
+
+    private function ensureSeminarAvailabilityColumns(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        foreach (['is_full TINYINT(1) NOT NULL DEFAULT 0', 'is_ended TINYINT(1) NOT NULL DEFAULT 0', 'slug VARCHAR(255) NOT NULL DEFAULT \'\''] as $columnSql) {
+            try {
+                $this->pdo->exec('ALTER TABLE catalog_seminars ADD COLUMN '.$columnSql);
+            } catch (\Throwable) {
+                // column already exists
+            }
         }
         $ready = true;
     }

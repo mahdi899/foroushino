@@ -8,7 +8,7 @@ use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Services\OrderService;
-use App\Services\ZarinpalPaymentService;
+use App\Services\TelegramPaymentLinkService;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -19,7 +19,7 @@ class TelegramCheckoutService
 {
     public function __construct(
         private readonly OrderService $orders,
-        private readonly ZarinpalPaymentService $zarinpal,
+        private readonly TelegramPaymentLinkService $paymentLinks,
     ) {}
 
     public function zarinpalEnabled(TelegramBot $bot): bool
@@ -33,7 +33,7 @@ class TelegramCheckoutService
     }
 
     /**
-     * @return array{order_id: int, payment_url: string, amount: int}
+     * @return array{order_id: int, payment_url: string, amount: int, product_title: string}
      */
     public function startZarinpalCheckout(TelegramAccount $account, Product $product, ?string $discountCode = null): array
     {
@@ -44,18 +44,20 @@ class TelegramCheckoutService
             ]);
         }
 
+        $this->paymentLinks->revokeOpenForAccount($account);
         $order = $this->createPendingOrder($account, $product, $discountCode);
-        $payment = $this->zarinpal->request($order);
+        $issued = $this->paymentLinks->issueForOrder($order, $account);
 
         return [
             'order_id' => $order->id,
-            'payment_url' => $this->zarinpal->getPaymentUrl($payment),
-            'amount' => (int) ($order->payable_amount ?? $order->final_amount ?? $product->sale_price ?? $product->price),
+            'payment_url' => $issued['payment_url'],
+            'amount' => (int) ($order->final_amount ?? $product->sale_price ?? $product->price),
+            'product_title' => (string) $product->title,
         ];
     }
 
     /**
-     * @return array{order_id: int, amount: int, instructions: string}
+     * @return array{order_id: int, amount: int, instructions: string, product_title: string}
      */
     public function startCardToCardCheckout(TelegramAccount $account, Product $product, ?string $discountCode = null): array
     {
@@ -66,12 +68,14 @@ class TelegramCheckoutService
             ]);
         }
 
+        $this->paymentLinks->revokeOpenForAccount($account);
         $order = $this->createPendingOrder($account, $product, $discountCode);
 
         return [
             'order_id' => $order->id,
-            'amount' => (int) ($order->payable_amount ?? $order->final_amount ?? $product->sale_price ?? $product->price),
+            'amount' => (int) ($order->final_amount ?? $product->sale_price ?? $product->price),
             'instructions' => $bot->cardToCardInstructions(),
+            'product_title' => (string) $product->title,
         ];
     }
 
@@ -79,6 +83,11 @@ class TelegramCheckoutService
     public function startCheckout(TelegramAccount $account, Product $product, ?string $discountCode = null): array
     {
         return $this->startZarinpalCheckout($account, $product, $discountCode);
+    }
+
+    public function revokeOpenPaymentLinks(TelegramAccount $account): array
+    {
+        return $this->paymentLinks->revokeOpenForAccount($account);
     }
 
     private function createPendingOrder(TelegramAccount $account, Product $product, ?string $discountCode): \App\Models\Order

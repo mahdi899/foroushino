@@ -80,7 +80,7 @@ class TelegramCourseAccessPresenter
             $lines[] = '';
             $lines[] = TelegramCustomEmoji::tag('key').' <b>کلید اسپات‌پلیر</b> (اپلیکیشن دسکتاپ/موبایل):';
             $lines[] = '<code>'.TelegramHtml::escape($licenseKey).'</code>';
-        } else {
+        } elseif (! $product->isSeminarProduct()) {
             $lines[] = '';
             $lines[] = TelegramCustomEmoji::tag('key').' کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
         }

@@ -121,6 +121,9 @@ class IdentityProviderAdminController extends Controller
                 if ($value === null || $value === '' || $value === '********') {
                     continue;
                 }
+                if (is_string($value) && in_array((string) $key, ['api_token', 'api_key'], true)) {
+                    $value = trim(preg_replace('/^Bearer\s+/i', '', trim($value)) ?? trim($value));
+                }
                 $merged[$key] = $value;
             }
             $config->setCredentials($merged);

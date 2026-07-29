@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminPage, Badge } from '../../../ui';
 import { getIdentityVerification } from '@/lib/admin/identityData';
-import { IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
+import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
 import { formatDate } from '@/lib/admin/academyTypes';
 import { can, getCurrentUser } from '@/lib/auth/session';
+import { formatDateFa } from '@/lib/persian';
 import { IdentityReviewActions } from '../IdentityReviewActions';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,16 @@ function statusTone(status: string): 'default' | 'success' | 'warning' | 'accent
   if (status === 'needs_correction') return 'warning';
   if (status === 'submitted' || status === 'under_review') return 'accent';
   return 'default';
+}
+
+function formatBirthDateFa(value: string | null | undefined): string {
+  if (!value) return '—';
+  return formatDateFa(value);
+}
+
+function formatGenderFa(value: string | null | undefined): string {
+  if (!value) return '—';
+  return IDENTITY_GENDER_LABELS[value] ?? value;
 }
 
 export default async function IdentityVerificationDetailPage({
@@ -100,13 +111,11 @@ export default async function IdentityVerificationDetailPage({
                 </div>
                 <div>
                   <dt className="text-text-muted">تاریخ تولد</dt>
-                  <dd className="font-medium" dir="ltr">
-                    {item.date_of_birth ?? '—'}
-                  </dd>
+                  <dd className="font-medium">{formatBirthDateFa(item.date_of_birth)}</dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">جنسیت</dt>
-                  <dd className="font-medium">{item.gender ?? '—'}</dd>
+                  <dd className="font-medium">{formatGenderFa(item.gender)}</dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">موبایل</dt>

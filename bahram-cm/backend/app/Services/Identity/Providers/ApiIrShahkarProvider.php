@@ -80,15 +80,21 @@ class ApiIrShahkarProvider implements
             ]);
 
             if (in_array($response->status(), [401, 403], true)) {
-                return ProviderConnectionResult::invalidCredentials('توکن API.ir نامعتبر است (Authorization: Bearer).');
+                return ProviderConnectionResult::invalidCredentials(
+                    'توکن API.ir نامعتبر است (Authorization: Bearer). فقط توکن خام را ذخیره کنید، نه کلمه Bearer.'
+                );
             }
 
             // Any non-auth HTTP response means TLS + Bearer reached the API.
             return ProviderConnectionResult::connected('سرویس API.ir در دسترس است (هدر Bearer ارسال شد).');
-        } catch (ConnectionException) {
-            return ProviderConnectionResult::providerUnavailable(
-                'ارتباط با سرویس API.ir برقرار نشد. سرور ایران باید به https://s.api.ir دسترسی داشته باشد (فیلتر/فایروال). مشکل از نوشتن یا ننوشتن کلمه Bearer در فیلد توکن نیست.'
-            );
+        } catch (ConnectionException $e) {
+            $detail = trim($e->getMessage());
+            $hint = 'ارتباط با سرویس API.ir برقرار نشد. سرور باید به https://s.api.ir دسترسی HTTPS داشته باشد (DNS/فایروال/فیلتر).';
+            if ($detail !== '') {
+                $hint .= ' جزئیات: '.$detail;
+            }
+
+            return ProviderConnectionResult::providerUnavailable($hint);
         } catch (Throwable $e) {
             return ProviderConnectionResult::providerUnavailable($e->getMessage() ?: 'خطای ناشناخته در تست اتصال.');
         }

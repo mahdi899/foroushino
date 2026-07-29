@@ -58,7 +58,7 @@ final class CatalogPresenter
     private static function formatPriceLine(int $price, ?int $salePrice): string
     {
         if ($salePrice !== null && $salePrice > 0 && $salePrice < $price) {
-            return TelegramCustomEmoji::tag('money').' <b>قیمت اصلی:</b> '.number_format($price).' تومان'
+            return TelegramCustomEmoji::tag('money').' <b>قیمت اصلی:</b> <s>'.number_format($price).' تومان</s>'
                 ."\n".TelegramCustomEmoji::tag('fire').' <b>قیمت ویژه:</b> '.number_format($salePrice).' تومان';
         }
 
