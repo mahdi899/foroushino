@@ -32,7 +32,7 @@ export type StudentLoginFormProps = {
   active?: boolean;
   onClose?: () => void;
   context?: 'panel' | 'family';
-  purpose?: 'default' | 'comment';
+  purpose?: 'default' | 'comment' | 'newsletter';
 };
 
 export function StudentLoginForm({
@@ -44,7 +44,7 @@ export function StudentLoginForm({
   purpose = 'default',
 }: StudentLoginFormProps) {
   const auth = useStudentAuthOptional();
-  const stayOnPage = purpose === 'comment';
+  const stayOnPage = purpose === 'comment' || purpose === 'newsletter';
   const [step, setStep] = useState<Step>('mobile');
   const [phone, setPhone] = useState('');
   const [phoneTouched, setPhoneTouched] = useState(false);
@@ -257,6 +257,17 @@ export function StudentLoginForm({
               برای ثبت نظر، شماره‌ات را بزن
             </p>
           </div>
+        ) : purpose === 'newsletter' ? (
+          <div className="text-center">
+            <BrandMark className="mx-auto h-9 w-9 rounded-pill ring-bone/12" />
+            <h2 id={titleId} className="panel-text-body-lg mt-2.5 font-display font-semibold text-bone">
+              عضویت هفتگی
+            </h2>
+            <p className="mt-0.5 flex items-center justify-center gap-1 panel-text-meta text-mist">
+              <ShieldCheck className="h-3 w-3 text-emerald-glow/80" strokeWidth={1.5} aria-hidden />
+              شماره موبایل را بزن؛ بدون اسپم
+            </p>
+          </div>
         ) : (
           <div className="text-center">
             <BrandMark className="mx-auto h-9 w-9 rounded-pill ring-bone/12" />
@@ -401,7 +412,15 @@ export function StudentLoginForm({
                   disabled={otpCode.length < 5 || verifyPending}
                   className={submitClass}
                 >
-                  {verifyPending ? <Loader2 className="h-4 w-4 animate-spin" /> : purpose === 'comment' ? 'تأیید و ثبت نظر' : 'تأیید و ورود'}
+                  {verifyPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : purpose === 'comment' ? (
+                    'تأیید و ثبت نظر'
+                  ) : purpose === 'newsletter' ? (
+                    'تأیید و عضویت'
+                  ) : (
+                    'تأیید و ورود'
+                  )}
                 </button>
               </form>
 
