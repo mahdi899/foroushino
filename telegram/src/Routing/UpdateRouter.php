@@ -7,8 +7,10 @@ namespace TelegramHost\Routing;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Http\AdminFastClient;
+use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
+use TelegramHost\Services\HostAdminShell;
 use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Telegram\BotApiClient;
@@ -28,6 +30,8 @@ final class UpdateRouter
         private readonly CallbackQueryHandler $callbacks,
         private readonly HostSupportService $support,
         private readonly MainMenu $mainMenu,
+        private readonly ConversationRepository $conversations,
+        private readonly HostAdminShell $adminShell,
     ) {}
 
     /** @param array<string, mixed> $update */
@@ -40,12 +44,13 @@ final class UpdateRouter
             }
         }
 
-        // Main-menu labels (e.g. «کانال مرجع») must never be swallowed by admin
-        // Iran relay — same wording used to collide with admin hub buttons.
+        // Main-menu labels must not block admin Iran relay while admin panel is open.
         $mainMenuText = trim((string) ($update['message']['text'] ?? ''));
+        $telegramUserId = $this->extractTelegramUserId($update);
         $isMainMenuTap = $mainMenuText !== ''
             && $this->delegation->isPrivateUserFacing($update)
-            && $this->mainMenu->resolveAction($mainMenuText) !== null;
+            && $this->mainMenu->resolveAction($mainMenuText) !== null
+            && ! $this->isAdminPanelRelay($telegramUserId, $mainMenuText);
 
         if (! $isMainMenuTap && $this->delegation->shouldRelayToIran($update)) {
             if (! $this->delegation->isPrivateUserFacing($update)) {
@@ -126,5 +131,16 @@ final class UpdateRouter
         }
 
         return $this->extractTelegramUserId($update);
+    }
+
+    private function isAdminPanelRelay(int $telegramUserId, string $text): bool
+    {
+        if ($telegramUserId <= 0 || ! $this->adminShell->isAdminButton($text)) {
+            return false;
+        }
+
+        $conversation = $this->conversations->get($telegramUserId);
+
+        return in_array($conversation['state'] ?? 'idle', ['admin_panel', 'admin_waiting_input'], true);
     }
 }

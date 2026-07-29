@@ -8,6 +8,7 @@ use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
+use App\Modules\TelegramBot\Services\AdminMenuKeyboard;
 use App\Modules\TelegramBot\Services\BotAdminPanelService;
 use App\Modules\TelegramBot\Services\BotMessageCatalog;
 use App\Modules\TelegramBot\Services\ConversationService;
@@ -255,6 +256,18 @@ class MessageHandler implements UpdateHandlerInterface
                 $this->conversations->reset($conversation);
                 $conversation->refresh();
             }
+
+            $adminLabel = app(AdminMenuKeyboard::class)->normalizeLabel($text, $account);
+            if ($adminLabel !== null && $adminLabel !== AdminMenuKeyboard::EXIT) {
+                $conversation = $this->conversations->forAccount($account);
+                $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                    'admin' => ['flow' => null, 'draft' => []],
+                ]);
+                $this->botAdmin->handleAdminMenuButton($bot, $account, $chatId, $text);
+
+                return;
+            }
+
             $this->handleMenuButton($bot, $account, $chatId, $text);
 
             return;

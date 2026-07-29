@@ -147,6 +147,18 @@ final class MessageHandler
                 return;
             }
 
+            if ($text !== '' && $this->adminShell->isAdminButton($text)) {
+                $this->api->sendMessage(
+                    $chatId,
+                    TelegramCustomEmoji::tag('warning')
+                    ." اتصال پنل ادمین به سرور اصلی برقرار نشد.\n"
+                    ."چند لحظه دیگر دوباره همان دکمه را بزنید.",
+                    ['reply_markup' => $this->adminShell->replyMarkup()],
+                );
+
+                return;
+            }
+
             if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
                 $this->conversations->set($telegramUserId, 'idle', []);
                 $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
@@ -238,6 +250,26 @@ final class MessageHandler
         $this->live->checkoutRevokeOpen($chatId, $telegramUserId);
 
         $action = $this->mainMenu->resolveAction($text);
+        if (
+            $this->accounts->isBotAdmin($telegramUserId)
+            && in_array($action, [MainMenu::ACTION_COURSES, MainMenu::ACTION_CHANNEL, MainMenu::ACTION_SEMINARS], true)
+        ) {
+            $this->conversations->set($telegramUserId, 'admin_panel', []);
+            $adminUpdate = [
+                'message' => [
+                    'text' => $text,
+                    'chat' => ['id' => $chatId],
+                    'from' => ['id' => $telegramUserId],
+                ],
+            ];
+            if ($this->adminFast->tryDispatch($chatId, $telegramUserId, $adminUpdate)) {
+                return;
+            }
+            $this->adminShell->open($chatId, $telegramUserId);
+
+            return;
+        }
+
         match ($action) {
             MainMenu::ACTION_COURSES => $this->sendCourseList($chatId, $telegramUserId),
             MainMenu::ACTION_SEMINARS => $this->sendSeminarList($chatId, $telegramUserId),

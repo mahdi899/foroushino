@@ -69,7 +69,32 @@ final class HostAdminShell
 
     /** @var array<string, list<string>> */
     private const LEGACY = [
+        self::USERS => ['👥 کاربران'],
+        self::ADMINS => ['🛡 ادمین‌ها'],
+        self::STATS => ['📊 آمار'],
+        self::BROADCAST => ['📣 پیام همگانی'],
+        self::REQUIRED_CHATS => ['📻 کانال اجباری'],
+        self::DESTINATIONS => ['📍 مقاصد'],
+        self::DISCOUNTS => ['🎟 کد تخفیف'],
+        self::TICKETS => ['🎫 تیکت‌ها'],
+        self::MESSAGES => ['💬 پیام‌ها'],
+        self::REFERENCE_CHANNEL => ['مدیریت کانال مرجع'],
+        self::COURSES => ['مدیریت دوره‌ها'],
+        self::SEMINARS => ['مدیریت سمینارها'],
+        self::EXPORT => ['📤 خروجی کاربران'],
+        self::PROFILE => ['🤖 پروفایل بات'],
+        self::SETTINGS => ['⚙️ تنظیمات'],
+        self::LOGS => ['📋 لاگ‌ها'],
+        self::EVENTS => ['📡 رویدادها'],
+        self::HOME => ['🏠 داشبورد'],
         self::EXIT => ['❌ خروج از پنل ادمین'],
+    ];
+
+    /** Main-menu core labels — premium icon sends text without emoji prefix. */
+    private const CATALOG_CORE_ALIASES = [
+        self::REFERENCE_CHANNEL => ['کانال مرجع'],
+        self::COURSES => ['دوره‌ها'],
+        self::SEMINARS => ['سمینارها'],
     ];
 
     public function __construct(
@@ -112,27 +137,98 @@ final class HostAdminShell
 
     public function isExitText(string $text): bool
     {
-        $text = trim($text);
-        if ($text === self::EXIT) {
-            return true;
-        }
-
-        return in_array($text, self::LEGACY[self::EXIT] ?? [], true);
+        return $this->normalizeLabel($text) === self::EXIT;
     }
 
     public function isAdminButton(string $text): bool
     {
-        $text = trim($text);
-        if ($this->isExitText($text)) {
-            return true;
+        $label = $this->normalizeLabel($text);
+
+        return $label !== null && $label !== self::EXIT;
+    }
+
+    public function isCatalogHubButton(string $text): bool
+    {
+        $label = $this->normalizeLabel($text);
+
+        return $label !== null && in_array($label, [self::COURSES, self::REFERENCE_CHANNEL, self::SEMINARS], true);
+    }
+
+    public function normalizeLabel(string $text): ?string
+    {
+        $text = $this->normalizeTapText($text);
+        if ($text === '') {
+            return null;
         }
+
         foreach (self::ROWS as $row) {
             if (in_array($text, $row, true)) {
-                return true;
+                return $text;
             }
         }
 
-        return false;
+        foreach (self::LEGACY as $canonical => $aliases) {
+            foreach ($aliases as $alias) {
+                if ($text === $this->normalizeTapText($alias)) {
+                    return $canonical;
+                }
+            }
+        }
+
+        return $this->normalizeAdminCoreLabel($text);
+    }
+
+    private function normalizeAdminCoreLabel(string $text): ?string
+    {
+        $core = $this->coreLabel($text);
+        if ($core === '') {
+            return null;
+        }
+
+        foreach (self::ROWS as $row) {
+            foreach ($row as $canonical) {
+                if ($core === $this->coreLabel($canonical)) {
+                    return $canonical;
+                }
+            }
+        }
+
+        foreach (self::CATALOG_CORE_ALIASES as $canonical => $aliases) {
+            foreach ($aliases as $alias) {
+                if ($core === $this->coreLabel($alias)) {
+                    return $canonical;
+                }
+            }
+        }
+
+        foreach (self::LEGACY as $canonical => $aliases) {
+            foreach ($aliases as $alias) {
+                if ($core === $this->coreLabel($alias)) {
+                    return $canonical;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeTapText(string $text): string
+    {
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = str_replace(["\u{200c}", "\u{feff}", 'ي', 'ك'], ['', '', 'ی', 'ک'], $text);
+        $text = preg_replace('/\s+/u', ' ', trim($text)) ?? trim($text);
+        $text = TelegramCustomEmoji::stripLeadingFallback($text);
+
+        return trim($text);
+    }
+
+    private function coreLabel(string $text): string
+    {
+        $core = preg_replace('/[\x{FE0F}\x{200D}\p{So}\p{Sk}]+/u', '', $text) ?? $text;
+        $core = preg_replace('/\s+/u', ' ', trim($core)) ?? trim($core);
+
+        return $core;
     }
 
     /** @return array<string, mixed> */
