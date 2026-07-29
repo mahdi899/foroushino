@@ -1206,44 +1206,62 @@ export function FeedView({
 
   /**
    * Older pages arrive as a prepend. At scrollTop≈0 the viewport can land on the
-   * newly loaded oldest posts unless we restore the pre-fetch anchor once in layout.
+   * newly loaded oldest posts unless we restore the pre-fetch anchor.
    *
-   * Extra settle passes only run while the user is quiet — re-pinning during an
-   * upward fling fights Lenis/momentum and brings back mobile scroll glitches.
+   * Always restore once in layout. If the user is still flinging, keep the
+   * snapshot and settle after quiet — never drop the pin early (that caused the
+   * "jumped to top after load" feel on mobile).
    */
   useLayoutEffect(() => {
     const snapshot = scrollRestoreRef.current;
     virtualListRef.current?.measureNewRows();
     if (!snapshot) return;
 
-    const { root, lenis } = getScrollCtx();
-    restoreFeedScrollPosition(snapshot, { root, lenis });
-
-    // Finger / momentum is driving scroll — one layout restore is enough.
-    if (performance.now() < userScrollQuietUntilRef.current) {
-      scrollRestoreRef.current = null;
-      loadingHistoryRef.current = false;
-      historySettleActiveRef.current = false;
-      return;
-    }
+    restoreFeedScrollPosition(snapshot, getScrollCtx());
 
     const gen = ++historySettleGenRef.current;
     historySettleActiveRef.current = true;
-    void restoreFeedScrollPositionUntilSettled(snapshot, {
-      getScrollCtx,
-      maxPasses: 4,
-      isCancelled: () =>
-        gen !== historySettleGenRef.current ||
-        performance.now() < userScrollQuietUntilRef.current,
-      onPass: () => {
-        virtualListRef.current?.measureNewRows();
-      },
-    }).finally(() => {
+    let waitTimer: number | null = null;
+
+    const finish = () => {
       if (gen !== historySettleGenRef.current) return;
       historySettleActiveRef.current = false;
       scrollRestoreRef.current = null;
       loadingHistoryRef.current = false;
-    });
+    };
+
+    const runSettle = () => {
+      if (gen !== historySettleGenRef.current) return;
+      void restoreFeedScrollPositionUntilSettled(snapshot, {
+        getScrollCtx,
+        maxPasses: 5,
+        isCancelled: () =>
+          gen !== historySettleGenRef.current ||
+          performance.now() < userScrollQuietUntilRef.current,
+        onPass: () => {
+          virtualListRef.current?.measureNewRows();
+        },
+      }).finally(finish);
+    };
+
+    const waitForQuietThenSettle = () => {
+      if (gen !== historySettleGenRef.current) return;
+      if (performance.now() < userScrollQuietUntilRef.current) {
+        waitTimer = window.setTimeout(waitForQuietThenSettle, 48);
+        return;
+      }
+      runSettle();
+    };
+
+    if (performance.now() < userScrollQuietUntilRef.current) {
+      waitTimer = window.setTimeout(waitForQuietThenSettle, 48);
+    } else {
+      runSettle();
+    }
+
+    return () => {
+      if (waitTimer != null) window.clearTimeout(waitTimer);
+    };
   }, [getScrollCtx, posts.length]);
 
   // Keep catching up to bottom after media/layout settles (caught-up sessions only).
@@ -1569,18 +1587,19 @@ export function FeedView({
     return () => window.clearTimeout(timer);
   }, [feedReady]);
 
-  // Rotation / keyboard resize changes bubble width, which invalidates every estimate.
+  // Rotation changes bubble width, which invalidates estimates. Do not listen to
+  // generic `resize` — mobile URL-bar show/hide fires it and remasure thrash jumps
+  // the feed while the user is scrolling up.
   useEffect(() => {
     if (!feedReady) return;
-    const onResize = () => {
+    const onOrientation = () => {
+      if (performance.now() < userScrollQuietUntilRef.current) return;
       if (!calibrateFeedEstimateMetrics()) return;
       virtualListRef.current?.measureNewRows();
     };
-    window.addEventListener('resize', onResize);
-    window.addEventListener('orientationchange', onResize);
+    window.addEventListener('orientationchange', onOrientation);
     return () => {
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('orientationchange', onResize);
+      window.removeEventListener('orientationchange', onOrientation);
     };
   }, [feedReady]);
 

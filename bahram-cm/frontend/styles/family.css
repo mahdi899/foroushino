@@ -24,13 +24,14 @@ html[data-family-host='1'] body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 
-  /* Feed media caps — balanced between scroll and readability */
+  /* Feed media caps — use svh (not dvh) so mobile browser chrome
+     show/hide does not resize in-feed images mid-scroll (virtualizer jank). */
   --family-media-max-w: min(100%, 24rem);
-  --family-media-max-h: min(70dvh, 26rem);
-  --family-media-album-max-h: min(70dvh, 24rem);
+  --family-media-max-h: min(70svh, 26rem);
+  --family-media-album-max-h: min(70svh, 24rem);
   --family-media-portrait-w: min(100%, 20rem);
-  --family-media-portrait-h: min(75dvh, 28rem);
-  --family-media-landscape-h: min(62dvh, 21rem);
+  --family-media-portrait-h: min(75svh, 28rem);
+  --family-media-landscape-h: min(62svh, 21rem);
   --family-voice-max-w: 100%;
 
   /* Bahram brand — rostami.app (Saat Teal) */
@@ -156,11 +157,11 @@ html[data-family-host='1'] body {
 @media (min-width: 480px) {
   .family-app {
     --family-media-max-w: min(100%, 26rem);
-    --family-media-max-h: min(72vh, 27rem);
-    --family-media-album-max-h: min(72vh, 25rem);
+    --family-media-max-h: min(72svh, 27rem);
+    --family-media-album-max-h: min(72svh, 25rem);
     --family-media-portrait-w: min(100%, 21.5rem);
-    --family-media-portrait-h: min(78vh, 30rem);
-    --family-media-landscape-h: min(65vh, 22rem);
+    --family-media-portrait-h: min(78svh, 30rem);
+    --family-media-landscape-h: min(65svh, 22rem);
   }
 }
 

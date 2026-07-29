@@ -78,6 +78,18 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
         : undefined,
   });
 
+  // Default TanStack behavior still corrects during some mobile fling edges.
+  // Skip size→scrollTop writes while the user is actively scrolling so upward
+  // fling does not stutter when estimate→measure or media RO fires.
+  useLayoutEffect(() => {
+    virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) => {
+      if (instance.isScrolling) return false;
+      // Scrolling toward older history (list start) — never yank the viewport.
+      if (instance.scrollDirection === 'backward') return false;
+      return item.start < instance.getScrollOffset();
+    };
+  }, [virtualizer]);
+
   /**
    * `measureElement` reads offsetHeight and may immediately write scrollTop, so a
    * full sweep is an interleaved read/write storm and every non-zero delta above the

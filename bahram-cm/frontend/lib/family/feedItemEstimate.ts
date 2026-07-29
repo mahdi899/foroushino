@@ -11,8 +11,8 @@ const POST_CHROME_HEIGHT = 76;
 
 /**
  * Must stay aligned with `family.css` media caps:
- * --family-media-max-w ≈ 24rem, --family-media-max-h ≈ min(70dvh, 26rem),
- * --family-media-album-max-h ≈ min(70dvh, 24rem).
+ * --family-media-max-w ≈ 24rem, --family-media-max-h ≈ min(70svh, 26rem),
+ * --family-media-album-max-h ≈ min(70svh, 24rem).
  * Wrong caps → virtualizer estimate→measure thrash and scroll jumps.
  */
 const MEDIA_MAX_H = 416; // 26rem
