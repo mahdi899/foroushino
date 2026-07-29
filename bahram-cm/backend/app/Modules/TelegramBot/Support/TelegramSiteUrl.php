@@ -127,14 +127,26 @@ final class TelegramSiteUrl
         return self::page('panel');
     }
 
-    public static function courseWatchPage(int|string $accessId): ?string
+    public static function courseWatchPage(int|string $accessId, int|string|null $licenseId = null): ?string
     {
         $id = trim((string) $accessId);
         if ($id === '' || ! ctype_digit($id)) {
             return null;
         }
 
-        return self::page('panel/courses/'.$id.'/watch');
+        $url = self::page('panel/courses/'.$id.'/watch');
+        if ($url === null) {
+            return null;
+        }
+
+        if ($licenseId !== null) {
+            $license = trim((string) $licenseId);
+            if ($license !== '' && ctype_digit($license)) {
+                $url .= '?license='.$license;
+            }
+        }
+
+        return $url;
     }
 
     public static function coursesPanel(): ?string

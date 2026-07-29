@@ -179,4 +179,70 @@ class StudentCoursesListTest extends TestCase
         $response->assertJsonPath('data.2.order_number', 'BC-A');
         $this->assertStringStartsWith('license-', $response->json('data.0.list_key'));
     }
+
+    public function test_license_matched_by_order_phone_uses_viewer_course_access_id(): void
+    {
+        $sharedMobile = '09104085688';
+
+        $viewer = User::factory()->create(['mobile' => $sharedMobile]);
+        $other = User::factory()->create(['mobile' => '09120000000']);
+
+        $product = Product::create([
+            'title' => 'دوره کمپین‌نویسی',
+            'slug' => 'campaign-shared-phone',
+            'type' => 'normal',
+            'price' => 1_000_000,
+            'spotplayer_course_id' => 'spot-shared',
+            'is_active' => true,
+        ]);
+
+        $viewerAccess = CourseAccess::create([
+            'user_id' => $viewer->id,
+            'product_id' => $product->id,
+            'status' => 'active',
+            'access_type' => 'lifetime',
+            'source' => 'zarinpal',
+            'activated_at' => now(),
+        ]);
+
+        $otherAccess = CourseAccess::create([
+            'user_id' => $other->id,
+            'product_id' => $product->id,
+            'status' => 'active',
+            'access_type' => 'lifetime',
+            'source' => 'zarinpal',
+            'activated_at' => now(),
+        ]);
+
+        $order = Order::create([
+            'order_number' => 'BC-SHARED',
+            'user_id' => $other->id,
+            'product_id' => $product->id,
+            'customer_name' => 'خریدار',
+            'customer_phone' => $sharedMobile,
+            'amount' => 1_000_000,
+            'discount_amount' => 0,
+            'final_amount' => 1_000_000,
+            'status' => 'fulfilled',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $license = \App\Models\SpotplayerLicense::create([
+            'user_id' => $other->id,
+            'product_id' => $product->id,
+            'order_id' => $order->id,
+            'course_access_id' => $otherAccess->id,
+            'spotplayer_course_id' => 'spot-shared',
+            'license_key' => 'shared-license-key',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/student/courses');
+
+        $response->assertOk()->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.id', $viewerAccess->id);
+        $response->assertJsonPath('data.0.license_id', $license->id);
+        $this->assertNotSame($otherAccess->id, $response->json('data.0.id'));
+    }
 }

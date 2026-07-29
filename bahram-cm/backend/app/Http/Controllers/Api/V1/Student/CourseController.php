@@ -115,8 +115,7 @@ class CourseController extends Controller
                 continue;
             }
 
-            $access = $license->courseAccess
-                ?? $accesses->get($license->product_id);
+            $access = $this->resolveLicenseListAccess($user, $license, $accesses);
 
             $items[] = $this->formatLicenseItem($access, $product, $license, $altResolver);
         }
@@ -194,6 +193,32 @@ class CourseController extends Controller
         }
 
         return $product->type === ProductType::MiniCourse->value;
+    }
+
+    /** Prefer the signed-in user's access — licenses matched by order phone may point at another account. */
+    private function resolveLicenseListAccess(
+        User $user,
+        SpotplayerLicense $license,
+        \Illuminate\Support\Collection $accessesByProduct,
+    ): ?CourseAccess {
+        $viewerAccess = $accessesByProduct->get($license->product_id);
+        if ($viewerAccess instanceof CourseAccess) {
+            return $viewerAccess;
+        }
+
+        $product = $license->product;
+        if ($product instanceof Product) {
+            $resolved = app(CourseAccessService::class)->activeAccessForUser($user, $product);
+            if ($resolved instanceof CourseAccess) {
+                return $resolved;
+            }
+        }
+
+        $linked = $license->courseAccess;
+
+        return $linked instanceof CourseAccess && (int) $linked->user_id === (int) $user->id
+            ? $linked
+            : null;
     }
 
     /** @return list<array<string, mixed>> */
