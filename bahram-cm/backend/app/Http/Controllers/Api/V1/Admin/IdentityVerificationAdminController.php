@@ -104,6 +104,12 @@ class IdentityVerificationAdminController extends Controller
                 'alive' => $submission->registry_alive,
                 'checked_at' => $submission->registry_checked_at?->toIso8601String(),
             ],
+            'mobile_match' => [
+                'match_status' => $submission->mobile_match_status,
+                'provider_code' => $submission->mobile_match_provider_code,
+                'message' => $submission->mobile_match_message,
+                'checked_at' => $submission->mobile_match_checked_at?->toIso8601String(),
+            ],
             'artifacts' => $submission->artifacts->map(fn ($a) => [
                 'id' => $a->id,
                 'uuid' => $a->uuid,
@@ -349,6 +355,7 @@ class IdentityVerificationAdminController extends Controller
             'user_mobile_masked' => SensitiveData::maskMobile($s->user?->mobile),
             'ownership_locked' => $s->identityProfile?->mobile_ownership_status?->value === 'locked',
             'registry_match_status' => $s->registry_match_status,
+            'mobile_match_status' => $s->mobile_match_status,
         ];
     }
 }

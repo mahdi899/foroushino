@@ -12,6 +12,7 @@ enum IdentityReasonCode: string
     case NationalCardNotYours = 'national_card_not_yours';
     case SelfieUnsuitable = 'selfie_unsuitable';
     case InfoMismatch = 'info_mismatch';
+    case MobileNationalMismatch = 'mobile_national_mismatch';
     case ImageIncomplete = 'image_incomplete';
     case Other = 'other';
 
@@ -22,6 +23,7 @@ enum IdentityReasonCode: string
             self::NationalCardNotYours => 'کارت ملی متعلق به شما نیست',
             self::SelfieUnsuitable => 'ویدیوی سلفی مناسب نیست',
             self::InfoMismatch => 'اطلاعات با مدارک مطابقت ندارد',
+            self::MobileNationalMismatch => 'شماره موبایل با کد ملی مطابقت ندارد',
             self::ImageIncomplete => 'تصویر ناقص است',
             self::Other => 'سایر',
         };

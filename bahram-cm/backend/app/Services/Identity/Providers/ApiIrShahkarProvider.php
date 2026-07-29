@@ -72,8 +72,8 @@ class ApiIrShahkarProvider implements
         $path = (string) ($config->settings['shahkar_path'] ?? '/api/sw1/ShahkarLite');
 
         try {
-            // Same shape as s.api.ir docs: POST + Authorization: Bearer <token>
-            // (Laravel withToken() adds the Bearer prefix — store raw token only in admin).
+            // Connection probe ONLY — synthetic sample payload from API.ir docs.
+            // Real identity verification always posts the student's own nationalCode + mobile.
             $response = $this->client($config)->post($baseUrl.$path, [
                 'nationalCode' => '0010007700',
                 'mobile' => '09120000000',
@@ -86,7 +86,9 @@ class ApiIrShahkarProvider implements
             }
 
             // Any non-auth HTTP response means TLS + Bearer reached the API.
-            return ProviderConnectionResult::connected('سرویس API.ir در دسترس است (هدر Bearer ارسال شد).');
+            return ProviderConnectionResult::connected(
+                'سرویس API.ir در دسترس است. این تست فقط اتصال را با دادهٔ نمونه بررسی می‌کند؛ احراز هویت واقعی با موبایل و کدملی خود کاربر انجام می‌شود.'
+            );
         } catch (ConnectionException $e) {
             $detail = trim($e->getMessage());
             $hint = 'ارتباط با سرویس API.ir برقرار نشد. سرور باید به https://s.api.ir دسترسی HTTPS داشته باشد (DNS/فایروال/فیلتر).';

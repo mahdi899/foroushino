@@ -34,6 +34,10 @@ class IdentityVerificationSubmission extends Model
         'registry_alive',
         'registry_match_status',
         'registry_checked_at',
+        'mobile_match_status',
+        'mobile_match_provider_code',
+        'mobile_match_message',
+        'mobile_match_checked_at',
         'submitted_at',
         'reviewed_at',
     ];
@@ -52,6 +56,7 @@ class IdentityVerificationSubmission extends Model
             'required_corrections' => 'array',
             'registry_alive' => 'boolean',
             'registry_checked_at' => 'datetime',
+            'mobile_match_checked_at' => 'datetime',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
         ];

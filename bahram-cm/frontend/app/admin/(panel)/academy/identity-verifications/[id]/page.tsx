@@ -72,9 +72,31 @@ export default async function IdentityVerificationDetailPage({
                 ) : null}
               </div>
 
+              {item.mobile_match?.match_status === 'mismatched' ? (
+                <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">
+                  <p className="mb-1 font-bold">رد خودکار: موبایل با کد ملی مطابقت ندارد</p>
+                  <p>
+                    {item.mobile_match.message ??
+                      'استعلام شاهکار نشان داد شماره موبایل حساب متعلق به این کد ملی نیست.'}
+                  </p>
+                </div>
+              ) : item.mobile_match?.match_status === 'unavailable' ? (
+                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
+                  <p className="mb-1 font-bold">استعلام تطبیق موبایل و کد ملی انجام نشد</p>
+                  <p>
+                    {item.mobile_match.message ??
+                      'سرویس شاهکار در دسترس نبود. لطفاً هنگام بررسی دستی به این مورد توجه کنید.'}
+                  </p>
+                </div>
+              ) : item.mobile_match?.match_status === 'matched' ? (
+                <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-small text-success">
+                  تطبیق موبایل و کد ملی (شاهکار) موفق بود.
+                </div>
+              ) : null}
+
               {item.registry?.match_status === 'mismatched' ? (
                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
-                  <p className="mb-2 font-bold">اختلاف نام با استعلام مشخصات هویتی (شاهکار)</p>
+                  <p className="mb-2 font-bold">اختلاف نام با استعلام مشخصات هویتی (PersonInfo)</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
                       <p className="text-caption text-text-muted">وارد‌شده توسط کاربر</p>
@@ -90,12 +112,16 @@ export default async function IdentityVerificationDetailPage({
                     </div>
                   </div>
                   <p className="mt-2 text-caption text-text-muted">
-                    در صورت تأیید این پرونده، نام و نام‌خانوادگی شاهکار در پروفایل ثبت می‌شود.
+                    در صورت تأیید این پرونده، نام و نام‌خانوادگی استعلام رسمی در پروفایل ثبت می‌شود.
                   </p>
                 </div>
               ) : item.registry?.match_status === 'matched' ? (
                 <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-small text-success">
-                  نام کاربر با استعلام شاهکار مطابقت داشت — این پرونده به‌صورت خودکار تأیید شد.
+                  نام کاربر با استعلام مشخصات هویتی مطابقت داشت — پرونده در صف بررسی کارشناس است.
+                </div>
+              ) : item.registry?.match_status === 'unavailable' ? (
+                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
+                  استعلام مشخصات هویتی (PersonInfo) در دسترس نبود — بررسی دستی لازم است.
                 </div>
               ) : null}
               <dl className="grid gap-3 sm:grid-cols-2 text-small">

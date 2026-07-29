@@ -7,16 +7,16 @@ use App\Actions\Identity\EnsureIdentityProfile;
 use App\Actions\Identity\SubmitIdentityVerification;
 use App\Enums\IdentityCapability;
 use App\Enums\IdentityVerificationStatus;
+use App\Enums\MobileOwnershipStatus;
 use App\Enums\OwnershipVerificationResult;
 use App\Enums\SmsEventKey;
-use App\Jobs\PushTelegramHostSyncJob;
 use App\Models\IdentityVerificationRoute;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
-use App\Modules\TelegramBot\Models\TelegramAccount;
-use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Services\Identity\Contracts\MobileOwnershipVerificationProvider;
 use App\Services\Identity\Contracts\PersonInfoVerificationProvider;
+use App\Services\Identity\DTOs\MobileOwnershipVerificationResult;
 use App\Services\Identity\DTOs\PersonInfoResult;
 use App\Services\Identity\DTOs\ProviderConnectionResult;
 use App\Services\Identity\IdentityDailyLimitService;
@@ -26,7 +26,6 @@ use App\Support\IdentityVerificationMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -45,14 +44,17 @@ class PersonInfoIdentityTest extends TestCase
 
     public function test_person_info_match_stays_in_expert_queue_without_auto_approve(): void
     {
-        $this->bindPersonInfoProvider(new PersonInfoResult(
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+                father_name: 'رضا',
+                gender: 'male',
+                alive: true,
+            ),
             OwnershipVerificationResult::Matched,
-            first_name: 'علی',
-            last_name: 'تستی',
-            father_name: 'رضا',
-            gender: 'male',
-            alive: true,
-        ));
+        );
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110001']);
 
@@ -62,49 +64,84 @@ class PersonInfoIdentityTest extends TestCase
         ]);
 
         $this->assertSame('matched', $submission->registry_match_status);
+        $this->assertSame('matched', $submission->mobile_match_status);
         $this->assertSame(IdentityVerificationStatus::Submitted, $submission->fresh()->status);
 
         $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
         $this->assertSame(IdentityVerificationStatus::Submitted, $profile->identity_status);
+        $this->assertSame(MobileOwnershipStatus::Verified, $profile->mobile_ownership_status);
         $this->assertSame(1, $profile->verification_level);
     }
 
-    public function test_person_info_mismatch_rejects_with_persian_message_and_needs_correction(): void
+    public function test_person_info_name_mismatch_stays_in_expert_queue(): void
     {
-        $this->bindPersonInfoProvider(new PersonInfoResult(
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'محمد',
+                last_name: 'رستمی',
+            ),
             OwnershipVerificationResult::Matched,
-            first_name: 'محمد',
-            last_name: 'رستمی',
-        ));
+        );
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110002']);
+
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
+
+        $this->assertSame('mismatched', $submission->registry_match_status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+        $this->assertSame('matched', $submission->mobile_match_status);
+    }
+
+    public function test_mobile_national_mismatch_rejects_immediately(): void
+    {
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+            ),
+            OwnershipVerificationResult::Mismatched,
+        );
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110007']);
 
         try {
             $this->submitIdentity($student, [
                 'first_name' => 'علی',
                 'last_name' => 'تستی',
             ]);
-            $this->fail('Expected ValidationException for identity mismatch.');
+            $this->fail('Expected ValidationException for mobile/national mismatch.');
         } catch (ValidationException $e) {
             $this->assertContains(
-                IdentityVerificationMessages::IDENTITY_MISMATCH,
+                IdentityVerificationMessages::MOBILE_NATIONAL_MISMATCH,
                 $e->errors()['identity'] ?? [],
             );
         }
 
         $submission = IdentityVerificationSubmission::query()->where('user_id', $student->id)->latest('id')->first();
         $this->assertNotNull($submission);
-        $this->assertSame('mismatched', $submission->registry_match_status);
-        $this->assertSame(IdentityVerificationStatus::NeedsCorrection, $submission->status);
+        $this->assertSame('mismatched', $submission->mobile_match_status);
+        $this->assertSame(IdentityVerificationStatus::Rejected, $submission->status);
+
+        $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
+        $this->assertSame(IdentityVerificationStatus::Rejected, $profile->identity_status);
+        $this->assertSame(MobileOwnershipStatus::Mismatched, $profile->mobile_ownership_status);
     }
 
-    public function test_three_mismatches_lock_until_end_of_day(): void
+    public function test_three_mobile_mismatches_lock_until_end_of_day(): void
     {
-        $this->bindPersonInfoProvider(new PersonInfoResult(
-            OwnershipVerificationResult::Matched,
-            first_name: 'محمد',
-            last_name: 'رستمی',
-        ));
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+            ),
+            OwnershipVerificationResult::Mismatched,
+        );
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110004']);
         $limits = app(IdentityDailyLimitService::class);
@@ -117,14 +154,12 @@ class PersonInfoIdentityTest extends TestCase
                     'last_name' => 'تستی',
                 ]);
             } catch (ValidationException) {
-                // expected mismatch
+                // expected mismatch reject
             }
             UserIdentityProfile::query()->where('user_id', $student->id)->update([
                 'identity_status' => IdentityVerificationStatus::Draft,
+                'mobile_ownership_status' => MobileOwnershipStatus::NotStarted,
             ]);
-            IdentityVerificationSubmission::query()
-                ->where('user_id', $student->id)
-                ->update(['status' => IdentityVerificationStatus::NeedsCorrection]);
         }
 
         Cache::forget('identity-submit-cooldown:'.$student->id);
@@ -180,7 +215,10 @@ class PersonInfoIdentityTest extends TestCase
 
     public function test_person_info_unavailable_falls_back_to_manual_review(): void
     {
-        $this->bindPersonInfoProvider(new PersonInfoResult(OwnershipVerificationResult::ProviderError));
+        $this->bindProviders(
+            new PersonInfoResult(OwnershipVerificationResult::ProviderError),
+            OwnershipVerificationResult::Matched,
+        );
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110003']);
 
@@ -193,38 +231,47 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertSame(IdentityVerificationStatus::Submitted, $submission->fresh()->status);
     }
 
-    public function test_expert_approve_uses_registry_names_sends_sms_and_queues_host_sync(): void
+    public function test_mobile_match_unavailable_stays_in_expert_queue(): void
     {
-        Queue::fake();
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+            ),
+            OwnershipVerificationResult::ProviderError,
+        );
 
-        $this->bindPersonInfoProvider(new PersonInfoResult(
-            OwnershipVerificationResult::Matched,
-            first_name: 'علی',
-            last_name: 'تستی',
-            father_name: 'رضا',
-            gender: 'male',
-            alive: true,
-        ));
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110008']);
 
-        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110006', 'name' => 'علی']);
         $submission = $this->submitIdentity($student, [
             'first_name' => 'علی',
             'last_name' => 'تستی',
         ]);
 
-        $bot = TelegramBot::query()->create([
-            'key' => 'production',
-            'display_name' => 'Bot',
-            'token_key' => 'TELEGRAM_BOT_TOKEN',
-            'webhook_secret' => 'secret',
-            'environment' => 'production',
-            'is_active' => true,
-        ]);
-        TelegramAccount::query()->create([
-            'telegram_bot_id' => $bot->id,
-            'telegram_user_id' => 424242,
-            'user_id' => $student->id,
-            'mobile' => $student->mobile,
+        $this->assertSame('unavailable', $submission->mobile_match_status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+        $this->assertNotEmpty($submission->mobile_match_message);
+    }
+
+    public function test_expert_approve_uses_registry_names_and_sends_sms(): void
+    {
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+                father_name: 'رضا',
+                gender: 'male',
+                alive: true,
+            ),
+            OwnershipVerificationResult::Matched,
+        );
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110006', 'name' => 'علی']);
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
         ]);
 
         $sms = \Mockery::mock(SmsService::class);
@@ -244,9 +291,8 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertSame('علی', $profile->first_name);
         $this->assertSame('تستی', $profile->last_name);
         $this->assertSame(IdentityVerificationStatus::Approved, $approved->status);
-        $this->assertSame(2, $profile->verification_level);
-
-        Queue::assertPushed(PushTelegramHostSyncJob::class);
+        // Identity approved + mobile ownership already verified at submit → level 3
+        $this->assertSame(3, $profile->verification_level);
     }
 
     /**
@@ -268,9 +314,11 @@ class PersonInfoIdentityTest extends TestCase
         return app(SubmitIdentityVerification::class)($student, $data);
     }
 
-    private function bindPersonInfoProvider(PersonInfoResult $result): void
-    {
-        $fake = new class($result) implements PersonInfoVerificationProvider
+    private function bindProviders(
+        PersonInfoResult $personInfo,
+        OwnershipVerificationResult $mobileResult,
+    ): void {
+        $personFake = new class($personInfo) implements PersonInfoVerificationProvider
         {
             public function __construct(private PersonInfoResult $result) {}
 
@@ -300,16 +348,58 @@ class PersonInfoIdentityTest extends TestCase
             }
         };
 
+        $mobileFake = new class($mobileResult) implements MobileOwnershipVerificationProvider
+        {
+            public function __construct(private OwnershipVerificationResult $result) {}
+
+            public function slug(): string
+            {
+                return 'fake-shahkar';
+            }
+
+            public function capabilities(): array
+            {
+                return [IdentityCapability::MobileNationalCodeMatch];
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function testConnection(): ProviderConnectionResult
+            {
+                return ProviderConnectionResult::connected('ok');
+            }
+
+            public function verify(string $mobile, string $nationalCode): MobileOwnershipVerificationResult
+            {
+                return new MobileOwnershipVerificationResult(
+                    normalized_result: $this->result,
+                    provider_code: 'TEST',
+                    provider_message: 'test mobile match',
+                    provider_request_id: 'req-1',
+                    duration_ms: 10,
+                );
+            }
+        };
+
         $registry = \Mockery::mock(IdentityVerificationProviderRegistry::class);
         $registry->shouldReceive('resolveForCapability')
-            ->andReturnUsing(function (IdentityCapability $capability, callable $verifyWith) use ($fake) {
+            ->andReturnUsing(function (IdentityCapability $capability, callable $verifyWith) use ($personFake, $mobileFake) {
+                $provider = match ($capability) {
+                    IdentityCapability::PersonInfoInquiry => $personFake,
+                    IdentityCapability::MobileNationalCodeMatch => $mobileFake,
+                    default => $personFake,
+                };
+
                 $route = IdentityVerificationRoute::query()
                     ->where('capability', $capability->value)
                     ->first();
 
                 return [
-                    'provider' => $fake,
-                    'result' => $verifyWith($fake),
+                    'provider' => $provider,
+                    'result' => $verifyWith($provider),
                     'used_fallback' => false,
                     'route' => $route,
                 ];
@@ -320,6 +410,10 @@ class PersonInfoIdentityTest extends TestCase
         IdentityVerificationRoute::query()->updateOrCreate(
             ['capability' => IdentityCapability::PersonInfoInquiry->value],
             ['primary_provider' => 'fake-person-info', 'fallback_provider' => null, 'is_active' => true],
+        );
+        IdentityVerificationRoute::query()->updateOrCreate(
+            ['capability' => IdentityCapability::MobileNationalCodeMatch->value],
+            ['primary_provider' => 'fake-shahkar', 'fallback_provider' => null, 'is_active' => true],
         );
     }
 }

@@ -4,16 +4,22 @@ namespace App\Actions\Identity;
 
 use App\Enums\IdentityArtifactType;
 use App\Enums\IdentityCapability;
+use App\Enums\IdentityReasonCode;
+use App\Enums\IdentityReviewAction;
 use App\Enums\IdentityVerificationStatus;
+use App\Enums\MobileOwnershipStatus;
 use App\Enums\OwnershipVerificationResult;
 use App\Enums\SmsEventKey;
 use App\Models\IdentityVerificationArtifact;
+use App\Models\IdentityVerificationAttempt;
+use App\Models\IdentityVerificationReview;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\Identity\IdentityArtifactStorage;
 use App\Services\Identity\IdentityDailyLimitService;
 use App\Services\Identity\IdentityVerificationProviderRegistry;
+use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use App\Support\IdentityVerificationMessages;
 use App\Support\JalaliDate;
@@ -33,6 +39,7 @@ class SubmitIdentityVerification
         private readonly SmsService $sms,
         private readonly IdentityVerificationProviderRegistry $registry,
         private readonly IdentityDailyLimitService $dailyLimits,
+        private readonly InAppNotificationService $notifications,
     ) {}
 
     /**
@@ -137,28 +144,27 @@ class SubmitIdentityVerification
             ]);
             $profile->save();
 
+            // PersonInfo / name issues stay in the expert queue (surfaced on admin detail).
             $submission = $this->applyRegistryLookup($submission, $nationalCode, $data);
 
-            if ($submission->registry_match_status === 'mismatched') {
-                $submission->update(['status' => IdentityVerificationStatus::NeedsCorrection]);
-                $profile->forceFill([
-                    'identity_status' => IdentityVerificationStatus::NeedsCorrection,
-                ])->save();
-            }
+            // ShahkarLite uses the student's real mobile + submitted national code.
+            $submission = $this->applyMobileOwnershipCheck($submission, $user, $profile, $nationalCode);
 
             Cache::put($cooldownKey, true, $cooldown);
 
-            if ($submission->registry_match_status !== 'mismatched') {
-                try {
-                    $this->sms->sendEvent(
-                        SmsEventKey::IdentityVerificationSubmitted,
-                        (string) $user->mobile,
-                        ['{name}' => $user->name ?: $data['first_name']],
-                        $user->id,
-                    );
-                } catch (\Throwable $e) {
-                    report($e);
-                }
+            if ($submission->status === IdentityVerificationStatus::Rejected) {
+                return $submission->load('artifacts');
+            }
+
+            try {
+                $this->sms->sendEvent(
+                    SmsEventKey::IdentityVerificationSubmitted,
+                    (string) $user->mobile,
+                    ['{name}' => $user->name ?: $data['first_name']],
+                    $user->id,
+                );
+            } catch (\Throwable $e) {
+                report($e);
             }
 
             // Always wait for expert review — no auto-approve on PersonInfo match.
@@ -166,8 +172,12 @@ class SubmitIdentityVerification
             return $submission->load('artifacts');
         });
 
-        if ($submission->registry_match_status === 'mismatched') {
-            $this->dailyLimits->throwMismatch($user);
+        if ($submission->status === IdentityVerificationStatus::Rejected
+            && $submission->mobile_match_status === 'mismatched') {
+            $this->dailyLimits->throwMismatch(
+                $user,
+                IdentityVerificationMessages::MOBILE_NATIONAL_MISMATCH,
+            );
         }
 
         return $submission;
@@ -194,13 +204,19 @@ class SubmitIdentityVerification
         }
 
         if (! $result || $result->isTechnicalFailure()) {
-            $submission->update(['registry_match_status' => 'unavailable', 'registry_checked_at' => now()]);
+            $submission->update([
+                'registry_match_status' => 'unavailable',
+                'registry_checked_at' => now(),
+            ]);
 
             return $submission->fresh();
         }
 
         if ($result->normalized_result !== OwnershipVerificationResult::Matched || ! $result->hasNames()) {
-            $submission->update(['registry_match_status' => 'unavailable', 'registry_checked_at' => now()]);
+            $submission->update([
+                'registry_match_status' => 'unavailable',
+                'registry_checked_at' => now(),
+            ]);
 
             return $submission->fresh();
         }
@@ -216,6 +232,137 @@ class SubmitIdentityVerification
             'registry_alive' => $result->alive,
             'registry_match_status' => $namesEqual ? 'matched' : 'mismatched',
             'registry_checked_at' => now(),
+        ]);
+
+        return $submission->fresh();
+    }
+
+    private function applyMobileOwnershipCheck(
+        IdentityVerificationSubmission $submission,
+        User $user,
+        UserIdentityProfile $profile,
+        string $nationalCode,
+    ): IdentityVerificationSubmission {
+        $mobile = (string) ($user->mobile ?? '');
+        if ($mobile === '') {
+            $submission->update([
+                'mobile_match_status' => 'unavailable',
+                'mobile_match_message' => 'شماره موبایل کاربر برای استعلام شاهکار موجود نیست.',
+                'mobile_match_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
+        }
+
+        try {
+            $outcome = $this->registry->resolveForCapability(
+                IdentityCapability::MobileNationalCodeMatch,
+                fn ($provider) => $provider->verify($mobile, $nationalCode),
+            );
+        } catch (Throwable $e) {
+            report($e);
+            $submission->update([
+                'mobile_match_status' => 'unavailable',
+                'mobile_match_message' => 'خطا در استعلام تطبیق موبایل و کد ملی. بررسی دستی لازم است.',
+                'mobile_match_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
+        }
+
+        $result = $outcome['result'];
+        $provider = $outcome['provider'];
+        $route = $outcome['route'];
+
+        $attemptNumber = (int) IdentityVerificationAttempt::query()
+            ->where('user_id', $user->id)
+            ->where('capability', IdentityCapability::MobileNationalCodeMatch)
+            ->count() + 1;
+
+        IdentityVerificationAttempt::query()->create([
+            'user_id' => $user->id,
+            'capability' => IdentityCapability::MobileNationalCodeMatch,
+            'provider' => $provider->slug(),
+            'route_id' => $route?->id ? (string) $route->id : null,
+            'status' => $result->normalized_result->value,
+            'normalized_result' => $result->normalized_result,
+            'provider_code' => $result->provider_code,
+            'provider_message' => $result->provider_message,
+            'provider_request_id' => $result->provider_request_id,
+            'attempt_number' => $attemptNumber,
+            'duration_ms' => $result->duration_ms,
+            'requested_at' => now(),
+            'completed_at' => now(),
+        ]);
+
+        if ($result->normalized_result === OwnershipVerificationResult::Matched) {
+            $profile->mobile_ownership_status = MobileOwnershipStatus::Verified;
+            $profile->mobile_ownership_verified_at = now();
+            $profile->mobile_ownership_provider = $provider->slug();
+            $profile->ownership_failed_attempts = 0;
+            $profile->ownership_locked_at = null;
+            $profile->save();
+            $profile->syncVerificationLevel();
+
+            $submission->update([
+                'mobile_match_status' => 'matched',
+                'mobile_match_provider_code' => $result->provider_code,
+                'mobile_match_message' => $result->provider_message,
+                'mobile_match_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
+        }
+
+        if ($result->normalized_result === OwnershipVerificationResult::Mismatched) {
+            $profile->mobile_ownership_status = MobileOwnershipStatus::Mismatched;
+            $profile->ownership_failed_attempts = (int) $profile->ownership_failed_attempts + 1;
+            $profile->identity_status = IdentityVerificationStatus::Rejected;
+            $profile->save();
+            $profile->syncVerificationLevel();
+
+            $submission->update([
+                'status' => IdentityVerificationStatus::Rejected,
+                'reviewed_at' => now(),
+                'mobile_match_status' => 'mismatched',
+                'mobile_match_provider_code' => $result->provider_code,
+                'mobile_match_message' => $result->provider_message
+                    ?: IdentityVerificationMessages::MOBILE_NATIONAL_MISMATCH,
+                'mobile_match_checked_at' => now(),
+            ]);
+
+            IdentityVerificationReview::query()->create([
+                'submission_id' => $submission->id,
+                'reviewer_id' => null,
+                'action' => IdentityReviewAction::Reject,
+                'reason_code' => IdentityReasonCode::MobileNationalMismatch,
+                'reviewer_note' => 'رد خودکار سامانه: شماره موبایل حساب با کد ملی واردشده مطابقت ندارد (شاهکار).',
+            ]);
+
+            try {
+                $this->notifications->identityRejected($user);
+                if ($user->mobile) {
+                    $this->sms->sendEvent(
+                        SmsEventKey::IdentityVerificationRejected,
+                        (string) $user->mobile,
+                        ['{name}' => $user->name ?: $submission->first_name],
+                        $user->id,
+                    );
+                }
+            } catch (Throwable $e) {
+                report($e);
+            }
+
+            return $submission->fresh();
+        }
+
+        // Technical / provider failures: keep in expert queue and surface details.
+        $submission->update([
+            'mobile_match_status' => 'unavailable',
+            'mobile_match_provider_code' => $result->provider_code,
+            'mobile_match_message' => $result->provider_message
+                ?: 'استعلام تطبیق موبایل و کد ملی در دسترس نبود. بررسی دستی لازم است.',
+            'mobile_match_checked_at' => now(),
         ]);
 
         return $submission->fresh();
@@ -255,7 +402,7 @@ class SubmitIdentityVerification
                 if ($draftArtifact) {
                     IdentityVerificationArtifact::query()->create([
                         'submission_id' => $submission->id,
-                        'type' => $type,
+                        'type' => $draftArtifact->type,
                         'disk' => $draftArtifact->disk,
                         'path' => $draftArtifact->path,
                         'mime_type' => $draftArtifact->mime_type,
