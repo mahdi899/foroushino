@@ -51,6 +51,7 @@ export function ReferenceChannelContentPanel({
   const router = useRouter();
   const initial = useMemo(() => pickMessages(initialMessages), [initialMessages]);
   const [coverImage, setCoverImage] = useState(channel.cover_image ?? '');
+  const [coverImageMobile, setCoverImageMobile] = useState(channel.cover_image_mobile ?? '');
   const [description, setDescription] = useState(channel.description ?? '');
   const [botBodies, setBotBodies] = useState(initial.bodies);
   const [botMeta, setBotMeta] = useState(initial.meta);
@@ -60,8 +61,9 @@ export function ReferenceChannelContentPanel({
 
   useEffect(() => {
     setCoverImage(channel.cover_image ?? '');
+    setCoverImageMobile(channel.cover_image_mobile ?? '');
     setDescription(channel.description ?? '');
-  }, [channel.cover_image, channel.description]);
+  }, [channel.cover_image, channel.cover_image_mobile, channel.description]);
 
   useEffect(() => {
     setBotBodies(initial.bodies);
@@ -77,6 +79,7 @@ export function ReferenceChannelContentPanel({
     const channelRes = await updateReferenceChannel(channel.id, {
       description: description || null,
       cover_image: coverImage || null,
+      cover_image_mobile: coverImageMobile || null,
     });
     if (!channelRes.ok) {
       setPending(false);
@@ -118,17 +121,27 @@ export function ReferenceChannelContentPanel({
       <div>
         <h2 className="text-h3 text-primary-dark">برگه نمایش — بنر و متن‌ها</h2>
         <p className="mt-1 text-small text-text-muted">
-          عکس کاور و متن‌هایی که در منوی «کانال مرجع» ربات (و صفحه فروش) دیده می‌شود.
-          بعد از ذخیره، به هاست ربات همگام می‌شود.
+          عکس کاور برای ربات، صفحه کانال مرجع، کارت دوره در «دوره‌ها» و صفحه خرید.
+          بعد از ذخیره، همه این سطوح همگام می‌شوند.
         </p>
       </div>
 
       <CoverImageField
-        label="بنر / کاور ربات"
+        label="بنر / کاور — دسکتاپ (افقی)"
         value={coverImage}
         onChange={setCoverImage}
-        alt={`${channel.title} — کاور`}
+        alt={`${channel.title} — کاور دسکتاپ`}
       />
+      <CoverImageField
+        label="بنر / کاور — موبایل (۹:۱۶)"
+        value={coverImageMobile}
+        onChange={setCoverImageMobile}
+        alt={`${channel.title} — کاور موبایل`}
+      />
+      <p className="text-caption text-text-muted">
+        اگر تصویر موبایل خالی باشد، همان تصویر دسکتاپ در موبایل نمایش داده می‌شود. ربات تلگرام از کاور
+        دسکتاپ استفاده می‌کند.
+      </p>
 
       <label>
         <span className="field-label">توضیح کوتاه محصول</span>

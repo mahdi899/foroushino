@@ -15,6 +15,8 @@ export type ProductListItem = {
   effective_price: number;
   featured_image: string | null;
   featured_image_alt?: string | null;
+  featured_image_mobile?: string | null;
+  featured_image_mobile_alt?: string | null;
   show_on_courses?: boolean;
   featured_listing?: boolean;
   course_level?: string | null;

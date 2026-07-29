@@ -19,10 +19,6 @@ function GoldSlide({ item, compact }: { item: AcademyShowcaseSlideData; compact?
   return (
     <div className="flex w-full flex-col items-center text-center">
       <div className={cn("relative w-full", compact ? "max-w-[240px]" : "max-w-[260px]")}>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -inset-4 -z-[1] rounded-[36px] bg-gold/10 blur-2xl"
-        />
         <PhotoFrame
           ratio="story"
           variant="radial"
@@ -31,7 +27,8 @@ function GoldSlide({ item, compact }: { item: AcademyShowcaseSlideData; compact?
           src={item.src}
           alt={item.alt ?? item.title}
           photoCaption="none"
-          className="border-gold/25 shadow-black/30 neon-surface-static ring-1 ring-gold/16"
+          imageOverlay={false}
+          className="border-gold/25 ring-1 ring-gold/16"
         />
       </div>
       <h3 className="mt-4 text-lg font-semibold leading-snug text-bone sm:mt-5 md:mt-6 md:text-h3">

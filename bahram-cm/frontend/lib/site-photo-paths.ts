@@ -26,8 +26,10 @@ export const sitePhotos = {
   founderLetter: siteStorageMedia('founder-letter.webp'),
   mainPathCampaign: siteStorageMedia('main-path-campaign.webp'),
   mainPathSaat: siteStorageMedia('main-path-saat.webp'),
-  /** تامبنیل و هیرو کانال مرجع */
+  /** تامبنیل و هیرو کانال مرجع — دسکتاپ */
   mainPathReference: siteStorageMedia('reference-channel-hero.webp'),
+  /** هیرو کانال مرجع — موبایل */
+  mainPathReferenceMobile: siteStorageMedia('reference-channel-hero-mobile.webp'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
   landscapeSession: siteStorageMedia('landscape-session.webp'),
   /** هیرو دوره کمپین‌نویسی — موبایل (۹:۱۶) */
@@ -53,10 +55,14 @@ export const sitePhotos = {
   ],
   academyStory: siteStorageMedia('academy-story.webp'),
   academyAccent: siteStorageMedia('academy-accent.jpg'),
+  /** هیرو صفحه سات — پرتره برند */
+  saatHero: siteStorageMedia('saat-hero.webp'),
   /** پیش‌نمایش مینی‌اپ سات در بنر آکادمی */
   academyAppHome: siteStorageMedia('academy-app-home.webp'),
-  academyAppPath: siteStorageMedia('story-step-02.webp'),
-  academyAppAtelier: siteStorageMedia('square-backstage.webp'),
+  /** اسکرین لیدها / مشتریان تیم در شویکیس سات */
+  academyAppPath: siteStorageMedia('academy-app-leads.webp'),
+  /** اسکرین فروش‌ها در شویکیس سات */
+  academyAppAtelier: siteStorageMedia('academy-app-sales.webp'),
   squareBackstage: siteStorageMedia('square-backstage.webp'),
   courseBackstage: siteStorageMedia('course-backstage.webp'),
   /** ویدیوی خوش‌آمد چت‌بات — آپلود در کتابخانه رسانه */

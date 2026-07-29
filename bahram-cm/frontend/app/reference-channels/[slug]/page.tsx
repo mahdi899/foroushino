@@ -25,7 +25,7 @@ import { FeatureCard } from "@/components/ui/FeatureCard";
 import { SitePhotoHeroFrame } from "@/components/sections/SitePhotoHeroFrame";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
-import { coalesceAlt, staticAltForSrc } from "@/lib/media/altShared";
+import { coalesceAlt } from "@/lib/media/altShared";
 import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { formatFa, toPersianDigits } from "@/lib/persian";
 import { getPublicProductBySlug, productPurchaseInitial } from "@/lib/services/products";
@@ -34,16 +34,34 @@ import { notFound } from "next/navigation";
 import { sitePhotos } from "@/lib/site-photo-paths";
 import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
-const referenceHero = sitePhotos.mainPathReference;
+const fallbackHero = sitePhotos.mainPathReference;
+const fallbackHeroMobile = sitePhotos.mainPathReferenceMobile;
 
 const heroPurchaseCtaClassName =
   "h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg";
 
-const heroAlt = coalesceAlt(
-  staticAltForSrc(referenceHero),
-  "کانال مرجع — محصول آماده، آموزش فروش و درآمد مستقیم",
-  referenceHero,
-);
+function resolveReferenceHero(product: {
+  featured_image?: string | null;
+  featured_image_mobile?: string | null;
+  featured_image_alt?: string | null;
+  featured_image_mobile_alt?: string | null;
+  title?: string | null;
+}) {
+  const desktopSrc = product.featured_image?.trim() || fallbackHero;
+  const mobileSrc =
+    product.featured_image_mobile?.trim() ||
+    product.featured_image?.trim() ||
+    fallbackHeroMobile;
+  const fallbackAlt =
+    product.title?.trim() || "کانال مرجع — محصول آماده، آموزش فروش و درآمد مستقیم";
+  const desktopAlt = coalesceAlt(product.featured_image_alt, fallbackAlt, desktopSrc);
+  const mobileAlt = coalesceAlt(
+    product.featured_image_mobile_alt ?? product.featured_image_alt,
+    fallbackAlt,
+    mobileSrc,
+  );
+  return { desktopSrc, mobileSrc, desktopAlt, mobileAlt };
+}
 
 const pillarCards: { icon: LucideIcon; title: string; body: string }[] = [
   {
@@ -140,7 +158,7 @@ export async function generateMetadata({
       product.short_description ||
       "محصول آماده است؛ تو فقط فروش را یاد بگیر. کانال مرجع آکادمی بهرام — محصول، آموزش و درآمد مستقیم از فروش.",
     path: `/reference-channels/${slug}`,
-    image: product.featured_image || referenceHero,
+    image: product.featured_image || fallbackHero,
   });
 }
 
@@ -164,6 +182,7 @@ export default async function ReferenceChannelLandingPage({
   const finalPrice = purchase.finalPrice;
   const hasDiscount = purchase.hasDiscount;
   const originalPriceLabel = hasDiscount ? `${formatFa(listPrice)} تومان` : null;
+  const hero = resolveReferenceHero(product);
 
   return (
     <ProductPurchaseProvider productSlug={productSlug} initial={purchase}>
@@ -171,16 +190,16 @@ export default async function ReferenceChannelLandingPage({
       <link
         rel="preload"
         as="image"
-        href={primarySiteImageSrc(referenceHero)}
+        href={primarySiteImageSrc(hero.desktopSrc)}
         fetchPriority="high"
       />
 
       <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
         <SitePhotoHeroFrame
-          desktopSrc={referenceHero}
-          mobileSrc={referenceHero}
-          desktopAlt={heroAlt}
-          mobileAlt={heroAlt}
+          desktopSrc={hero.desktopSrc}
+          mobileSrc={hero.mobileSrc}
+          desktopAlt={hero.desktopAlt}
+          mobileAlt={hero.mobileAlt}
           mobileImageClassName="object-[left_22%]"
         >
           <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center overflow-visible px-4 pb-8 pt-16 sm:bottom-4 sm:pb-7 sm:pt-24 md:bottom-0 md:pb-8 md:pt-28">
@@ -329,8 +348,8 @@ export default async function ReferenceChannelLandingPage({
       <ImageSplitSection
         eyebrow="چرا کانال مرجع؟"
         title="برای شروع فروش، لازم نیست همه‌چیز را از صفر بسازی"
-        image={referenceHero}
-        imageAlt={heroAlt}
+        image={hero.desktopSrc}
+        imageAlt={hero.desktopAlt}
         imagePosition="end"
         tone="gold"
       >
