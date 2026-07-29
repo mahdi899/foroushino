@@ -105,14 +105,19 @@ export default async function IdentityVerificationDetailPage({
                       </p>
                     </div>
                     <div>
-                      <p className="text-caption text-text-muted">شاهکار (PersonInfo)</p>
+                      <p className="text-caption text-text-muted">استعلام (PersonInfo)</p>
                       <p className="font-medium text-text">
                         {item.registry.first_name} {item.registry.last_name}
                       </p>
+                      {item.registry.father_name ? (
+                        <p className="mt-1 text-caption text-text-muted">
+                          نام پدر: <span className="font-medium text-text">{item.registry.father_name}</span>
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <p className="mt-2 text-caption text-text-muted">
-                    در صورت تأیید این پرونده، نام و نام‌خانوادگی استعلام رسمی در پروفایل ثبت می‌شود.
+                    در صورت تأیید، نام، نام‌خانوادگی و نام پدر استعلام رسمی در پروفایل ثبت می‌شود.
                   </p>
                 </div>
               ) : item.registry?.match_status === 'matched' ? (
@@ -131,6 +136,12 @@ export default async function IdentityVerificationDetailPage({
                     {item.first_name} {item.last_name}
                   </dd>
                 </div>
+                {item.registry?.father_name ? (
+                  <div>
+                    <dt className="text-text-muted">نام پدر (استعلام)</dt>
+                    <dd className="font-medium">{item.registry.father_name}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="text-text-muted">شهر</dt>
                   <dd className="font-medium">{item.city ?? '—'}</dd>

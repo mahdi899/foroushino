@@ -144,11 +144,19 @@ class SubmitIdentityVerification
             ]);
             $profile->save();
 
-            // PersonInfo / name issues stay in the expert queue (surfaced on admin detail).
-            $submission = $this->applyRegistryLookup($submission, $nationalCode, $data);
-
-            // ShahkarLite uses the student's real mobile + submitted national code.
+            // 1) ShahkarLite — real mobile + submitted national code; mismatch rejects immediately.
             $submission = $this->applyMobileOwnershipCheck($submission, $user, $profile, $nationalCode);
+
+            if ($submission->status === IdentityVerificationStatus::Rejected) {
+                Cache::put($cooldownKey, true, $cooldown);
+
+                return $submission->load('artifacts');
+            }
+
+            // 2) PersonInfo — only after successful Shahkar match; name diffs stay in expert queue.
+            if ($submission->mobile_match_status === 'matched') {
+                $submission = $this->applyRegistryLookup($submission, $nationalCode, $data);
+            }
 
             Cache::put($cooldownKey, true, $cooldown);
 

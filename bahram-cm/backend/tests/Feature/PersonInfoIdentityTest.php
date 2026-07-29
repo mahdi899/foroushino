@@ -126,6 +126,7 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertNotNull($submission);
         $this->assertSame('mismatched', $submission->mobile_match_status);
         $this->assertSame(IdentityVerificationStatus::Rejected, $submission->status);
+        $this->assertNull($submission->registry_match_status);
 
         $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
         $this->assertSame(IdentityVerificationStatus::Rejected, $profile->identity_status);
@@ -254,6 +255,29 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertNotEmpty($submission->mobile_match_message);
     }
 
+    public function test_person_info_skipped_when_shahkar_unavailable(): void
+    {
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+            ),
+            OwnershipVerificationResult::ProviderError,
+        );
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110009']);
+
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
+
+        $this->assertSame('unavailable', $submission->mobile_match_status);
+        $this->assertNull($submission->registry_match_status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+    }
+
     public function test_expert_approve_uses_registry_names_and_sends_sms(): void
     {
         $this->bindProviders(
@@ -290,6 +314,7 @@ class PersonInfoIdentityTest extends TestCase
         $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
         $this->assertSame('علی', $profile->first_name);
         $this->assertSame('تستی', $profile->last_name);
+        $this->assertSame('رضا', $profile->father_name);
         $this->assertSame(IdentityVerificationStatus::Approved, $approved->status);
         // Identity approved + mobile ownership already verified at submit → level 3
         $this->assertSame(3, $profile->verification_level);

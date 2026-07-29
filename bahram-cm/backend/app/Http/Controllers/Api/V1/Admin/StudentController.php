@@ -131,6 +131,7 @@ class StudentController extends Controller
                 'national_code_masked' => $identity->maskNationalCode(),
                 'first_name' => $identity->first_name,
                 'last_name' => $identity->last_name,
+                'father_name' => $identity->father_name,
                 'city' => $identity->city,
                 'gender' => $identity->gender,
                 'date_of_birth' => $identity->date_of_birth?->toDateString(),

@@ -43,6 +43,7 @@ class IdentityVerificationController extends Controller
             'mobile_ownership_status' => $profile->mobile_ownership_status->value,
             'first_name' => $profile->first_name,
             'last_name' => $profile->last_name,
+            'father_name' => $profile->father_name,
             'national_code_masked' => $profile->maskNationalCode(),
             'date_of_birth' => $profile->date_of_birth?->toDateString(),
             'gender' => $profile->gender,
