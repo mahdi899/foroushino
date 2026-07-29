@@ -33,11 +33,11 @@ final class HostAdminShell
 
     public const MESSAGES = 'پیام‌ها';
 
-    public const REFERENCE_CHANNEL = '📡 کانال مرجع';
+    public const REFERENCE_CHANNEL = 'مدیریت کانال مرجع';
 
-    public const COURSES = '🎓 دوره‌ها';
+    public const COURSES = 'مدیریت دوره‌ها';
 
-    public const SEMINARS = '🎤 سمینارها';
+    public const SEMINARS = 'مدیریت سمینارها';
 
     public const EXPORT = 'خروجی کاربران';
 
@@ -78,9 +78,9 @@ final class HostAdminShell
         self::DISCOUNTS => ['🎟 کد تخفیف'],
         self::TICKETS => ['🎫 تیکت‌ها'],
         self::MESSAGES => ['💬 پیام‌ها'],
-        self::REFERENCE_CHANNEL => ['مدیریت کانال مرجع'],
-        self::COURSES => ['مدیریت دوره‌ها'],
-        self::SEMINARS => ['مدیریت سمینارها'],
+        self::REFERENCE_CHANNEL => ['📡 کانال مرجع'],
+        self::COURSES => ['🎓 دوره‌ها', 'دوره‌ها 🎓'],
+        self::SEMINARS => ['🎤 سمینارها', 'سمینارها 🎤'],
         self::EXPORT => ['📤 خروجی کاربران'],
         self::PROFILE => ['🤖 پروفایل بات'],
         self::SETTINGS => ['⚙️ تنظیمات'],
@@ -90,14 +90,14 @@ final class HostAdminShell
         self::EXIT => ['❌ خروج از پنل ادمین'],
     ];
 
-    /** Labels shared with the public main menu — must not hijack main-menu taps outside admin panel. */
-    private const MAIN_MENU_OVERLAP = [
-        self::REFERENCE_CHANNEL,
-        self::COURSES,
-        self::SEMINARS,
-    ];
+    /**
+     * Catalog hubs no longer share bare main-menu labels («مدیریت …»).
+     *
+     * @var list<string>
+     */
+    private const MAIN_MENU_OVERLAP = [];
 
-    /** Main-menu core labels — premium icon sends text without emoji prefix. */
+    /** Bare main-menu cores — only matched while admin_panel is open (old keyboards). */
     private const CATALOG_CORE_ALIASES = [
         self::REFERENCE_CHANNEL => ['کانال مرجع'],
         self::COURSES => ['دوره‌ها'],

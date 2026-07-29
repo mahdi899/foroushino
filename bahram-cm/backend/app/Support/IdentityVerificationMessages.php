@@ -40,6 +40,10 @@ final class IdentityVerificationMessages
     public const REGISTRY_UNAVAILABLE =
         'سرویس استعلام مشخصات هویتی (PersonInfo) در دسترس نبود. لطفاً چند دقیقه دیگر دوباره تلاش کنید.';
 
+    /** Admin-facing note when PersonInfo soft-fails into the expert queue. */
+    public const REGISTRY_UNAVAILABLE_ADMIN =
+        'اطلاعات شخصی خطا داریم — استعلام مشخصات هویتی (PersonInfo) در دسترس نبود یا پاسخ ناقص بود. بررسی دستی لازم است.';
+
     public const IDENTITY_MISMATCH_LOCKED =
         'به‌دلیل چند بار وارد کردن اطلاعات هویتی نادرست، ارسال تا فردا محدود شده است. لطفاً فردا با اطلاعات صحیح دوباره تلاش کنید.';
 

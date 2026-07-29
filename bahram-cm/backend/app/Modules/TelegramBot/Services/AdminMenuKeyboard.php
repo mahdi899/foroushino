@@ -26,11 +26,11 @@ class AdminMenuKeyboard
 
     public const MESSAGES = 'پیام‌ها';
 
-    public const REFERENCE_CHANNEL = '📡 کانال مرجع';
+    public const REFERENCE_CHANNEL = 'مدیریت کانال مرجع';
 
-    public const COURSES = '🎓 دوره‌ها';
+    public const COURSES = 'مدیریت دوره‌ها';
 
-    public const SEMINARS = '🎤 سمینارها';
+    public const SEMINARS = 'مدیریت سمینارها';
 
     public const EXPORT = 'خروجی کاربران';
 
@@ -69,15 +69,17 @@ class AdminMenuKeyboard
         self::EXIT => 'cross',
     ];
 
-    /** Labels shared with the public main menu — must not hijack main-menu taps outside admin panel. */
-    private const MAIN_MENU_OVERLAP = [
-        self::REFERENCE_CHANNEL,
-        self::COURSES,
-        self::SEMINARS,
-    ];
+    /**
+     * Catalog hubs that used to share bare main-menu labels («دوره‌ها» / …).
+     * Canonical labels are now «مدیریت …» so they no longer overlap; kept empty
+     * for isAdminExclusiveMenuButton / deprecated catalog-hub helpers.
+     *
+     * @var list<string>
+     */
+    private const MAIN_MENU_OVERLAP = [];
 
     /**
-     * Main-menu core labels shared with admin catalog hubs (premium icon sends text without emoji prefix).
+     * Bare main-menu cores — only matched while AdminPanel is open (old keyboards).
      *
      * @var array<string, list<string>>
      */
@@ -98,9 +100,9 @@ class AdminMenuKeyboard
         self::DISCOUNTS => ['🎟 کد تخفیف'],
         self::TICKETS => ['🎫 تیکت‌ها'],
         self::MESSAGES => ['💬 پیام‌ها'],
-        self::REFERENCE_CHANNEL => ['مدیریت کانال مرجع'],
-        self::COURSES => ['مدیریت دوره‌ها'],
-        self::SEMINARS => ['مدیریت سمینارها'],
+        self::REFERENCE_CHANNEL => ['📡 کانال مرجع'],
+        self::COURSES => ['🎓 دوره‌ها', 'دوره‌ها 🎓'],
+        self::SEMINARS => ['🎤 سمینارها', 'سمینارها 🎤'],
         self::EXPORT => ['📤 خروجی کاربران'],
         self::PROFILE => ['🤖 پروفایل بات'],
         self::SETTINGS => ['⚙️ تنظیمات'],
@@ -194,13 +196,16 @@ class AdminMenuKeyboard
         $keyboard = [];
         foreach ($this->rows($account) as $row) {
             $keyboard[] = array_map(static function (string $text): array {
-                $button = ['text' => $text];
                 $iconKey = self::ICONS[$text] ?? null;
-                if ($iconKey !== null) {
-                    $button = [...$button, ...TelegramCustomEmoji::buttonIcon($iconKey)];
+                if ($iconKey === null) {
+                    return ['text' => $text];
                 }
 
-                return $button;
+                // Premium icon only — no unicode twin in text (avoids 🎓🎓 double emoji).
+                return [
+                    'text' => TelegramCustomEmoji::buttonText($text, $iconKey),
+                    ...TelegramCustomEmoji::buttonIcon($iconKey),
+                ];
             }, $row);
         }
 

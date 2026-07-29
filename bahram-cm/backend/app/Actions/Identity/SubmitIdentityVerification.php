@@ -13,6 +13,7 @@ use App\Enums\SmsEventKey;
 use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationAttempt;
 use App\Models\IdentityVerificationReview;
+use App\Models\IdentityVerificationRoute;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
@@ -187,21 +188,6 @@ class SubmitIdentityVerification
                     IdentityVerificationMessages::MOBILE_NATIONAL_MISMATCH,
                 );
             }
-
-            if ($submission->registry_match_status === 'mismatched' && blank($submission->registry_first_name)) {
-                $this->dailyLimits->throwMismatch(
-                    $user,
-                    $submission->registry_message ?: IdentityVerificationMessages::REGISTRY_NOT_FOUND,
-                );
-            }
-
-            if ($submission->registry_match_status === 'unavailable') {
-                throw ValidationException::withMessages([
-                    'identity' => [
-                        $submission->registry_message ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE,
-                    ],
-                ]);
-            }
         }
 
         return $submission;
@@ -215,6 +201,22 @@ class SubmitIdentityVerification
         string $nationalCode,
         array $data,
     ): IdentityVerificationSubmission {
+        $routeActive = IdentityVerificationRoute::query()
+            ->where('capability', IdentityCapability::PersonInfoInquiry->value)
+            ->where('is_active', true)
+            ->exists();
+
+        // Admin can temporarily disable PersonInfo — skip and keep the case in the expert queue.
+        if (! $routeActive) {
+            $submission->update([
+                'registry_match_status' => null,
+                'registry_message' => 'استعلام مشخصات هویتی (PersonInfo) توسط ادمین موقتاً غیرفعال شده است.',
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
+        }
+
         $birthDate = JalaliDate::formatApi(\Illuminate\Support\Carbon::parse($data['date_of_birth']));
 
         try {
@@ -223,39 +225,44 @@ class SubmitIdentityVerification
                 fn ($provider) => $provider->lookup($nationalCode, $birthDate),
             );
             $result = $outcome['result'];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            report($e);
             $result = null;
         }
 
+        // Technical / incomplete PersonInfo: soft-fail into expert queue (same as Shahkar outage).
         if (! $result || $result->isTechnicalFailure()) {
-            return $this->rejectRegistryLookup(
-                $submission,
-                'unavailable',
-                $result?->provider_message ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE,
-                IdentityReasonCode::InfoMismatch,
-                'رد خودکار سامانه: استعلام مشخصات هویتی (PersonInfo) در دسترس نبود.',
-            );
+            $submission->update([
+                'registry_match_status' => 'unavailable',
+                'registry_message' => $result?->provider_message
+                    ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE_ADMIN,
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
         }
 
+        // Birth-date / registry not found — flag for admin, never block the student.
         if ($result->normalized_result === OwnershipVerificationResult::Mismatched) {
-            return $this->rejectRegistryLookup(
-                $submission,
-                'mismatched',
-                $result->provider_message ?: IdentityVerificationMessages::REGISTRY_NOT_FOUND,
-                IdentityReasonCode::InfoMismatch,
-                'رد خودکار سامانه: کد ملی با تاریخ تولد واردشده در استعلام رسمی یافت نشد.',
-            );
+            $submission->update([
+                'registry_match_status' => 'mismatched',
+                'registry_message' => $result->provider_message
+                    ?: IdentityVerificationMessages::REGISTRY_NOT_FOUND,
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
         }
 
         if ($result->normalized_result !== OwnershipVerificationResult::Matched || ! $result->hasNames()) {
-            return $this->rejectRegistryLookup(
-                $submission,
-                'unavailable',
-                $result->provider_message
-                    ?: 'پاسخ استعلام مشخصات هویتی ناقص بود (نام در پاسخ سرویس موجود نیست).',
-                IdentityReasonCode::InfoMismatch,
-                'رد خودکار سامانه: پاسخ استعلام مشخصات هویتی ناقص بود.',
-            );
+            $submission->update([
+                'registry_match_status' => 'unavailable',
+                'registry_message' => $result->provider_message
+                    ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE_ADMIN,
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
         }
 
         $namesEqual = PersianName::equal($result->first_name, $data['first_name'])
@@ -273,58 +280,6 @@ class SubmitIdentityVerification
                 : 'نام یا نام‌خانوادگی واردشده با استعلام رسمی مطابقت ندارد.',
             'registry_checked_at' => now(),
         ]);
-
-        return $submission->fresh();
-    }
-
-    private function rejectRegistryLookup(
-        IdentityVerificationSubmission $submission,
-        string $registryMatchStatus,
-        string $registryMessage,
-        IdentityReasonCode $reasonCode,
-        string $reviewerNote,
-    ): IdentityVerificationSubmission {
-        $profile = UserIdentityProfile::query()
-            ->whereKey($submission->identity_profile_id)
-            ->lockForUpdate()
-            ->firstOrFail();
-
-        $profile->identity_status = IdentityVerificationStatus::Rejected;
-        $profile->save();
-        $profile->syncVerificationLevel();
-
-        $submission->update([
-            'status' => IdentityVerificationStatus::Rejected,
-            'reviewed_at' => now(),
-            'registry_match_status' => $registryMatchStatus,
-            'registry_message' => $registryMessage,
-            'registry_checked_at' => now(),
-        ]);
-
-        IdentityVerificationReview::query()->create([
-            'submission_id' => $submission->id,
-            'reviewer_id' => null,
-            'action' => IdentityReviewAction::Reject,
-            'reason_code' => $reasonCode,
-            'reviewer_note' => $reviewerNote,
-        ]);
-
-        $user = User::query()->find($submission->user_id);
-        if ($user) {
-            try {
-                $this->notifications->identityRejected($user);
-                if ($user->mobile) {
-                    $this->sms->sendEvent(
-                        SmsEventKey::IdentityVerificationRejected,
-                        (string) $user->mobile,
-                        ['{name}' => $user->name ?: $submission->first_name],
-                        $user->id,
-                    );
-                }
-            } catch (Throwable $e) {
-                report($e);
-            }
-        }
 
         return $submission->fresh();
     }

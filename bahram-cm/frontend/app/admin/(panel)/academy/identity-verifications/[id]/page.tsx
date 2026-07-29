@@ -96,7 +96,7 @@ export default async function IdentityVerificationDetailPage({
 
               {item.registry?.match_status === 'mismatched' && item.registry.first_name && item.registry.last_name ? (
                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
-                  <p className="mb-2 font-bold">اختلاف نام با استعلام مشخصات هویتی (PersonInfo)</p>
+                  <p className="mb-2 font-bold">اطلاعات شخصی خطا داریم — اختلاف نام</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
                       <p className="text-caption text-text-muted">وارد‌شده توسط کاربر</p>
@@ -122,10 +122,10 @@ export default async function IdentityVerificationDetailPage({
                 </div>
               ) : item.registry?.match_status === 'mismatched' ? (
                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
-                  <p className="mb-1 font-bold">کد ملی با تاریخ تولد در استعلام رسمی یافت نشد</p>
+                  <p className="mb-1 font-bold">اطلاعات شخصی خطا داریم</p>
                   <p>
                     {item.registry.message ??
-                      'احتمالاً تاریخ تولد واردشده با کد ملی مطابقت ندارد. کاربر باید تاریخ تولد را مطابق کارت ملی (شمسی) اصلاح کند؛ پرونده برای بررسی دستی در صف است.'}
+                      'کد ملی با تاریخ تولد واردشده در استعلام رسمی یافت نشد. کاربر ارسال کرده؛ لطفاً هنگام بررسی دستی تاریخ تولد و مشخصات را با مدارک تطبیق دهید.'}
                   </p>
                 </div>
               ) : item.registry?.match_status === 'matched' ? (
@@ -134,11 +134,16 @@ export default async function IdentityVerificationDetailPage({
                 </div>
               ) : item.registry?.match_status === 'unavailable' ? (
                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
-                  <p className="mb-1 font-bold">استعلام مشخصات هویتی (PersonInfo) انجام نشد</p>
+                  <p className="mb-1 font-bold">اطلاعات شخصی خطا داریم</p>
                   <p>
                     {item.registry.message ??
-                      'سرویس PersonInfo در دسترس نبود یا پاسخ ناقص بود — بررسی دستی لازم است.'}
+                      'استعلام مشخصات هویتی (PersonInfo) در دسترس نبود یا پاسخ ناقص بود — بررسی دستی لازم است.'}
                   </p>
+                </div>
+              ) : item.registry?.message && !item.registry.match_status ? (
+                <div className="mb-4 rounded-lg border border-border bg-surface-soft px-4 py-3 text-small text-text-muted">
+                  <p className="mb-1 font-bold text-text">استعلام مشخصات هویتی رد شد</p>
+                  <p>{item.registry.message}</p>
                 </div>
               ) : null}
               <dl className="grid gap-3 sm:grid-cols-2 text-small">
