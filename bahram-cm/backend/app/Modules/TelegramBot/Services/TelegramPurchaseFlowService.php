@@ -105,8 +105,13 @@ class TelegramPurchaseFlowService
         }
 
         $product->loadMissing('seminar');
-        if ($product->seminar && $product->seminar->isFull()) {
-            $this->outbound->reply($bot, $chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
+        if ($product->seminar && ($product->seminar->isEnded() || $product->seminar->isFull())) {
+            $status = $product->seminar->isEnded() ? 'برگزار شده' : 'تکمیل ظرفیت شده';
+            $this->outbound->reply(
+                $bot,
+                $chatId,
+                "⛔ سمینار «{$product->seminar->title}» {$status}.\n\nمنتظر سمینارهای آینده باشید.",
+            );
 
             return;
         }
@@ -174,10 +179,11 @@ class TelegramPurchaseFlowService
         }
 
         $amount = number_format((int) $result['amount']);
+        $title = (string) ($result['product_title'] ?? $product->title);
         $this->outbound->reply(
             $bot,
             $chatId,
-            "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nبرای پرداخت، دکمه زیر را بزنید.",
+            "سفارش #{$result['order_id']}\n{$title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nبرای پرداخت، دکمه زیر را بزنید.",
             TelegramSiteUrl::linkMarkup($result['payment_url'], '💳 پرداخت آنلاین', [], 'success'),
         );
     }

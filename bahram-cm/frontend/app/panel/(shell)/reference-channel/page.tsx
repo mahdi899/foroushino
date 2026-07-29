@@ -48,14 +48,16 @@ export default async function PanelReferenceChannelsPage() {
     }
   }
 
+  const ownedIds = new Set(channels.map((channel) => channel.id));
+  const buyableOffers = offers.filter((offer) => !ownedIds.has(offer.id));
   const description =
     channels.length > 0
       ? `${channels.length.toLocaleString('fa-IR')} دسترسی فعال`
-      : offers.length > 0
+      : buyableOffers.length > 0
         ? 'خرید و فعال‌سازی دسترسی'
         : 'دسترسی به گروه مرجع';
 
-  if (channels.length === 0 && offers.length === 0) {
+  if (channels.length === 0 && buyableOffers.length === 0) {
     return (
       <div className="panel-page-inner flex flex-col gap-6">
         <PanelPageHeader icon={Radio} title="کانال مرجع" description={description} />
@@ -87,9 +89,9 @@ export default async function PanelReferenceChannelsPage() {
         </div>
       ) : null}
 
-      {offers.length > 0 ? (
+      {buyableOffers.length > 0 ? (
         <div className="panel-card-grid">
-          {offers.map((offer) => (
+          {buyableOffers.map((offer) => (
             <ReferenceChannelShowcase key={offer.id} channel={{ ...offer, owned: false }} />
           ))}
         </div>

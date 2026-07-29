@@ -96,14 +96,24 @@ class TelegramContentPresenter
             $lines[] = $this->formatPriceLine($price, $sale);
         }
 
-        if ($seminar->capacity !== null && $seminar->capacity > 0) {
-            $lines[] = $seminar->isFull()
-                ? TelegramCustomEmoji::tag('warning').' <b>ظرفیت تکمیل شده</b>'
-                : TelegramCustomEmoji::tag('user').' <b>ظرفیت باقی‌مانده:</b> '.$seminar->remainingSeats();
+        if ($seminar->isEnded()) {
+            $lines[] = '';
+            $lines[] = TelegramCustomEmoji::tag('warning').' <b>این سمینار برگزار شده است.</b>';
+            $lines[] = 'منتظر سمینارهای آینده باشید.';
+        } elseif ($seminar->capacity !== null && $seminar->capacity > 0) {
+            $lines[] = '';
+            if ($seminar->isFull()) {
+                $lines[] = TelegramCustomEmoji::tag('warning').' <b>ظرفیت تکمیل شده</b>';
+                $lines[] = 'منتظر سمینارهای آینده باشید.';
+            } else {
+                $lines[] = TelegramCustomEmoji::tag('user').' <b>ظرفیت باقی‌مانده:</b> '.$seminar->remainingSeats();
+            }
         }
 
-        $lines[] = '';
-        $lines[] = TelegramCustomEmoji::tag('point_up').' برای ثبت‌نام از دکمه‌های زیر استفاده کنید:';
+        if (! $seminar->isEnded() && ! $seminar->isFull()) {
+            $lines[] = '';
+            $lines[] = TelegramCustomEmoji::tag('point_up').' برای ثبت‌نام از دکمه‌های زیر استفاده کنید:';
+        }
 
         return $this->fitTelegramCaption(implode("\n", $lines));
     }
@@ -139,21 +149,25 @@ class TelegramContentPresenter
         $product = $seminar->product;
         [$price] = $this->seminarPrices($seminar);
 
-        if ($seminar->isFull()) {
-            $keyboard[] = [[
-                'text' => 'ظرفیت تکمیل شده',
-                'callback_data' => 'seminar:full',
-                'style' => 'danger',
-                ...TelegramCustomEmoji::buttonIcon('warning'),
-            ]];
+        if ($seminar->isEnded() || $seminar->isFull()) {
+            $status = $seminar->isEnded() ? 'برگزار شده' : 'تکمیل ظرفیت شده';
+            if (! $seminar->isEnded()) {
+                $keyboard[] = [[
+                    'text' => 'سمینار '.$status,
+                    'callback_data' => 'seminar:closed',
+                    'style' => 'danger',
+                    ...TelegramCustomEmoji::buttonIcon('warning'),
+                ]];
+            }
         } elseif ($product && $product->is_active && $price > 0) {
             $keyboard[] = [$this->paymentButton('ثبت‌نام / پرداخت', $product->id, 'cart')];
         }
 
+        $pageLabel = $seminar->isEnded() ? 'مشاهده صفحه سمینار' : 'مشاهده در سایت';
         $keyboard = [
             ...$keyboard,
             ...TelegramSiteUrl::urlKeyboardRow(
-                'مشاهده در سایت',
+                $pageLabel,
                 TelegramSiteUrl::seminarPage($seminar->slug),
                 'primary',
                 'globe',
@@ -181,7 +195,7 @@ class TelegramContentPresenter
     private function formatPriceLine(int $price, ?int $salePrice): string
     {
         if ($salePrice !== null && $salePrice > 0 && $salePrice < $price) {
-            return TelegramCustomEmoji::tag('money').' <b>قیمت اصلی:</b> '.number_format($price).' تومان'
+            return TelegramCustomEmoji::tag('money').' <b>قیمت اصلی:</b> <s>'.number_format($price).' تومان</s>'
                 ."\n".TelegramCustomEmoji::tag('fire').' <b>قیمت ویژه:</b> '.number_format($salePrice).' تومان';
         }
 

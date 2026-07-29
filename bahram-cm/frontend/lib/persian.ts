@@ -17,7 +17,18 @@ export function formatPanelFa(n: number): string {
 
 /** Format an ISO date as a Persian (Jalali) date string, e.g. «۶ فروردین ۱۴۰۵». */
 export function formatDateFa(iso: string): string {
-  const d = new Date(iso);
+  const raw = iso.trim();
+  if (!raw) return iso;
+
+  // Date-only (YYYY-MM-DD): parse as local calendar day to avoid UTC shift.
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  let d: Date;
+  if (dateOnly) {
+    d = new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]), 12, 0, 0);
+  } else {
+    d = new Date(raw);
+  }
+
   if (Number.isNaN(d.getTime())) return iso;
 
   return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {

@@ -53,9 +53,16 @@ class RequestIdentityCorrection
                 ]);
             }
 
+            $persianItems = IdentityReasonCode::labelsForList(array_values($correctionItems));
+            if ($persianItems === []) {
+                throw ValidationException::withMessages([
+                    'correction_items' => ['حداقل یک مورد اصلاح مشخص کنید.'],
+                ]);
+            }
+
             $submission->update([
                 'status' => IdentityVerificationStatus::NeedsCorrection,
-                'required_corrections' => array_values($correctionItems),
+                'required_corrections' => $persianItems,
                 'reviewed_at' => now(),
             ]);
 
@@ -65,7 +72,7 @@ class RequestIdentityCorrection
                 'action' => IdentityReviewAction::RequestCorrection,
                 'reason_code' => $reasonCode,
                 'reviewer_note' => $note,
-                'correction_items' => array_values($correctionItems),
+                'correction_items' => $persianItems,
             ]);
 
             UserIdentityProfile::query()->whereKey($submission->identity_profile_id)->update([

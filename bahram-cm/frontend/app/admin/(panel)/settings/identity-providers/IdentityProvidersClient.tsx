@@ -63,7 +63,8 @@ function ProviderCard({
         if (businessId.trim()) credentials.business_id = businessId.trim();
         if (businessToken.trim()) credentials.business_token = businessToken.trim();
       } else if (apiToken.trim()) {
-        credentials.api_token = apiToken.trim();
+        // API.ir: Laravel withToken() adds "Bearer " — never store a double prefix.
+        credentials.api_token = apiToken.trim().replace(/^Bearer\s+/i, '').trim();
       }
       if (Object.keys(credentials).length) body.credentials = credentials;
 

@@ -23,6 +23,7 @@ export type IdentityVerificationListItem = {
   ownership_locked?: boolean;
   verification_level?: number;
   registry_match_status?: 'matched' | 'mismatched' | 'unavailable' | null;
+  mobile_match_status?: 'matched' | 'mismatched' | 'unavailable' | null;
 };
 
 export type IdentityRegistrySnapshot = {
@@ -32,6 +33,14 @@ export type IdentityRegistrySnapshot = {
   father_name: string | null;
   gender: string | null;
   alive: boolean | null;
+  message: string | null;
+  checked_at: string | null;
+};
+
+export type IdentityMobileMatchSnapshot = {
+  match_status: 'matched' | 'mismatched' | 'unavailable' | null;
+  provider_code: string | null;
+  message: string | null;
   checked_at: string | null;
 };
 
@@ -68,6 +77,7 @@ export type IdentityVerificationDetail = IdentityVerificationListItem & {
   ownership_failed_attempts?: number;
   ownership_locked_at?: string | null;
   registry?: IdentityRegistrySnapshot;
+  mobile_match?: IdentityMobileMatchSnapshot;
 };
 
 export type IdentityDashboardStats = {
@@ -113,11 +123,21 @@ export const IDENTITY_STATUS_LABELS: Record<string, string> = {
   rejected: 'ردشده',
 };
 
+export const IDENTITY_GENDER_LABELS: Record<string, string> = {
+  male: 'مرد',
+  female: 'زن',
+  m: 'مرد',
+  f: 'زن',
+  مرد: 'مرد',
+  زن: 'زن',
+};
+
 export const IDENTITY_REASON_LABELS: Record<string, string> = {
   national_card_unreadable: 'تصویر کارت ملی خوانا نیست',
   national_card_not_yours: 'کارت ملی متعلق به شما نیست',
   selfie_unsuitable: 'ویدیوی سلفی مناسب نیست',
   info_mismatch: 'اطلاعات با مدارک مطابقت ندارد',
+  mobile_national_mismatch: 'شماره موبایل با کد ملی مطابقت ندارد',
   image_incomplete: 'تصویر ناقص است',
   other: 'سایر',
 };

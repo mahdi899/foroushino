@@ -167,6 +167,33 @@ class ApiIrShahkarProviderTest extends TestCase
         });
     }
 
+    public function test_typo_base_url_apif_is_normalized_and_healed(): void
+    {
+        $this->seedApiIr(
+            credentials: ['api_token' => 'tok'],
+            settings: [
+                'base_url' => 'https://s.apif.ir',
+                'shahkar_path' => '/api/sw1/ShahkarLite',
+            ],
+        );
+
+        Http::fake([
+            's.api.ir/api/sw1/ShahkarLite' => Http::response(['data' => true], 200),
+            's.apif.ir/*' => Http::response('should not hit', 500),
+        ]);
+
+        $result = $this->provider->testConnection();
+
+        $this->assertSame(\App\Enums\ProviderConnectionStatus::Connected, $result->status);
+        Http::assertSent(fn ($request) => $request->url() === 'https://s.api.ir/api/sw1/ShahkarLite');
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'apif.ir'));
+
+        $this->assertSame(
+            'https://s.api.ir',
+            IdentityProviderConfig::query()->where('slug', ApiIrShahkarProvider::SLUG)->value('settings')['base_url'] ?? null,
+        );
+    }
+
     /**
      * @param  array<string, mixed>  $credentials
      * @param  array<string, mixed>|null  $settings

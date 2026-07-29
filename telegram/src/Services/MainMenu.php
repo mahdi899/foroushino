@@ -71,12 +71,20 @@ final class MainMenu
             return null;
         }
 
+        $textCore = $this->coreLabel($text);
+
         foreach (self::ACTION_KEYS as $action => $key) {
             $label = $this->normalizeButtonText($this->cache->message($key, $action));
             $legacy = self::LEGACY_ALIASES[$action] ?? [];
-            $legacyNormalized = array_map(fn (string $alias): string => $this->normalizeButtonText($alias), $legacy);
-            if ($text === $label || in_array($text, $legacyNormalized, true)) {
-                return $action;
+            $candidates = array_merge([$label], $legacy);
+            foreach ($candidates as $alias) {
+                $normalized = $this->normalizeButtonText((string) $alias);
+                if ($normalized === '') {
+                    continue;
+                }
+                if ($text === $normalized || $textCore === $this->coreLabel($normalized)) {
+                    return $action;
+                }
             }
         }
 
@@ -129,8 +137,7 @@ final class MainMenu
             return ['text' => $label];
         }
 
-        // Unicode in text so the menu still looks right if Premium icons are
-        // rejected; icon_custom_emoji_id adds the animated premium glyph when allowed.
+        // Premium glyph comes only from icon_custom_emoji_id (no unicode twin in text).
         return [
             'text' => TelegramCustomEmoji::buttonText($label, $iconKey),
             ...TelegramCustomEmoji::buttonIcon($iconKey),
@@ -141,8 +148,8 @@ final class MainMenu
     {
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        // ZWNJ / Arabic presentation forms that break exact menu matching.
-        $text = str_replace(["\u{200c}", "\u{200d}", "\u{feff}", 'ي', 'ك'], ['', '', '', 'ی', 'ک'], $text);
+        // ZWNJ / BOM / Arabic Yeh-Kaf only — keep ZWJ (\u{200d}) so 👨‍👩‍👧‍👦 stays one emoji.
+        $text = str_replace(["\u{200c}", "\u{feff}", 'ي', 'ك'], ['', '', 'ی', 'ک'], $text);
         $text = preg_replace('/\s+/u', ' ', trim($text)) ?? trim($text);
         $firstLine = trim(explode("\n", $text, 2)[0] ?? '');
         $firstLine = TelegramCustomEmoji::stripLeadingFallback($firstLine);
@@ -152,5 +159,14 @@ final class MainMenu
         }
 
         return $firstLine;
+    }
+
+    /** Compare menu taps by Persian label only (emoji / VS16 ignored). */
+    private function coreLabel(string $text): string
+    {
+        $core = preg_replace('/[\x{FE0F}\x{200D}\p{So}\p{Sk}]+/u', '', $text) ?? $text;
+        $core = preg_replace('/\s+/u', ' ', trim($core)) ?? trim($core);
+
+        return $core;
     }
 }

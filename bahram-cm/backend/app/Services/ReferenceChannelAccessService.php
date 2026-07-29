@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ReferenceChannel;
 use App\Models\ReferenceChannelEntitlement;
 use App\Models\User;
+use App\Support\Mobile;
 
 class ReferenceChannelAccessService
 {
@@ -20,10 +21,17 @@ class ReferenceChannelAccessService
             return;
         }
 
+        $phone = Mobile::normalize((string) $user->mobile);
+
         $orders = Order::query()
-            ->where('user_id', $user->id)
             ->whereIn('product_id', $productIds->keys())
             ->whereIn('status', ['paid', 'fulfilled'])
+            ->where(function ($query) use ($user, $phone) {
+                $query->where('user_id', $user->id);
+                if ($phone) {
+                    $query->orWhere('customer_phone', $phone);
+                }
+            })
             ->get(['id', 'product_id']);
 
         foreach ($orders as $order) {

@@ -2,7 +2,6 @@
 
 namespace App\Modules\TelegramBot\Services;
 
-use App\Enums\CourseAccessStatus;
 use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Product;
@@ -56,7 +55,10 @@ class TelegramCourseAccessPresenter
         }
 
         $access = $this->resolveAccess($account, $product);
-        $licenseKey = $this->resolveLicenseKey($account, $product);
+        $license = $this->resolveSpotplayerLicense($account, $product, $access);
+        $licenseKey = filled($license?->license_key)
+            ? (string) $license->license_key
+            : $this->resolveLegacyOrderLicenseKey($account, $product);
         // Identity (level 2) is only required for the reference-channel product.
         // Seminars/courses: mobile verification is enough to show watch + destination links.
         $isReferenceProduct = $product->isReferenceChannelProduct();
@@ -64,9 +66,7 @@ class TelegramCourseAccessPresenter
         $canShowDestinations = ! $isReferenceProduct || $identityReady;
         $destRows = $canShowDestinations ? $this->destinationKeyboardRows($bot, $account, $product) : [];
         $destinationLines = $canShowDestinations ? $this->destinationMessageLines($bot, $account, $product) : [];
-        $watchUrl = $access
-            ? TelegramSiteUrl::courseWatchPage($access->id)
-            : TelegramSiteUrl::coursesPanel();
+        $watchUrl = $this->resolveWatchUrl($product, $access, $license);
 
         $lines = [
             TelegramCustomEmoji::tag('check').' <b>شما به این دوره دسترسی دارید</b>',
@@ -80,7 +80,7 @@ class TelegramCourseAccessPresenter
             $lines[] = '';
             $lines[] = TelegramCustomEmoji::tag('key').' <b>کلید اسپات‌پلیر</b> (اپلیکیشن دسکتاپ/موبایل):';
             $lines[] = '<code>'.TelegramHtml::escape($licenseKey).'</code>';
-        } else {
+        } elseif (! $product->isSeminarProduct()) {
             $lines[] = '';
             $lines[] = TelegramCustomEmoji::tag('key').' کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
         }
@@ -129,6 +129,21 @@ class TelegramCourseAccessPresenter
         return $level >= 2;
     }
 
+    private function resolveWatchUrl(Product $product, ?CourseAccess $access, ?\App\Models\SpotplayerLicense $license = null): ?string
+    {
+        $product->loadMissing('seminar');
+        if ($product->seminar) {
+            return TelegramSiteUrl::seminarPanelPage($product->seminar->id)
+                ?? TelegramSiteUrl::seminarsPanel();
+        }
+
+        if ($access) {
+            return TelegramSiteUrl::courseWatchPage($access->id, $license?->id);
+        }
+
+        return TelegramSiteUrl::coursesPanel();
+    }
+
     private function resolveAccess(TelegramAccount $account, Product $product): ?CourseAccess
     {
         $user = $account->user;
@@ -138,24 +153,34 @@ class TelegramCourseAccessPresenter
 
         $this->courseAccess->syncFromPaidOrders($user);
 
-        return CourseAccess::query()
-            ->where('user_id', $user->id)
+        return $this->courseAccess->activeAccessForUser($user, $product);
+    }
+
+    private function resolveSpotplayerLicense(
+        TelegramAccount $account,
+        Product $product,
+        ?CourseAccess $access,
+    ): ?\App\Models\SpotplayerLicense {
+        $user = $account->user;
+        if ($user instanceof User) {
+            return $this->courseAccess->resolveLicense($user, $product, $access);
+        }
+
+        $mobile = \App\Support\Mobile::normalize((string) ($account->mobile ?? ''));
+        if ($mobile === '') {
+            return null;
+        }
+
+        return \App\Models\SpotplayerLicense::query()
             ->where('product_id', $product->id)
-            ->where('status', CourseAccessStatus::Active)
+            ->whereNotNull('license_key')
+            ->whereHas('order', fn ($order) => $order->where('customer_phone', $mobile))
             ->orderByDesc('id')
             ->first();
     }
 
-    private function resolveLicenseKey(TelegramAccount $account, Product $product): ?string
+    private function resolveLegacyOrderLicenseKey(TelegramAccount $account, Product $product): ?string
     {
-        $user = $account->user;
-        if ($user instanceof User) {
-            $license = $this->courseAccess->resolveLicense($user, $product);
-            if (filled($license?->license_key)) {
-                return (string) $license->license_key;
-            }
-        }
-
         $order = Order::query()
             ->where('product_id', $product->id)
             ->whereIn('status', ['paid', 'fulfilled'])

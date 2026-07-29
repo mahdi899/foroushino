@@ -131,13 +131,21 @@ final class PurchaseFlow
         $amount = number_format((int) ($result['amount'] ?? 0));
         $orderId = (int) ($result['order_id'] ?? 0);
         $url = (string) ($result['payment_url'] ?? '');
+        $title = trim((string) ($result['product_title'] ?? ''));
+        if ($title === '') {
+            $productRow = $this->cache->findProduct($productId);
+            $title = (string) ($productRow['title'] ?? 'محصول');
+        }
+        $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         $this->api->sendMessage(
             $chatId,
             TelegramCustomEmoji::tag('cart')." سفارش #{$orderId}\n"
+            ."<b>{$safeTitle}</b>\n"
             .TelegramCustomEmoji::tag('money')." مبلغ قابل پرداخت: {$amount} تومان\n\n"
             .TelegramCustomEmoji::tag('point_up').' برای پرداخت، دکمه زیر را بزنید.',
             [
+                'parse_mode' => 'HTML',
                 'reply_markup' => [
                     'inline_keyboard' => [[InlineButtons::payOnline($url)]],
                 ],
@@ -180,13 +188,14 @@ final class PurchaseFlow
 
     public function promptDiscountCode(int $chatId, int $telegramUserId, int $productId, string $title, int $basePrice, ?int $salePrice): void
     {
+        $this->live->checkoutRevokeOpen($chatId, $telegramUserId);
         $this->conversations->set($telegramUserId, 'waiting_for_discount_code', [
             'checkout' => ['product_id' => $productId, 'coupon' => null],
         ]);
 
         $priceBlock = ($salePrice !== null && $salePrice > 0 && $salePrice < $basePrice)
-            ? TelegramCustomEmoji::tag('money').' قیمت اصلی: '.number_format($basePrice)." تومان\n"
-                .TelegramCustomEmoji::tag('fire').' قیمت با تخفیف: '.number_format($salePrice).' تومان'
+            ? TelegramCustomEmoji::tag('money').' قیمت اصلی: <s>'.number_format($basePrice).' تومان</s>'."\n"
+                .TelegramCustomEmoji::tag('fire').' قیمت با تخفیف: <b>'.number_format($salePrice).' تومان</b>'
             : TelegramCustomEmoji::tag('money').' مبلغ: '.number_format($salePrice ?: $basePrice).' تومان';
 
         $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');

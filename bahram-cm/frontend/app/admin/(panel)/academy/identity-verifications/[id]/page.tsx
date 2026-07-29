@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminPage, Badge } from '../../../ui';
 import { getIdentityVerification } from '@/lib/admin/identityData';
-import { IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
+import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
 import { formatDate } from '@/lib/admin/academyTypes';
 import { can, getCurrentUser } from '@/lib/auth/session';
+import { formatDateFa } from '@/lib/persian';
 import { IdentityReviewActions } from '../IdentityReviewActions';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,16 @@ function statusTone(status: string): 'default' | 'success' | 'warning' | 'accent
   if (status === 'needs_correction') return 'warning';
   if (status === 'submitted' || status === 'under_review') return 'accent';
   return 'default';
+}
+
+function formatBirthDateFa(value: string | null | undefined): string {
+  if (!value) return '—';
+  return formatDateFa(value);
+}
+
+function formatGenderFa(value: string | null | undefined): string {
+  if (!value) return '—';
+  return IDENTITY_GENDER_LABELS[value] ?? value;
 }
 
 export default async function IdentityVerificationDetailPage({
@@ -61,9 +72,31 @@ export default async function IdentityVerificationDetailPage({
                 ) : null}
               </div>
 
-              {item.registry?.match_status === 'mismatched' ? (
+              {item.mobile_match?.match_status === 'mismatched' ? (
+                <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">
+                  <p className="mb-1 font-bold">رد خودکار: موبایل با کد ملی مطابقت ندارد</p>
+                  <p>
+                    {item.mobile_match.message ??
+                      'استعلام شاهکار نشان داد شماره موبایل حساب متعلق به این کد ملی نیست.'}
+                  </p>
+                </div>
+              ) : item.mobile_match?.match_status === 'unavailable' ? (
                 <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
-                  <p className="mb-2 font-bold">اختلاف نام با استعلام مشخصات هویتی (شاهکار)</p>
+                  <p className="mb-1 font-bold">استعلام تطبیق موبایل و کد ملی انجام نشد</p>
+                  <p>
+                    {item.mobile_match.message ??
+                      'سرویس شاهکار در دسترس نبود. لطفاً هنگام بررسی دستی به این مورد توجه کنید.'}
+                  </p>
+                </div>
+              ) : item.mobile_match?.match_status === 'matched' ? (
+                <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-small text-success">
+                  تطبیق موبایل و کد ملی (شاهکار) موفق بود.
+                </div>
+              ) : null}
+
+              {item.registry?.match_status === 'mismatched' && item.registry.first_name && item.registry.last_name ? (
+                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
+                  <p className="mb-2 font-bold">اختلاف نام با استعلام مشخصات هویتی (PersonInfo)</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
                       <p className="text-caption text-text-muted">وارد‌شده توسط کاربر</p>
@@ -72,19 +105,40 @@ export default async function IdentityVerificationDetailPage({
                       </p>
                     </div>
                     <div>
-                      <p className="text-caption text-text-muted">شاهکار (PersonInfo)</p>
+                      <p className="text-caption text-text-muted">استعلام (PersonInfo)</p>
                       <p className="font-medium text-text">
                         {item.registry.first_name} {item.registry.last_name}
                       </p>
+                      {item.registry.father_name ? (
+                        <p className="mt-1 text-caption text-text-muted">
+                          نام پدر: <span className="font-medium text-text">{item.registry.father_name}</span>
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <p className="mt-2 text-caption text-text-muted">
-                    در صورت تأیید این پرونده، نام و نام‌خانوادگی شاهکار در پروفایل ثبت می‌شود.
+                    در صورت تأیید، نام، نام‌خانوادگی و نام پدر استعلام رسمی در پروفایل ثبت می‌شود.
+                  </p>
+                </div>
+              ) : item.registry?.match_status === 'mismatched' ? (
+                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
+                  <p className="mb-1 font-bold">کد ملی با تاریخ تولد در استعلام رسمی یافت نشد</p>
+                  <p>
+                    {item.registry.message ??
+                      'احتمالاً تاریخ تولد واردشده با کد ملی مطابقت ندارد. کاربر باید تاریخ تولد را مطابق کارت ملی (شمسی) اصلاح کند؛ پرونده برای بررسی دستی در صف است.'}
                   </p>
                 </div>
               ) : item.registry?.match_status === 'matched' ? (
                 <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-small text-success">
-                  نام کاربر با استعلام شاهکار مطابقت داشت — این پرونده به‌صورت خودکار تأیید شد.
+                  نام کاربر با استعلام مشخصات هویتی مطابقت داشت — پرونده در صف بررسی کارشناس است.
+                </div>
+              ) : item.registry?.match_status === 'unavailable' ? (
+                <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-small text-warning-dark">
+                  <p className="mb-1 font-bold">استعلام مشخصات هویتی (PersonInfo) انجام نشد</p>
+                  <p>
+                    {item.registry.message ??
+                      'سرویس PersonInfo در دسترس نبود یا پاسخ ناقص بود — بررسی دستی لازم است.'}
+                  </p>
                 </div>
               ) : null}
               <dl className="grid gap-3 sm:grid-cols-2 text-small">
@@ -94,19 +148,23 @@ export default async function IdentityVerificationDetailPage({
                     {item.first_name} {item.last_name}
                   </dd>
                 </div>
+                {item.registry?.father_name ? (
+                  <div>
+                    <dt className="text-text-muted">نام پدر (استعلام)</dt>
+                    <dd className="font-medium">{item.registry.father_name}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="text-text-muted">شهر</dt>
                   <dd className="font-medium">{item.city ?? '—'}</dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">تاریخ تولد</dt>
-                  <dd className="font-medium" dir="ltr">
-                    {item.date_of_birth ?? '—'}
-                  </dd>
+                  <dd className="font-medium">{formatBirthDateFa(item.date_of_birth)}</dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">جنسیت</dt>
-                  <dd className="font-medium">{item.gender ?? '—'}</dd>
+                  <dd className="font-medium">{formatGenderFa(item.gender)}</dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">موبایل</dt>

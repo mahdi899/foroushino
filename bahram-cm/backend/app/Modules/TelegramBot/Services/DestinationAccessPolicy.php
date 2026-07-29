@@ -6,6 +6,7 @@ use App\Models\CourseAccess;
 use App\Models\Product;
 use App\Models\ReferenceChannel;
 use App\Models\ReferenceChannelEntitlement;
+use App\Models\User;
 use App\Services\Sat\SatParticipantAccessService;
 use App\Modules\TelegramBot\Models\TelegramAccessDenial;
 use App\Modules\TelegramBot\Models\TelegramAccessGrant;
@@ -14,6 +15,8 @@ use App\Modules\TelegramBot\Models\TelegramDestinationRequirement;
 
 class DestinationAccessPolicy
 {
+    public const REASON_REFERENCE_IDENTITY_REQUIRED = 'احراز هویت سطح ۲ لازم است تا عضو گروه مرجع شوید.';
+
     /**
      * @return array{allowed: bool, reason: string}
      */
@@ -32,6 +35,14 @@ class DestinationAccessPolicy
             ->where('user_id', $userId)
             ->exists()) {
             return ['allowed' => false, 'reason' => 'دسترسی شما به این مقصد مسدود شده است.'];
+        }
+
+        // Reference group: L2 always required (even with manual grant).
+        if ($this->isReferenceDestination($destination) && ! $this->hasIdentityLevel2($userId)) {
+            return [
+                'allowed' => false,
+                'reason' => self::REASON_REFERENCE_IDENTITY_REQUIRED,
+            ];
         }
 
         if (TelegramAccessGrant::query()
@@ -63,11 +74,110 @@ class DestinationAccessPolicy
                 : $results->every(fn ($v) => $v === true);
 
             if (! $ok) {
-                return ['allowed' => false, 'reason' => 'شرایط دسترسی برقرار نیست.'];
+                return [
+                    'allowed' => false,
+                    'reason' => $this->unmetRequirementsReason($group, $userId, $operator),
+                ];
             }
         }
 
         return ['allowed' => true, 'reason' => 'requirements_met'];
+    }
+
+    public function isReferenceDestination(TelegramDestination $destination): bool
+    {
+        return ReferenceChannel::query()
+            ->where('telegram_destination_id', $destination->id)
+            ->exists();
+    }
+
+    public static function isIdentityRequiredReason(string $reason): bool
+    {
+        return str_contains($reason, self::REASON_REFERENCE_IDENTITY_REQUIRED)
+            || str_contains($reason, 'احراز هویت سطح ۲');
+    }
+
+    private function hasIdentityLevel2(int $userId): bool
+    {
+        $user = User::query()->with('identityProfile')->find($userId);
+        $level = (int) ($user?->identityProfile?->verification_level ?? 0);
+
+        return $level >= 2;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, TelegramDestinationRequirement>  $group
+     */
+    private function unmetRequirementsReason($group, int $userId, string $operator): string
+    {
+        $failedLabels = $group
+            ->filter(fn (TelegramDestinationRequirement $req) => ! $this->matchesRequirement($req, $userId))
+            ->map(fn (TelegramDestinationRequirement $req) => $this->describeUnmetRequirement($req))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($failedLabels->isEmpty()) {
+            return $this->withJoinHint('شرایط دسترسی برقرار نیست.');
+        }
+
+        if ($operator === 'any') {
+            $lines = ['برای عضویت در این گروه باید یکی از موارد زیر را داشته باشی:'];
+            foreach ($failedLabels as $label) {
+                $lines[] = '• '.$label;
+            }
+
+            return $this->withJoinHint(implode("\n", $lines));
+        }
+
+        if ($failedLabels->count() === 1) {
+            return $this->withJoinHint((string) $failedLabels->first());
+        }
+
+        return $this->withJoinHint(implode("\n", $failedLabels->all()));
+    }
+
+    private function describeUnmetRequirement(TelegramDestinationRequirement $req): string
+    {
+        return match ($req->requirement_type) {
+            'product', 'active_course_access' => $this->describeMissingProduct((int) $req->requirement_value),
+            'sat_membership' => 'عضویت سات فعال نداری.',
+            default => 'شرایط دسترسی برقرار نیست.',
+        };
+    }
+
+    private function describeMissingProduct(int $productId): string
+    {
+        if ($productId <= 0) {
+            return 'محصول لازم برای این گروه را نخریدی.';
+        }
+
+        $product = Product::query()->find($productId);
+        if ($product === null) {
+            return 'محصول لازم برای این گروه را نخریدی.';
+        }
+
+        $title = trim((string) $product->title);
+        if ($title === '') {
+            $title = 'مورد نیاز';
+        }
+
+        if ($product->isSeminarProduct()) {
+            return 'سمینار «'.$title.'» رو نخریدی.';
+        }
+
+        if ($product->isReferenceChannelProduct()) {
+            return 'دسترسی «'.$title.'» رو نداری.';
+        }
+
+        return 'دوره «'.$title.'» فعال رو نخریدی.';
+    }
+
+    private function withJoinHint(string $reason): string
+    {
+        return $reason
+            ."\n\n"
+            .'از منوی ربات محصول را بخر (یا اگر قبلاً خریدی، با همین اکانت تلگرام ثبت‌نام/وارد شو)، بعد دوباره لینک عضویت را بزن.';
     }
 
     private function matchesRequirement(TelegramDestinationRequirement $req, int $userId): bool

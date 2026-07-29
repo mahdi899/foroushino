@@ -91,6 +91,7 @@ class DestinationAccessPolicyTest extends TestCase
 
         $denied = app(DestinationAccessPolicy::class)->evaluate($destination, $user->id);
         $this->assertFalse($denied['allowed']);
+        $this->assertStringContainsString('عضویت سات فعال نداری', $denied['reason']);
 
         \App\Models\SatApplication::query()->create([
             'user_id' => $user->id,
@@ -102,5 +103,42 @@ class DestinationAccessPolicyTest extends TestCase
 
         $allowed = app(DestinationAccessPolicy::class)->evaluate($destination, $user->id);
         $this->assertTrue($allowed['allowed']);
+    }
+
+    public function test_missing_product_explains_which_course(): void
+    {
+        $user = User::factory()->create();
+        $bot = TelegramBot::query()->create([
+            'key' => 'production',
+            'display_name' => 'Bot',
+            'token_key' => 'TELEGRAM_BOT_TOKEN',
+            'webhook_secret' => 'secret',
+            'environment' => 'production',
+            'is_active' => true,
+        ]);
+
+        $product = \App\Models\Product::query()->create([
+            'title' => 'کمپین نویسی حرفه‌ای',
+            'slug' => 'campaign-writing-test',
+            'price' => 1000000,
+            'is_active' => true,
+        ]);
+
+        $destination = TelegramDestination::query()->create([
+            'telegram_bot_id' => $bot->id,
+            'title' => 'گروه کمپین نویسی',
+            'chat_id' => '-1004',
+            'is_active' => true,
+        ]);
+        $destination->requirements()->create([
+            'requirement_type' => 'active_course_access',
+            'requirement_value' => (string) $product->id,
+        ]);
+
+        $denied = app(DestinationAccessPolicy::class)->evaluate($destination, $user->id);
+
+        $this->assertFalse($denied['allowed']);
+        $this->assertStringContainsString('دوره «کمپین نویسی حرفه‌ای» فعال رو نخریدی', $denied['reason']);
+        $this->assertStringContainsString('از منوی ربات', $denied['reason']);
     }
 }

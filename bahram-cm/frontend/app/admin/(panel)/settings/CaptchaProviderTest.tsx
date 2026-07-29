@@ -37,7 +37,7 @@ declare global {
   }
 }
 
-type TestStatus = 'idle' | 'loading' | 'success' | 'error';
+type TestStatus = 'idle' | 'loading' | 'ready' | 'success' | 'error';
 
 const recaptchaScriptPromises = new Map<string, Promise<void>>();
 let turnstileScriptPromise: Promise<void> | null = null;
@@ -91,6 +91,8 @@ function StatusBadge({ status, message }: { status: TestStatus; message: string 
   const tone =
     status === 'loading'
       ? 'border-border bg-surface-soft text-text-muted'
+      : status === 'ready'
+        ? 'border-border bg-surface-soft text-text'
       : status === 'success'
         ? 'border-success/30 bg-success/10 text-success'
         : 'border-error/30 bg-error/10 text-error';
@@ -148,11 +150,11 @@ function TurnstileTest({ siteKey }: { siteKey: string }) {
         theme: 'auto',
         callback: () => {
           setStatus('success');
-          setMessage('ویجت Turnstile بارگذاری شد و توکن دریافت شد — کلید Site Key معتبر است.');
+          setMessage('ویجت Turnstile کار می‌کند — توکن دریافت شد؛ Site Key و دامنه درست هستند.');
         },
         'error-callback': () => {
           setStatus('error');
-          setMessage('خطا در Turnstile — Site Key یا دامنه را در پنل Cloudflare بررسی کنید.');
+          setMessage('خطا در Turnstile — Site Key یا دامنه (rostami.app) را در پنل Cloudflare بررسی کنید.');
         },
         'expired-callback': () => {
           setStatus('idle');
@@ -160,8 +162,8 @@ function TurnstileTest({ siteKey }: { siteKey: string }) {
         },
       });
 
-      setStatus('success');
-      setMessage('ویجت Turnstile نمایش داده شد. اگر چک‌باکس را می‌بینید، Site Key و اسکریپت درست کار می‌کنند.');
+      setStatus('ready');
+      setMessage('ویجت بارگذاری شد — چک‌باکس را تکمیل کنید؛ پس از تأیید، پیام سبز نمایش داده می‌شود.');
     } catch {
       setStatus('error');
       setMessage('بارگذاری Turnstile ناموفق بود — Site Key یا اتصال اینترنت را بررسی کنید.');

@@ -17,6 +17,7 @@ interface Props {
 
 export function WatchPageClient({ accessId, title, licenseKey, courseId, licenseScriptUrl }: Props) {
   const [itemId, setItemId] = useState<string | number | null>(null);
+  const [waitForLessonList, setWaitForLessonList] = useState(Boolean(licenseScriptUrl));
 
   const handleLessonsReady = (firstLessonId: string | number) => {
     setItemId((current) => current ?? firstLessonId);
@@ -39,7 +40,7 @@ export function WatchPageClient({ accessId, title, licenseKey, courseId, license
             licenseKey={licenseKey}
             courseId={courseId}
             itemId={itemId}
-            deferUntilItemId={Boolean(licenseScriptUrl)}
+            deferUntilItemId={waitForLessonList}
           />
           <h1 className="text-base font-bold text-text">{title}</h1>
         </div>
@@ -52,6 +53,7 @@ export function WatchPageClient({ accessId, title, licenseKey, courseId, license
               activeItemId={itemId}
               onSelectItem={setItemId}
               onLessonsReady={handleLessonsReady}
+              onScriptFailed={() => setWaitForLessonList(false)}
             />
           ) : (
             <p className="p-4 text-sm text-text-muted">لیست درس‌ها برای این لایسنس در دسترس نیست.</p>

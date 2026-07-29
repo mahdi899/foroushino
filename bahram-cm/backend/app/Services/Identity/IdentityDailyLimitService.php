@@ -71,7 +71,7 @@ class IdentityDailyLimitService
         }
     }
 
-    public function throwMismatch(User $user): never
+    public function throwMismatch(User $user, ?string $message = null): never
     {
         $count = $this->recordMismatch($user);
         $max = (int) config('bahram.identity.identity_mismatch_max_attempts', 3);
@@ -83,7 +83,7 @@ class IdentityDailyLimitService
         }
 
         throw ValidationException::withMessages([
-            'identity' => [IdentityVerificationMessages::IDENTITY_MISMATCH],
+            'identity' => [$message ?? IdentityVerificationMessages::IDENTITY_MISMATCH],
         ]);
     }
 

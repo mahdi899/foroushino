@@ -244,7 +244,7 @@ class TelegramUserDestinationsService
         $rows = [];
 
         foreach ($this->accessibleForAccount($bot, $account) as $item) {
-            if ($item['status'] !== 'invite' || blank($item['invite_url'])) {
+            if (blank($item['invite_url'])) {
                 continue;
             }
 
@@ -296,7 +296,7 @@ class TelegramUserDestinationsService
         $rows = [];
 
         foreach ($this->satDestinationsForAccount($bot, $account) as $item) {
-            if ($item['status'] !== 'invite' || blank($item['invite_url'])) {
+            if (blank($item['invite_url'])) {
                 continue;
             }
 

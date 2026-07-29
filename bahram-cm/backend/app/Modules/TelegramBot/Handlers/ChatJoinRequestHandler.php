@@ -11,6 +11,7 @@ use App\Modules\TelegramBot\Models\TelegramJoinRequest;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Services\DestinationAccessPolicy;
 use App\Modules\TelegramBot\Services\DestinationInviteLinkService;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use Illuminate\Support\Facades\RateLimiter;
 
 class ChatJoinRequestHandler implements UpdateHandlerInterface
@@ -89,10 +90,31 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
         } else {
             $client->declineChatJoinRequest($chatId, $telegramUserId);
             if ($account) {
-                $client->sendMessage($telegramUserId, '❌ درخواست عضویت رد شد: '.$decision['reason']);
+                $this->sendDeclineMessage($client, $telegramUserId, (string) $decision['reason']);
             }
         }
 
         unset($join);
+    }
+
+    private function sendDeclineMessage($client, int $telegramUserId, string $reason): void
+    {
+        $text = "❌ درخواست عضویت رد شد\n\n".trim($reason);
+        $options = [];
+
+        if (DestinationAccessPolicy::isIdentityRequiredReason($reason)) {
+            $identityUrl = TelegramSiteUrl::identityPage();
+            if (filled($identityUrl)) {
+                $options = TelegramSiteUrl::linkMarkup(
+                    $identityUrl,
+                    'احراز هویت سطح ۲',
+                    [],
+                    'primary',
+                    'lock',
+                );
+            }
+        }
+
+        $client->sendMessage($telegramUserId, $text, $options);
     }
 }

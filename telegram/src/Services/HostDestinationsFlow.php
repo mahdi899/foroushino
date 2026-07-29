@@ -52,6 +52,8 @@ final class HostDestinationsFlow
         $syncItems = [];
         $joinButtons = [];
         $destLines = [];
+        $needsIdentityButton = false;
+        $verificationLevel = (int) ($profile['verification_level'] ?? 0);
 
         if ($accessible !== []) {
             $destLines[] = TelegramCustomEmoji::tag('pin').' <b>گروه‌های پشتیبانی شما</b>';
@@ -60,9 +62,11 @@ final class HostDestinationsFlow
             foreach ($accessible as $destination) {
                 $title = (string) ($destination['title'] ?? '');
                 $destChatId = $this->normalizeChatId($destination['chat_id'] ?? null);
+                $identityBlocked = $this->destinationRequiresIdentityLevel2($destination)
+                    && $verificationLevel < 2
+                    && ! $this->accounts->hasIdentityLevel2($telegramUserId);
 
-                // Live check on THIS host → api.telegram.org (Iran offline is fine).
-                $isMember = $destChatId !== ''
+                $isMember = ! $identityBlocked && $destChatId !== ''
                     ? $this->liveIsGroupMember($destChatId, $telegramUserId)
                     : false;
 
@@ -80,13 +84,18 @@ final class HostDestinationsFlow
                     $destLines[] = '  دوره: '.$this->escape(implode('، ', array_map('strval', $titles)));
                 }
 
-                if ($isMember) {
-                    $destLines[] = '  '.TelegramCustomEmoji::tag('check').' شما عضو این گروه هستید.';
-
+                if ($identityBlocked) {
+                    $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' احراز هویت سطح ۲ لازم است.';
+                    $needsIdentityButton = true;
                     continue;
                 }
 
-                $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
+                if ($isMember) {
+                    $destLines[] = '  '.TelegramCustomEmoji::tag('check').' شما عضو این گروه هستید.';
+                } else {
+                    $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
+                }
+
                 $inviteUrl = $this->resolveInviteUrl($destination, $telegramUserId);
                 if ($inviteUrl !== null && $inviteUrl !== '') {
                     $joinButtons[] = [InlineButtons::url($title !== '' ? $title : 'عضویت', $inviteUrl, 'pin')];
@@ -100,20 +109,29 @@ final class HostDestinationsFlow
                 $destLines[] = '──────────────';
                 foreach ($recovered as $item) {
                     $matched = $this->findDestinationByTitle((string) $item['title'], $profile);
+                    $identityBlocked = $matched !== null
+                        && $this->destinationRequiresIdentityLevel2($matched)
+                        && $verificationLevel < 2
+                        && ! $this->accounts->hasIdentityLevel2($telegramUserId);
+
                     $destChatId = $matched !== null
                         ? $this->normalizeChatId($matched['chat_id'] ?? null)
                         : '';
-                    $isMember = $destChatId !== ''
+                    $isMember = ! $identityBlocked && $destChatId !== ''
                         ? $this->liveIsGroupMember($destChatId, $telegramUserId)
                         : false;
 
                     $destLines[] = '• <b>'.$this->escape((string) $item['title']).'</b>';
-                    if ($isMember) {
-                        $destLines[] = '  '.TelegramCustomEmoji::tag('check').' شما عضو این گروه هستید.';
-
+                    if ($identityBlocked) {
+                        $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' احراز هویت سطح ۲ لازم است.';
+                        $needsIdentityButton = true;
                         continue;
                     }
-                    $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
+                    if ($isMember) {
+                        $destLines[] = '  '.TelegramCustomEmoji::tag('check').' شما عضو این گروه هستید.';
+                    } else {
+                        $destLines[] = '  '.TelegramCustomEmoji::tag('lock').' برای عضویت از دکمه زیر استفاده کنید.';
+                    }
                     $joinButtons[] = [InlineButtons::url(
                         (string) $item['title'],
                         (string) $item['url'],
@@ -129,8 +147,9 @@ final class HostDestinationsFlow
         }
 
         $keyboard = $joinButtons;
-        $verificationLevel = (int) ($profile['verification_level'] ?? 0);
-        $needsIdentity = ! empty($profile['needs_identity_for_reference'])
+        $needsIdentity = (
+            ! empty($profile['needs_identity_for_reference']) || $needsIdentityButton
+        )
             && $verificationLevel < 2
             && ! $this->accounts->hasIdentityLevel2($telegramUserId);
         if ($needsIdentity) {
@@ -292,6 +311,27 @@ final class HostDestinationsFlow
         });
 
         return $matched;
+    }
+
+    /** @param array<string, mixed> $destination */
+    private function destinationRequiresIdentityLevel2(array $destination): bool
+    {
+        if (! empty($destination['requires_identity_level_2'])) {
+            return true;
+        }
+
+        $referenceProductId = (int) $this->cache->message('__reference_channel_product_id', '0');
+        if ($referenceProductId <= 0) {
+            return false;
+        }
+
+        foreach ((array) ($destination['product_ids'] ?? []) as $productId) {
+            if ((int) $productId === $referenceProductId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function destinationInCache(int $id): bool

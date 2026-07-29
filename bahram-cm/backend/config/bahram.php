@@ -95,6 +95,11 @@ return [
         'cancelled_purge_days' => (int) env('ORDER_CANCELLED_PURGE_DAYS', 7),
     ],
 
+    'telegram' => [
+        /** Site pay token TTL for bot checkout links (campaign / seminar / reference). */
+        'payment_link_ttl_minutes' => (int) env('TELEGRAM_PAYMENT_LINK_TTL_MINUTES', 30),
+    ],
+
     'chatbot' => [
         'retention_days' => (int) env('CHATBOT_RETENTION_DAYS', 60),
     ],

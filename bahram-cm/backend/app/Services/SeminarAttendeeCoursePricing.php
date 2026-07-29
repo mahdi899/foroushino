@@ -9,21 +9,10 @@ use App\Models\User;
 use App\Support\Mobile;
 
 /**
- * Campaign / reference-channel course: full list price vs seminar-attendee off.
+ * Seminar attendance helpers (reference-channel pricing lives in ReferenceChannelPricingService).
  */
 class SeminarAttendeeCoursePricing
 {
-    public const COURSE_SLUG = 'campaign-writing';
-
-    public const LIST_PRICE = 26_900_000;
-
-    public const SEMINAR_PRICE = 200_000;
-
-    public function appliesTo(Product $product): bool
-    {
-        return (string) $product->slug === self::COURSE_SLUG;
-    }
-
     public function userHasSeminar(?User $user, ?string $rawPhone = null): bool
     {
         $phone = Mobile::normalize((string) ($rawPhone ?? $user?->mobile ?? ''));
@@ -68,29 +57,19 @@ class SeminarAttendeeCoursePricing
     }
 
     /**
+     * Standard product list/sale price — no seminar-attendee override (that is reference-channel only).
+     *
      * @return array{amount: int, final_amount: int, seminar_off: bool}
      */
     public function quote(Product $product, ?User $user, ?string $rawPhone = null): array
     {
-        if (! $this->appliesTo($product)) {
-            $amount = (int) $product->price;
-            $final = (int) $product->effective_price;
-
-            return [
-                'amount' => $amount,
-                'final_amount' => $final,
-                'seminar_off' => false,
-            ];
-        }
-
-        $hasSeminar = $this->userHasSeminar($user, $rawPhone);
-        // Prefer live product.price so catalog / checkout / Telegram stay aligned.
-        $listPrice = (int) $product->price > 0 ? (int) $product->price : self::LIST_PRICE;
+        $amount = (int) $product->price;
+        $final = (int) $product->effective_price;
 
         return [
-            'amount' => $listPrice,
-            'final_amount' => $hasSeminar ? self::SEMINAR_PRICE : $listPrice,
-            'seminar_off' => $hasSeminar,
+            'amount' => $amount,
+            'final_amount' => $final,
+            'seminar_off' => false,
         ];
     }
 }

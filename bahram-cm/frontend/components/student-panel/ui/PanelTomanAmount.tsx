@@ -4,10 +4,13 @@ import { formatPanelFa } from '@/lib/persian';
 export function PanelTomanAmount({
   amount,
   size = 'md',
+  struck = false,
   className,
 }: {
   amount: number;
   size?: 'sm' | 'md';
+  /** Cross out the amount (compare-at / pre-discount price). */
+  struck?: boolean;
   className?: string;
 }) {
   return (
@@ -15,7 +18,10 @@ export function PanelTomanAmount({
       <span
         dir="ltr"
         className={cn(
-          'panel-amount font-bold text-text tabular-nums',
+          'panel-amount tabular-nums',
+          struck
+            ? 'font-medium text-text-muted line-through opacity-70'
+            : 'font-bold text-text',
           size === 'sm' ? 'text-sm' : 'text-xl sm:text-2xl',
         )}
       >
@@ -23,7 +29,9 @@ export function PanelTomanAmount({
       </span>
       <span
         className={cn(
-          'font-normal text-text-muted',
+          struck
+            ? 'font-normal text-text-muted line-through opacity-70'
+            : 'font-normal text-text-muted',
           size === 'sm' ? 'panel-text-caption' : 'panel-text-meta',
         )}
       >

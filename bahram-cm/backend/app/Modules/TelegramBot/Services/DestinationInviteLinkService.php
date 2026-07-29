@@ -68,25 +68,13 @@ class DestinationInviteLinkService
         }
 
         $synced = $this->freshSyncedMembership((int) $user->id, (int) $destination->id);
-        if ($synced === true) {
-            return [
-                'status' => 'member',
-                'invite_url' => null,
-                'mode' => $destination->usesPerUserInvites() ? 'per_user' : 'shared',
-            ];
-        }
+        $isMember = $synced === true
+            || ($synced === null
+                && $account !== null
+                && $this->isGroupMember($bot, $destination, (int) $account->telegram_user_id));
 
-        if ($synced === null
-            && $account !== null
-            && $this->isGroupMember($bot, $destination, (int) $account->telegram_user_id)
-        ) {
-            return [
-                'status' => 'member',
-                'invite_url' => null,
-                'mode' => $destination->usesPerUserInvites() ? 'per_user' : 'shared',
-            ];
-        }
-
+        // Always attach invite URL for entitled buyers so glass join buttons stay visible
+        // even when membership status is member / stale cache.
         $inviteUrl = $destination->usesPerUserInvites()
             ? $this->resolvePerUserInviteUrl($bot, $destination, $user, $account)
             : $this->ensureSharedJoinRequestUrl($bot, $destination);
@@ -96,7 +84,7 @@ class DestinationInviteLinkService
         }
 
         return [
-            'status' => 'invite',
+            'status' => $isMember ? 'member' : 'invite',
             'invite_url' => (string) $inviteUrl,
             'mode' => $destination->usesPerUserInvites() ? 'per_user' : 'shared',
         ];
@@ -109,8 +97,8 @@ class DestinationInviteLinkService
     ): ?string {
         $resolved = $this->resolveForAccount($bot, $destination, $account);
 
-        return $resolved && $resolved['status'] === 'invite'
-            ? $resolved['invite_url']
+        return $resolved && filled($resolved['invite_url'] ?? null)
+            ? (string) $resolved['invite_url']
             : null;
     }
 

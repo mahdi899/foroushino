@@ -82,18 +82,27 @@ class MainMenuKeyboard
 
     public function resolveAction(string $text, TelegramBot $bot): ?string
     {
-        $text = trim($text);
-        if ($text === '') {
+        $text = $this->normalizeButtonText($text);
+        if ($text === '' || $text === '—') {
             return null;
         }
+
+        $textCore = $this->coreLabel($text);
 
         foreach (self::ACTION_KEYS as $action => $key) {
             $current = $this->normalizeButtonText($this->messages->get($bot, $key));
             $default = $this->normalizeButtonText((string) (BotMessageCatalog::defaults()[$key]['body'] ?? ''));
             $legacy = self::LEGACY_ALIASES[$action] ?? [];
+            $candidates = array_merge([$current, $default], $legacy);
 
-            if ($text === $current || ($default !== '' && $text === $default) || in_array($text, $legacy, true)) {
-                return $action;
+            foreach ($candidates as $alias) {
+                $normalized = $this->normalizeButtonText((string) $alias);
+                if ($normalized === '' || $normalized === '—') {
+                    continue;
+                }
+                if ($text === $normalized || $textCore === $this->coreLabel($normalized)) {
+                    return $action;
+                }
             }
         }
 
@@ -257,7 +266,10 @@ class MainMenuKeyboard
     {
         $text = strip_tags($text);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Keep ZWJ (\u{200d}) — required for multi-person emoji like 👨‍👩‍👧‍👦.
+        $text = str_replace(["\u{200c}", "\u{feff}", 'ي', 'ك'], ['', '', 'ی', 'ک'], $text);
         $text = str_replace(["\r\n", "\r"], "\n", trim($text));
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
         $firstLine = trim(explode("\n", $text, 2)[0] ?? '');
         $firstLine = TelegramCustomEmoji::stripLeadingFallback($firstLine);
 
@@ -266,5 +278,14 @@ class MainMenuKeyboard
         }
 
         return $firstLine !== '' ? $firstLine : '—';
+    }
+
+    /** Compare menu taps by Persian label only (emoji / VS16 ignored). */
+    private function coreLabel(string $text): string
+    {
+        $core = preg_replace('/[\x{FE0F}\x{200D}\p{So}\p{Sk}]+/u', '', $text) ?? $text;
+        $core = preg_replace('/\s+/u', ' ', trim($core)) ?? trim($core);
+
+        return $core;
     }
 }

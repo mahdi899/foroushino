@@ -170,8 +170,16 @@ export default async function PurchasePage({
                       <div className="rounded-tile border border-emerald/25 bg-emerald/8 px-4 py-4 text-sm text-bone">
                         شما قبلاً این محصول را خریداری کرده‌اید.
                       </div>
-                      <LinkButton href="/panel" variant="primary" size="lg" withArrow className="w-full">
-                        مشاهده در پنل
+                      <LinkButton
+                        href={product.type === 'reference_channel' ? '/panel/reference-channel' : '/panel'}
+                        variant="primary"
+                        size="lg"
+                        withArrow
+                        className="w-full"
+                      >
+                        {product.type === 'reference_channel'
+                          ? 'ورود به کانال مرجع و ربات'
+                          : 'مشاهده در پنل'}
                       </LinkButton>
                     </div>
                   ) : seminarFull ? (

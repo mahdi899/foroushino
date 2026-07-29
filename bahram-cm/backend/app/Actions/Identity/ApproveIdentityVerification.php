@@ -70,6 +70,7 @@ class ApproveIdentityVerification
             $profile->fill([
                 'first_name' => $useRegistryNames ? $submission->registry_first_name : $submission->first_name,
                 'last_name' => $useRegistryNames ? $submission->registry_last_name : $submission->last_name,
+                'father_name' => filled($submission->registry_father_name) ? $submission->registry_father_name : null,
                 'national_code_encrypted' => $submission->national_code_encrypted,
                 'national_code_hash' => $submission->national_code_hash,
                 'date_of_birth' => $submission->date_of_birth,

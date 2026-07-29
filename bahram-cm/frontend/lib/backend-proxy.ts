@@ -33,6 +33,8 @@ const NEXT_API_HANDLERS = [
   /** Next route handlers attach X-Revalidate-Secret before calling Laravel. */
   "/api/captcha",
   "/api/chatbot",
+  /** Client IP / country — Next headers only, must not hit Laravel. */
+  "/api/geo",
 ];
 
 /** Browser calls `/api/captcha|chatbot/*`; Laravel serves `/api/v1/captcha|chatbot/*`. */

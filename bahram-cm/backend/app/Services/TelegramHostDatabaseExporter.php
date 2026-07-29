@@ -119,11 +119,13 @@ class TelegramHostDatabaseExporter
             $base = (int) ($seminar->price ?: $product?->price ?: 0);
             $saleRaw = $seminar->sale_price ?? $product?->sale_price;
             $sale = $saleRaw !== null ? (int) $saleRaw : null;
-            $lines[] = 'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, price, sale_price, photo_url, synced_at) VALUES ('
+            $lines[] = 'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, is_full, is_ended, slug, price, sale_price, photo_url, synced_at) VALUES ('
                 .(int) $seminar->id.', '.$this->sqlNullableInt($seminar->product_id).', '
                 .$this->sqlString((string) $seminar->title).', '
                 .$this->sqlString($seminar->date?->format('Y-m-d H:i:s')).', '
-                .$this->sqlString($seminar->location).', '.$this->sqlNullableInt($seminar->capacity).', '
+                .$this->sqlString($seminar->location).', '.$this->sqlNullableInt($seminar->remainingSeats()).', '
+                .($seminar->isFull() ? '1' : '0').', '.($seminar->isEnded() ? '1' : '0').', '
+                .$this->sqlString((string) ($seminar->slug ?? '')).', '
                 .$base.', '.$this->sqlNullableInt($sale).', '.$this->sqlString($photo).', '.$this->sqlString($now).');';
         }
         $lines[] = '';

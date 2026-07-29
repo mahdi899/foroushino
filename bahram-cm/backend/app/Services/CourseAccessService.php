@@ -136,7 +136,7 @@ class CourseAccessService
             ->values();
     }
 
-  public function resolveLicense(User $user, Product $product, ?CourseAccess $access = null, ?Order $order = null): ?SpotplayerLicense
+    public function resolveLicense(User $user, Product $product, ?CourseAccess $access = null, ?Order $order = null): ?SpotplayerLicense
     {
         if ($access?->relationLoaded('spotplayerLicense') && $access->spotplayerLicense) {
             return $access->spotplayerLicense;
@@ -160,22 +160,36 @@ class CourseAccessService
             }
         }
 
-        return SpotplayerLicense::query()
+        return $this->latestLicenseForViewer($user, $product);
+    }
+
+    public function activeAccessForUser(User $user, Product $product): ?CourseAccess
+    {
+        return CourseAccess::query()
             ->where('user_id', $user->id)
+            ->where('product_id', $product->id)
+            ->where('status', CourseAccessStatus::Active)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /** Latest SpotPlayer license for the viewer (own rows + orders on their mobile). */
+    public function latestLicenseForViewer(User $user, Product $product): ?SpotplayerLicense
+    {
+        $mobile = Mobile::normalize($user->mobile);
+
+        return SpotplayerLicense::query()
             ->where('product_id', $product->id)
             ->where('status', SpotplayerLicenseStatus::Active)
             ->whereNotNull('license_key')
+            ->where(function ($query) use ($user, $mobile) {
+                $query->where('user_id', $user->id);
+                if ($mobile) {
+                    $query->orWhereHas('order', fn ($order) => $order->where('customer_phone', $mobile));
+                }
+            })
             ->orderByDesc('id')
-            ->first()
-            ?? SpotplayerLicense::query()
-                ->where('product_id', $product->id)
-                ->where('status', SpotplayerLicenseStatus::Active)
-                ->whereNotNull('license_key')
-                ->when($order?->customer_phone, function ($query, $phone) {
-                    $query->whereHas('order', fn ($order) => $order->where('customer_phone', $phone));
-                })
-                ->orderByDesc('id')
-                ->first();
+            ->first();
     }
 
     /**

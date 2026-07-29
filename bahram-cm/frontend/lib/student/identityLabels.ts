@@ -57,3 +57,19 @@ export function identityStatusLabel(status?: string | null): string {
   if (!status) return IDENTITY_STATUS_FA.not_started;
   return IDENTITY_STATUS_FA[status] ?? status;
 }
+
+/** Admin stores reason codes; always show Persian to the student. */
+export const IDENTITY_CORRECTION_FA: Record<string, string> = {
+  national_card_unreadable: 'تصویر کارت ملی خوانا نیست',
+  national_card_not_yours: 'کارت ملی متعلق به شما نیست',
+  selfie_unsuitable: 'ویدیوی سلفی مناسب نیست',
+  info_mismatch: 'اطلاعات با مدارک مطابقت ندارد',
+  mobile_national_mismatch: 'شماره موبایل با کد ملی مطابقت ندارد',
+  image_incomplete: 'تصویر ناقص است',
+  other: 'سایر',
+};
+
+export function identityCorrectionLabel(item: string): string {
+  const key = item.trim();
+  return IDENTITY_CORRECTION_FA[key] ?? key;
+}

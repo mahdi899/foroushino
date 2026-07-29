@@ -174,6 +174,35 @@ class ReferenceChannelPurchaseTest extends TestCase
         $this->assertSame([], $response->json('data'));
     }
 
+    public function test_student_offer_hides_channel_after_paid_order_by_phone(): void
+    {
+        $user = User::factory()->create(['mobile' => '09121110008']);
+        $channel = $this->makeChannel(1_000_000);
+
+        Order::create([
+            'user_id' => null,
+            'order_number' => 'BC-TEST-REF-PHONE',
+            'product_id' => $channel->product_id,
+            'customer_name' => $user->name,
+            'customer_phone' => $user->mobile,
+            'amount' => 1_000_000,
+            'discount_amount' => 0,
+            'final_amount' => 1_000_000,
+            'status' => 'paid',
+            'payment_status' => 'paid',
+        ]);
+
+        $offer = $this->actingAs($user)->getJson('/api/v1/student/reference-channels/offer');
+        $offer->assertOk();
+        $this->assertSame([], $offer->json('data'));
+
+        $owned = $this->actingAs($user)->getJson('/api/v1/student/reference-channels');
+        $owned->assertOk();
+        $this->assertCount(1, $owned->json('data'));
+        $this->assertTrue($owned->json('data.0.owned'));
+        $this->assertNotEmpty($owned->json('data.0.bot_start_url'));
+    }
+
     private function makeChannel(int $price): ReferenceChannel
     {
         $product = Product::create([

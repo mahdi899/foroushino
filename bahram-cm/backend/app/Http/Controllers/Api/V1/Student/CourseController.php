@@ -57,11 +57,12 @@ class CourseController extends Controller
         if (! $courseAccess->isActive() || ! $license) {
             return ApiResponse::success([
                 'available' => false,
+                'product_title' => $product->title,
                 'message' => 'دسترسی پخش برای این دوره فعال نیست.',
             ]);
         }
 
-        $licenseUrl = $license->license_url;
+        $licenseUrl = filled($license->license_url) ? (string) $license->license_url : null;
         $scriptUrl = $licenseUrl ? $this->licenseScriptUrl($licenseUrl) : null;
         $spotplayerCourseId = $request->string('spotplayer_course_id')->trim()->toString()
             ?: $this->primaryCourseId($license->spotplayer_course_id ?: $product->spotplayer_course_id);
@@ -114,8 +115,7 @@ class CourseController extends Controller
                 continue;
             }
 
-            $access = $license->courseAccess
-                ?? $accesses->get($license->product_id);
+            $access = $this->resolveLicenseListAccess($user, $license, $accesses);
 
             $items[] = $this->formatLicenseItem($access, $product, $license, $altResolver);
         }
@@ -193,6 +193,32 @@ class CourseController extends Controller
         }
 
         return $product->type === ProductType::MiniCourse->value;
+    }
+
+    /** Prefer the signed-in user's access — licenses matched by order phone may point at another account. */
+    private function resolveLicenseListAccess(
+        User $user,
+        SpotplayerLicense $license,
+        \Illuminate\Support\Collection $accessesByProduct,
+    ): ?CourseAccess {
+        $viewerAccess = $accessesByProduct->get($license->product_id);
+        if ($viewerAccess instanceof CourseAccess) {
+            return $viewerAccess;
+        }
+
+        $product = $license->product;
+        if ($product instanceof Product) {
+            $resolved = app(CourseAccessService::class)->activeAccessForUser($user, $product);
+            if ($resolved instanceof CourseAccess) {
+                return $resolved;
+            }
+        }
+
+        $linked = $license->courseAccess;
+
+        return $linked instanceof CourseAccess && (int) $linked->user_id === (int) $user->id
+            ? $linked
+            : null;
     }
 
     /** @return list<array<string, mixed>> */
@@ -369,12 +395,24 @@ class CourseController extends Controller
         ];
     }
 
-    private function licenseScriptUrl(string $licenseUrl): string
+    private function licenseScriptUrl(string $licenseUrl): ?string
     {
+        $licenseUrl = trim($licenseUrl);
+        if ($licenseUrl === '') {
+            return null;
+        }
+
         $parts = parse_url($licenseUrl);
+        if ($parts === false) {
+            return null;
+        }
+
         $scheme = $parts['scheme'] ?? 'https';
         $host = $parts['host'] ?? 'dl.spotplayer.ir';
         $path = $parts['path'] ?? $licenseUrl;
+        if (! str_starts_with($path, '/')) {
+            $path = '/'.ltrim($path, '/');
+        }
 
         return "{$scheme}://{$host}{$path}?f=js";
     }

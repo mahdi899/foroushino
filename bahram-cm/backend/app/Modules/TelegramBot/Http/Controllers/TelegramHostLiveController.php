@@ -540,6 +540,18 @@ class TelegramHostLiveController
         return $this->startCheckout($request, 'c2c');
     }
 
+    public function checkoutRevokeOpen(Request $request): JsonResponse
+    {
+        $account = $this->resolveAccount($request);
+        if ($account === null) {
+            return $this->jsonResponse(['ok' => true, 'revoked_links' => 0, 'cancelled_orders' => 0]);
+        }
+
+        $result = $this->checkout->revokeOpenPaymentLinks($account);
+
+        return $this->jsonResponse(array_merge(['ok' => true], $result));
+    }
+
     public function userProfile(Request $request): JsonResponse
     {
         $account = $this->resolveAccount($request);
@@ -604,8 +616,13 @@ class TelegramHostLiveController
         }
 
         $product->loadMissing('seminar');
-        if ($product->seminar && $product->seminar->isFull()) {
-            return $this->jsonResponse(['ok' => false, 'message' => 'ظرفیت سمینار تکمیل شده است.'], 409);
+        if ($product->seminar && ($product->seminar->isEnded() || $product->seminar->isFull())) {
+            $status = $product->seminar->isEnded() ? 'برگزار شده' : 'تکمیل ظرفیت شده';
+
+            return $this->jsonResponse([
+                'ok' => false,
+                'message' => "سمینار «{$product->seminar->title}» {$status}. منتظر سمینارهای آینده باشید.",
+            ], 409);
         }
 
         if ($this->access->owns($account, $product)) {

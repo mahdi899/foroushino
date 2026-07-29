@@ -65,13 +65,21 @@ final class LiveClient
     /** @return array<string, mixed> */
     public function checkoutZarinpal(int $telegramUserId, int $productId, ?string $coupon = null): array
     {
-        // Iran creates the order + calls Zarinpal — keep headroom so a slow
-        // gateway round-trip is not misread as "payment server offline".
+        // Iran creates the order + payment token — keep headroom so a slow
+        // round-trip is not misread as "payment server offline".
         return $this->live('checkout/zarinpal/start', array_filter([
             'telegram_user_id' => $telegramUserId,
             'product_id' => $productId,
             'coupon' => $coupon,
         ]), 28);
+    }
+
+    /** @return array<string, mixed> */
+    public function checkoutRevokeOpen(int $telegramUserId): array
+    {
+        return $this->live('checkout/revoke-open', [
+            'telegram_user_id' => $telegramUserId,
+        ], 8);
     }
 
     /** @return array<string, mixed> */

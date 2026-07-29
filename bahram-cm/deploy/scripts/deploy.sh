@@ -51,8 +51,11 @@ if [[ -f "$APP_ROOT/deploy/php-fpm/www.conf.snippet" ]]; then
   WWW_CONF=/etc/php/8.4/fpm/pool.d/www.conf
   if [[ -f "$WWW_CONF" ]]; then
     while IFS= read -r line || [[ -n "$line" ]]; do
-      [[ "$line" =~ ^[[:space:]]*; ]] && continue
-      [[ "$line" =~ ^[[:space:]]*# ]] && continue
+      # Quote patterns: bare `;` in =~ regex is a statement terminator in bash.
+      comment_semi=$'^[[:space:]]*;'
+      comment_hash=$'^[[:space:]]*#'
+      [[ "$line" =~ $comment_semi ]] && continue
+      [[ "$line" =~ $comment_hash ]] && continue
       [[ -z "${line// }" ]] && continue
       key="${line%%=*}"; key="$(echo "$key" | xargs)"
       val="${line#*=}"; val="$(echo "$val" | xargs)"

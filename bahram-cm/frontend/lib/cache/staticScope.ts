@@ -38,6 +38,7 @@ export const DYNAMIC_ROUTE_PREFIXES = [
   '/api/captcha',
   '/api/chatbot',
   '/api/revalidate',
+  '/api/geo',
 ] as const;
 
 export function isStaticContentPath(pathname: string): boolean {

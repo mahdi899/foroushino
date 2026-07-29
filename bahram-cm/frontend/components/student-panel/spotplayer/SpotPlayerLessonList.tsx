@@ -23,6 +23,7 @@ interface Props {
   activeItemId?: string | number | null;
   onSelectItem: (id: string | number) => void;
   onLessonsReady?: (firstLessonId: string | number) => void;
+  onScriptFailed?: () => void;
 }
 
 function completedStorageKey(accessId: string) {
@@ -148,6 +149,7 @@ export function SpotPlayerLessonList({
   activeItemId,
   onSelectItem,
   onLessonsReady,
+  onScriptFailed,
 }: Props) {
   const [lessons, setLessons] = useState<LessonRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -204,6 +206,7 @@ export function SpotPlayerLessonList({
       }
       if (attempts >= 40) {
         setLoading(false);
+        onScriptFailed?.();
         window.clearInterval(timer);
       }
     }, 250);
@@ -221,7 +224,10 @@ export function SpotPlayerLessonList({
           setScriptReady(true);
           syncLessons();
         }}
-        onError={() => setLoading(false)}
+        onError={() => {
+          setLoading(false);
+          onScriptFailed?.();
+        }}
       />
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 className="panel-card-title flex items-center gap-2">

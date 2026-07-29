@@ -18,6 +18,7 @@ class UserIdentityProfile extends Model
         'uuid',
         'first_name',
         'last_name',
+        'father_name',
         'national_code_encrypted',
         'national_code_hash',
         'date_of_birth',

@@ -126,9 +126,6 @@ class TelegramReferenceChannelPresenter
             foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
                 $keyboard[] = $row;
             }
-            foreach (TelegramSiteUrl::urlKeyboardRow('پنل کانال مرجع', TelegramSiteUrl::page('panel/reference-channel'), 'primary', 'channel') as $row) {
-                $keyboard[] = $row;
-            }
 
             return [
                 'text' => TelegramCustomEmoji::tag('lock').' احراز هویت سطح ۲ لازم است تا لینک عضویت گروه مرجع فعال شود.',
@@ -153,16 +150,15 @@ class TelegramReferenceChannelPresenter
                 $lines[] = TelegramCustomEmoji::tag('check').' شما عضو گروه مرجع هستید.';
             } elseif (filled($inviteUrl)) {
                 $lines[] = TelegramCustomEmoji::tag('pin').' لینک عضویت اختصاصی شما آماده است — فقط با همین اکانت درخواست بدهید.';
-                foreach (TelegramSiteUrl::urlKeyboardRow('عضویت در گروه مرجع', (string) $inviteUrl, 'success', 'channel') as $row) {
-                    $keyboard[] = $row;
-                }
             } else {
                 $lines[] = 'لینک عضویت در حال آماده‌سازی است. چند لحظه بعد دوباره «کانال مرجع» را بزنید.';
             }
-        }
 
-        foreach (TelegramSiteUrl::urlKeyboardRow('پنل کانال مرجع', TelegramSiteUrl::page('panel/reference-channel'), 'primary', 'channel') as $row) {
-            $keyboard[] = $row;
+            if (filled($inviteUrl)) {
+                foreach (TelegramSiteUrl::urlKeyboardRow('عضویت در گروه مرجع', (string) $inviteUrl, 'success', 'channel') as $row) {
+                    $keyboard[] = $row;
+                }
+            }
         }
 
         return [

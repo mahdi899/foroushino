@@ -72,23 +72,31 @@ class ApiIrShahkarProvider implements
         $path = (string) ($config->settings['shahkar_path'] ?? '/api/sw1/ShahkarLite');
 
         try {
-            // Same shape as s.api.ir docs: POST + Authorization: Bearer <token>
-            // (Laravel withToken() adds the Bearer prefix — store raw token only in admin).
+            // Connection probe ONLY — synthetic sample payload from API.ir docs.
+            // Real identity verification always posts the student's own nationalCode + mobile.
             $response = $this->client($config)->post($baseUrl.$path, [
                 'nationalCode' => '0010007700',
                 'mobile' => '09120000000',
             ]);
 
             if (in_array($response->status(), [401, 403], true)) {
-                return ProviderConnectionResult::invalidCredentials('توکن API.ir نامعتبر است (Authorization: Bearer).');
+                return ProviderConnectionResult::invalidCredentials(
+                    'توکن API.ir نامعتبر است (Authorization: Bearer). فقط توکن خام را ذخیره کنید، نه کلمه Bearer.'
+                );
             }
 
             // Any non-auth HTTP response means TLS + Bearer reached the API.
-            return ProviderConnectionResult::connected('سرویس API.ir در دسترس است (هدر Bearer ارسال شد).');
-        } catch (ConnectionException) {
-            return ProviderConnectionResult::providerUnavailable(
-                'ارتباط با سرویس API.ir برقرار نشد. سرور ایران باید به https://s.api.ir دسترسی داشته باشد (فیلتر/فایروال). مشکل از نوشتن یا ننوشتن کلمه Bearer در فیلد توکن نیست.'
+            return ProviderConnectionResult::connected(
+                'سرویس API.ir در دسترس است. این تست فقط اتصال را با دادهٔ نمونه بررسی می‌کند؛ احراز هویت واقعی با موبایل و کدملی خود کاربر انجام می‌شود.'
             );
+        } catch (ConnectionException $e) {
+            $detail = trim($e->getMessage());
+            $hint = 'ارتباط با سرویس API.ir برقرار نشد. سرور باید به https://s.api.ir دسترسی HTTPS داشته باشد (DNS/فایروال/فیلتر).';
+            if ($detail !== '') {
+                $hint .= ' جزئیات: '.$detail;
+            }
+
+            return ProviderConnectionResult::providerUnavailable($hint);
         } catch (Throwable $e) {
             return ProviderConnectionResult::providerUnavailable($e->getMessage() ?: 'خطای ناشناخته در تست اتصال.');
         }
@@ -370,8 +378,32 @@ class ApiIrShahkarProvider implements
     private function baseUrl(IdentityProviderConfig $config): string
     {
         $configured = trim((string) ($config->settings['base_url'] ?? ''));
+        $normalized = $this->normalizeBaseUrl($configured);
 
-        return rtrim($configured !== '' ? $configured : self::DEFAULT_BASE_URL, '/');
+        // Heal common typos persisted in admin settings (e.g. s.apif.ir).
+        if ($configured !== '' && $configured !== $normalized) {
+            $settings = $config->settings ?? [];
+            $settings['base_url'] = $normalized;
+            $config->settings = $settings;
+            $config->saveQuietly();
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeBaseUrl(string $configured): string
+    {
+        $url = rtrim($configured !== '' ? $configured : self::DEFAULT_BASE_URL, '/');
+        $url = preg_replace('#^http://#i', 'https://', $url) ?? $url;
+        // Typo seen in production: s.apif.ir instead of s.api.ir
+        $url = str_ireplace(['s.apif.ir', '://apif.ir'], ['s.api.ir', '://api.ir'], $url);
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (! is_string($host) || ! preg_match('/(^|\.)api\.ir$/i', $host)) {
+            return self::DEFAULT_BASE_URL;
+        }
+
+        return rtrim($url, '/');
     }
 
     /**

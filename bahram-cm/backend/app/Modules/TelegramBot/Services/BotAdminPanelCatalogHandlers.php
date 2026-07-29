@@ -80,12 +80,14 @@ trait BotAdminPanelCatalogHandlers
         $status = $channel->status === 'published' ? 'منتشر شده' : 'پیش‌نویس';
         $tg = ($channel->show_in_telegram ?? true) ? 'بله' : 'خیر';
 
-        $text = "📡 <b>کانال مرجع</b>\n\n"
+        $text = "🛠 <b>ویرایش کانال مرجع</b>\n"
+            ."<i>پنل ادمین — این متن را کاربران عادی نمی‌بینند.</i>\n"
+            ."──────────────\n"
             .'عنوان: '.TelegramHtml::escape($channel->title)."\n"
             .'قیمت: '.$this->formatToman((int) $channel->price)."\n"
             ."وضعیت: {$status}\n"
             ."نمایش در تلگرام: {$tg}\n\n"
-            .'از دکمه‌ها برای ویرایش استفاده کنید.';
+            .'از دکمه‌های زیر برای ویرایش محتوا/قیمت استفاده کنید.';
 
         $keyboard = [
             [
@@ -239,9 +241,11 @@ trait BotAdminPanelCatalogHandlers
         $this->assertCatalogEditor($account);
         $products = $this->adminCourseProducts();
 
-        $text = "🎓 <b>دوره‌ها</b>\n\n"
+        $text = "🛠 <b>ویرایش دوره‌ها</b>\n"
+            ."<i>پنل ادمین — لیست خرید کاربران جداست.</i>\n"
+            ."──────────────\n"
             ."یک دوره را برای ویرایش قیمت، عنوان، کاور و تنظیمات تلگرام انتخاب کنید.\n"
-            .'پیام‌های مربوط به لیست دوره: از «پیام‌ها → خرید».';
+            .'پیام‌های لیست دوره: «پیام‌ها → خرید».';
 
         $keyboard = [];
         foreach ($products as $product) {
@@ -466,7 +470,9 @@ trait BotAdminPanelCatalogHandlers
         $this->assertCatalogEditor($account);
         $seminars = $this->adminSeminars();
 
-        $text = "🎤 <b>سمینارها</b>\n\n"
+        $text = "🛠 <b>ویرایش سمینارها</b>\n"
+            ."<i>پنل ادمین — کاربران از منوی اصلی سمینارها را می‌بینند.</i>\n"
+            ."──────────────\n"
             ."قیمت، ظرفیت، مکان، تاریخ و تخفیف کانال مرجع را از اینجا ویرایش کنید.";
 
         $keyboard = [];

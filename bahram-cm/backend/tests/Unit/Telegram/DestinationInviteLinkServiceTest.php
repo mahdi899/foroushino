@@ -52,7 +52,7 @@ class DestinationInviteLinkServiceTest extends TestCase
         $this->assertSame('https://t.me/+shared', $url);
     }
 
-    public function test_member_does_not_receive_invite_link(): void
+    public function test_member_still_receives_invite_link(): void
     {
         [$bot, $account, $destination] = $this->seedDestination('per_user');
         $fake = new FakeTelegramBotClient;
@@ -63,7 +63,7 @@ class DestinationInviteLinkServiceTest extends TestCase
 
         $this->assertNotNull($resolved);
         $this->assertSame('member', $resolved['status']);
-        $this->assertNull($resolved['invite_url']);
+        $this->assertSame('https://t.me/+fake', $resolved['invite_url']);
     }
 
     public function test_revokes_per_user_link_after_join(): void
