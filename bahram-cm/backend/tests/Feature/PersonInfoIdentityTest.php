@@ -287,7 +287,7 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertNotEmpty($submission->mobile_match_message);
     }
 
-    public function test_person_info_birth_date_mismatch_rejects_without_expert_queue(): void
+    public function test_person_info_birth_date_mismatch_stays_in_expert_queue(): void
     {
         $this->bindProviders(
             new PersonInfoResult(
@@ -299,29 +299,19 @@ class PersonInfoIdentityTest extends TestCase
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110010']);
 
-        try {
-            $this->submitIdentity($student, [
-                'first_name' => 'علی',
-                'last_name' => 'تستی',
-            ]);
-            $this->fail('Expected ValidationException for birth date mismatch.');
-        } catch (ValidationException $e) {
-            $this->assertContains(
-                'اطلاعاتی برای این کد ملی یافت نشد.',
-                $e->errors()['identity'] ?? [],
-            );
-        }
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
 
-        $submission = IdentityVerificationSubmission::query()->where('user_id', $student->id)->latest('id')->first();
-        $this->assertNotNull($submission);
         $this->assertSame('matched', $submission->mobile_match_status);
         $this->assertSame('mismatched', $submission->registry_match_status);
         $this->assertNull($submission->registry_first_name);
         $this->assertSame('اطلاعاتی برای این کد ملی یافت نشد.', $submission->registry_message);
-        $this->assertSame(IdentityVerificationStatus::Rejected, $submission->status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
 
         $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
-        $this->assertSame(IdentityVerificationStatus::Rejected, $profile->identity_status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $profile->identity_status);
     }
 
     public function test_person_info_skipped_when_shahkar_unavailable(): void
