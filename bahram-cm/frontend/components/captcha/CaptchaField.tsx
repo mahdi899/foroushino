@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useImperativeHandle, useRef, useState, forwardRef } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { fetchMathCaptcha, fetchCaptchaPublicConfig } from '@/lib/captcha/api';
 import {
   INVISIBLE_TOKEN_REFRESH_MS,
@@ -192,6 +192,9 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
   const [mathAnswer, setMathAnswer] = useState('');
   const [mathLoading, setMathLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** Admin login shows a visible Cloudflare widget; site forms stay invisible. */
+  const visibleTurnstile = variant === 'admin';
+  const [turnstileVisibleMount, setTurnstileVisibleMount] = useState(false);
 
   mathAnswerRef.current = mathAnswer;
   mathIdRef.current = mathId;
@@ -321,35 +324,68 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
 
     removeTurnstileWidget();
 
+    if (visibleTurnstile) {
+      setTurnstileVisibleMount(true);
+      // Let the visible container paint before Turnstile measures it.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+    } else {
+      setTurnstileVisibleMount(false);
+    }
+
+    if (!turnstileContainerRef.current) {
+      throw new Error('Turnstile container missing');
+    }
+
     const token = await new Promise<string>((resolve, reject) => {
-      const timeout = window.setTimeout(() => reject(new Error('Turnstile timeout')), PROVIDER_LOAD_TIMEOUT_MS);
+      // Invisible must resolve quickly; visible waits for the user — no short timeout.
+      const timeout = visibleTurnstile
+        ? null
+        : window.setTimeout(() => reject(new Error('Turnstile timeout')), PROVIDER_LOAD_TIMEOUT_MS);
 
       turnstileWidgetRef.current = window.turnstile!.render(turnstileContainerRef.current!, {
         sitekey: resolvedTurnstileSiteKey,
-        size: 'invisible',
+        size: visibleTurnstile ? 'normal' : 'invisible',
+        theme: 'auto',
         callback: (value) => {
-          window.clearTimeout(timeout);
+          if (timeout !== null) window.clearTimeout(timeout);
           resolve(value);
         },
         'error-callback': () => {
-          window.clearTimeout(timeout);
+          if (timeout !== null) window.clearTimeout(timeout);
           reject(new Error('Turnstile error'));
         },
         'expired-callback': () => {
-          window.clearTimeout(timeout);
+          if (timeout !== null) window.clearTimeout(timeout);
+          if (visibleTurnstile) {
+            notifyReady(false);
+            notifyPayload(null);
+            return;
+          }
           reject(new Error('Turnstile expired'));
         },
       });
 
-      window.turnstile!.execute(turnstileWidgetRef.current);
+      if (!visibleTurnstile) {
+        window.turnstile!.execute(turnstileWidgetRef.current);
+      }
     });
 
     if (!token) {
       throw new Error('Turnstile token empty');
     }
 
+    setTurnstileVisibleMount(false);
     applyInvisibleToken('turnstile', token);
-  }, [applyInvisibleToken, removeTurnstileWidget, resolvedTurnstileSiteKey]);
+  }, [
+    applyInvisibleToken,
+    notifyPayload,
+    notifyReady,
+    removeTurnstileWidget,
+    resolvedTurnstileSiteKey,
+    visibleTurnstile,
+  ]);
 
   const startRecaptcha = useCallback(async () => {
     if (!isRecaptchaConfigured(resolvedRecaptchaSiteKey)) {
@@ -403,6 +439,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     const gen = ++chainGenRef.current;
     setMode('loading');
     setLoadError(null);
+    setTurnstileVisibleMount(false);
     notifyReady(false);
     notifyPayload(null);
     clearRefreshTimer();
@@ -420,14 +457,18 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
       try {
         await startTurnstile();
         if (gen !== chainGenRef.current) return;
-        scheduleTokenRefresh(async () => {
-          removeTurnstileWidget();
-          await startTurnstile();
-        });
+        // Visible admin widgets re-prompt the user on expiry; don't auto-refresh in background.
+        if (!visibleTurnstile) {
+          scheduleTokenRefresh(async () => {
+            removeTurnstileWidget();
+            await startTurnstile();
+          });
+        }
         return;
       } catch {
         if (gen !== chainGenRef.current) return;
         removeTurnstileWidget();
+        setTurnstileVisibleMount(false);
       }
     }
 
@@ -455,6 +496,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     scheduleTokenRefresh,
     startRecaptcha,
     startTurnstile,
+    visibleTurnstile,
   ]);
 
   const startCaptchaChainRef = useRef(startCaptchaChain);
@@ -466,6 +508,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     return () => {
       clearRefreshTimer();
       removeTurnstileWidget();
+      setTurnstileVisibleMount(false);
       chainGenRef.current += 1;
     };
   }, [active, clearRefreshTimer, removeTurnstileWidget]);
@@ -507,7 +550,8 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
   const invisibleCaptcha =
     mode === 'turnstile' ||
     mode === 'recaptcha' ||
-    (mode === 'loading' && invisibleProvider && !mathOnly);
+    (mode === 'loading' && invisibleProvider && !mathOnly && !turnstileVisibleMount);
+  const providerVerified = mode === 'turnstile' || mode === 'recaptcha';
 
   return (
     <div
@@ -525,7 +569,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
       )}
       aria-label={pillEmbed ? 'تأیید امنیتی' : undefined}
     >
-      {mode === 'loading' && !mathOnly && invisibleCaptcha && (
+      {mode === 'loading' && !mathOnly && invisibleCaptcha && !turnstileVisibleMount && (
         <div className={cn('flex items-center gap-2 text-text-muted', compact && inline ? 'text-[11px]' : 'text-small')}>
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
           {compact && inline ? '…' : 'در حال تأیید امنیتی...'}
@@ -534,6 +578,13 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
 
       {mode === 'loading' && mathOnly && (
         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-mist" aria-hidden />
+      )}
+
+      {providerVerified && (compact || adminInline) && (
+        <div className="flex items-center gap-1.5 text-success text-[12px] font-medium">
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+          <span>{mode === 'turnstile' ? 'تأیید Cloudflare انجام شد' : 'تأیید امنیتی انجام شد'}</span>
+        </div>
       )}
 
       {mode === 'math' && (
@@ -647,7 +698,15 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
         </div>
       )}
 
-      <div ref={turnstileContainerRef} className="hidden" aria-hidden="true" />
+      <div
+        ref={turnstileContainerRef}
+        className={cn(
+          turnstileVisibleMount && mode === 'loading'
+            ? 'min-h-[65px] w-full overflow-visible'
+            : 'hidden',
+        )}
+        aria-hidden={!turnstileVisibleMount}
+      />
 
       {loadError && mode === 'math' && (
         <p className={cn('text-gold', siteInline || compact || inline ? 'text-[10px]' : 'mt-2 text-small')}>{loadError}</p>
