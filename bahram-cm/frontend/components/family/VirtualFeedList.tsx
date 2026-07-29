@@ -86,7 +86,7 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
       if (instance.isScrolling) return false;
       // Scrolling toward older history (list start) — never yank the viewport.
       if (instance.scrollDirection === 'backward') return false;
-      return item.start < instance.getScrollOffset();
+      return item.start < (instance.scrollOffset ?? 0);
     };
   }, [virtualizer]);
 
