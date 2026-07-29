@@ -110,7 +110,8 @@ try {
 
     $mainMenu = new MainMenu($cache, $accounts);
     $pendingMobileAccess = new PendingMobileAccess($pdo);
-    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $accountSync, $pendingMobileAccess);
+    $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
+    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $pendingMobileAccess);
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview);
@@ -214,6 +215,12 @@ try {
         (new \TelegramHost\Queue\BackgroundMembershipSync($membershipSync, $liveClient))->drain();
     } catch (\Throwable $e) {
         error_log('[telegram-host] membership sync: '.$e->getMessage());
+    }
+
+    try {
+        (new \TelegramHost\Queue\BackgroundRegistrationSync($registrationQueue, $sync, $accounts))->drain();
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] registration sync: '.$e->getMessage());
     }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());

@@ -116,6 +116,18 @@ CREATE TABLE IF NOT EXISTS pending_ticket_sync (
     INDEX idx_pending_ticket_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS pending_registration_sync (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    telegram_user_id BIGINT NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uniq_pending_registration_user (telegram_user_id),
+    INDEX idx_pending_registration_updated (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS discount_codes_cache (
     code VARCHAR(64) NOT NULL PRIMARY KEY,
     discount_type VARCHAR(32) NOT NULL DEFAULT 'percent',

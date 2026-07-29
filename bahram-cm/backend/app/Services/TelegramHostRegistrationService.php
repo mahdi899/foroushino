@@ -181,10 +181,6 @@ class TelegramHostRegistrationService
         $account = $this->accountLinks->findOrCreateAccount($bot, $telegramUserId);
         $conversation = $this->conversations->forAccount($account);
 
-        if ($conversation->state !== ConversationState::WaitingForName) {
-            return $this->ok([], $conversation, $account);
-        }
-
         if (! $this->displayNameValidator->validate($name)) {
             return $this->ok([
                 $this->reply('نام وارد شده معتبر نیست. لطفاً فقط حروف فارسی یا انگلیسی وارد کنید (۲ تا ۶۰ کاراکتر).'),
@@ -202,9 +198,153 @@ class TelegramHostRegistrationService
             return $this->askPhone($bot, $account, $conversation, 'ابتدا شماره موبایل را ارسال کنید:');
         }
 
+        if ($conversation->state !== ConversationState::WaitingForName) {
+            if ($account->isLinked() && $account->hasVerifiedMobile()) {
+                return $this->verifiedMenu($bot, $account->fresh());
+            }
+
+            // Host finished locally while Iran never saw WaitingForName — proceed idempotently.
+            $account->update(['mobile' => $normalizedMobile]);
+            $this->conversations->transition($conversation, ConversationState::WaitingForName, [
+                'mobile' => $normalizedMobile,
+            ]);
+            $conversation->refresh();
+        }
+
         $account->update(['display_name' => $normalizedName, 'mobile' => $normalizedMobile]);
 
         return $this->completeRegistration($bot, $account->fresh(), $conversation);
+    }
+
+    /**
+     * Idempotent background reconcile from the external host (no Telegram replies).
+     *
+     * @return array<string, mixed>
+     */
+    public function upsertRegistration(
+        TelegramBot $bot,
+        int $telegramUserId,
+        string $phone,
+        ?string $displayName,
+        int $contactUserId = 0,
+    ): array {
+        $account = $this->accountLinks->findOrCreateAccount($bot, $telegramUserId);
+        $conversation = $this->conversations->forAccount($account);
+
+        if ($account->isLinked() && $account->hasVerifiedMobile()) {
+            $fresh = $account->fresh(['user', 'bot']);
+
+            return [
+                'ok' => true,
+                'account' => $this->snapshots->accountPayload($fresh),
+                'conversation' => [
+                    'state' => ConversationState::Idle->value,
+                    'context' => is_array($conversation->context) ? $conversation->context : [],
+                ],
+            ];
+        }
+
+        $displayName = is_string($displayName) ? trim($displayName) : '';
+
+        if ($displayName !== '') {
+            if (! $this->displayNameValidator->validate($displayName)) {
+                return ['ok' => false, 'message' => 'نام نامعتبر است.'];
+            }
+
+            $normalizedName = $this->displayNameValidator->normalize($displayName);
+
+            if (trim($phone) !== '') {
+                $contactResult = $this->shareContact($bot, $telegramUserId, $phone, $contactUserId);
+                if (empty($contactResult['ok'])) {
+                    return [
+                        'ok' => false,
+                        'message' => (string) ($contactResult['message'] ?? 'ثبت شماره ناموفق بود.'),
+                    ];
+                }
+                $account = $account->fresh() ?? $account;
+                $conversation = $this->conversations->forAccount($account);
+            }
+
+            $mobile = (string) ($account->mobile ?: data_get($conversation->context, 'mobile', ''));
+            $normalizedMobile = $this->mobileNormalizer->normalize(
+                $mobile !== '' ? $mobile : $phone,
+                $bot->featureEnabled(BotFeatureFlag::IranMobileOnly),
+            );
+
+            if ($normalizedMobile === null) {
+                return ['ok' => false, 'message' => 'شماره موبایل نامعتبر است.'];
+            }
+
+            if ($conversation->state !== ConversationState::WaitingForName) {
+                $account->update(['mobile' => $normalizedMobile]);
+                $this->conversations->transition($conversation, ConversationState::WaitingForName, [
+                    'mobile' => $normalizedMobile,
+                ]);
+                $conversation->refresh();
+            }
+
+            $account->update(['display_name' => $normalizedName, 'mobile' => $normalizedMobile]);
+            $result = $this->completeRegistration($bot, $account->fresh(), $conversation, []);
+
+            return [
+                'ok' => true,
+                'account' => $result['account'] ?? $this->snapshots->accountPayloadForRegistration($account->fresh(['user', 'bot'])),
+                'conversation' => $result['conversation'] ?? [
+                    'state' => ConversationState::Idle->value,
+                    'context' => [],
+                ],
+            ];
+        }
+
+        $result = $this->shareContact($bot, $telegramUserId, $phone, $contactUserId);
+
+        return [
+            'ok' => (bool) ($result['ok'] ?? true),
+            'account' => $result['account'] ?? null,
+            'conversation' => $result['conversation'] ?? null,
+            'message' => $result['message'] ?? null,
+        ];
+    }
+
+    /**
+     * Lightweight lookup — no side effects.
+     *
+     * @return array<string, mixed>
+     */
+    public function probeRegistration(TelegramBot $bot, int $telegramUserId, string $phone): array
+    {
+        $normalized = $this->mobileNormalizer->normalize(
+            $phone,
+            $bot->featureEnabled(BotFeatureFlag::IranMobileOnly),
+        );
+
+        $found = false;
+        $displayName = null;
+        $mobileVerified = false;
+
+        if ($normalized !== null) {
+            $existingUser = User::query()->where('mobile', $normalized)->first();
+            if ($existingUser !== null && filled($existingUser->name)) {
+                $found = true;
+                $displayName = trim((string) $existingUser->name);
+            }
+
+            $account = $bot->accounts()->where('mobile', $normalized)->first();
+            if ($account !== null && $account->hasVerifiedMobile()) {
+                $found = true;
+                $mobileVerified = true;
+                if (filled($account->display_name)) {
+                    $displayName = trim((string) $account->display_name);
+                }
+            }
+        }
+
+        return [
+            'ok' => true,
+            'found' => $found,
+            'display_name' => $displayName,
+            'mobile_verified' => $mobileVerified,
+        ];
     }
 
     /**

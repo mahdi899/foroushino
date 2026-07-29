@@ -29,12 +29,22 @@ final class SyncCache
         'bot_is_active' => true,
     ];
 
+    private readonly HotCache $hotCache;
+
+    /** @var list<array<string, mixed>>|null */
+    private ?array $coursesMemo = null;
+
+    /** @var list<array<string, mixed>>|null */
+    private ?array $seminarsMemo = null;
+
     /** @param array<string, mixed>|null $hostConfig */
     public function __construct(
         private readonly \PDO $pdo,
         private readonly SyncClient $sync,
         private readonly ?array $hostConfig = null,
-    ) {}
+    ) {
+        $this->hotCache = new HotCache($hostConfig);
+    }
 
     public function refreshAll(): void
     {
@@ -109,6 +119,7 @@ final class SyncCache
             '__permanent_admin_user_ids' => json_encode($permanentAdminIds, JSON_UNESCAPED_UNICODE),
         ]);
 
+        $this->warmBootstrapHotCache();
         $this->touchSyncMeta('bootstrap');
     }
 
@@ -140,6 +151,9 @@ final class SyncCache
         if (array_key_exists('destinations', $catalog)) {
             $this->storeDestinations((array) ($catalog['destinations'] ?? []));
         }
+        $this->coursesMemo = null;
+        $this->seminarsMemo = null;
+        $this->warmCatalogHotCache();
         $this->touchSyncMeta('catalog');
     }
 
@@ -336,6 +350,11 @@ final class SyncCache
 
     public function message(string $key, string $fallback = ''): string
     {
+        $cached = $this->hotCache->getMessage($key);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         $stmt = $this->pdo->prepare('SELECT body FROM bot_messages WHERE message_key = :key');
         $stmt->execute(['key' => $key]);
         $body = $stmt->fetchColumn();
@@ -345,6 +364,11 @@ final class SyncCache
 
     public function featureEnabled(string $key): bool
     {
+        $cached = $this->hotCache->getFeatureFlag($key);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         $stmt = $this->pdo->prepare('SELECT enabled FROM bot_feature_flags WHERE flag_key = :key');
         $stmt->execute(['key' => $key]);
         $value = $stmt->fetchColumn();
@@ -365,9 +389,22 @@ final class SyncCache
     /** @return list<array<string, mixed>> */
     public function courses(): array
     {
+        if ($this->coursesMemo !== null) {
+            return $this->coursesMemo;
+        }
+
+        $cached = $this->hotCache->getCatalogProducts();
+        if ($cached !== null) {
+            $this->coursesMemo = $this->filterCatalogProducts($cached, excludeReferenceChannel: true);
+
+            return $this->coursesMemo;
+        }
+
         // Reference-channel products live in catalog_products for buy/lookup,
         // but the «دوره‌ها» menu must not list them — they have their own entry.
-        return $this->catalogProducts(excludeReferenceChannel: true);
+        $this->coursesMemo = $this->catalogProducts(excludeReferenceChannel: true);
+
+        return $this->coursesMemo;
     }
 
     /**
@@ -403,7 +440,20 @@ final class SyncCache
     /** @return list<array<string, mixed>> */
     public function seminars(): array
     {
-        return $this->pdo->query('SELECT * FROM catalog_seminars ORDER BY seminar_date ASC')->fetchAll();
+        if ($this->seminarsMemo !== null) {
+            return $this->seminarsMemo;
+        }
+
+        $cached = $this->hotCache->getCatalogSeminars();
+        if ($cached !== null) {
+            $this->seminarsMemo = $cached;
+
+            return $this->seminarsMemo;
+        }
+
+        $this->seminarsMemo = $this->pdo->query('SELECT * FROM catalog_seminars ORDER BY seminar_date ASC')->fetchAll();
+
+        return $this->seminarsMemo;
     }
 
     public function lastSyncedAt(): ?string
@@ -737,6 +787,8 @@ final class SyncCache
                 'reference_discount_amount' => (int) ($seminar['reference_discount_amount'] ?? 0),
             ]);
         }
+
+        $this->warmCatalogHotCache();
     }
 
     /** @param list<array<string, mixed>> $channels */
@@ -854,5 +906,72 @@ final class SyncCache
              ON DUPLICATE KEY UPDATE synced_at = NOW()',
         );
         $stmt->execute(['key' => $key]);
+    }
+
+    private function warmBootstrapHotCache(): void
+    {
+        if (! $this->hotCache->isActive()) {
+            return;
+        }
+
+        try {
+            $messages = [];
+            $rows = $this->pdo->query('SELECT message_key, body FROM bot_messages')->fetchAll();
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $messages[(string) ($row['message_key'] ?? '')] = (string) ($row['body'] ?? '');
+            }
+            $this->hotCache->storeMessages($messages);
+
+            $flags = [];
+            $flagRows = $this->pdo->query('SELECT flag_key, enabled FROM bot_feature_flags')->fetchAll();
+            foreach ($flagRows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $flags[(string) ($row['flag_key'] ?? '')] = (int) ($row['enabled'] ?? 0) === 1;
+            }
+            $this->hotCache->storeFeatureFlags($flags);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] warm bootstrap cache: '.$e->getMessage());
+        }
+    }
+
+    private function warmCatalogHotCache(): void
+    {
+        if (! $this->hotCache->isActive()) {
+            return;
+        }
+
+        try {
+            $products = $this->pdo->query('SELECT * FROM catalog_products ORDER BY id DESC')->fetchAll();
+            $seminars = $this->pdo->query('SELECT * FROM catalog_seminars ORDER BY seminar_date ASC')->fetchAll();
+            $this->hotCache->storeCatalogProducts(is_array($products) ? $products : []);
+            $this->hotCache->storeCatalogSeminars(is_array($seminars) ? $seminars : []);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] warm catalog cache: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function filterCatalogProducts(array $rows, bool $excludeReferenceChannel): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if ($excludeReferenceChannel && (string) ($row['product_type'] ?? '') === 'reference_channel') {
+                continue;
+            }
+            $out[] = $row;
+        }
+
+        return $out;
     }
 }

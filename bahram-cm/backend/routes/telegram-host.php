@@ -30,6 +30,8 @@ Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle
         Route::post('/registration/start', [TelegramHostSyncController::class, 'registrationStart'])->middleware('throttle:60,1');
         Route::post('/registration/contact', [TelegramHostSyncController::class, 'registrationContact'])->middleware('throttle:30,1');
         Route::post('/registration/name', [TelegramHostSyncController::class, 'registrationName'])->middleware('throttle:30,1');
+        Route::post('/registration/upsert', [TelegramHostSyncController::class, 'registrationUpsert'])->middleware('throttle:30,1');
+        Route::post('/registration/probe', [TelegramHostSyncController::class, 'registrationProbe'])->middleware('throttle:60,1');
         Route::post('/registration/callback', [TelegramHostSyncController::class, 'registrationCallback'])->middleware('throttle:60,1');
 
         // Live — never cache; host calls these at purchase/identity time.

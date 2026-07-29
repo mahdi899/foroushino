@@ -5,17 +5,17 @@ declare(strict_types=1);
 namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
-use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Account\PendingMobileAccess;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Queue\PendingRegistrationSync;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\MobileNormalizer;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
- * Registration on the external host — Iran API for data, host sends all Telegram messages.
+ * Registration on the external host — UI from local cache only; Iran sync is background.
  */
 final class HostRegistrationFlow
 {
@@ -26,17 +26,9 @@ final class HostRegistrationFlow
         private readonly ConversationRepository $conversations,
         private readonly MainMenu $mainMenu,
         private readonly SyncCache $cache,
-        private readonly AccountSyncCoordinator $accountSync,
+        private readonly PendingRegistrationSync $registrationQueue,
         private readonly ?PendingMobileAccess $pendingMobileAccess = null,
     ) {}
-
-    /**
-     * Keep Iran sync tight. A long ACK+wait (old 8s path) felt broken: user
-     * saw "در حال احراز هویت…" then another message, then sometimes the menu.
-     * On timeout we finish locally; known users still get Iran's replies when
-     * the call lands within this window (local Laravel is usually <200ms).
-     */
-    private const REGISTRATION_TIMEOUT_SECONDS = 3;
 
     /**
      * Welcome + phone keyboard from host MySQL only (no registration/start API).
@@ -72,7 +64,7 @@ final class HostRegistrationFlow
 
     /**
      * @param  array<string, mixed>  $from
-     * @deprecated Use showLocalWelcome after account pull; Iran API only on contact/name.
+     * @deprecated Use showLocalWelcome after account pull; Iran API only in background queue.
      */
     public function start(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
@@ -90,26 +82,14 @@ final class HostRegistrationFlow
 
         $rawPhone = trim((string) ($contact['phone_number'] ?? ''));
         $contactUserId = (int) ($contact['user_id'] ?? 0);
-
-        // Telegram delivers Iranian numbers as "989xxxxxxxxx" (no leading
-        // "0"/"+"). Normalize to the canonical "09xxxxxxxxx" local format —
-        // the same format Iran stores/keys by — before it's used for the
-        // pending-access lookup below, sent to Iran, or stored locally.
         $phone = MobileNormalizer::normalizeOrOriginal($rawPhone);
 
-        // Access already purchased on the website (before this /start) may
-        // have been pre-provisioned by Iran, keyed by mobile — merge it in
-        // right away, from local DB only, regardless of whether Iran is
-        // reachable for the registration call below. This is what makes
-        // "دسترسی به محض استارت" work even when Iran is briefly unreachable.
         $pending = $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
         if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
             return;
         }
 
-        // Same phone already verified under an old Telegram numeric ID
-        // (user deleted Telegram and recreated) — rekey local cache first.
         $legacy = $this->accounts->findVerifiedByMobile($phone);
         if ($legacy !== null) {
             $oldId = (int) ($legacy['telegram_user_id'] ?? 0);
@@ -118,27 +98,9 @@ final class HostRegistrationFlow
             }
         }
 
-        // No "⏳ verifying…" ACK: that added a full Bot-API RTT (via foreign
-        // proxy) before Iran even ran, so users got 2–3 staggered messages.
-        // Try Iran first (short timeout); one apply() batch of replies. If
-        // Iran is down, a single ask-name message — never a loading stub.
-        try {
-            $response = $this->sync->call('registration/contact', [
-                'telegram_user_id' => $telegramUserId,
-                'phone' => $phone,
-                'contact_user_id' => $contactUserId,
-            ], self::REGISTRATION_TIMEOUT_SECONDS, allowRetry: false);
-            $this->apply($chatId, $telegramUserId, $response);
-            $this->accounts->purgeDuplicateMobileRows($phone, $telegramUserId);
-
-            return;
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] registration/contact: '.$e->getMessage());
-        }
-
-        // Iran unreachable — if we already rekeyed a verified legacy row, open menu.
         if ($this->accounts->isVerified($telegramUserId)) {
             $this->showMainMenu($chatId, $telegramUserId);
+            $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
 
             return;
         }
@@ -146,6 +108,7 @@ final class HostRegistrationFlow
         $knownName = $this->resolveLocalStudentName($telegramUserId, $phone, $pending);
         if ($knownName !== '') {
             $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $knownName);
+            $this->enqueueRegistrationSync($telegramUserId, $phone, $knownName, $contactUserId);
 
             return;
         }
@@ -159,6 +122,8 @@ final class HostRegistrationFlow
             'registration_ask_name_offline',
             'شماره شما ثبت شد. لطفاً نام و نام خانوادگی خود را بفرستید تا ادامه دهیم.',
         ), ['reply_markup' => ['remove_keyboard' => true]]);
+
+        $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
     }
 
     /** @return array{owned_product_ids: list<int>, display_name: ?string}|null */
@@ -252,23 +217,15 @@ final class HostRegistrationFlow
 
     public function name(int $chatId, int $telegramUserId, string $name): void
     {
-        // Same as contact(): no loading stub — one Iran round-trip then replies,
-        // or a single local menu if Iran is unreachable.
-        try {
-            $response = $this->sync->call('registration/name', [
-                'telegram_user_id' => $telegramUserId,
-                'name' => $name,
-            ], self::REGISTRATION_TIMEOUT_SECONDS, allowRetry: false);
-            $this->apply($chatId, $telegramUserId, $response);
-
-            return;
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] registration/name: '.$e->getMessage());
+        $conversation = $this->conversations->get($telegramUserId);
+        $mobile = trim((string) ($conversation['context']['mobile'] ?? ''));
+        if ($mobile === '') {
+            $account = $this->accounts->get($telegramUserId);
+            $mobile = trim((string) ($account['mobile'] ?? ''));
         }
 
-        $conversation = $this->conversations->get($telegramUserId);
-        $mobile = (string) ($conversation['context']['mobile'] ?? '');
         $this->finishLocalRegistration($chatId, $telegramUserId, $mobile, $name);
+        $this->enqueueRegistrationSync($telegramUserId, $mobile, $name, (int) ($conversation['context']['contact_user_id'] ?? 0));
     }
 
     public function callback(int $chatId, int $telegramUserId, string $data): void
@@ -292,7 +249,7 @@ final class HostRegistrationFlow
                 'mobile' => $mobile,
                 'code' => $code,
                 'display_name' => $displayName,
-            ], self::REGISTRATION_TIMEOUT_SECONDS, allowRetry: false);
+            ], 3, allowRetry: false);
             if (empty($response['ok'])) {
                 $this->api->sendMessage($chatId, (string) ($response['message'] ?? 'کد نامعتبر است.'));
 
@@ -300,14 +257,6 @@ final class HostRegistrationFlow
             }
             if (is_array($response['account'] ?? null)) {
                 $this->accounts->store($telegramUserId, $response['account']);
-            } else {
-                $fetch = $this->sync->call('account/fetch', [
-                    'telegram_user_id' => $telegramUserId,
-                    'include_snapshot' => true,
-                ]);
-                if (! empty($fetch['found']) && is_array($fetch['account'] ?? null)) {
-                    $this->accounts->store($telegramUserId, $fetch['account']);
-                }
             }
             $this->conversations->set($telegramUserId, 'idle', []);
             $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
@@ -347,18 +296,26 @@ final class HostRegistrationFlow
 
         $replies = $response['replies'] ?? [];
         if (! is_array($replies)) {
-            return;
+            $replies = [];
         }
 
+        $sentMenu = false;
         foreach ($replies as $reply) {
             if (! is_array($reply)) {
                 continue;
             }
             try {
+                if (! empty($reply['show_main_menu'])) {
+                    $sentMenu = true;
+                }
                 $this->sendReply($chatId, $telegramUserId, $reply);
             } catch (\Throwable $e) {
                 error_log('[telegram-host] registration reply: '.$e->getMessage());
             }
+        }
+
+        if (! $sentMenu && $this->accounts->isVerified($telegramUserId)) {
+            $this->showMainMenu($chatId, $telegramUserId);
         }
     }
 
@@ -394,5 +351,22 @@ final class HostRegistrationFlow
                 $this->api->editMessageReplyMarkup($chatId, $messageId, $inlineMarkup);
             }
         }
+    }
+
+    private function enqueueRegistrationSync(
+        int $telegramUserId,
+        string $phone,
+        ?string $displayName,
+        int $contactUserId,
+    ): void {
+        $payload = [
+            'phone' => $phone,
+            'contact_user_id' => $contactUserId,
+        ];
+        if ($displayName !== null && trim($displayName) !== '') {
+            $payload['display_name'] = trim($displayName);
+        }
+
+        $this->registrationQueue->enqueue($telegramUserId, $payload);
     }
 }

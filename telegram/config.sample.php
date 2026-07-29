@@ -71,4 +71,14 @@ return [
 
     // Legacy hint (unused when pull_sync_enabled is false).
     'cache_ttl_seconds' => 300,
+
+    // Optional Redis L2 — enable after ticking "redis" in cPanel PHP extensions.
+    'redis' => [
+        'enabled' => false,
+        'host' => '127.0.0.1',
+        'port' => 6379,
+        'password' => null,
+        'prefix' => 'tg:',
+        'database' => 0,
+    ],
 ];

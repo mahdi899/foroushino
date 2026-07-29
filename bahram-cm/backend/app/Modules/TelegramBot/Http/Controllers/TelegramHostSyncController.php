@@ -261,6 +261,48 @@ class TelegramHostSyncController
         return $this->jsonResponse($result);
     }
 
+    public function registrationUpsert(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $phone = trim((string) ($payload['phone'] ?? ''));
+        $displayName = isset($payload['display_name']) ? trim((string) $payload['display_name']) : null;
+        $contactUserId = (int) ($payload['contact_user_id'] ?? 0);
+
+        if ($telegramUserId <= 0 || $phone === '') {
+            return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+        }
+
+        $result = $this->hostRegistration->upsertRegistration(
+            $this->productionBot(),
+            $telegramUserId,
+            $phone,
+            $displayName !== '' ? $displayName : null,
+            $contactUserId,
+        );
+
+        return $this->jsonResponse($result);
+    }
+
+    public function registrationProbe(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $phone = trim((string) ($payload['phone'] ?? ''));
+
+        if ($telegramUserId <= 0 || $phone === '') {
+            return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+        }
+
+        $result = $this->hostRegistration->probeRegistration(
+            $this->productionBot(),
+            $telegramUserId,
+            $phone,
+        );
+
+        return $this->jsonResponse($result);
+    }
+
     public function registrationCallback(Request $request): JsonResponse
     {
         $payload = $this->hostPayload($request);
