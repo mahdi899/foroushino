@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Support\StudentDisplayName;
 
 /** Queues account + snapshot push to the external Telegram host. */
 class TelegramHostAccountSync
@@ -24,6 +25,35 @@ class TelegramHostAccountSync
         }
 
         PushTelegramHostSyncJob::account($this->snapshots->accountPayload($account->fresh(['user', 'bot'])));
+    }
+
+    /** Keep telegram_accounts.display_name + host cache aligned with student panel / KYC. */
+    public function syncDisplayNamesForUser(User $user): void
+    {
+        $user->loadMissing(['profile', 'identityProfile']);
+        $resolved = StudentDisplayName::fromUser($user);
+        if ($resolved === '' || $resolved === 'دانشجو') {
+            return;
+        }
+
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+        if ($bot === null) {
+            return;
+        }
+
+        TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('user_id', $user->id)
+            ->whereNotNull('mobile_verified_at')
+            ->each(function (TelegramAccount $account) use ($resolved): void {
+                if ((string) $account->display_name !== $resolved) {
+                    $account->update(['display_name' => $resolved]);
+
+                    return;
+                }
+
+                $this->queuePush($account);
+            });
     }
 
     /**
@@ -108,7 +138,7 @@ class TelegramHostAccountSync
             return;
         }
 
-        PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, $user->name ?? null);
+        PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, StudentDisplayName::fromUser($user));
     }
 
     /** @return list<int> */

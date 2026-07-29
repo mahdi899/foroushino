@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ADMIN_TOKEN_COOKIE } from '@/lib/auth/session';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { extractValidationMessage } from '@/lib/services/api';
 
 const LOGIN_URLS = [
@@ -11,6 +12,7 @@ const LOGIN_URLS = [
 async function tryLogin(
   email: string,
   password: string,
+  clientHeaders: Record<string, string>,
   security?: {
     captcha_token?: unknown;
     captcha_provider?: unknown;
@@ -26,7 +28,11 @@ async function tryLogin(
     try {
       const res = await fetch(`${base.replace(/\/$/, '')}/auth/login`, {
         method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...clientHeaders,
+        },
         body: JSON.stringify({
           email,
           password,
@@ -45,6 +51,12 @@ async function tryLogin(
       if (res.ok) {
         return { ok: true as const, json: lastBody as Record<string, unknown> };
       }
+
+      // Do not retry another base URL on auth/validation/rate-limit failures —
+      // each attempt counts against Laravel's admin-login throttle.
+      if (res.status > 0 && res.status < 500) {
+        return { ok: false as const, status: lastStatus, body: lastBody };
+      }
     } catch {
       continue;
     }
@@ -62,7 +74,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'ایمیل و رمز عبور را وارد کنید.' }, { status: 422 });
   }
 
-  const result = await tryLogin(email, password, {
+  const result = await tryLogin(email, password, await forwardedClientHeaders(), {
     captcha_token: body.captcha_token,
     captcha_provider: body.captcha_provider,
     captcha_id: body.captcha_id,

@@ -15,6 +15,8 @@ use App\Models\Product;
 use App\Models\PersonalAccessToken;
 use App\Models\Seminar;
 use App\Models\SeminarAttendee;
+use App\Models\User;
+use App\Models\UserIdentityProfile;
 use App\Observers\DiscountCodeHostSyncObserver;
 use App\Observers\FamilyMediaObserver;
 use App\Observers\ProductTelegramCatalogObserver;
@@ -24,6 +26,8 @@ use App\Observers\TelegramAccountHostSyncObserver;
 use App\Observers\TelegramDestinationHostSyncObserver;
 use App\Observers\SeminarAttendeeObserver;
 use App\Observers\SeminarObserver;
+use App\Observers\UserIdentityProfileTelegramSyncObserver;
+use App\Observers\UserTelegramDisplayNameObserver;
 use App\Support\MediaFtpConnection;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -50,6 +54,8 @@ class AppServiceProvider extends ServiceProvider
         DiscountCode::observe(DiscountCodeHostSyncObserver::class);
         TelegramDestination::observe(TelegramDestinationHostSyncObserver::class);
         TelegramAccount::observe(TelegramAccountHostSyncObserver::class);
+        User::observe(UserTelegramDisplayNameObserver::class);
+        UserIdentityProfile::observe(UserIdentityProfileTelegramSyncObserver::class);
         Seminar::observe(SeminarObserver::class);
         SeminarAttendee::observe(SeminarAttendeeObserver::class);
 
@@ -83,8 +89,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('admin-login', function (Request $request) {
+            $email = strtolower(trim((string) $request->input('email', '')));
+            $key = $email !== '' ? 'admin-login:'.sha1($email) : 'admin-login:ip:'.$request->ip();
+
             return Limit::perHour((int) config('bahram.admin_login.max_per_hour', 3))
-                ->by($request->ip());
+                ->by($key);
         });
 
         RateLimiter::for('identity-reveal', function (Request $request) {

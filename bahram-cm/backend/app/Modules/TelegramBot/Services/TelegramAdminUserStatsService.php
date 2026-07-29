@@ -12,6 +12,7 @@ use App\Models\ReferralConversion;
 use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Support\JalaliDate;
+use App\Support\StudentDisplayName;
 use App\Services\ReferralService;
 use Carbon\Carbon;
 
@@ -41,9 +42,7 @@ class TelegramAdminUserStatsService
     {
         $account->loadMissing('user');
         $user = $account->user;
-        $name = $account->display_name
-            ?: trim(($account->first_name ?? '').' '.($account->last_name ?? ''))
-            ?: ($user?->name ?? '—');
+        $name = StudentDisplayName::forTelegramAccount($account);
 
         $registeredAt = $account->created_at ?? $account->mobile_verified_at;
         $registeredLabel = $registeredAt

@@ -26,6 +26,7 @@ use App\Services\Family\FamilyAssignmentService;
 use App\Services\Family\FeedService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\InflatedMemberCount;
+use App\Support\StudentDisplayName;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -60,7 +61,7 @@ class TelegramHostAccountSnapshotService
             'user_id' => $account->user_id,
             'mobile' => $account->mobile,
             'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
-            'display_name' => $account->display_name,
+            'display_name' => StudentDisplayName::forTelegramAccount($account),
             'is_bot_admin' => $account->isBotAdmin(),
             'snapshot' => $this->buildSnapshot($account),
         ];
@@ -82,7 +83,7 @@ class TelegramHostAccountSnapshotService
             'user_id' => $account->user_id,
             'mobile' => $account->mobile,
             'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
-            'display_name' => $account->display_name,
+            'display_name' => StudentDisplayName::forTelegramAccount($account),
             'is_bot_admin' => $account->isBotAdmin(),
             'snapshot' => $this->buildRegistrationSnapshot($account),
         ];
