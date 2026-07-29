@@ -214,7 +214,7 @@ class PersonInfoIdentityTest extends TestCase
         app(IdentityDailyLimitService::class)->assertCanSubmit($student);
     }
 
-    public function test_person_info_unavailable_falls_back_to_manual_review(): void
+    public function test_person_info_unavailable_rejects_without_expert_queue(): void
     {
         $this->bindProviders(
             new PersonInfoResult(OwnershipVerificationResult::ProviderError),
@@ -223,13 +223,26 @@ class PersonInfoIdentityTest extends TestCase
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110003']);
 
-        $submission = $this->submitIdentity($student, [
-            'first_name' => 'علی',
-            'last_name' => 'تستی',
-        ]);
+        try {
+            $this->submitIdentity($student, [
+                'first_name' => 'علی',
+                'last_name' => 'تستی',
+            ]);
+            $this->fail('Expected ValidationException when PersonInfo is unavailable.');
+        } catch (ValidationException $e) {
+            $this->assertContains(
+                IdentityVerificationMessages::REGISTRY_UNAVAILABLE,
+                $e->errors()['identity'] ?? [],
+            );
+        }
 
+        $submission = IdentityVerificationSubmission::query()->where('user_id', $student->id)->latest('id')->first();
+        $this->assertNotNull($submission);
         $this->assertSame('unavailable', $submission->registry_match_status);
-        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->fresh()->status);
+        $this->assertSame(IdentityVerificationStatus::Rejected, $submission->status);
+
+        $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
+        $this->assertSame(IdentityVerificationStatus::Rejected, $profile->identity_status);
     }
 
     public function test_mobile_match_unavailable_stays_in_expert_queue(): void
@@ -255,7 +268,7 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertNotEmpty($submission->mobile_match_message);
     }
 
-    public function test_person_info_birth_date_mismatch_shows_registry_message(): void
+    public function test_person_info_birth_date_mismatch_rejects_without_expert_queue(): void
     {
         $this->bindProviders(
             new PersonInfoResult(
@@ -267,16 +280,29 @@ class PersonInfoIdentityTest extends TestCase
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110010']);
 
-        $submission = $this->submitIdentity($student, [
-            'first_name' => 'علی',
-            'last_name' => 'تستی',
-        ]);
+        try {
+            $this->submitIdentity($student, [
+                'first_name' => 'علی',
+                'last_name' => 'تستی',
+            ]);
+            $this->fail('Expected ValidationException for birth date mismatch.');
+        } catch (ValidationException $e) {
+            $this->assertContains(
+                'اطلاعاتی برای این کد ملی یافت نشد.',
+                $e->errors()['identity'] ?? [],
+            );
+        }
 
+        $submission = IdentityVerificationSubmission::query()->where('user_id', $student->id)->latest('id')->first();
+        $this->assertNotNull($submission);
         $this->assertSame('matched', $submission->mobile_match_status);
         $this->assertSame('mismatched', $submission->registry_match_status);
         $this->assertNull($submission->registry_first_name);
         $this->assertSame('اطلاعاتی برای این کد ملی یافت نشد.', $submission->registry_message);
-        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+        $this->assertSame(IdentityVerificationStatus::Rejected, $submission->status);
+
+        $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
+        $this->assertSame(IdentityVerificationStatus::Rejected, $profile->identity_status);
     }
 
     public function test_person_info_skipped_when_shahkar_unavailable(): void

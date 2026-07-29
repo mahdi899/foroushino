@@ -64,9 +64,7 @@ class TelegramCourseAccessPresenter
         $canShowDestinations = ! $isReferenceProduct || $identityReady;
         $destRows = $canShowDestinations ? $this->destinationKeyboardRows($bot, $account, $product) : [];
         $destinationLines = $canShowDestinations ? $this->destinationMessageLines($bot, $account, $product) : [];
-        $watchUrl = $access
-            ? TelegramSiteUrl::courseWatchPage($access->id)
-            : TelegramSiteUrl::coursesPanel();
+        $watchUrl = $this->resolveWatchUrl($product, $access);
 
         $lines = [
             TelegramCustomEmoji::tag('check').' <b>شما به این دوره دسترسی دارید</b>',
@@ -127,6 +125,21 @@ class TelegramCourseAccessPresenter
         $level = (int) ($account->user?->identityProfile?->verification_level ?? 0);
 
         return $level >= 2;
+    }
+
+    private function resolveWatchUrl(Product $product, ?CourseAccess $access): ?string
+    {
+        $product->loadMissing('seminar');
+        if ($product->seminar) {
+            return TelegramSiteUrl::seminarPanelPage($product->seminar->id)
+                ?? TelegramSiteUrl::seminarsPanel();
+        }
+
+        if ($access) {
+            return TelegramSiteUrl::courseWatchPage($access->id);
+        }
+
+        return TelegramSiteUrl::coursesPanel();
     }
 
     private function resolveAccess(TelegramAccount $account, Product $product): ?CourseAccess

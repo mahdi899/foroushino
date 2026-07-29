@@ -57,11 +57,12 @@ class CourseController extends Controller
         if (! $courseAccess->isActive() || ! $license) {
             return ApiResponse::success([
                 'available' => false,
+                'product_title' => $product->title,
                 'message' => 'دسترسی پخش برای این دوره فعال نیست.',
             ]);
         }
 
-        $licenseUrl = $license->license_url;
+        $licenseUrl = filled($license->license_url) ? (string) $license->license_url : null;
         $scriptUrl = $licenseUrl ? $this->licenseScriptUrl($licenseUrl) : null;
         $spotplayerCourseId = $request->string('spotplayer_course_id')->trim()->toString()
             ?: $this->primaryCourseId($license->spotplayer_course_id ?: $product->spotplayer_course_id);
@@ -369,12 +370,24 @@ class CourseController extends Controller
         ];
     }
 
-    private function licenseScriptUrl(string $licenseUrl): string
+    private function licenseScriptUrl(string $licenseUrl): ?string
     {
+        $licenseUrl = trim($licenseUrl);
+        if ($licenseUrl === '') {
+            return null;
+        }
+
         $parts = parse_url($licenseUrl);
+        if ($parts === false) {
+            return null;
+        }
+
         $scheme = $parts['scheme'] ?? 'https';
         $host = $parts['host'] ?? 'dl.spotplayer.ir';
         $path = $parts['path'] ?? $licenseUrl;
+        if (! str_starts_with($path, '/')) {
+            $path = '/'.ltrim($path, '/');
+        }
 
         return "{$scheme}://{$host}{$path}?f=js";
     }

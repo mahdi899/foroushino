@@ -3,7 +3,7 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SERVER_API_URL } from '@/lib/api/config';
-import { isFamilyHost, resolveFamilyLoginRedirect } from '@/lib/domains';
+import { isFamilyHost, resolveFamilyLoginRedirect, resolveStudentLogoutRedirect } from '@/lib/domains';
 import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { extractValidationMessage } from '@/lib/services/api';
 import { STUDENT_TOKEN_COOKIE } from './session';
@@ -220,5 +220,6 @@ export async function logoutStudentAction(): Promise<void> {
   jar.delete(STUDENT_TOKEN_COOKIE);
   // SpotPlayer cookie `X` is intentionally kept in the browser and also stored per user
   // on the server (spotplayer_x) so DRM session survives logout/login.
-  redirect('/');
+  const host = (await headers()).get('host')?.split(':')[0] ?? '';
+  redirect(resolveStudentLogoutRedirect(host));
 }

@@ -57,4 +57,12 @@ describe('domains', () => {
     expect(isLoopbackOrigin('http://localhost:3000')).toBe(true);
     expect(isLoopbackOrigin('https://rostami.app')).toBe(false);
   });
+
+  it('logout on club host redirects to main site', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_DOMAIN', 'rostami.app');
+    vi.stubEnv('NEXT_PUBLIC_FAMILY_DOMAIN', 'rostami.club');
+    const { resolveStudentLogoutRedirect } = await loadDomains();
+    expect(resolveStudentLogoutRedirect('rostami.club')).toBe('https://rostami.app/');
+    expect(resolveStudentLogoutRedirect('rostami.app')).toBe('/');
+  });
 });

@@ -107,6 +107,18 @@ export function isFamilyBareShell(pathname: string, hostname?: string): boolean 
   return Boolean(hostname && isFamilyHost(hostname));
 }
 
+/** After logout on club host → main site apex; elsewhere → `/`. */
+export function resolveStudentLogoutRedirect(hostname: string): string {
+  if (isFamilyHost(hostname)) {
+    const mainSite = appPublicOrigin();
+    if (mainSite && !isLoopbackOrigin(mainSite)) {
+      return `${mainSite.replace(/\/$/, '')}/`;
+    }
+  }
+
+  return '/';
+}
+
 /** Server-side post-login path — always a Next.js `/family/*` route (not club apex `/`). */
 export function resolveFamilyLoginRedirect(target?: string, _hostname?: string): string {
   if (!target || target.startsWith('//')) {

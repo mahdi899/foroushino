@@ -37,6 +37,9 @@ final class IdentityVerificationMessages
     public const REGISTRY_NOT_FOUND =
         'کد ملی با تاریخ تولد واردشده در استعلام رسمی یافت نشد. تاریخ تولد را مطابق کارت ملی (شمسی) بررسی کنید.';
 
+    public const REGISTRY_UNAVAILABLE =
+        'سرویس استعلام مشخصات هویتی (PersonInfo) در دسترس نبود. لطفاً چند دقیقه دیگر دوباره تلاش کنید.';
+
     public const IDENTITY_MISMATCH_LOCKED =
         'به‌دلیل چند بار وارد کردن اطلاعات هویتی نادرست، ارسال تا فردا محدود شده است. لطفاً فردا با اطلاعات صحیح دوباره تلاش کنید.';
 
