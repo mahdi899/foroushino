@@ -60,7 +60,8 @@ class RegistrationPhoneFirstTest extends TestCase
 
         Queue::assertPushed(SendTelegramMessageJob::class, function (SendTelegramMessageJob $job): bool {
             return str_contains($job->text, 'شماره موبایل')
-                && ($job->options['reply_markup']['keyboard'][0][0]['request_contact'] ?? false) === true;
+                && ($job->options['reply_markup']['keyboard'][0][0]['request_contact'] ?? false) === true
+                && isset($job->options['inline_markup']['inline_keyboard']);
         });
     }
 
@@ -154,7 +155,8 @@ class RegistrationPhoneFirstTest extends TestCase
         $this->assertSame(ConversationState::WaitingForMobile, $this->conversation->state);
 
         Queue::assertPushed(SendTelegramMessageJob::class, function (SendTelegramMessageJob $job): bool {
-            return ($job->options['reply_markup']['keyboard'][0][0]['request_contact'] ?? false) === true;
+            return ($job->options['reply_markup']['keyboard'][0][0]['request_contact'] ?? false) === true
+                && isset($job->options['inline_markup']['inline_keyboard']);
         });
     }
 }

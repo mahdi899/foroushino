@@ -115,6 +115,11 @@ class RegistrationFlowService
             return;
         }
 
+        if ($data === RegistrationKeyboard::SHARE_CONTACT_CALLBACK
+            && $conversation->state === ConversationState::WaitingForMobile) {
+            return;
+        }
+
         if ($data === 'reg:cancel') {
             $this->conversations->reset($conversation);
             $this->queueMessage($bot, $account->telegram_user_id, 'فرآیند ثبت‌نام لغو شد.', [
@@ -165,7 +170,9 @@ class RegistrationFlowService
                 $bot,
                 $account->telegram_user_id,
                 'لطفاً فقط شماره تماس خودتان را با دکمه «ارسال شماره تماس» بفرستید.',
-                ['reply_markup' => $this->phoneStepMarkup($bot)],
+                array_merge(
+                    $this->phoneStepMarkup($bot),
+                ),
             );
 
             return;
@@ -177,7 +184,7 @@ class RegistrationFlowService
                 $bot,
                 $account->telegram_user_id,
                 'شماره تماس دریافت نشد. دوباره تلاش کنید.',
-                ['reply_markup' => $this->phoneStepMarkup($bot)],
+                $this->phoneStepMarkup($bot),
             );
 
             return;
@@ -202,10 +209,10 @@ class RegistrationFlowService
             $hint .= "\n".$e('check').' فقط شماره موبایل ایران پذیرفته می‌شود.';
         }
 
-        $this->queueMessage($bot, $account->telegram_user_id, $base.$hint, [
-            'parse_mode' => 'HTML',
-            'reply_markup' => $this->phoneStepMarkup($bot),
-        ]);
+        $this->queueMessage($bot, $account->telegram_user_id, $base.$hint, array_merge(
+            ['parse_mode' => 'HTML'],
+            $this->phoneStepMarkup($bot),
+        ));
     }
 
     private function handleTypedMobile(
@@ -220,10 +227,10 @@ class RegistrationFlowService
             $account->telegram_user_id,
             $e('warning').' تایپ شماره ممکن نیست.'."\n"
             .$e('point_up').' لطفاً فقط دکمه <b>ارسال شماره تماس</b> را بزنید.',
-            [
-                'parse_mode' => 'HTML',
-                'reply_markup' => $this->phoneStepMarkup($bot),
-            ],
+            array_merge(
+                ['parse_mode' => 'HTML'],
+                $this->phoneStepMarkup($bot),
+            ),
         );
     }
 
@@ -288,9 +295,7 @@ class RegistrationFlowService
             $msg = $bot->featureEnabled(BotFeatureFlag::IranMobileOnly)
                 ? 'شماره تماس معتبر نیست. فقط موبایل ایران (09…) پذیرفته می‌شود.'
                 : 'شماره تماس معتبر نیست. دوباره تلاش کنید.';
-            $this->queueMessage($bot, $account->telegram_user_id, $msg, [
-                'reply_markup' => $this->phoneStepMarkup($bot),
-            ]);
+            $this->queueMessage($bot, $account->telegram_user_id, $msg, $this->phoneStepMarkup($bot));
 
             return;
         }
@@ -446,7 +451,7 @@ class RegistrationFlowService
     /** @return array<string, mixed> */
     private function phoneStepMarkup(TelegramBot $bot): array
     {
-        return $this->registrationKeyboard->requestContactMarkup(withBack: false);
+        return $this->registrationKeyboard->phoneStepOptions(withBack: false);
     }
 
     /** @param  array<string, mixed>  $options */

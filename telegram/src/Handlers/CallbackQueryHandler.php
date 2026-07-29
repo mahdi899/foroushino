@@ -46,6 +46,16 @@ final class CallbackQueryHandler
             return;
         }
 
+        if ($data === 'reg:share_contact') {
+            $this->api->answerCallbackQuery(
+                $callbackId,
+                'برای تأیید شماره، دکمه «ارسال شماره تماس» در پایین صفحه را بزنید.',
+                true,
+            );
+
+            return;
+        }
+
         $this->api->answerCallbackQuery($callbackId);
 
         if (str_starts_with($data, 'reg:')) {

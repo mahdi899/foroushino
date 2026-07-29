@@ -35,7 +35,28 @@ class SendTelegramMessageJob implements ShouldQueue
         }
 
         try {
-            $factory->forBot($bot)->sendMessage($this->chatId, $this->text, $this->options);
+            $inlineMarkup = $this->options['inline_markup'] ?? null;
+            $sendOptions = $this->options;
+            unset($sendOptions['inline_markup']);
+
+            $client = $factory->forBot($bot);
+            $result = $client->sendMessage($this->chatId, $this->text, $sendOptions);
+
+            if (is_array($inlineMarkup) && is_array($result) && isset($result['message_id'])) {
+                try {
+                    $client->editMessageReplyMarkup([
+                        'chat_id' => $this->chatId,
+                        'message_id' => (int) $result['message_id'],
+                        'reply_markup' => $inlineMarkup,
+                    ]);
+                } catch (Throwable $inlineError) {
+                    Log::channel('telegram')->warning('SendTelegramMessageJob inline_markup attach failed.', [
+                        'bot_id' => $this->telegramBotId,
+                        'chat_id' => $this->chatId,
+                        'message' => $inlineError->getMessage(),
+                    ]);
+                }
+            }
         } catch (Throwable $e) {
             Log::channel('telegram')->error('SendTelegramMessageJob failed.', [
                 'bot_id' => $this->telegramBotId,

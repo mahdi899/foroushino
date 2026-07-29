@@ -55,6 +55,16 @@ final class InlineButtons
     }
 
     /** @return array<string, mixed> */
+    public static function shareContactInlineMarkup(): array
+    {
+        return [
+            'inline_keyboard' => [[
+                self::callback('ارسال شماره تماس', 'reg:share_contact', 'phone', 'primary'),
+            ]],
+        ];
+    }
+
+    /** @return array<string, mixed> */
     public static function payOnline(string $url): array
     {
         return self::url('پرداخت آنلاین', $url, 'money', 'success');
