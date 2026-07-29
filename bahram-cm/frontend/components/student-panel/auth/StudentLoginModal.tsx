@@ -99,19 +99,23 @@ export function StudentLoginModal() {
 
   if (!mounted || !visible) return null;
 
+  // Pin the shell to the visual viewport (same approach as FamilyLoginScrollShell).
+  // `fixed inset-0` covers the layout viewport; on mobile the keyboard overlays that
+  // box so `items-end` still sits behind the keyboard until a tap scrolls it up.
   const keyboardOpen = viewport.keyboardInset > 48;
+  const shellHeight = viewport.height > 0 ? viewport.height : undefined;
 
   return createPortal(
     <div
       ref={shellRef}
       className={cn(
-        'fixed inset-0 z-[100] flex overflow-y-auto overscroll-contain p-4',
-        keyboardOpen ? 'items-end justify-center pb-4' : 'items-center justify-center',
+        'fixed inset-x-0 z-[100] flex overflow-y-auto overscroll-contain p-4',
+        keyboardOpen ? 'items-end justify-center' : 'items-center justify-center',
       )}
       style={{
-        paddingBottom: keyboardOpen
-          ? 'max(1rem, env(safe-area-inset-bottom, 0px))'
-          : undefined,
+        top: viewport.offsetTop,
+        height: shellHeight ?? '100dvh',
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
       }}
     >
       <div
