@@ -214,7 +214,7 @@ class PersonInfoIdentityTest extends TestCase
         app(IdentityDailyLimitService::class)->assertCanSubmit($student);
     }
 
-    public function test_person_info_unavailable_rejects_without_expert_queue(): void
+    public function test_person_info_unavailable_stays_in_expert_queue(): void
     {
         $this->bindProviders(
             new PersonInfoResult(OwnershipVerificationResult::ProviderError),
@@ -223,26 +223,45 @@ class PersonInfoIdentityTest extends TestCase
 
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110003']);
 
-        try {
-            $this->submitIdentity($student, [
-                'first_name' => 'علی',
-                'last_name' => 'تستی',
-            ]);
-            $this->fail('Expected ValidationException when PersonInfo is unavailable.');
-        } catch (ValidationException $e) {
-            $this->assertContains(
-                IdentityVerificationMessages::REGISTRY_UNAVAILABLE,
-                $e->errors()['identity'] ?? [],
-            );
-        }
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
 
-        $submission = IdentityVerificationSubmission::query()->where('user_id', $student->id)->latest('id')->first();
-        $this->assertNotNull($submission);
         $this->assertSame('unavailable', $submission->registry_match_status);
-        $this->assertSame(IdentityVerificationStatus::Rejected, $submission->status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+        $this->assertNotEmpty($submission->registry_message);
 
         $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
-        $this->assertSame(IdentityVerificationStatus::Rejected, $profile->identity_status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $profile->identity_status);
+    }
+
+    public function test_person_info_skipped_when_route_inactive(): void
+    {
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+            ),
+            OwnershipVerificationResult::Matched,
+        );
+
+        IdentityVerificationRoute::query()
+            ->where('capability', IdentityCapability::PersonInfoInquiry->value)
+            ->update(['is_active' => false]);
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110011']);
+
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
+
+        $this->assertSame('matched', $submission->mobile_match_status);
+        $this->assertNull($submission->registry_match_status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+        $this->assertStringContainsString('غیرفعال', (string) $submission->registry_message);
     }
 
     public function test_mobile_match_unavailable_stays_in_expert_queue(): void

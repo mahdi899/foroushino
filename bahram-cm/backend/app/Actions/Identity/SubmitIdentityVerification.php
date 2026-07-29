@@ -13,6 +13,7 @@ use App\Enums\SmsEventKey;
 use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationAttempt;
 use App\Models\IdentityVerificationReview;
+use App\Models\IdentityVerificationRoute;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
@@ -194,14 +195,6 @@ class SubmitIdentityVerification
                     $submission->registry_message ?: IdentityVerificationMessages::REGISTRY_NOT_FOUND,
                 );
             }
-
-            if ($submission->registry_match_status === 'unavailable') {
-                throw ValidationException::withMessages([
-                    'identity' => [
-                        $submission->registry_message ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE,
-                    ],
-                ]);
-            }
         }
 
         return $submission;
@@ -215,6 +208,22 @@ class SubmitIdentityVerification
         string $nationalCode,
         array $data,
     ): IdentityVerificationSubmission {
+        $routeActive = IdentityVerificationRoute::query()
+            ->where('capability', IdentityCapability::PersonInfoInquiry->value)
+            ->where('is_active', true)
+            ->exists();
+
+        // Admin can temporarily disable PersonInfo — skip and keep the case in the expert queue.
+        if (! $routeActive) {
+            $submission->update([
+                'registry_match_status' => null,
+                'registry_message' => 'استعلام مشخصات هویتی (PersonInfo) توسط ادمین موقتاً غیرفعال شده است.',
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
+        }
+
         $birthDate = JalaliDate::formatApi(\Illuminate\Support\Carbon::parse($data['date_of_birth']));
 
         try {
@@ -223,18 +232,21 @@ class SubmitIdentityVerification
                 fn ($provider) => $provider->lookup($nationalCode, $birthDate),
             );
             $result = $outcome['result'];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            report($e);
             $result = null;
         }
 
+        // Technical / incomplete PersonInfo: soft-fail into expert queue (same as Shahkar outage).
         if (! $result || $result->isTechnicalFailure()) {
-            return $this->rejectRegistryLookup(
-                $submission,
-                'unavailable',
-                $result?->provider_message ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE,
-                IdentityReasonCode::InfoMismatch,
-                'رد خودکار سامانه: استعلام مشخصات هویتی (PersonInfo) در دسترس نبود.',
-            );
+            $submission->update([
+                'registry_match_status' => 'unavailable',
+                'registry_message' => $result?->provider_message
+                    ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE_ADMIN,
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
         }
 
         if ($result->normalized_result === OwnershipVerificationResult::Mismatched) {
@@ -248,14 +260,14 @@ class SubmitIdentityVerification
         }
 
         if ($result->normalized_result !== OwnershipVerificationResult::Matched || ! $result->hasNames()) {
-            return $this->rejectRegistryLookup(
-                $submission,
-                'unavailable',
-                $result->provider_message
-                    ?: 'پاسخ استعلام مشخصات هویتی ناقص بود (نام در پاسخ سرویس موجود نیست).',
-                IdentityReasonCode::InfoMismatch,
-                'رد خودکار سامانه: پاسخ استعلام مشخصات هویتی ناقص بود.',
-            );
+            $submission->update([
+                'registry_match_status' => 'unavailable',
+                'registry_message' => $result->provider_message
+                    ?: IdentityVerificationMessages::REGISTRY_UNAVAILABLE_ADMIN,
+                'registry_checked_at' => now(),
+            ]);
+
+            return $submission->fresh();
         }
 
         $namesEqual = PersianName::equal($result->first_name, $data['first_name'])

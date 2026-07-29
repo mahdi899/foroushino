@@ -384,14 +384,22 @@ function RouteCard({
           )}
         </label>
 
-        <label className="inline-flex items-center gap-2 text-small sm:col-span-2">
+        <label className="inline-flex items-start gap-2 text-small sm:col-span-2">
           <input
             type="checkbox"
+            className="mt-1"
             checked={active}
             disabled={!canManage || pending}
             onChange={(e) => setActive(e.target.checked)}
           />
-          مسیر فعال باشد
+          <span>
+            مسیر فعال باشد
+            {route.capability === 'PERSON_INFO_INQUIRY' ? (
+              <span className="mt-0.5 block text-caption text-text-muted">
+                اگر غیرفعال شود، استعلام مشخصات هویتی رد می‌شود و پرونده کاربر مستقیم به صف بررسی کارشناس می‌رود.
+              </span>
+            ) : null}
+          </span>
         </label>
       </div>
 
