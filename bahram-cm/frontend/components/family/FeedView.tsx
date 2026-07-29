@@ -1023,18 +1023,6 @@ export function FeedView({
     }
     if (pinNavigateRef.current) return;
 
-    // While older history is loading / settling, keep the captured post locked in place
-    // so upward fling cannot leave the waiting edge or land on a newly prepended row.
-    const historyPin = scrollRestoreRef.current;
-    if (historyPin && (loadingHistoryRef.current || historySettleActiveRef.current)) {
-      const ctx = getScrollCtx();
-      const top = ctx.root?.scrollTop ?? 0;
-      // Hold the top waiting edge; don't yank someone who scrolled back into the feed.
-      if (historySettleActiveRef.current || top < 180) {
-        restoreFeedScrollPosition(historyPin, ctx);
-      }
-    }
-
     if (mediaWarmupRafRef.current == null) {
       mediaWarmupRafRef.current = requestAnimationFrame(() => {
         mediaWarmupRafRef.current = null;
@@ -1217,10 +1205,11 @@ export function FeedView({
   }, [isValidating]);
 
   /**
-   * Older pages arrive as a prepend. TanStack `anchorTo: 'end'` re-pins by estimated
-   * sizes, but at scrollTop≈0 (ceiling) that often under-corrects — the viewport jumps
-   * onto the newly loaded oldest posts. Keep the first visible post pinned through
-   * estimate→measure settle so mobile fling + row measure cannot yank the viewport.
+   * Older pages arrive as a prepend. At scrollTop≈0 the viewport can land on the
+   * newly loaded oldest posts unless we restore the pre-fetch anchor once in layout.
+   *
+   * Extra settle passes only run while the user is quiet — re-pinning during an
+   * upward fling fights Lenis/momentum and brings back mobile scroll glitches.
    */
   useLayoutEffect(() => {
     const snapshot = scrollRestoreRef.current;
@@ -1230,12 +1219,22 @@ export function FeedView({
     const { root, lenis } = getScrollCtx();
     restoreFeedScrollPosition(snapshot, { root, lenis });
 
+    // Finger / momentum is driving scroll — one layout restore is enough.
+    if (performance.now() < userScrollQuietUntilRef.current) {
+      scrollRestoreRef.current = null;
+      loadingHistoryRef.current = false;
+      historySettleActiveRef.current = false;
+      return;
+    }
+
     const gen = ++historySettleGenRef.current;
     historySettleActiveRef.current = true;
     void restoreFeedScrollPositionUntilSettled(snapshot, {
       getScrollCtx,
-      maxPasses: 8,
-      isCancelled: () => gen !== historySettleGenRef.current,
+      maxPasses: 4,
+      isCancelled: () =>
+        gen !== historySettleGenRef.current ||
+        performance.now() < userScrollQuietUntilRef.current,
       onPass: () => {
         virtualListRef.current?.measureNewRows();
       },
