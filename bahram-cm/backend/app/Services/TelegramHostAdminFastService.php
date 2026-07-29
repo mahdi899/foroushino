@@ -94,7 +94,7 @@ class TelegramHostAdminFastService
 
         if ($conversation->state !== ConversationState::AdminPanel
             && $conversation->state !== ConversationState::AdminWaitingInput
-            && app(AdminMenuKeyboard::class)->isMenuButton($text, $account)) {
+            && app(AdminMenuKeyboard::class)->isAdminExclusiveMenuButton($text, $account)) {
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
             ]);

@@ -90,6 +90,13 @@ final class HostAdminShell
         self::EXIT => ['❌ خروج از پنل ادمین'],
     ];
 
+    /** Labels shared with the public main menu — must not hijack main-menu taps outside admin panel. */
+    private const MAIN_MENU_OVERLAP = [
+        self::REFERENCE_CHANNEL,
+        self::COURSES,
+        self::SEMINARS,
+    ];
+
     /** Main-menu core labels — premium icon sends text without emoji prefix. */
     private const CATALOG_CORE_ALIASES = [
         self::REFERENCE_CHANNEL => ['کانال مرجع'],
@@ -142,19 +149,49 @@ final class HostAdminShell
 
     public function isAdminButton(string $text): bool
     {
-        $label = $this->normalizeLabel($text);
+        $label = $this->normalizeAdminPanelLabel($text);
 
         return $label !== null && $label !== self::EXIT;
     }
 
-    public function isCatalogHubButton(string $text): bool
+    /** Match admin reply keyboard while inside admin panel (emoji-stripped labels OK). */
+    public function isAdminPanelButton(string $text): bool
     {
-        $label = $this->normalizeLabel($text);
-
-        return $label !== null && in_array($label, [self::COURSES, self::REFERENCE_CHANNEL, self::SEMINARS], true);
+        return $this->normalizeAdminPanelLabel($text) !== null;
     }
 
+    /** Admin-only buttons (not on public main menu). */
+    public function isAdminExclusiveButton(string $text): bool
+    {
+        $label = $this->normalizeAdminPanelLabel($text);
+        if ($label === null || $label === self::EXIT) {
+            return false;
+        }
+
+        return ! in_array($label, self::MAIN_MENU_OVERLAP, true);
+    }
+
+    /** @deprecated Use isAdminPanelButton() */
+    public function isCatalogHubButton(string $text): bool
+    {
+        $label = $this->normalizeAdminPanelLabel($text);
+
+        return $label !== null && in_array($label, self::MAIN_MENU_OVERLAP, true);
+    }
+
+    /** Map pressed text to canonical label — no main-menu overlap while Idle. */
     public function normalizeLabel(string $text): ?string
+    {
+        return $this->normalizeTapMatch($text, includeCoreAliases: false);
+    }
+
+    /** Full admin keyboard match — use only when conversation is admin_panel / admin_waiting_input. */
+    public function normalizeAdminPanelLabel(string $text): ?string
+    {
+        return $this->normalizeTapMatch($text, includeCoreAliases: true);
+    }
+
+    private function normalizeTapMatch(string $text, bool $includeCoreAliases): ?string
     {
         $text = $this->normalizeTapText($text);
         if ($text === '') {
@@ -175,7 +212,34 @@ final class HostAdminShell
             }
         }
 
-        return $this->normalizeAdminCoreLabel($text);
+        if (! $includeCoreAliases) {
+            return null;
+        }
+
+        $coreMatch = $this->normalizeAdminCoreLabel($text);
+        if ($coreMatch !== null) {
+            return $coreMatch;
+        }
+
+        return $this->normalizeCatalogCoreLabel($text);
+    }
+
+    private function normalizeCatalogCoreLabel(string $text): ?string
+    {
+        $core = $this->coreLabel($text);
+        if ($core === '') {
+            return null;
+        }
+
+        foreach (self::CATALOG_CORE_ALIASES as $canonical => $aliases) {
+            foreach ($aliases as $alias) {
+                if ($core === $this->coreLabel($alias)) {
+                    return $canonical;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function normalizeAdminCoreLabel(string $text): ?string

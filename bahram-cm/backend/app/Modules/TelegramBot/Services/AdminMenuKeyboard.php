@@ -69,6 +69,13 @@ class AdminMenuKeyboard
         self::EXIT => 'cross',
     ];
 
+    /** Labels shared with the public main menu — must not hijack main-menu taps outside admin panel. */
+    private const MAIN_MENU_OVERLAP = [
+        self::REFERENCE_CHANNEL,
+        self::COURSES,
+        self::SEMINARS,
+    ];
+
     /**
      * Main-menu core labels shared with admin catalog hubs (premium icon sends text without emoji prefix).
      *
@@ -208,28 +215,65 @@ class AdminMenuKeyboard
         return $this->normalizeLabel($text, $account) !== null;
     }
 
+    /** Match admin reply keyboard while inside admin panel (emoji-stripped labels OK). */
+    public function isAdminPanelMenuButton(string $text, ?TelegramAccount $account = null): bool
+    {
+        if ($account !== null && ! $account->isBotAdmin()) {
+            return false;
+        }
+
+        return $this->normalizeAdminPanelLabel($text, $account) !== null;
+    }
+
+    /**
+     * Admin-only buttons (not on public main menu) — safe to open admin panel from Idle
+     * when the foreign host keyboard is ahead of Iran conversation state.
+     */
+    public function isAdminExclusiveMenuButton(string $text, ?TelegramAccount $account = null): bool
+    {
+        $label = $this->normalizeAdminPanelLabel($text, $account);
+        if ($label === null || $label === self::EXIT) {
+            return false;
+        }
+
+        return ! $this->overlapsMainMenu($label);
+    }
+
+    /** @deprecated Use isAdminPanelMenuButton() */
     public function isCatalogHubButton(string $text, ?TelegramAccount $account = null): bool
     {
         if ($account !== null && ! $account->isBotAdmin()) {
             return false;
         }
 
-        $label = $this->normalizeLabel($text, $account);
+        $label = $this->normalizeAdminPanelLabel($text, $account);
 
-        return $label !== null && in_array($label, [self::COURSES, self::REFERENCE_CHANNEL, self::SEMINARS], true);
+        return $label !== null && in_array($label, self::MAIN_MENU_OVERLAP, true);
     }
 
+    /** @deprecated Use isAdminPanelMenuButton() */
     public function isAdminPanelButton(string $text, ?TelegramAccount $account = null): bool
     {
-        if ($account !== null && ! $account->isBotAdmin()) {
-            return false;
-        }
-
-        return $this->normalizeLabel($text, $account) !== null;
+        return $this->isAdminPanelMenuButton($text, $account);
     }
 
-    /** Map pressed text (current or legacy) to canonical label. */
+    /** Map pressed text (current or legacy) to canonical label — no main-menu overlap while Idle. */
     public function normalizeLabel(string $text, ?TelegramAccount $account = null): ?string
+    {
+        return $this->normalizeTapMatch($text, includeCoreAliases: false);
+    }
+
+    /** Full admin keyboard match — use only when conversation is AdminPanel / AdminWaitingInput. */
+    public function normalizeAdminPanelLabel(string $text, ?TelegramAccount $account = null): ?string
+    {
+        if ($account !== null && ! $account->isBotAdmin()) {
+            return null;
+        }
+
+        return $this->normalizeTapMatch($text, includeCoreAliases: true);
+    }
+
+    private function normalizeTapMatch(string $text, bool $includeCoreAliases): ?string
     {
         $text = $this->normalizeTapText($text);
         if ($text === '') {
@@ -248,16 +292,21 @@ class AdminMenuKeyboard
             }
         }
 
-        if ($account?->isBotAdmin()) {
-            $coreMatch = $this->normalizeAdminCoreLabel($text);
-            if ($coreMatch !== null) {
-                return $coreMatch;
-            }
-
-            return $this->normalizeCatalogCoreLabel($text);
+        if (! $includeCoreAliases) {
+            return null;
         }
 
-        return null;
+        $coreMatch = $this->normalizeAdminCoreLabel($text);
+        if ($coreMatch !== null) {
+            return $coreMatch;
+        }
+
+        return $this->normalizeCatalogCoreLabel($text);
+    }
+
+    private function overlapsMainMenu(string $canonical): bool
+    {
+        return in_array($canonical, self::MAIN_MENU_OVERLAP, true);
     }
 
     private function normalizeAdminCoreLabel(string $text): ?string

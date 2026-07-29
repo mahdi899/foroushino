@@ -256,18 +256,6 @@ class MessageHandler implements UpdateHandlerInterface
                 $this->conversations->reset($conversation);
                 $conversation->refresh();
             }
-
-            $adminLabel = app(AdminMenuKeyboard::class)->normalizeLabel($text, $account);
-            if ($adminLabel !== null && $adminLabel !== AdminMenuKeyboard::EXIT) {
-                $conversation = $this->conversations->forAccount($account);
-                $this->conversations->transition($conversation, ConversationState::AdminPanel, [
-                    'admin' => ['flow' => null, 'draft' => []],
-                ]);
-                $this->botAdmin->handleAdminMenuButton($bot, $account, $chatId, $text);
-
-                return;
-            }
-
             $this->handleMenuButton($bot, $account, $chatId, $text);
 
             return;

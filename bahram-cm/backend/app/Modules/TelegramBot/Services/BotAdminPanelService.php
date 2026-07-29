@@ -163,8 +163,7 @@ class BotAdminPanelService
         if (
             $conversation->state !== ConversationState::AdminPanel
             && $conversation->state !== ConversationState::AdminWaitingInput
-            && app(AdminMenuKeyboard::class)->isMenuButton($text, $account)
-            && app(AdminMenuKeyboard::class)->normalizeLabel($text, $account) !== AdminMenuKeyboard::EXIT
+            && app(AdminMenuKeyboard::class)->isAdminExclusiveMenuButton($text, $account)
         ) {
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
@@ -186,13 +185,7 @@ class BotAdminPanelService
                 return true;
             }
 
-            if (app(AdminMenuKeyboard::class)->isMenuButton($text, $account)) {
-                $this->handleAdminMenuButton($bot, $account, $chatId, $text);
-
-                return true;
-            }
-
-            if (app(AdminMenuKeyboard::class)->isCatalogHubButton($text, $account)) {
+            if (app(AdminMenuKeyboard::class)->isAdminPanelMenuButton($text, $account)) {
                 $this->handleAdminMenuButton($bot, $account, $chatId, $text);
 
                 return true;
@@ -213,16 +206,7 @@ class BotAdminPanelService
         $flow = (string) ($admin['flow'] ?? '');
         $client = $this->clients->forBot($bot);
 
-        if (app(AdminMenuKeyboard::class)->isMenuButton($text, $account)) {
-            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
-                'admin' => ['flow' => null, 'draft' => []],
-            ]);
-            $this->handleAdminMenuButton($bot, $account, $chatId, $text);
-
-            return true;
-        }
-
-        if (app(AdminMenuKeyboard::class)->isCatalogHubButton($text, $account)) {
+        if (app(AdminMenuKeyboard::class)->isAdminPanelMenuButton($text, $account)) {
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
             ]);
@@ -313,7 +297,7 @@ class BotAdminPanelService
     private function handleAdminMenuButton(TelegramBot $bot, TelegramAccount $account, int $chatId, string $text): void
     {
         $client = $this->clients->forBot($bot);
-        $text = app(AdminMenuKeyboard::class)->normalizeLabel($text, $account) ?? trim($text);
+        $text = app(AdminMenuKeyboard::class)->normalizeAdminPanelLabel($text, $account) ?? trim($text);
 
         $permission = match ($text) {
             AdminMenuKeyboard::USERS => \App\Modules\TelegramBot\Enums\BotAdminPermission::UserInfo,
