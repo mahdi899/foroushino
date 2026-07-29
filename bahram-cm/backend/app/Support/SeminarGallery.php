@@ -95,7 +95,7 @@ final class SeminarGallery
     }
 
     /**
-     * Resolve gallery items to public CDN/storage URLs.
+     * Resolve gallery items to portable /storage references (frontend applies CDN + fallback).
      *
      * @param  list<array<string, mixed>>|null  $items
      * @return list<array{type: string, aspect: string, src: string, alt: ?string, poster: ?string}>
@@ -119,7 +119,7 @@ final class SeminarGallery
             }
 
             $srcRef = MediaUrl::fromDiskPath($srcRaw) ?? $srcRaw;
-            $resolvedSrc = MediaUrl::resolve($srcRef);
+            $resolvedSrc = MediaUrl::resolve($srcRef, absolute: false);
             if (! filled($resolvedSrc)) {
                 continue;
             }
@@ -128,7 +128,7 @@ final class SeminarGallery
             $posterRaw = isset($item['poster']) ? trim((string) $item['poster']) : '';
             if ($posterRaw !== '') {
                 $posterRef = MediaUrl::fromDiskPath($posterRaw) ?? $posterRaw;
-                $poster = MediaUrl::resolve($posterRef);
+                $poster = MediaUrl::resolve($posterRef, absolute: false);
             }
 
             $out[] = [
@@ -169,7 +169,7 @@ final class SeminarGallery
             }
 
             $srcRef = MediaUrl::fromDiskPath($srcRaw) ?? $srcRaw;
-            $resolvedSrc = MediaUrl::resolve($srcRef);
+            $resolvedSrc = MediaUrl::resolve($srcRef, absolute: false);
             if (! filled($resolvedSrc)) {
                 continue;
             }

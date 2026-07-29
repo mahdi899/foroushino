@@ -51,9 +51,19 @@ export function mediaPathToStorage(path: string): string {
     return `/storage${legacyPath}`;
   }
 
-  // Family + site gallery on CDN — not legacy /public/media layout.
-  if (legacyPath.startsWith('/media/family/') || legacyPath.startsWith('/media/site/')) {
+  // Wrong rewrite of student avatars under site gallery (must run before /media/site/).
+  if (legacyPath.startsWith('/media/site/avatars/')) {
+    return `/storage/media/avatars/${legacyPath.slice('/media/site/avatars/'.length)}`;
+  }
+
+  // Family gallery stays on CDN path shape for club playback (not /storage).
+  if (legacyPath.startsWith('/media/family/')) {
     return legacyPath;
+  }
+
+  // Site gallery CDN delivery path → portable storage ref for origin fallback.
+  if (legacyPath.startsWith('/media/site/')) {
+    return `/storage${legacyPath}`;
   }
 
   // Wrong legacy nest: /storage/media/site/family/* → CDN /media/family/*.
@@ -64,9 +74,6 @@ export function mediaPathToStorage(path: string): string {
   // Wrong rewrite of student avatars under site gallery.
   if (legacyPath.startsWith('/storage/media/site/avatars/')) {
     return legacyPath.replace('/storage/media/site/avatars/', '/storage/media/avatars/');
-  }
-  if (legacyPath.startsWith('/media/site/avatars/')) {
-    return `/storage/media/avatars/${legacyPath.slice('/media/site/avatars/'.length)}`;
   }
 
   const mapped = resolveLegacyStoragePath(legacyPath);

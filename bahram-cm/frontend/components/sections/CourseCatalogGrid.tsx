@@ -12,8 +12,8 @@ const catalogMeta: Record<
   { icon: LucideIcon; tone: "gold" | "teal"; imageClassName?: string }
 > = {
   "/course/campaign-writing": { icon: PencilLine, tone: "gold" },
-  "/saat": { icon: Phone, tone: "teal" },
-  "/saat#apply": { icon: Phone, tone: "teal" },
+  "/saat": { icon: Phone, tone: "teal", imageClassName: "object-[center_20%]" },
+  "/saat#apply": { icon: Phone, tone: "teal", imageClassName: "object-[center_20%]" },
   "/reference-channels/kanal-mrgf": {
     icon: Radio,
     tone: "gold",
