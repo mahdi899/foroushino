@@ -137,8 +137,7 @@ final class MainMenu
             return ['text' => $label];
         }
 
-        // Unicode in text so the menu still looks right if Premium icons are
-        // rejected; icon_custom_emoji_id adds the animated premium glyph when allowed.
+        // Premium glyph comes only from icon_custom_emoji_id (no unicode twin in text).
         return [
             'text' => TelegramCustomEmoji::buttonText($label, $iconKey),
             ...TelegramCustomEmoji::buttonIcon($iconKey),

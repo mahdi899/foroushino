@@ -9,6 +9,7 @@ use App\Models\IdentityProviderConfig;
 use App\Models\IdentityVerificationRoute;
 use App\Services\AdminAuditLogger;
 use App\Services\Identity\IdentityVerificationProviderRegistry;
+use App\Services\Identity\Providers\ApiIrShahkarProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -112,7 +113,19 @@ class IdentityProviderAdminController extends Controller
             $config->is_enabled = (bool) $data['is_enabled'];
         }
         if (isset($data['settings'])) {
-            $config->settings = array_merge($config->settings ?? [], $data['settings']);
+            $settings = array_merge($config->settings ?? [], $data['settings']);
+            if ($slug === ApiIrShahkarProvider::SLUG) {
+                $settings['base_url'] = ApiIrShahkarProvider::DEFAULT_BASE_URL;
+            }
+            $config->settings = $settings;
+        } elseif ($slug === ApiIrShahkarProvider::SLUG) {
+            // Keep API.ir host pinned even when only credentials/enable toggled.
+            $settings = $config->settings ?? [];
+            $current = trim((string) ($settings['base_url'] ?? ''));
+            if ($current === '' || str_contains(strtolower($current), 'apif.ir') || ! str_contains(strtolower($current), 's.api.ir')) {
+                $settings['base_url'] = ApiIrShahkarProvider::DEFAULT_BASE_URL;
+                $config->settings = $settings;
+            }
         }
         if (isset($data['credentials']) && is_array($data['credentials'])) {
             $existing = $config->getCredentials();

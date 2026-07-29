@@ -160,14 +160,36 @@ final class TelegramCustomEmoji
         return $id !== null ? ['icon_custom_emoji_id' => $id] : [];
     }
 
+    /**
+     * Label for a keyboard button that also uses icon_custom_emoji_id.
+     * Do NOT put a unicode emoji in the text when a premium icon id exists —
+     * Telegram would show both (simple + premium). Unicode is only injected by
+     * degradeButtonIcons() after the API rejects the custom icon.
+     */
     public static function buttonText(string $label, string $iconKey): string
     {
         $label = trim($label);
         $fallback = self::fallback($iconKey);
+        $label = self::stripLeadingFallback($label);
+        if ($fallback !== '' && str_ends_with($label, $fallback)) {
+            $label = trim(mb_substr($label, 0, mb_strlen($label) - mb_strlen($fallback)));
+        }
+        if ($fallback !== '' && preg_match('/\s+'.preg_quote($fallback, '/').'$/u', $label)) {
+            $label = trim(preg_replace('/\s+'.preg_quote($fallback, '/').'$/u', '', $label) ?? $label);
+        }
+
+        if (self::id($iconKey) !== null) {
+            // Drop any trailing unicode emoji so only icon_custom_emoji_id remains.
+            $label = preg_replace('/[\x{FE0F}\x{200D}\p{So}\p{Sk}\s]+$/u', '', $label) ?? $label;
+            $label = trim($label);
+
+            return $label !== '' ? $label : $fallback;
+        }
+
         if ($fallback === '' || $label === '') {
             return $label !== '' ? $label : $fallback;
         }
-        if (str_starts_with($label, $fallback) || str_contains($label, $fallback)) {
+        if (str_contains($label, $fallback)) {
             return $label;
         }
 

@@ -376,8 +376,32 @@ class ApiIrShahkarProvider implements
     private function baseUrl(IdentityProviderConfig $config): string
     {
         $configured = trim((string) ($config->settings['base_url'] ?? ''));
+        $normalized = $this->normalizeBaseUrl($configured);
 
-        return rtrim($configured !== '' ? $configured : self::DEFAULT_BASE_URL, '/');
+        // Heal common typos persisted in admin settings (e.g. s.apif.ir).
+        if ($configured !== '' && $configured !== $normalized) {
+            $settings = $config->settings ?? [];
+            $settings['base_url'] = $normalized;
+            $config->settings = $settings;
+            $config->saveQuietly();
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeBaseUrl(string $configured): string
+    {
+        $url = rtrim($configured !== '' ? $configured : self::DEFAULT_BASE_URL, '/');
+        $url = preg_replace('#^http://#i', 'https://', $url) ?? $url;
+        // Typo seen in production: s.apif.ir instead of s.api.ir
+        $url = str_ireplace(['s.apif.ir', '://apif.ir'], ['s.api.ir', '://api.ir'], $url);
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (! is_string($host) || ! preg_match('/(^|\.)api\.ir$/i', $host)) {
+            return self::DEFAULT_BASE_URL;
+        }
+
+        return rtrim($url, '/');
     }
 
     /**
