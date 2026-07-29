@@ -13,7 +13,7 @@ import {
   submitIdentityVerificationAction,
   uploadIdentityArtifactAction,
 } from '@/lib/student/identityActions';
-import { identityStatusLabel } from '@/lib/student/identityLabels';
+import { identityStatusLabel, identityCorrectionLabel } from '@/lib/student/identityLabels';
 import {
   IDENTITY_CLIENT_ERRORS,
   IDENTITY_CLIENT_ERROR_TITLES,
@@ -283,7 +283,7 @@ export function IdentityVerificationWizard({
           <p className="font-bold">موارد نیازمند اصلاح:</p>
           <ul className="mt-1 list-inside list-disc text-text-muted">
             {correctionItems.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item}>{identityCorrectionLabel(item)}</li>
             ))}
           </ul>
         </div>

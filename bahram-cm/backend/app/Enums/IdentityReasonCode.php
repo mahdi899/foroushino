@@ -26,4 +26,41 @@ enum IdentityReasonCode: string
             self::Other => 'سایر',
         };
     }
+
+    /** Resolve a stored code or already-Persian label to student-facing Persian text. */
+    public static function labelFor(string $codeOrLabel): string
+    {
+        $raw = trim($codeOrLabel);
+        if ($raw === '') {
+            return $raw;
+        }
+
+        $enum = self::tryFrom($raw);
+
+        return $enum?->label() ?? $raw;
+    }
+
+    /**
+     * @param  list<string>|array<int, string>|null  $items
+     * @return list<string>
+     */
+    public static function labelsForList(?array $items): array
+    {
+        if ($items === null || $items === []) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($items as $item) {
+            if (! is_string($item)) {
+                continue;
+            }
+            $label = self::labelFor($item);
+            if ($label !== '' && ! in_array($label, $out, true)) {
+                $out[] = $label;
+            }
+        }
+
+        return $out;
+    }
 }

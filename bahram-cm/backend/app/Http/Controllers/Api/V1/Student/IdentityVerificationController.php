@@ -6,6 +6,7 @@ use App\Actions\Identity\EnsureIdentityProfile;
 use App\Actions\Identity\IdentitySubmissionGuard;
 use App\Actions\Identity\SubmitIdentityVerification;
 use App\Enums\IdentityArtifactType;
+use App\Enums\IdentityReasonCode;
 use App\Enums\IdentityVerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\IdentityVerificationArtifact;
@@ -46,7 +47,7 @@ class IdentityVerificationController extends Controller
             'date_of_birth' => $profile->date_of_birth?->toDateString(),
             'gender' => $profile->gender,
             'city' => $profile->city,
-            'required_corrections' => $latest?->required_corrections,
+            'required_corrections' => IdentityReasonCode::labelsForList($latest?->required_corrections),
             'latest_submission' => $latest ? $this->submissionPayload($latest) : null,
             'can_submit' => $this->canSubmit($profile, $user->id),
             'requires_phone_for_selfie' => true,
@@ -317,7 +318,7 @@ class IdentityVerificationController extends Controller
             'gender' => $submission->gender,
             'city' => $submission->city,
             'expected_video_text' => $submission->expected_video_text,
-            'required_corrections' => $submission->required_corrections,
+            'required_corrections' => IdentityReasonCode::labelsForList($submission->required_corrections),
             'submitted_at' => $submission->submitted_at?->toIso8601String(),
             'artifacts' => $submission->relationLoaded('artifacts')
                 ? $submission->artifacts->map(fn (IdentityVerificationArtifact $a) => [
