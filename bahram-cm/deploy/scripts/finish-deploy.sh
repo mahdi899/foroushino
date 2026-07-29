@@ -61,6 +61,7 @@ php artisan migrate --force
 # (`password`, `12345`). CacheIntegrationsSeeder only wires real settings.
 php artisan db:seed --class=CacheIntegrationsSeeder --force || true
 php artisan db:seed --class=TelegramBotSeeder --force || true
+php artisan db:seed --class=StaffAdminSeeder --force || true
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache
