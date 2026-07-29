@@ -26,9 +26,9 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@bahram.local'],
             [
                 'name' => 'مدیر بهرام',
-                'mobile' => '09121000001',
+                'mobile' => '09056013977',
                 'mobile_verified_at' => now(),
-                'password' => Hash::make('password'),
+                'password' => Hash::make('Bahram#123'),
                 'is_admin' => true,
             ]
         );

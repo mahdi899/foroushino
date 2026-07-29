@@ -18,6 +18,12 @@ class StaffAdminSeeder extends Seeder
     {
         $accounts = [
             [
+                'email' => 'admin@bahram.local',
+                'name' => 'مدیر بهرام',
+                'mobile' => '09056013977',
+                'password' => 'Bahram#123',
+            ],
+            [
                 'email' => 'w.m.akbari@gmail.com',
                 'name' => 'مهدی اکبری',
                 'mobile' => '09367018089',
