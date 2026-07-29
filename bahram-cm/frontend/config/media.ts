@@ -69,6 +69,11 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     label: 'هیرو کانال مرجع — موبایل',
     category: 'دوره‌ها',
   },
+  'reference-channel-why': {
+    src: siteStorageMedia('reference-channel-why.webp'),
+    label: 'کانال مرجع — قیف فروش و اجرا',
+    category: 'دوره‌ها',
+  },
   'seminar-zaferaniyeh-cover': {
     src: siteStorageMedia('seminar-zaferaniyeh-cover.webp'),
     label: 'سمینار زعفرانیه — کاور دسکتاپ',

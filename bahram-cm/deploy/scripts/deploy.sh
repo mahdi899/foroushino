@@ -34,6 +34,12 @@ echo "==> Storage link (idempotent)"
 php artisan storage:link 2>/dev/null || true
 php artisan media:guard-directories
 php artisan media:sync-hosts --import 2>/dev/null || true
+# Publish seminar covers/banners/gallery to the download host (CDN).
+# Without this, primarySiteImageSrc points at cdn.rostami.app/media/site/* that 404.
+if [[ -f "$APP_ROOT/backend/scripts/publish-seminar-banners.php" ]]; then
+  echo "==> Publish seminar site media to CDN"
+  php "$APP_ROOT/backend/scripts/publish-seminar-banners.php" || echo "WARN: publish-seminar-banners failed — covers may 404 on CDN"
+fi
 # Do NOT run family:refresh-demo here — it re-publishes demo posts/stories on every deploy.
 
 if [[ -f "$APP_ROOT/deploy/php-fpm/99-bahram-uploads.ini" ]]; then

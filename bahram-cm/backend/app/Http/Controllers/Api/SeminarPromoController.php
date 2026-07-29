@@ -47,8 +47,8 @@ class SeminarPromoController extends Controller
             return [
                 'seminar_id' => $seminar->id,
                 'title' => $seminar->title,
-                'banner_url' => MediaUrl::resolve($bannerRef),
-                'banner_url_mobile' => MediaUrl::resolve($bannerMobileRef),
+                'banner_url' => MediaUrl::resolve($bannerRef, absolute: false),
+                'banner_url_mobile' => MediaUrl::resolve($bannerMobileRef, absolute: false),
                 'banner_width' => $desktopDims['width'] ?? null,
                 'banner_height' => $desktopDims['height'] ?? null,
                 'banner_mobile_width' => $mobileDims['width'] ?? null,

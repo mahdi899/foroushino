@@ -30,6 +30,8 @@ export const sitePhotos = {
   mainPathReference: siteStorageMedia('reference-channel-hero.webp'),
   /** هیرو کانال مرجع — موبایل */
   mainPathReferenceMobile: siteStorageMedia('reference-channel-hero-mobile.webp'),
+  /** سکشن میانی صفحه کانال مرجع — قیف فروش */
+  referenceChannelWhy: siteStorageMedia('reference-channel-why.webp'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
   landscapeSession: siteStorageMedia('landscape-session.webp'),
   /** هیرو دوره کمپین‌نویسی — موبایل (۹:۱۶) */

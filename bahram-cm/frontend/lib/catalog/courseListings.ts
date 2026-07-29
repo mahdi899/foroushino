@@ -1,6 +1,6 @@
 import { site } from '@/content/site';
 import { getProducts, getPublicProductBySlug, type ProductListItem } from '@/lib/services/products';
-import { resolveProductFeaturedImage, resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
+import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
 
 export type CourseCatalogCard = {
   href: string;
@@ -18,6 +18,7 @@ export type CourseCatalogCard = {
 const defaultPathImages: Record<string, string> = {
   '/course/campaign-writing': resolveProductSiteFeaturedImage({ slug: 'campaign-writing' }),
   '/saat': resolveProductSiteFeaturedImage({ slug: 'saat' }),
+  '/saat#apply': resolveProductSiteFeaturedImage({ slug: 'saat', landing_href: '/saat#apply' }),
   '/reference-channels/kanal-mrgf': resolveProductSiteFeaturedImage({
     slug: 'reference-kanal-mrgf',
     landing_href: '/reference-channels/kanal-mrgf',
@@ -28,6 +29,7 @@ const defaultPathImages: Record<string, string> = {
 const pathProductSlugs: Record<string, string> = {
   '/course/campaign-writing': 'campaign-writing',
   '/saat': 'saat',
+  '/saat#apply': 'saat',
   '/reference-channels/kanal-mrgf': 'reference-kanal-mrgf',
 };
 
@@ -94,7 +96,9 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
   const byHref = await getPathProductsByHref();
 
   return site.mainPaths.items.map((item) => {
-    const product = byHref.get(item.href);
+    const product =
+      byHref.get(item.href) ??
+      (item.href.startsWith('/saat') ? byHref.get('/saat') ?? byHref.get('/saat#apply') : undefined);
     const meta = staticPathMeta[item.href] ?? {
       level: 'مسیر آموزشی',
       duration: '—',
@@ -111,17 +115,14 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
       level: meta.level,
       duration: meta.duration,
       featured: meta.featured,
-      image: resolveProductFeaturedImage({
-        featured_image: product?.featured_image,
-        slug: product?.slug,
-        landing_href: product?.landing_href || item.href,
-      }) || defaultImage,
+      // Path cards always use site canonical covers (media/site/*) so home + /courses stay in sync.
+      image: defaultImage,
       imageAlt: product?.featured_image_alt || `کاور ${product?.title?.trim() || item.label}`,
     };
   });
 }
 
-/** Admin overrides for marketing path cards (image, title, summary only). */
+/** Admin overrides for marketing path cards (title, summary; images come from sitePhotos). */
 export async function getCoursePathOverrides(): Promise<{
   images: Record<string, string>;
   labels: Record<string, string>;
@@ -132,11 +133,19 @@ export async function getCoursePathOverrides(): Promise<{
   const labels: Record<string, string> = {};
   const taglines: Record<string, string> = {};
 
+  for (const href of Object.keys(defaultPathImages)) {
+    images[href] = defaultPathImages[href]!;
+  }
+
   for (const [href, product] of byHref) {
-    if (product.featured_image) images[href] = product.featured_image;
     if (product.title?.trim()) labels[href] = product.title.trim();
     if (product.short_description?.trim()) taglines[href] = product.short_description.trim();
   }
+
+  if (labels['/saat'] && !labels['/saat#apply']) labels['/saat#apply'] = labels['/saat'];
+  if (labels['/saat#apply'] && !labels['/saat']) labels['/saat'] = labels['/saat#apply'];
+  if (taglines['/saat'] && !taglines['/saat#apply']) taglines['/saat#apply'] = taglines['/saat'];
+  if (taglines['/saat#apply'] && !taglines['/saat']) taglines['/saat'] = taglines['/saat#apply'];
 
   return { images, labels, taglines };
 }

@@ -348,8 +348,8 @@ export default async function ReferenceChannelLandingPage({
       <ImageSplitSection
         eyebrow="چرا کانال مرجع؟"
         title="برای شروع فروش، لازم نیست همه‌چیز را از صفر بسازی"
-        image={hero.desktopSrc}
-        imageAlt={hero.desktopAlt}
+        image={sitePhotos.referenceChannelWhy}
+        imageAlt="قیف فروش کانال مرجع — از محتوا تا درآمد"
         imagePosition="end"
         tone="gold"
       >

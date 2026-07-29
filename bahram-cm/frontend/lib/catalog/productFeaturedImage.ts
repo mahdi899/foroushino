@@ -9,6 +9,7 @@ const slugFallback: Record<string, string> = {
 const landingHrefFallback: Record<string, string> = {
   '/course/campaign-writing': sitePhotos.mainPathCampaign,
   '/saat': sitePhotos.mainPathSaat,
+  '/saat#apply': sitePhotos.mainPathSaat,
   '/reference-channels/kanal-mrgf': sitePhotos.mainPathReference,
 };
 
