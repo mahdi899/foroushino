@@ -12,6 +12,7 @@ use App\Modules\TelegramBot\Services\BotAdminPanelService;
 use App\Modules\TelegramBot\Services\ConversationService;
 use App\Modules\TelegramBot\Services\MainMenuKeyboard;
 use App\Modules\TelegramBot\Services\RegistrationFlowService;
+use App\Modules\TelegramBot\Services\RegistrationKeyboard;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
 use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
@@ -83,6 +84,17 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         $client = $this->clients->forBot($bot);
         $messageId = (int) data_get($callback, 'message.message_id', 0);
+
+        if ($data === RegistrationKeyboard::SHARE_CONTACT_CALLBACK) {
+            $this->answer(
+                $client,
+                $callbackId,
+                'برای تأیید شماره، دکمه «ارسال شماره تماس» در پایین صفحه را بزنید.',
+                true,
+            );
+
+            return;
+        }
 
         if ($callbackId !== '') {
             try {

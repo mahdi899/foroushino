@@ -136,7 +136,7 @@ class TelegramHostRegistrationService
         if ($contactUserId <= 0 || $contactUserId !== $telegramUserId) {
             return $this->ok([
                 $this->reply('لطفاً فقط شماره تماس خودتان را با دکمه «ارسال شماره تماس» بفرستید.', [
-                    'reply_markup' => $this->registrationKeyboard->requestContactMarkup(withBack: false),
+                    ...$this->registrationKeyboard->phoneStepOptions(withBack: false),
                 ]),
             ], $conversation, $account);
         }
@@ -144,7 +144,7 @@ class TelegramHostRegistrationService
         if (trim($phone) === '') {
             return $this->ok([
                 $this->reply('شماره تماس دریافت نشد. دوباره تلاش کنید.', [
-                    'reply_markup' => $this->registrationKeyboard->requestContactMarkup(withBack: false),
+                    ...$this->registrationKeyboard->phoneStepOptions(withBack: false),
                 ]),
             ], $conversation, $account);
         }
@@ -209,6 +209,10 @@ class TelegramHostRegistrationService
             return $this->askPhone($bot, $account, $conversation);
         }
 
+        if ($data === RegistrationKeyboard::SHARE_CONTACT_CALLBACK) {
+            return $this->ok([], $conversation, $account);
+        }
+
         if ($data === 'reg:cancel') {
             $this->conversations->reset($conversation);
             $conversation->refresh();
@@ -243,7 +247,7 @@ class TelegramHostRegistrationService
 
             return $this->ok([
                 $this->reply($msg, [
-                    'reply_markup' => $this->registrationKeyboard->requestContactMarkup(withBack: false),
+                    ...$this->registrationKeyboard->phoneStepOptions(withBack: false),
                 ]),
             ], $conversation, $account);
         }
@@ -405,7 +409,7 @@ class TelegramHostRegistrationService
         return $this->ok([
             $this->reply($base.$hint, [
                 'parse_mode' => 'HTML',
-                'reply_markup' => $this->registrationKeyboard->requestContactMarkup(withBack: false),
+                ...$this->registrationKeyboard->phoneStepOptions(withBack: false),
             ]),
         ], $conversation, $account);
     }

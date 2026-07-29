@@ -10,6 +10,8 @@ class RegistrationKeyboard
 
     public const CONTACT_LABEL = 'ارسال شماره تماس';
 
+    public const SHARE_CONTACT_CALLBACK = 'reg:share_contact';
+
     /** @return array<string, mixed> */
     public function requestContactMarkup(bool $withBack = false): array
     {
@@ -32,6 +34,36 @@ class RegistrationKeyboard
             'keyboard' => $rows,
             'resize_keyboard' => true,
             'one_time_keyboard' => ! $withBack,
+        ];
+    }
+
+    /** Inline duplicate of the contact button — attached under the same message after send. */
+    /** @return array<string, mixed> */
+    public function requestContactInlineMarkup(): array
+    {
+        return [
+            'inline_keyboard' => [[
+                [
+                    'text' => TelegramCustomEmoji::buttonText(self::CONTACT_LABEL, 'phone'),
+                    'callback_data' => self::SHARE_CONTACT_CALLBACK,
+                    'style' => 'primary',
+                    ...TelegramCustomEmoji::buttonIcon('phone'),
+                ],
+            ]],
+        ];
+    }
+
+    /**
+     * Reply keyboard (bottom menu) + inline keyboard (under message).
+     * SendTelegramMessageJob applies inline_markup via editMessageReplyMarkup.
+     *
+     * @return array<string, mixed>
+     */
+    public function phoneStepOptions(bool $withBack = false): array
+    {
+        return [
+            'reply_markup' => $this->requestContactMarkup($withBack),
+            'inline_markup' => $this->requestContactInlineMarkup(),
         ];
     }
 

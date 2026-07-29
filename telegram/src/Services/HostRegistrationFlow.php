@@ -10,6 +10,7 @@ use TelegramHost\Account\PendingMobileAccess;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\MobileNormalizer;
 use TelegramHost\Telegram\BotApiClient;
 
@@ -49,7 +50,13 @@ final class HostRegistrationFlow
             "به ربات آکادمی بهرام خوش آمدید.\n\nبرای ادامه، شماره موبایل را با دکمه زیر بفرستید.",
         );
 
-        $this->api->sendMessage($chatId, $text, [
+        $this->sendPhoneStepMessage($chatId, $text);
+    }
+
+    /** @param array<string, mixed> $extraOptions */
+    private function sendPhoneStepMessage(int $chatId, string $text, array $extraOptions = []): void
+    {
+        $result = $this->api->sendMessageResult($chatId, $text, array_merge([
             'parse_mode' => 'HTML',
             'reply_markup' => [
                 'keyboard' => [[[
@@ -59,7 +66,12 @@ final class HostRegistrationFlow
                 'resize_keyboard' => true,
                 'one_time_keyboard' => true,
             ],
-        ]);
+        ], $extraOptions));
+
+        $messageId = (int) ($result['message_id'] ?? 0);
+        if ($messageId > 0) {
+            $this->api->editMessageReplyMarkup($chatId, $messageId, InlineButtons::shareContactInlineMarkup());
+        }
     }
 
     /**
@@ -291,6 +303,17 @@ final class HostRegistrationFlow
             $options['reply_markup'] = $reply['reply_markup'];
         }
 
-        $this->api->sendMessage($chatId, $text, $options);
+        $inlineMarkup = isset($reply['inline_markup']) && is_array($reply['inline_markup'])
+            ? $reply['inline_markup']
+            : null;
+
+        $result = $this->api->sendMessageResult($chatId, $text, $options);
+
+        if ($inlineMarkup !== null) {
+            $messageId = (int) ($result['message_id'] ?? 0);
+            if ($messageId > 0) {
+                $this->api->editMessageReplyMarkup($chatId, $messageId, $inlineMarkup);
+            }
+        }
     }
 }
