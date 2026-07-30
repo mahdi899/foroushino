@@ -10,14 +10,16 @@ use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
 use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 use App\Services\AdminTelegramLogService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
 /**
- * Card-to-card checkout: user sends receipt → payment reports group review → fulfill/reject.
+ * Card-to-card checkout: user sends receipt → payment reports group dual-admin review → fulfill/reject.
  */
 class TelegramCardToCardFlowService
 {
@@ -37,6 +39,7 @@ class TelegramCardToCardFlowService
         string $productTitle,
         int $amount,
         string $instructions,
+        ?int $ttlMinutes = null,
     ): void {
         $conversation = $this->conversations->forAccount($account);
         $this->conversations->transition($conversation, ConversationState::WaitingForCardToCardReceipt, [
@@ -47,16 +50,24 @@ class TelegramCardToCardFlowService
             ],
         ]);
 
+        $ttl = $ttlMinutes ?? max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 10));
         $client = $this->clients->forBot($bot);
         $amountLabel = number_format($amount);
-        $client->sendMessage(
-            $chatId,
-            "سفارش #{$orderId}\n{$productTitle}\nمبلغ: {$amountLabel} تومان\n\n"
-            ."🏧 راهنمای کارت‌به‌کارت:\n{$instructions}\n\n"
-            ."📸 حالا عکس واضح رسید واریز را همین‌جا ارسال کنید.\n"
-            .'برای انصراف «لغو» را بفرستید.',
-            ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
-        );
+        $safeTitle = htmlspecialchars($productTitle, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeInstructions = htmlspecialchars($instructions, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        $text = TelegramCustomEmoji::tag('cash')." سفارش #{$orderId}\n"
+            ."<b>{$safeTitle}</b>\n"
+            .TelegramCustomEmoji::tag('coin')." مبلغ: <b>{$amountLabel}</b> تومان\n\n"
+            .TelegramCustomEmoji::tag('money')." راهنمای کارت‌به‌کارت:\n{$safeInstructions}\n\n"
+            .TelegramCustomEmoji::tag('warning')." مهلت ارسال رسید: <b>{$ttl} دقیقه</b>\n"
+            .TelegramCustomEmoji::tag('pin')." حالا عکس واضح رسید واریز را همین‌جا ارسال کنید.\n"
+            .'برای انصراف «لغو» را بفرستید.';
+
+        $client->sendMessage($chatId, $text, [
+            'parse_mode' => 'HTML',
+            'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+        ]);
     }
 
     /** @param  array<string, mixed>  $message */
@@ -73,19 +84,29 @@ class TelegramCardToCardFlowService
 
         if ($orderId <= 0) {
             $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
-            $client->sendMessage($chatId, 'سفارش کارت‌به‌کارت یافت نشد. دوباره از منو خرید کنید.', [
-                'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
-            ]);
+            $client->sendMessage(
+                $chatId,
+                TelegramCustomEmoji::tag('warning').' سفارش کارت‌به‌کارت یافت نشد. دوباره از منو خرید کنید.',
+                [
+                    'parse_mode' => 'HTML',
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+                ],
+            );
 
             return;
         }
 
         if (in_array(trim($text), ['لغو', '/cancel'], true)) {
-            $this->cancelPendingOrder($orderId);
+            $this->cancelPendingOrder($orderId, 'user_cancel');
             $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
-            $client->sendMessage($chatId, 'سفارش کارت‌به‌کارت لغو شد.', [
-                'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
-            ]);
+            $client->sendMessage(
+                $chatId,
+                TelegramCustomEmoji::tag('warning').' سفارش شما لغو شد.',
+                [
+                    'parse_mode' => 'HTML',
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+                ],
+            );
 
             return;
         }
@@ -94,8 +115,9 @@ class TelegramCardToCardFlowService
         if ($file === null) {
             $client->sendMessage(
                 $chatId,
-                "لطفاً فقط عکس رسید واریز را ارسال کنید (نه متن).\n"
+                TelegramCustomEmoji::tag('pin')." لطفاً فقط عکس رسید واریز را ارسال کنید (نه متن).\n"
                 .'برای انصراف «لغو» را بفرستید.',
+                ['parse_mode' => 'HTML'],
             );
 
             return;
@@ -104,16 +126,46 @@ class TelegramCardToCardFlowService
         $order = Order::query()->with('product')->find($orderId);
         if ($order === null || $order->status !== 'pending_payment') {
             $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
-            $client->sendMessage($chatId, 'این سفارش دیگر در انتظار پرداخت نیست.', [
-                'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
-            ]);
+            $client->sendMessage(
+                $chatId,
+                TelegramCustomEmoji::tag('warning').' این سفارش دیگر در انتظار پرداخت نیست.',
+                [
+                    'parse_mode' => 'HTML',
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+                ],
+            );
+
+            return;
+        }
+
+        $c2cStatus = (string) data_get($order->customer_extra_data, 'card_to_card.status', '');
+        if ($c2cStatus === 'waiting_for_receipt' && $this->isReceiptWindowExpired($order)) {
+            $this->expireIfWaitingForReceipt($order->id);
+            $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
+
+            return;
+        }
+
+        if (blank($bot->paymentReportsChatId())) {
+            $this->cancelPendingOrder($order->id, 'payment_reports_missing');
+            $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
+            $client->sendMessage(
+                $chatId,
+                TelegramCustomEmoji::tag('warning')
+                .' گروه گزارشات پرداخت هنوز تنظیم نشده است. سفارش شما لغو شد. لطفاً با پشتیبانی در تماس باشید.',
+                [
+                    'parse_mode' => 'HTML',
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+                ],
+            );
 
             return;
         }
 
         $fileId = $file['file_id'];
         $extra = (array) ($order->customer_extra_data ?? []);
-        $extra['card_to_card'] = [
+        $existing = (array) ($extra['card_to_card'] ?? []);
+        $extra['card_to_card'] = array_merge($existing, [
             'status' => 'awaiting_review',
             'receipt_file_id' => $fileId,
             'receipt_kind' => $file['kind'],
@@ -121,7 +173,9 @@ class TelegramCardToCardFlowService
             'submitted_at' => now()->toIso8601String(),
             'submitter_telegram_user_id' => (int) $account->telegram_user_id,
             'submitter_telegram_account_id' => (int) $account->id,
-        ];
+            'approvals' => [],
+            'required_approvals' => (int) ($existing['required_approvals'] ?? 2),
+        ]);
         $order->update(['customer_extra_data' => $extra]);
 
         Payment::query()->updateOrCreate(
@@ -148,14 +202,44 @@ class TelegramCardToCardFlowService
             ],
         ]);
 
-        $client->sendMessage(
-            $chatId,
-            "✅ رسید سفارش #{$order->id} دریافت شد.\n"
-            .'پس از بررسی ادمین، نتیجه همین‌جا اعلام می‌شود.',
-            ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+        $ok = $this->paymentReports->notifyCardToCardReceipt(
+            $bot,
+            $order->fresh('product'),
+            $fileId,
+            $file['kind'],
+            $account->adminDisplayName()
+                ?: ($account->display_name ?: trim(($account->first_name ?? '').' '.($account->last_name ?? '')) ?: 'کاربر'),
+            $account->mobile ?: ($order->customer_phone ?: '—'),
+            (int) $account->telegram_user_id,
+            0,
+            2,
         );
 
-        $this->notifyPaymentReports($bot, $client, $order, $fileId, $file['kind'], $account);
+        if (! $ok) {
+            $this->cancelPendingOrder($order->id, 'payment_reports_notify_failed');
+            $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
+            $client->sendMessage(
+                $chatId,
+                TelegramCustomEmoji::tag('warning')
+                .' ارسال رسید به گروه ادمین ناموفق بود. سفارش شما لغو شد. لطفاً دوباره تلاش کنید یا با پشتیبانی در تماس باشید.',
+                [
+                    'parse_mode' => 'HTML',
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+                ],
+            );
+
+            return;
+        }
+
+        $client->sendMessage(
+            $chatId,
+            TelegramCustomEmoji::tag('check')." رسید سفارش #{$order->id} دریافت شد.\n"
+            .TelegramCustomEmoji::tag('sparkles').' پس از تأیید دو ادمین، نتیجه همین‌جا اعلام می‌شود.',
+            [
+                'parse_mode' => 'HTML',
+                'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+            ],
+        );
     }
 
     public function handleAdminReviewCallback(
@@ -186,11 +270,13 @@ class TelegramCardToCardFlowService
 
         try {
             if ($approve) {
-                $this->approveOrder($bot, $client, $actor, $orderId, $chatId, $messageId);
-                $client->answerCallbackQuery($callbackId, ['text' => 'تأیید و تحویل شد ✅']);
+                $result = $this->approveOrder($bot, $client, $actor, $orderId, $chatId, $messageId);
+                $client->answerCallbackQuery($callbackId, [
+                    'text' => $result === 'completed' ? 'تأیید نهایی و تحویل شد' : 'تأیید ۱ از ۲ ثبت شد',
+                ]);
             } else {
                 $this->rejectOrder($bot, $client, $actor, $orderId, $chatId, $messageId);
-                $client->answerCallbackQuery($callbackId, ['text' => 'رد شد']);
+                $client->answerCallbackQuery($callbackId, ['text' => 'رد شد — سفارش لغو شد']);
             }
         } catch (RuntimeException $e) {
             $client->answerCallbackQuery($callbackId, [
@@ -209,6 +295,93 @@ class TelegramCardToCardFlowService
         }
     }
 
+    /**
+     * Expire C2C orders still waiting for a receipt (job + safety-net).
+     */
+    public function expireIfWaitingForReceipt(int $orderId): bool
+    {
+        $order = Order::query()->with('product')->find($orderId);
+        if ($order === null || $order->status !== 'pending_payment' || $order->isPaid()) {
+            return false;
+        }
+
+        $status = (string) data_get($order->customer_extra_data, 'card_to_card.status', '');
+        if ($status !== 'waiting_for_receipt') {
+            return false;
+        }
+
+        if (! $this->isReceiptWindowExpired($order)) {
+            return false;
+        }
+
+        $this->cancelPendingOrder($order->id, 'receipt_timeout');
+
+        $bot = $this->resolveBotForOrder($order);
+        if ($bot !== null) {
+            $buyer = $this->resolveBuyerAccount($bot, $order->fresh());
+            if ($buyer !== null) {
+                $conversation = $this->conversations->forAccount($buyer);
+                if ($conversation->state === ConversationState::WaitingForCardToCardReceipt
+                    || (int) data_get($conversation->context, 'checkout.order_id') === $order->id) {
+                    $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
+                }
+
+                try {
+                    $this->clients->forBot($bot)->sendMessage(
+                        (int) $buyer->telegram_user_id,
+                        TelegramCustomEmoji::tag('warning')
+                        ." سفارش شما لغو شد.\n"
+                        .'مهلت ۱۰ دقیقه‌ای ارسال رسید کارت‌به‌کارت به پایان رسید. در صورت تمایل دوباره خرید کنید.',
+                        [
+                            'parse_mode' => 'HTML',
+                            'reply_markup' => $this->mainMenu->replyMarkup($buyer, $bot),
+                        ],
+                    );
+                } catch (Throwable $e) {
+                    Log::warning('card_to_card_expire_notify_failed', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Safety-net for scheduled expire command: cancel stale waiting_for_receipt C2C orders.
+     *
+     * @return int cancelled count
+     */
+    public function expireStaleWaitingReceiptOrders(): int
+    {
+        $cancelled = 0;
+
+        Order::query()
+            ->where('status', 'pending_payment')
+            ->whereNull('paid_at')
+            ->whereNotNull('customer_extra_data')
+            ->orderBy('id')
+            ->chunkById(100, function ($orders) use (&$cancelled): void {
+                foreach ($orders as $order) {
+                    $status = (string) data_get($order->customer_extra_data, 'card_to_card.status', '');
+                    if ($status !== 'waiting_for_receipt') {
+                        continue;
+                    }
+                    if (! $this->isReceiptWindowExpired($order)) {
+                        continue;
+                    }
+                    if ($this->expireIfWaitingForReceipt((int) $order->id)) {
+                        $cancelled++;
+                    }
+                }
+            });
+
+        return $cancelled;
+    }
+
+    /** @return 'partial'|'completed' */
     private function approveOrder(
         TelegramBot $bot,
         TelegramBotClientInterface $client,
@@ -216,8 +389,10 @@ class TelegramCardToCardFlowService
         int $orderId,
         int $adminChatId,
         int $adminMessageId,
-    ): void {
-        $order = DB::transaction(function () use ($orderId, $actor) {
+    ): string {
+        $outcome = 'partial';
+
+        $order = DB::transaction(function () use ($orderId, $actor, &$outcome) {
             /** @var Order|null $order */
             $order = Order::query()->lockForUpdate()->with('product')->find($orderId);
             if ($order === null) {
@@ -234,6 +409,40 @@ class TelegramCardToCardFlowService
             $c2c = (array) ($extra['card_to_card'] ?? []);
             if (($c2c['status'] ?? '') === 'approved') {
                 throw new RuntimeException('این سفارش قبلاً تأیید شده است.');
+            }
+            if (($c2c['status'] ?? '') !== 'awaiting_review') {
+                throw new RuntimeException('هنوز رسیدی برای بررسی ثبت نشده است.');
+            }
+
+            $required = max(2, (int) ($c2c['required_approvals'] ?? 2));
+            /** @var list<array{telegram_user_id: int, account_id: int, name: string, at: string}> $approvals */
+            $approvals = array_values(array_filter(
+                (array) ($c2c['approvals'] ?? []),
+                static fn ($row) => is_array($row),
+            ));
+
+            foreach ($approvals as $row) {
+                if ((int) ($row['telegram_user_id'] ?? 0) === (int) $actor->telegram_user_id) {
+                    throw new RuntimeException('شما قبلاً این رسید را تأیید کرده‌اید. ادمین دیگری باید تأیید کند.');
+                }
+            }
+
+            $reviewer = $actor->adminDisplayName() ?: ($actor->display_name ?: 'ادمین');
+            $approvals[] = [
+                'telegram_user_id' => (int) $actor->telegram_user_id,
+                'account_id' => (int) $actor->id,
+                'name' => $reviewer,
+                'at' => now()->toIso8601String(),
+            ];
+            $c2c['approvals'] = $approvals;
+            $c2c['required_approvals'] = $required;
+
+            if (count($approvals) < $required) {
+                $extra['card_to_card'] = $c2c;
+                $order->update(['customer_extra_data' => $extra]);
+                $outcome = 'partial';
+
+                return $order->fresh('product');
             }
 
             $c2c['status'] = 'approved';
@@ -261,33 +470,59 @@ class TelegramCardToCardFlowService
                     'status' => 'paid',
                     'paid_at' => now(),
                     'verify_payload' => [
-                        'approved_by_telegram_user_id' => (int) $actor->telegram_user_id,
+                        'approvals' => $approvals,
                         'approved_at' => now()->toIso8601String(),
                     ],
                 ],
             );
 
+            $outcome = 'completed';
+
             return $order->fresh('product');
         });
+
+        $approvals = (array) data_get($order->customer_extra_data, 'card_to_card.approvals', []);
+        $required = max(2, (int) data_get($order->customer_extra_data, 'card_to_card.required_approvals', 2));
+        $count = count($approvals);
+        $names = collect($approvals)->pluck('name')->filter()->implode('، ');
+
+        if ($outcome === 'partial') {
+            $caption = TelegramCustomEmoji::tag('cash')." رسید کارت‌به‌کارت\n"
+                ."سفارش #{$order->id}\n"
+                .TelegramCustomEmoji::tag('check')." تأیید {$count}/{$required} توسط {$names}\n"
+                .TelegramCustomEmoji::tag('warning').' منتظر تأیید ادمین دوم…';
+
+            $this->updateAdminReviewMessage(
+                $client,
+                $adminChatId,
+                $adminMessageId,
+                $caption,
+                $this->paymentReports->reviewKeyboard($order->id, $count, $required),
+            );
+
+            return 'partial';
+        }
 
         $this->adminTelegram->notifyOrderPaid($order, 'card_to_card');
         $this->dispatchFulfillment($order->id);
 
-        $reviewer = $actor->adminDisplayName() ?: ($actor->display_name ?: 'ادمین');
         $this->updateAdminReviewMessage(
             $client,
             $adminChatId,
             $adminMessageId,
-            "✅ تأیید شد توسط {$reviewer}\nسفارش #{$order->id} پرداخت‌شده و در حال تحویل است.",
+            TelegramCustomEmoji::tag('party')." تأیید {$required}/{$required} توسط {$names}\n"
+            ."سفارش #{$order->id} پرداخت‌شده و در حال تحویل است.",
         );
 
         $this->notifyBuyer(
             $bot,
             $client,
             $order,
-            "✅ پرداخت سفارش #{$order->id} تأیید شد.\n"
-            .'دسترسی/لایسنس به‌زودی برایتان فعال می‌شود.',
+            TelegramCustomEmoji::tag('check')." پرداخت سفارش #{$order->id} تأیید شد.\n"
+            .TelegramCustomEmoji::tag('sparkles').' دسترسی/لایسنس به‌زودی برایتان فعال می‌شود.',
         );
+
+        return 'completed';
     }
 
     private function rejectOrder(
@@ -317,8 +552,14 @@ class TelegramCardToCardFlowService
             $c2c['reviewed_at'] = now()->toIso8601String();
             $c2c['reviewed_by_telegram_user_id'] = (int) $actor->telegram_user_id;
             $c2c['reviewed_by_account_id'] = (int) $actor->id;
+            $c2c['approvals'] = [];
             $extra['card_to_card'] = $c2c;
-            $order->update(['customer_extra_data' => $extra]);
+
+            $order->update([
+                'status' => 'cancelled',
+                'payment_status' => 'failed',
+                'customer_extra_data' => $extra,
+            ]);
 
             Payment::query()
                 ->where('order_id', $order->id)
@@ -334,61 +575,48 @@ class TelegramCardToCardFlowService
             $client,
             $adminChatId,
             $adminMessageId,
-            "❌ رد شد توسط {$reviewer}\nسفارش #{$order->id} — کاربر می‌تواند رسید جدید بفرستد.",
+            TelegramCustomEmoji::tag('cross')." رد شد توسط {$reviewer}\n"
+            ."سفارش #{$order->id} لغو شد و ظرفیت آزاد شد.",
         );
 
         $buyerAccount = $this->resolveBuyerAccount($bot, $order);
         if ($buyerAccount !== null) {
             $conversation = $this->conversations->forAccount($buyerAccount);
-            $this->conversations->transition($conversation, ConversationState::WaitingForCardToCardReceipt, [
-                'checkout' => ['order_id' => $order->id],
-            ]);
+            $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
         }
 
         $this->notifyBuyer(
             $bot,
             $client,
             $order,
-            "❌ رسید سفارش #{$order->id} تأیید نشد.\n"
-            ."لطفاً عکس واضح‌تر رسید را دوباره ارسال کنید یا «لغو» بفرستید.",
+            TelegramCustomEmoji::tag('cross')." رسید سفارش #{$order->id} تأیید نشد و سفارش لغو شد.\n"
+            .'در صورت تمایل می‌توانید دوباره خرید کنید.',
         );
     }
 
-    private function notifyPaymentReports(
-        TelegramBot $bot,
-        TelegramBotClientInterface $client,
-        Order $order,
-        string $fileId,
-        string $kind,
-        TelegramAccount $buyer,
-    ): void {
-        if (blank($bot->paymentReportsChatId())) {
-            $client->sendMessage(
-                (int) $buyer->telegram_user_id,
-                '⛔ گروه گزارشات پرداخت هنوز تنظیم نشده است. لطفاً بعداً دوباره تلاش کنید یا با پشتیبانی در تماس باشید.',
-                ['reply_markup' => $this->mainMenu->replyMarkup($buyer, $bot)],
-            );
-
-            return;
+    private function isReceiptWindowExpired(Order $order): bool
+    {
+        $expiresAt = data_get($order->customer_extra_data, 'card_to_card.expires_at');
+        if (filled($expiresAt)) {
+            return ! Carbon::parse((string) $expiresAt)->isFuture();
         }
 
-        $buyerName = $buyer->adminDisplayName()
-            ?: ($buyer->display_name ?: trim(($buyer->first_name ?? '').' '.($buyer->last_name ?? '')) ?: 'کاربر');
-        $mobile = $buyer->mobile ?: ($order->customer_phone ?: '—');
+        $ttl = max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 10));
 
-        $ok = $this->paymentReports->notifyCardToCardReceipt(
-            $bot,
-            $order,
-            $fileId,
-            $kind,
-            $buyerName,
-            $mobile,
-            (int) $buyer->telegram_user_id,
-        );
+        return $order->created_at !== null && $order->created_at->lte(now()->subMinutes($ttl));
+    }
 
-        if (! $ok) {
-            Log::warning('card_to_card_payment_reports_notify_failed', ['order_id' => $order->id]);
+    private function resolveBotForOrder(Order $order): ?TelegramBot
+    {
+        $accountId = (int) data_get($order->customer_extra_data, 'card_to_card.submitter_telegram_account_id');
+        if ($accountId > 0) {
+            $account = TelegramAccount::query()->with('bot')->find($accountId);
+            if ($account?->bot) {
+                return $account->bot;
+            }
         }
+
+        return TelegramBot::query()->where('is_active', true)->orderBy('id')->first();
     }
 
     private function resolveBuyerAccount(TelegramBot $bot, Order $order): ?TelegramAccount
@@ -438,6 +666,7 @@ class TelegramCardToCardFlowService
 
         try {
             $client->sendMessage((int) $buyer->telegram_user_id, $text, [
+                'parse_mode' => 'HTML',
                 'reply_markup' => $this->mainMenu->replyMarkup($buyer, $bot),
             ]);
         } catch (Throwable $e) {
@@ -448,32 +677,40 @@ class TelegramCardToCardFlowService
         }
     }
 
+    /**
+     * @param  array<string, mixed>|null  $replyMarkup
+     */
     private function updateAdminReviewMessage(
         TelegramBotClientInterface $client,
         int $chatId,
         int $messageId,
         string $resultLine,
+        ?array $replyMarkup = null,
     ): void {
+        $markup = $replyMarkup ?? ['inline_keyboard' => []];
+
         try {
             $client->editMessageCaption([
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
                 'caption' => $resultLine,
-                'reply_markup' => ['inline_keyboard' => []],
+                'parse_mode' => 'HTML',
+                'reply_markup' => $markup,
             ]);
         } catch (Throwable) {
             try {
                 $client->editMessageText($resultLine, [
                     'chat_id' => $chatId,
                     'message_id' => $messageId,
-                    'reply_markup' => ['inline_keyboard' => []],
+                    'parse_mode' => 'HTML',
+                    'reply_markup' => $markup,
                 ]);
             } catch (Throwable) {
                 try {
                     $client->editMessageReplyMarkup([
                         'chat_id' => $chatId,
                         'message_id' => $messageId,
-                        'reply_markup' => ['inline_keyboard' => []],
+                        'reply_markup' => $markup,
                     ]);
                 } catch (Throwable) {
                     // ignore
@@ -506,7 +743,7 @@ class TelegramCardToCardFlowService
         return null;
     }
 
-    private function cancelPendingOrder(int $orderId): void
+    private function cancelPendingOrder(int $orderId, string $reason = 'cancelled'): void
     {
         $order = Order::query()->find($orderId);
         if ($order === null || $order->status !== 'pending_payment') {
@@ -517,6 +754,7 @@ class TelegramCardToCardFlowService
         $c2c = (array) ($extra['card_to_card'] ?? []);
         $c2c['status'] = 'cancelled';
         $c2c['cancelled_at'] = now()->toIso8601String();
+        $c2c['cancel_reason'] = $reason;
         $extra['card_to_card'] = $c2c;
 
         $order->update([
@@ -530,6 +768,100 @@ class TelegramCardToCardFlowService
             ->where('gateway', 'card_to_card')
             ->where('status', 'pending')
             ->update(['status' => 'canceled']);
+    }
+
+    /**
+     * Host-owned dual-admin path: mark paid + fulfill like Zarinpal verify (no Telegram UX here).
+     *
+     * @param  list<array{telegram_user_id?: int, name?: string, at?: string}>  $approvals
+     * @return array{ok: bool, order_id: int, message?: string}
+     */
+    public function confirmPaidFromHost(int $orderId, array $approvals = []): array
+    {
+        try {
+            $order = DB::transaction(function () use ($orderId, $approvals) {
+                /** @var Order|null $order */
+                $order = Order::query()->lockForUpdate()->with('product')->find($orderId);
+                if ($order === null) {
+                    throw new RuntimeException('سفارش یافت نشد.');
+                }
+                if ($order->isPaid()) {
+                    return $order;
+                }
+                if ($order->status !== 'pending_payment') {
+                    throw new RuntimeException('وضعیت سفارش قابل تأیید نیست.');
+                }
+
+                $extra = (array) ($order->customer_extra_data ?? []);
+                $c2c = (array) ($extra['card_to_card'] ?? []);
+                $c2c['status'] = 'approved';
+                $c2c['approvals'] = array_values($approvals);
+                $c2c['required_approvals'] = max(2, (int) ($c2c['required_approvals'] ?? 2));
+                $c2c['reviewed_at'] = now()->toIso8601String();
+                $extra['card_to_card'] = $c2c;
+
+                $order->update([
+                    'status' => 'paid',
+                    'payment_status' => 'paid',
+                    'paid_at' => now(),
+                    'customer_extra_data' => $extra,
+                ]);
+
+                Payment::query()->updateOrCreate(
+                    [
+                        'order_id' => $order->id,
+                        'gateway' => 'card_to_card',
+                    ],
+                    [
+                        'authority' => 'c2c-'.$order->id,
+                        'ref_id' => 'C2C-'.$order->id.'-'.now()->format('YmdHis'),
+                        'amount' => (int) ($order->final_amount ?? 0),
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                        'verify_payload' => [
+                            'approvals' => $approvals,
+                            'approved_at' => now()->toIso8601String(),
+                            'source' => 'host_dual_admin',
+                        ],
+                    ],
+                );
+
+                return $order->fresh('product');
+            });
+
+            $this->adminTelegram->notifyOrderPaid($order, 'card_to_card');
+            $this->dispatchFulfillment($order->id);
+
+            return ['ok' => true, 'order_id' => (int) $order->id];
+        } catch (RuntimeException $e) {
+            return ['ok' => false, 'order_id' => $orderId, 'message' => $e->getMessage()];
+        } catch (Throwable $e) {
+            Log::warning('card_to_card_host_confirm_failed', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['ok' => false, 'order_id' => $orderId, 'message' => 'خطا در تأیید سفارش'];
+        }
+    }
+
+    /** Host cancel / reject / expire — frees seminar soft capacity. */
+    public function cancelFromHost(int $orderId, string $reason = 'host_cancel'): array
+    {
+        $order = Order::query()->find($orderId);
+        if ($order === null) {
+            return ['ok' => false, 'message' => 'سفارش یافت نشد.'];
+        }
+        if ($order->isPaid()) {
+            return ['ok' => false, 'message' => 'سفارش پرداخت‌شده قابل لغو نیست.'];
+        }
+        if ($order->status !== 'pending_payment') {
+            return ['ok' => true, 'order_id' => $orderId, 'already' => true];
+        }
+
+        $this->cancelPendingOrder($orderId, $reason);
+
+        return ['ok' => true, 'order_id' => $orderId];
     }
 
     private function dispatchFulfillment(int $orderId): void

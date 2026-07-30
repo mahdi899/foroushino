@@ -6,10 +6,10 @@ use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\DiscountService;
 use App\Services\Exceptions\PaymentException;
-use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
-use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -127,16 +127,27 @@ class TelegramPurchaseFlowService
         $zp = $this->checkout->zarinpalEnabled($bot);
         $c2c = $this->checkout->cardToCardEnabled($bot);
 
+        if (! $zp && ! $c2c) {
+            $this->outbound->reply($bot, $chatId, 'در حال حاضر هیچ روش پرداختی فعال نیست. لطفاً بعداً دوباره تلاش کنید.');
+
+            return;
+        }
+
         if ($zp && $c2c) {
             $this->outbound->reply($bot, $chatId, "{$product->title}\n\nروش پرداخت را انتخاب کنید:", [
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [[
-                            'text' => '💳 زرین‌پال (آنلاین)',
+                            'text' => TelegramCustomEmoji::buttonText('زرین‌پال (آنلاین)', 'money'),
                             'callback_data' => 'pay:zp:'.$productId,
                             'style' => 'success',
+                            ...TelegramCustomEmoji::buttonIcon('money'),
                         ]],
-                        [['text' => '🏧 کارت به کارت', 'callback_data' => 'pay:c2c:'.$productId]],
+                        [[
+                            'text' => TelegramCustomEmoji::buttonText('کارت به کارت', 'cash'),
+                            'callback_data' => 'pay:c2c:'.$productId,
+                            ...TelegramCustomEmoji::buttonIcon('cash'),
+                        ]],
                     ],
                 ],
             ]);
@@ -217,6 +228,7 @@ class TelegramPurchaseFlowService
             (string) $product->title,
             (int) $result['amount'],
             (string) $result['instructions'],
+            (int) ($result['ttl_minutes'] ?? 10),
         );
     }
 

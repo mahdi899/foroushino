@@ -69,25 +69,47 @@ class ApiIrShahkarProvider implements
 
         $config = $this->config();
         $baseUrl = $this->baseUrl($config);
-        $path = (string) ($config->settings['shahkar_path'] ?? '/api/sw1/ShahkarLite');
+        $shahkarPath = (string) ($config->settings['shahkar_path'] ?? '/api/sw1/ShahkarLite');
+        $personPath = (string) ($config->settings['person_info_path'] ?? '/api/sw1/PersonInfo');
 
         try {
-            // Connection probe ONLY — synthetic sample payload from API.ir docs.
-            // Real identity verification always posts the student's own nationalCode + mobile.
-            $response = $this->client($config)->post($baseUrl.$path, [
+            // Probe BOTH endpoints with official API.ir sample payloads (not real users).
+            // Real submit always sends the student's own nationalCode / mobile / birthDate.
+            $shahkar = $this->client($config)->post($baseUrl.$shahkarPath, [
                 'nationalCode' => '0010007700',
                 'mobile' => '09120000000',
             ]);
 
-            if (in_array($response->status(), [401, 403], true)) {
+            if (in_array($shahkar->status(), [401, 403], true)) {
                 return ProviderConnectionResult::invalidCredentials(
                     'توکن API.ir نامعتبر است (Authorization: Bearer). فقط توکن خام را ذخیره کنید، نه کلمه Bearer.'
                 );
             }
 
-            // Any non-auth HTTP response means TLS + Bearer reached the API.
+            $person = $this->client($config)->post($baseUrl.$personPath, [
+                'nationalCode' => '0010007700',
+                'birthDate' => '1371/1/1',
+            ]);
+
+            if (in_array($person->status(), [401, 403], true)) {
+                return ProviderConnectionResult::invalidCredentials(
+                    'توکن برای ShahkarLite قبول شد ولی برای PersonInfo مجاز نیست (احتمالاً trust level). توکن/مجوز استعلام مشخصات هویتی را در پنل API.ir بررسی کنید.'
+                );
+            }
+
+            $personJson = $this->decodeJsonBody($person);
+            $personOk = is_array(data_get($personJson, 'data'))
+                || array_key_exists('success', $personJson)
+                || $person->successful();
+
+            if (! $personOk && $person->serverError()) {
+                return ProviderConnectionResult::providerUnavailable(
+                    'ShahkarLite در دسترس است ولی PersonInfo خطای سرور داد (HTTP '.$person->status().').'
+                );
+            }
+
             return ProviderConnectionResult::connected(
-                'سرویس API.ir در دسترس است. این تست فقط اتصال را با دادهٔ نمونه بررسی می‌کند؛ احراز هویت واقعی با موبایل و کدملی خود کاربر انجام می‌شود.'
+                'اتصال API.ir برقرار است (ShahkarLite + PersonInfo). دادهٔ نمونه فقط برای تست است؛ احراز هویت واقعی با کدملی/موبایل/تاریخ‌تولد خود کاربر ارسال می‌شود.'
             );
         } catch (ConnectionException $e) {
             $detail = trim($e->getMessage());
@@ -159,10 +181,14 @@ class ApiIrShahkarProvider implements
         $config = $this->config();
         $path = (string) ($config->settings['person_info_path'] ?? '/api/sw1/PersonInfo');
 
-        [$json, $duration, $requestId, $failure] = $this->post($config, $path, [
-            'nationalCode' => $nationalCode,
-            'birthDate' => $birthDate,
-        ], $started);
+        // Exact PersonInfoReq shape from s.api.ir docs:
+        // POST /api/sw1/PersonInfo { "nationalCode": "...", "birthDate": "1371/1/1" }
+        $payload = [
+            'nationalCode' => (string) $nationalCode,
+            'birthDate' => $this->normalizePersonInfoBirthDate($birthDate),
+        ];
+
+        [$json, $duration, $requestId, $failure] = $this->post($config, $path, $payload, $started);
 
         if ($failure) {
             return new PersonInfoResult(
@@ -174,35 +200,7 @@ class ApiIrShahkarProvider implements
             );
         }
 
-        $data = data_get($json, 'data');
-
-        if (! is_array($data) || $data === []) {
-            return new PersonInfoResult(
-                OwnershipVerificationResult::Mismatched,
-                provider_code: '0',
-                provider_message: is_string(data_get($json, 'message')) ? $json['message'] : 'اطلاعاتی برای این کد ملی یافت نشد.',
-                provider_request_id: $requestId,
-                duration_ms: $duration,
-            );
-        }
-
-        $genderRaw = data_get($data, 'gender');
-        $gender = match (true) {
-            $genderRaw === 1 || $genderRaw === '1' => 'male',
-            $genderRaw === 0 || $genderRaw === '0' => 'female',
-            default => null,
-        };
-
-        return new PersonInfoResult(
-            OwnershipVerificationResult::Matched,
-            first_name: is_string(data_get($data, 'firstName')) ? $data['firstName'] : null,
-            last_name: is_string(data_get($data, 'lastName')) ? $data['lastName'] : null,
-            father_name: is_string(data_get($data, 'fatherName')) ? $data['fatherName'] : null,
-            gender: $gender,
-            alive: is_bool(data_get($data, 'alive')) ? $data['alive'] : null,
-            provider_request_id: $requestId,
-            duration_ms: $duration,
-        );
+        return $this->normalizePersonInfo($json, $duration, $requestId);
     }
 
     /*
@@ -288,17 +286,21 @@ class ApiIrShahkarProvider implements
             $response = $this->client($config)->post($baseUrl.$path, $payload);
 
             $duration = $this->elapsedMs($started);
-            $json = $response->json() ?? [];
+            $json = $this->decodeJsonBody($response);
             $requestId = data_get($json, 'track_id')
                 ?? data_get($json, 'requestId')
                 ?? $response->header('X-Request-Id');
             $requestId = is_string($requestId) ? $requestId : null;
 
             if (in_array($response->status(), [401, 403], true)) {
+                $message = is_string(data_get($json, 'message')) && filled($json['message'])
+                    ? (string) $json['message']
+                    : 'دسترسی به سرویس API.ir مجاز نیست.';
+
                 return [[], $duration, $requestId, new MobileOwnershipVerificationResult(
                     OwnershipVerificationResult::Unauthorized,
                     (string) $response->status(),
-                    'دسترسی به سرویس API.ir مجاز نیست.',
+                    $message,
                     $requestId,
                     $duration,
                 )];
@@ -318,7 +320,24 @@ class ApiIrShahkarProvider implements
                 return [[], $duration, $requestId, new MobileOwnershipVerificationResult(
                     OwnershipVerificationResult::TechnicalError,
                     (string) $response->status(),
-                    'خطای فنی سرویس API.ir.',
+                    is_string(data_get($json, 'message')) && filled($json['message'])
+                        ? (string) $json['message']
+                        : 'خطای فنی سرویس API.ir.',
+                    $requestId,
+                    $duration,
+                )];
+            }
+
+            // Client errors (e.g. 400 validation) — keep body for PersonInfo/Shahkar parsers.
+            if ($response->clientError()) {
+                $message = is_string(data_get($json, 'message')) && filled($json['message'])
+                    ? (string) $json['message']
+                    : 'درخواست استعلام API.ir نامعتبر بود (HTTP '.$response->status().').';
+
+                return [[], $duration, $requestId, new MobileOwnershipVerificationResult(
+                    OwnershipVerificationResult::ProviderError,
+                    (string) $response->status(),
+                    $message,
                     $requestId,
                     $duration,
                 )];
@@ -342,6 +361,122 @@ class ApiIrShahkarProvider implements
                 $this->elapsedMs($started),
             )];
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $json  ResultDataOfPersonInfoRes
+     */
+    private function normalizePersonInfo(array $json, int $duration, ?string $requestId): PersonInfoResult
+    {
+        $data = data_get($json, 'data');
+        $message = is_string(data_get($json, 'message')) ? $json['message'] : null;
+        $code = is_string(data_get($json, 'code')) || is_numeric(data_get($json, 'code'))
+            ? (string) $json['code']
+            : null;
+
+        if (is_array($data) && $data !== []) {
+            $firstName = $this->stringField($data, ['firstName', 'first_name']);
+            $lastName = $this->stringField($data, ['lastName', 'last_name']);
+            $fatherName = $this->stringField($data, ['fatherName', 'father_name']);
+            $genderRaw = data_get($data, 'gender');
+            $gender = match (true) {
+                $genderRaw === 1 || $genderRaw === '1' => 'male',
+                $genderRaw === 0 || $genderRaw === '0' => 'female',
+                default => null,
+            };
+            $aliveRaw = data_get($data, 'alive');
+            $alive = is_bool($aliveRaw) ? $aliveRaw : null;
+
+            // API.ir often sets success=false even on successful data payloads (same as ShahkarLite).
+            if (filled($firstName) || filled($lastName) || filled($fatherName) || $gender !== null || $alive !== null) {
+                return new PersonInfoResult(
+                    OwnershipVerificationResult::Matched,
+                    first_name: $firstName,
+                    last_name: $lastName,
+                    father_name: $fatherName,
+                    gender: $gender,
+                    alive: $alive,
+                    provider_code: $code,
+                    provider_message: $message,
+                    provider_request_id: $requestId,
+                    duration_ms: $duration,
+                );
+            }
+        }
+
+        $combined = mb_strtolower(trim((string) ($message ?? '')));
+        if ($this->looksLikeProviderPermissionError($combined, $code)) {
+            return new PersonInfoResult(
+                OwnershipVerificationResult::ProviderError,
+                provider_code: $code ?: 'permission',
+                provider_message: $message ?: 'مجوز یا اعتبار استعلام مشخصات هویتی (PersonInfo) کافی نیست.',
+                provider_request_id: $requestId,
+                duration_ms: $duration,
+            );
+        }
+
+        return new PersonInfoResult(
+            OwnershipVerificationResult::Mismatched,
+            provider_code: $code ?: '0',
+            provider_message: $message ?: 'اطلاعاتی برای این کد ملی یافت نشد.',
+            provider_request_id: $requestId,
+            duration_ms: $duration,
+        );
+    }
+
+    /** Official api.ir birthDate: Latin digits, unpadded Jalali Y/M/D (e.g. 1371/1/1). */
+    private function normalizePersonInfoBirthDate(string $birthDate): string
+    {
+        return \App\Support\JalaliDate::formatApiFromDateString($birthDate);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<string>  $keys
+     */
+    private function stringField(array $data, array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            $value = data_get($data, $key);
+            if (is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+        }
+
+        return null;
+    }
+
+    private function looksLikeProviderPermissionError(string $messageLower, ?string $code): bool
+    {
+        if (in_array($code, ['401', '403', '402', 'payment', 'permission'], true)) {
+            return true;
+        }
+
+        foreach (['trust', 'مجوز', 'اعتبار', 'دسترسی', 'سطح', 'غیرفعال', 'wallet', 'موجودی'] as $needle) {
+            if ($needle !== '' && str_contains($messageLower, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * API.ir PersonInfo docs advertise text/plain responses — decode body even when
+     * Content-Type is not application/json.
+     *
+     * @return array<string, mixed>
+     */
+    private function decodeJsonBody(\Illuminate\Http\Client\Response $response): array
+    {
+        $json = $response->json();
+        if (is_array($json)) {
+            return $json;
+        }
+
+        $decoded = json_decode($response->body(), true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**

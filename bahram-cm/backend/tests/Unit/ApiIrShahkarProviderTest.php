@@ -98,10 +98,10 @@ class ApiIrShahkarProviderTest extends TestCase
                 'success' => false,
                 'code' => 0,
                 'message' => null,
-            ], 200),
+            ], 200, ['Content-Type' => 'text/plain; charset=utf-8']),
         ]);
 
-        $result = $this->provider->lookup('0010007700', '1371/1/1');
+        $result = $this->provider->lookup('0010007700', '1992-03-21');
 
         $this->assertSame(OwnershipVerificationResult::Matched, $result->normalized_result);
         $this->assertSame('محسن', $result->first_name);
@@ -113,10 +113,31 @@ class ApiIrShahkarProviderTest extends TestCase
         Http::assertSent(function ($request) {
             return $request->url() === 'https://s.api.ir/api/sw1/PersonInfo'
                 && $request->hasHeader('Authorization', 'Bearer tok')
+                && $request->hasHeader('Content-Type', 'application/json')
                 && $request['nationalCode'] === '0010007700'
                 && $request['birthDate'] === '1371/1/1'
-                && preg_match('/^[0-9]+\/[0-9]+\/[0-9]+$/', $request['birthDate']) === 1;
+                && array_keys($request->data()) === ['nationalCode', 'birthDate'];
         });
+    }
+
+    public function test_person_info_permission_message_is_provider_error_not_mismatch(): void
+    {
+        $this->seedApiIr(credentials: ['api_token' => 'tok']);
+
+        Http::fake([
+            's.api.ir/api/sw1/PersonInfo' => Http::response([
+                'data' => null,
+                'success' => false,
+                'code' => '403',
+                'message' => 'سطح مجوز trust level کافی نیست',
+            ], 200),
+        ]);
+
+        $result = $this->provider->lookup('0010007700', '1371/1/1');
+
+        $this->assertSame(OwnershipVerificationResult::ProviderError, $result->normalized_result);
+        $this->assertTrue($result->isTechnicalFailure());
+        $this->assertStringContainsString('trust', mb_strtolower((string) $result->provider_message));
     }
 
     public function test_card_match_payload_and_boolean_data(): void
@@ -155,6 +176,12 @@ class ApiIrShahkarProviderTest extends TestCase
                 'success' => false,
                 'code' => 0,
             ], 200),
+            's.api.ir/api/sw1/PersonInfo' => Http::response([
+                'data' => null,
+                'success' => false,
+                'code' => 0,
+                'message' => 'sample',
+            ], 200),
         ]);
 
         $result = $this->provider->testConnection();
@@ -164,6 +191,11 @@ class ApiIrShahkarProviderTest extends TestCase
             return $request->url() === 'https://s.api.ir/api/sw1/ShahkarLite'
                 && $request->method() === 'POST'
                 && $request->hasHeader('Authorization', 'Bearer eyJ-test-token');
+        });
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://s.api.ir/api/sw1/PersonInfo'
+                && $request['nationalCode'] === '0010007700'
+                && $request['birthDate'] === '1371/1/1';
         });
     }
 
@@ -179,6 +211,7 @@ class ApiIrShahkarProviderTest extends TestCase
 
         Http::fake([
             's.api.ir/api/sw1/ShahkarLite' => Http::response(['data' => true], 200),
+            's.api.ir/api/sw1/PersonInfo' => Http::response(['data' => null, 'success' => false], 200),
             's.apif.ir/*' => Http::response('should not hit', 500),
         ]);
 

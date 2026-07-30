@@ -77,7 +77,7 @@ final class UpdateRouter
                 }
 
                 // Media admin input is queued for post-response drain — do not
-                // fall through to the local "admin server down" text handler.
+                // fall through to the local "admin server down" stub handler.
                 if ($timeout > 5) {
                     return;
                 }

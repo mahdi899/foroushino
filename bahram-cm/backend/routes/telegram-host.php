@@ -44,6 +44,8 @@ Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle
             Route::post('/checkout/flags', [TelegramHostLiveController::class, 'checkoutFlags']);
             Route::post('/checkout/zarinpal/start', [TelegramHostLiveController::class, 'checkoutZarinpalStart'])->middleware('throttle:30,1');
             Route::post('/checkout/c2c/start', [TelegramHostLiveController::class, 'checkoutC2cStart'])->middleware('throttle:30,1');
+            Route::post('/checkout/c2c/confirm', [TelegramHostLiveController::class, 'checkoutC2cConfirm'])->middleware('throttle:30,1');
+            Route::post('/checkout/c2c/cancel', [TelegramHostLiveController::class, 'checkoutC2cCancel'])->middleware('throttle:60,1');
             Route::post('/checkout/revoke-open', [TelegramHostLiveController::class, 'checkoutRevokeOpen'])->middleware('throttle:60,1');
             Route::post('/user/profile', [TelegramHostLiveController::class, 'userProfile']);
             Route::post('/referral/summary', [TelegramHostLiveController::class, 'referralSummary']);

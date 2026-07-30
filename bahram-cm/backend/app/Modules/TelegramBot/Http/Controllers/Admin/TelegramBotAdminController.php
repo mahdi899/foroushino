@@ -2,7 +2,9 @@
 
 namespace App\Modules\TelegramBot\Http\Controllers\Admin;
 
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Http\Controllers\Admin\Concerns\AuthorizesTelegramAdmin;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
@@ -59,6 +61,13 @@ class TelegramBotAdminController
             'reports_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'reports_topic_id' => ['sometimes', 'nullable', 'integer'],
             'payment_reports_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'card_to_card_enabled' => ['sometimes', 'boolean'],
+            'card_to_card' => ['sometimes', 'array'],
+            'card_to_card.card_number' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'card_to_card.card_holder' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'card_to_card.bank_name' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'card_to_card.notes' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'card_to_card.override_text' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'settings' => ['sometimes', 'nullable', 'array'],
         ]);
 
@@ -71,7 +80,17 @@ class TelegramBotAdminController
             $reportsChatId = $data['support_group_chat_id'] ?? $data['reports_chat_id'] ?? null;
             $bot->setReportsGroupChatId(filled($reportsChatId) ? (string) $reportsChatId : null);
             unset($data['support_group_chat_id'], $data['reports_chat_id']);
-            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
+            PushTelegramHostSyncJob::bootstrap();
+        }
+
+        $c2cTouched = array_key_exists('card_to_card_enabled', $data) || array_key_exists('card_to_card', $data);
+        if ($c2cTouched) {
+            $bot->setCardToCardSettings(
+                array_key_exists('card_to_card_enabled', $data) ? (bool) $data['card_to_card_enabled'] : null,
+                (array) ($data['card_to_card'] ?? []),
+            );
+            unset($data['card_to_card_enabled'], $data['card_to_card']);
+            PushTelegramHostSyncJob::bootstrap();
         }
 
         if (array_key_exists('bot_token_input', $data)) {
@@ -429,6 +448,8 @@ class TelegramBotAdminController
             'support_group_chat_id' => $bot->reportsGroupChatId(),
             'reports_chat_id' => $bot->reportsGroupChatId(),
             'payment_reports_chat_id' => $bot->paymentReportsChatId(),
+            'card_to_card_enabled' => $bot->featureEnabled(BotFeatureFlag::CardToCardPayment),
+            'card_to_card' => $bot->cardToCardConfig(),
         ];
 
         if (! $detailed) {

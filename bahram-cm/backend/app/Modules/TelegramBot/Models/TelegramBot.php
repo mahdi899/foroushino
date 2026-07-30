@@ -178,22 +178,112 @@ class TelegramBot extends Model
         return $next;
     }
 
+    /**
+     * @return array{
+     *     card_number: string,
+     *     card_holder: string,
+     *     bank_name: string,
+     *     notes: string,
+     *     override_text: string
+     * }
+     */
+    public function cardToCardConfig(): array
+    {
+        return [
+            'card_number' => trim((string) data_get($this->settings, 'card_to_card.card_number', '')),
+            'card_holder' => trim((string) data_get($this->settings, 'card_to_card.card_holder', '')),
+            'bank_name' => trim((string) data_get($this->settings, 'card_to_card.bank_name', '')),
+            'notes' => trim((string) data_get($this->settings, 'card_to_card.notes', '')),
+            'override_text' => trim((string) data_get($this->settings, 'card_to_card_text', '')),
+        ];
+    }
+
+    public function hasCardToCardDetails(): bool
+    {
+        $config = $this->cardToCardConfig();
+
+        return $config['override_text'] !== '' || $config['card_number'] !== '';
+    }
+
     public function cardToCardInstructions(): string
     {
-        $custom = trim((string) data_get($this->settings, 'card_to_card_text', ''));
-        if ($custom !== '') {
-            return $custom;
+        $config = $this->cardToCardConfig();
+        if ($config['override_text'] !== '') {
+            return $config['override_text'];
         }
 
-        return "لطفاً مبلغ سفارش را کارت‌به‌کارت واریز کنید.\n"
-            ."سپس عکس واضح رسید واریز را همین‌جا در ربات ارسال کنید تا ادمین بررسی کند.\n"
-            .'اطلاعات کارت هنوز در تنظیمات ربات ثبت نشده — از «📝 متن کارت به کارت» در تنظیمات ادمین تکمیل کنید.';
+        if ($config['card_number'] === '') {
+            return "لطفاً مبلغ سفارش را کارت‌به‌کارت واریز کنید.\n"
+                ."سپس عکس واضح رسید واریز را همین‌جا در ربات ارسال کنید تا ادمین بررسی کند.\n"
+                .'اطلاعات کارت هنوز در تنظیمات ربات ثبت نشده — از پنل ادمین تلگرام تکمیل کنید.';
+        }
+
+        $lines = ['مبلغ سفارش را به کارت زیر واریز کنید:'];
+        $lines[] = 'شماره کارت: '.$config['card_number'];
+        if ($config['card_holder'] !== '') {
+            $lines[] = 'به‌نام: '.$config['card_holder'];
+        }
+        if ($config['bank_name'] !== '') {
+            $lines[] = 'بانک: '.$config['bank_name'];
+        }
+        if ($config['notes'] !== '') {
+            $lines[] = $config['notes'];
+        }
+
+        return implode("\n", $lines);
     }
 
     public function setCardToCardInstructions(string $text): void
     {
         $settings = (array) ($this->settings ?? []);
         $settings['card_to_card_text'] = mb_substr(trim($text), 0, 1000);
+        $this->forceFill(['settings' => $settings])->save();
+    }
+
+    /**
+     * @param  array{
+     *     card_number?: string|null,
+     *     card_holder?: string|null,
+     *     bank_name?: string|null,
+     *     notes?: string|null,
+     *     override_text?: string|null
+     * }  $fields
+     */
+    public function setCardToCardSettings(?bool $enabled, array $fields = []): void
+    {
+        $settings = (array) ($this->settings ?? []);
+        $features = (array) ($settings['features'] ?? []);
+        $c2c = (array) ($settings['card_to_card'] ?? []);
+
+        if ($enabled !== null) {
+            $features[BotFeatureFlag::CardToCardPayment->value] = $enabled;
+            $settings['features'] = $features;
+        }
+
+        foreach (['card_number', 'card_holder', 'bank_name', 'notes'] as $key) {
+            if (! array_key_exists($key, $fields)) {
+                continue;
+            }
+            $value = trim((string) ($fields[$key] ?? ''));
+            if ($value === '') {
+                unset($c2c[$key]);
+            } else {
+                $max = $key === 'notes' ? 500 : 64;
+                $c2c[$key] = mb_substr($value, 0, $max);
+            }
+        }
+
+        $settings['card_to_card'] = $c2c;
+
+        if (array_key_exists('override_text', $fields)) {
+            $override = trim((string) ($fields['override_text'] ?? ''));
+            if ($override === '') {
+                unset($settings['card_to_card_text']);
+            } else {
+                $settings['card_to_card_text'] = mb_substr($override, 0, 1000);
+            }
+        }
+
         $this->forceFill(['settings' => $settings])->save();
     }
 

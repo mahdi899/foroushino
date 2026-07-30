@@ -14,10 +14,15 @@ class ExpirePendingOrdersCommand extends Command
 
     protected $description = 'Cancel unpaid pending orders after TTL, then purge old cancelled orders';
 
-    public function handle(OrderService $orders): int
+    public function handle(OrderService $orders, \App\Modules\TelegramBot\Services\TelegramCardToCardFlowService $cardToCard): int
     {
         $ttl = $this->option('ttl');
         $purgeDays = $this->option('purge-days');
+
+        $c2cExpired = $cardToCard->expireStaleWaitingReceiptOrders();
+        if ($c2cExpired > 0) {
+            $this->info("Cancelled {$c2cExpired} stale card-to-card order(s).");
+        }
 
         $expired = $orders->expireStalePendingOrders(
             is_numeric($ttl) ? (int) $ttl : null,

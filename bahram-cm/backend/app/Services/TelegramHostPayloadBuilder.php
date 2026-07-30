@@ -117,6 +117,8 @@ class TelegramHostPayloadBuilder
             'checkout' => [
                 'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
                 'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),
+                'card_to_card' => $bot->cardToCardConfig(),
+                'payment_reports_chat_id' => $bot->paymentReportsChatId(),
             ],
             'site_urls' => [
                 'identity' => TelegramSiteUrl::identityPage(),

@@ -2,6 +2,8 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Jobs\ExpireCardToCardOrderJob;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
@@ -46,6 +48,7 @@ class TelegramCheckoutService
 
         $this->paymentLinks->revokeOpenForAccount($account);
         $order = $this->createPendingOrder($account, $product, $discountCode);
+
         $issued = $this->paymentLinks->issueForOrder($order, $account);
 
         return [
@@ -57,7 +60,7 @@ class TelegramCheckoutService
     }
 
     /**
-     * @return array{order_id: int, amount: int, instructions: string, product_title: string}
+     * @return array{order_id: int, amount: int, instructions: string, product_title: string, expires_at: string, ttl_minutes: int}
      */
     public function startCardToCardCheckout(TelegramAccount $account, Product $product, ?string $discountCode = null): array
     {
@@ -68,14 +71,39 @@ class TelegramCheckoutService
             ]);
         }
 
+        if (! $bot->hasCardToCardDetails()) {
+            throw ValidationException::withMessages([
+                'payment' => 'اطلاعات کارت هنوز در تنظیمات ربات ثبت نشده است. ابتدا از پنل ادمین تکمیل کنید.',
+            ]);
+        }
+
         $this->paymentLinks->revokeOpenForAccount($account);
         $order = $this->createPendingOrder($account, $product, $discountCode);
+
+        $ttl = max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 10));
+        $expiresAt = now()->addMinutes($ttl);
+
+        $extra = (array) ($order->customer_extra_data ?? []);
+        $extra['card_to_card'] = [
+            'status' => 'waiting_for_receipt',
+            'expires_at' => $expiresAt->toIso8601String(),
+            'approvals' => [],
+            'required_approvals' => 2,
+            'started_at' => now()->toIso8601String(),
+            'submitter_telegram_user_id' => (int) $account->telegram_user_id,
+            'submitter_telegram_account_id' => (int) $account->id,
+        ];
+        $order->update(['customer_extra_data' => $extra]);
+
+        ExpireCardToCardOrderJob::dispatch($order->id)->delay($expiresAt);
 
         return [
             'order_id' => $order->id,
             'amount' => (int) ($order->final_amount ?? $product->sale_price ?? $product->price),
             'instructions' => $bot->cardToCardInstructions(),
             'product_title' => (string) $product->title,
+            'expires_at' => $expiresAt->toIso8601String(),
+            'ttl_minutes' => $ttl,
         ];
     }
 
@@ -90,7 +118,7 @@ class TelegramCheckoutService
         return $this->paymentLinks->revokeOpenForAccount($account);
     }
 
-    private function createPendingOrder(TelegramAccount $account, Product $product, ?string $discountCode): \App\Models\Order
+    private function createPendingOrder(TelegramAccount $account, Product $product, ?string $discountCode): Order
     {
         /** @var User|null $user */
         $user = $account->user;

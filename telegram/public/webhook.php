@@ -95,7 +95,7 @@ try {
 
     $reporter = new \TelegramHost\Services\IranFailureReporter($api, $cache, $accounts, $config);
     $live = new ResilientLiveClient($liveClient, $api, $reporter);
-    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter);
+    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter, $conversations);
     $adminFast = new AdminFastClient($sync, $config, $conversations);
 
     $maxRelay = max(1, (int) ($config['iran_relay_per_webhook'] ?? 2));
@@ -114,7 +114,8 @@ try {
     $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $pendingMobileAccess);
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
-    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview);
+    $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
+    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview, $cardToCardFlow);
     $ticketSync = new \TelegramHost\Queue\PendingTicketSync($pdo);
     $supportForward = new \TelegramHost\Queue\PendingSupportForward($pdo);
     $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync, $supportForward);
@@ -143,6 +144,7 @@ try {
         $satFlow,
         $adminShell,
         $destinationsFlow,
+        $cardToCardFlow,
         $siteBaseUrl
     );
 
@@ -158,6 +160,7 @@ try {
         $messageHandler,
         $registration,
         $support,
+        $cardToCardFlow,
     );
 
     $router = new UpdateRouter(

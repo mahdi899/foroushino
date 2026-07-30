@@ -93,6 +93,8 @@ return [
     'orders' => [
         'pending_ttl_minutes' => (int) env('ORDER_PENDING_TTL_MINUTES', 60),
         'cancelled_purge_days' => (int) env('ORDER_CANCELLED_PURGE_DAYS', 7),
+        /** Telegram card-to-card: minutes to send receipt before auto-cancel. */
+        'card_to_card_pending_ttl_minutes' => (int) env('ORDER_C2C_PENDING_TTL_MINUTES', 10),
     ],
 
     'telegram' => [

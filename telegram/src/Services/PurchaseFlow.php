@@ -20,6 +20,7 @@ final class PurchaseFlow
         private readonly ConversationRepository $conversations,
         private readonly MainMenu $mainMenu,
         private readonly HostDiscountPreview $discounts,
+        private readonly HostCardToCardFlow $cardToCard,
     ) {}
 
     public function applyDiscountCode(int $chatId, int $telegramUserId, string $code): void
@@ -72,6 +73,12 @@ final class PurchaseFlow
         $this->conversations->set($telegramUserId, 'idle', [
             'checkout' => ['product_id' => $productId, 'coupon' => $coupon],
         ]);
+
+        // Live flags beat stale bootstrap — fixes "C2C on in admin but only ZP shown".
+        $flags = $this->live->checkoutFlags($chatId, $telegramUserId);
+        if (empty($flags['offline'])) {
+            $this->cache->applyLiveCheckoutFlags($flags);
+        }
 
         $zp = $this->cache->checkoutZarinpalEnabled();
         $c2c = $this->cache->checkoutC2cEnabled();
@@ -177,13 +184,28 @@ final class PurchaseFlow
             return;
         }
 
-        if (! empty($result['state'])) {
-            $this->conversations->set($telegramUserId, (string) $result['state'], (array) ($result['context'] ?? []));
+        $orderId = (int) ($result['order_id'] ?? 0);
+        $amount = (int) ($result['amount'] ?? 0);
+        $title = trim((string) ($result['product_title'] ?? ''));
+        if ($title === '') {
+            $productRow = $this->cache->findProduct($productId);
+            $title = (string) ($productRow['title'] ?? 'محصول');
         }
+        $instructions = trim((string) ($result['instructions'] ?? ''));
+        if ($instructions === '') {
+            $instructions = $this->cache->cardToCardInstructions();
+        }
+        $ttl = max(1, (int) ($result['ttl_minutes'] ?? 10));
 
-        if (empty($result['server_sent_prompt'])) {
-            $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('notes').' رسید پرداخت را ارسال کنید. برای انصراف «لغو» بفرستید.');
-        }
+        $this->cardToCard->sendLocalInstructions(
+            $chatId,
+            $telegramUserId,
+            $orderId,
+            $title,
+            $amount,
+            $instructions,
+            $ttl,
+        );
     }
 
     public function promptDiscountCode(int $chatId, int $telegramUserId, int $productId, string $title, int $basePrice, ?int $salePrice): void

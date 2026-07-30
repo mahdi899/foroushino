@@ -264,6 +264,34 @@ class PersonInfoIdentityTest extends TestCase
         $this->assertStringContainsString('غیرفعال', (string) $submission->registry_message);
     }
 
+    public function test_person_info_skipped_when_route_missing(): void
+    {
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+            ),
+            OwnershipVerificationResult::Matched,
+        );
+
+        IdentityVerificationRoute::query()
+            ->where('capability', IdentityCapability::PersonInfoInquiry->value)
+            ->delete();
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110012']);
+
+        $submission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
+
+        $this->assertSame('matched', $submission->mobile_match_status);
+        $this->assertNull($submission->registry_match_status);
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+        $this->assertStringContainsString('تعریف نشده', (string) $submission->registry_message);
+    }
+
     public function test_mobile_match_unavailable_stays_in_expert_queue(): void
     {
         $this->bindProviders(

@@ -146,6 +146,107 @@ final class BotApiClient
         }
     }
 
+    /** @param array<string, mixed> $params */
+    public function sendDocument(int|string $chatId, string $document, string $caption, array $params = []): void
+    {
+        $payload = array_merge([
+            'chat_id' => $chatId,
+            'document' => $document,
+            'caption' => $caption,
+            'parse_mode' => 'HTML',
+        ], $params);
+
+        try {
+            $this->call('sendDocument', $payload);
+        } catch (TelegramApiException $e) {
+            if ($this->shouldRetryWithoutHtml($e)) {
+                try {
+                    $this->call('sendDocument', array_merge([
+                        'chat_id' => $chatId,
+                        'document' => $document,
+                        'caption' => TelegramCustomEmoji::sanitizeHtmlKeepCustomEmoji($caption),
+                        'parse_mode' => 'HTML',
+                    ], $params));
+
+                    return;
+                } catch (TelegramApiException $e2) {
+                    $e = $e2;
+                }
+            }
+
+            if (! TelegramCustomEmoji::isCustomEmojiFailure($e->getMessage()) && ! $this->shouldRetryWithoutHtml($e)) {
+                throw $e;
+            }
+
+            $this->call('sendDocument', array_merge([
+                'chat_id' => $chatId,
+                'document' => $document,
+                'caption' => TelegramCustomEmoji::stripHtmlTags($caption),
+                'parse_mode' => 'HTML',
+            ], TelegramCustomEmoji::degradeButtonIcons($params)));
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function editMessageCaption(int|string $chatId, int $messageId, string $caption, array $params = []): void
+    {
+        $payload = array_merge([
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'caption' => $caption,
+            'parse_mode' => 'HTML',
+        ], $params);
+
+        try {
+            $this->call('editMessageCaption', $payload, false, 4);
+        } catch (TelegramApiException $e) {
+            if ($this->shouldRetryWithoutHtml($e) || TelegramCustomEmoji::isCustomEmojiFailure($e->getMessage())) {
+                $this->call('editMessageCaption', array_merge([
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'caption' => TelegramCustomEmoji::stripHtmlTags($caption),
+                    'parse_mode' => 'HTML',
+                ], TelegramCustomEmoji::degradeButtonIcons($params)), false, 4);
+
+                return;
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function editMessageText(int|string $chatId, int $messageId, string $text, array $params = []): void
+    {
+        $payload = array_merge([
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            'text' => $text,
+            'parse_mode' => 'HTML',
+        ], $params);
+
+        try {
+            $this->call('editMessageText', $payload, false, 4);
+        } catch (TelegramApiException $e) {
+            if ($this->shouldRetryWithoutHtml($e) || TelegramCustomEmoji::isCustomEmojiFailure($e->getMessage())) {
+                $this->call('editMessageText', array_merge([
+                    'chat_id' => $chatId,
+                    'message_id' => $messageId,
+                    'text' => TelegramCustomEmoji::stripHtmlTags($text),
+                    'parse_mode' => 'HTML',
+                ], TelegramCustomEmoji::degradeButtonIcons($params)), false, 4);
+
+                return;
+            }
+
+            throw $e;
+        }
+    }
+
     private function shouldRetryWithoutHtml(TelegramApiException $e): bool
     {
         $msg = $e->getMessage();

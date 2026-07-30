@@ -87,6 +87,12 @@ final class SyncCache
         $flags['checkout_c2c'] = (bool) ($checkout['c2c_enabled'] ?? ($flags['card_to_card_payment'] ?? false));
         $flags['bot_is_active'] = (bool) ($bootstrap['bot']['is_active'] ?? true);
 
+        $cardToCard = (array) ($checkout['card_to_card'] ?? []);
+        $this->storeMessages([
+            '__checkout_card_to_card' => json_encode($cardToCard, JSON_UNESCAPED_UNICODE),
+            '__payment_reports_chat_id' => (string) ($checkout['payment_reports_chat_id'] ?? ''),
+        ]);
+
         // Fill missing flags with Iran-compatible defaults so referral etc. stay visible.
         foreach (self::FEATURE_DEFAULTS as $key => $default) {
             if (! array_key_exists($key, $flags)) {
@@ -500,6 +506,150 @@ final class SyncCache
     public function checkoutC2cEnabled(): bool
     {
         return $this->featureEnabled('checkout_c2c');
+    }
+
+    /** Write-through after live checkout/flags so UI matches Iran immediately. */
+    public function setCheckoutFlags(bool $zarinpalEnabled, bool $c2cEnabled): void
+    {
+        $this->storeFeatureFlags([
+            'checkout_zarinpal' => $zarinpalEnabled,
+            'checkout_c2c' => $c2cEnabled,
+            'zarinpal_payment' => $zarinpalEnabled,
+            'card_to_card_payment' => $c2cEnabled,
+        ]);
+        $this->warmBootstrapHotCache();
+    }
+
+    /**
+     * @return array{
+     *     card_number: string,
+     *     card_holder: string,
+     *     bank_name: string,
+     *     notes: string,
+     *     override_text: string
+     * }
+     */
+    public function cardToCardConfig(): array
+    {
+        $raw = trim($this->message('__checkout_card_to_card', ''));
+        $decoded = $raw !== '' ? json_decode($raw, true) : [];
+        if (! is_array($decoded)) {
+            $decoded = [];
+        }
+
+        return [
+            'card_number' => trim((string) ($decoded['card_number'] ?? '')),
+            'card_holder' => trim((string) ($decoded['card_holder'] ?? '')),
+            'bank_name' => trim((string) ($decoded['bank_name'] ?? '')),
+            'notes' => trim((string) ($decoded['notes'] ?? '')),
+            'override_text' => trim((string) ($decoded['override_text'] ?? '')),
+        ];
+    }
+
+    public function hasCardToCardDetails(): bool
+    {
+        $config = $this->cardToCardConfig();
+
+        return $config['override_text'] !== '' || $config['card_number'] !== '';
+    }
+
+    public function cardToCardInstructions(): string
+    {
+        $config = $this->cardToCardConfig();
+        if ($config['override_text'] !== '') {
+            return $config['override_text'];
+        }
+
+        if ($config['card_number'] === '') {
+            return 'اطلاعات کارت هنوز در تنظیمات ثبت نشده است.';
+        }
+
+        $lines = ['مبلغ سفارش را به کارت زیر واریز کنید:'];
+        $lines[] = 'شماره کارت: '.$config['card_number'];
+        if ($config['card_holder'] !== '') {
+            $lines[] = 'به‌نام: '.$config['card_holder'];
+        }
+        if ($config['bank_name'] !== '') {
+            $lines[] = 'بانک: '.$config['bank_name'];
+        }
+        if ($config['notes'] !== '') {
+            $lines[] = $config['notes'];
+        }
+
+        return implode("\n", $lines);
+    }
+
+    public function paymentReportsChatId(): ?string
+    {
+        $value = trim($this->message('__payment_reports_chat_id', ''));
+
+        return $value !== '' ? $value : null;
+    }
+
+    /**
+     * Write-through after live checkout/flags (buttons + card details + reports chat).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function applyLiveCheckoutFlags(array $payload): void
+    {
+        if (array_key_exists('zarinpal_enabled', $payload) || array_key_exists('c2c_enabled', $payload)) {
+            $this->setCheckoutFlags(
+                (bool) ($payload['zarinpal_enabled'] ?? $this->checkoutZarinpalEnabled()),
+                (bool) ($payload['c2c_enabled'] ?? $this->checkoutC2cEnabled()),
+            );
+        }
+
+        $messages = [];
+        if (isset($payload['card_to_card']) && is_array($payload['card_to_card'])) {
+            $messages['__checkout_card_to_card'] = json_encode($payload['card_to_card'], JSON_UNESCAPED_UNICODE);
+        }
+        if (array_key_exists('payment_reports_chat_id', $payload)) {
+            $messages['__payment_reports_chat_id'] = (string) ($payload['payment_reports_chat_id'] ?? '');
+        }
+        if ($messages !== []) {
+            $this->storeMessages($messages);
+            $this->warmBootstrapHotCache();
+        }
+    }
+
+    public function rememberC2cOrderBuyer(int $orderId, int $telegramUserId, int $amount = 0, string $productTitle = ''): void
+    {
+        if ($orderId <= 0 || $telegramUserId <= 0) {
+            return;
+        }
+
+        $this->storeMessages([
+            '__c2c_order_buyer_'.$orderId => (string) $telegramUserId,
+            '__c2c_order_meta_'.$orderId => json_encode([
+                'amount' => $amount,
+                'product_title' => $productTitle,
+            ], JSON_UNESCAPED_UNICODE),
+        ]);
+    }
+
+    public function c2cOrderBuyer(int $orderId): int
+    {
+        $raw = trim($this->message('__c2c_order_buyer_'.$orderId, ''));
+
+        return ($raw !== '' && ctype_digit($raw)) ? (int) $raw : 0;
+    }
+
+    /**
+     * @return array{amount: int, product_title: string}
+     */
+    public function c2cOrderMeta(int $orderId): array
+    {
+        $raw = trim($this->message('__c2c_order_meta_'.$orderId, ''));
+        $decoded = $raw !== '' ? json_decode($raw, true) : [];
+        if (! is_array($decoded)) {
+            $decoded = [];
+        }
+
+        return [
+            'amount' => (int) ($decoded['amount'] ?? 0),
+            'product_title' => (string) ($decoded['product_title'] ?? ''),
+        ];
     }
 
     public function siteUrl(string $key, string $fallback = ''): string
