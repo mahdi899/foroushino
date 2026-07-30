@@ -94,7 +94,9 @@ return [
         'pending_ttl_minutes' => (int) env('ORDER_PENDING_TTL_MINUTES', 60),
         'cancelled_purge_days' => (int) env('ORDER_CANCELLED_PURGE_DAYS', 7),
         /** Telegram card-to-card: minutes to send receipt before auto-cancel. */
-        'card_to_card_pending_ttl_minutes' => (int) env('ORDER_C2C_PENDING_TTL_MINUTES', 10),
+        'card_to_card_pending_ttl_minutes' => (int) env('ORDER_C2C_PENDING_TTL_MINUTES', 15),
+        /** After receipt: max days awaiting admin review before auto-cancel. */
+        'card_to_card_review_max_days' => (int) env('ORDER_C2C_REVIEW_MAX_DAYS', 3),
     ],
 
     'telegram' => [

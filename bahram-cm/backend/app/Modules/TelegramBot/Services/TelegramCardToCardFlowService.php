@@ -50,7 +50,7 @@ class TelegramCardToCardFlowService
             ],
         ]);
 
-        $ttl = $ttlMinutes ?? max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 10));
+        $ttl = $ttlMinutes ?? max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 15));
         $client = $this->clients->forBot($bot);
         $amountLabel = number_format($amount);
         $safeTitle = htmlspecialchars($productTitle, ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -213,6 +213,7 @@ class TelegramCardToCardFlowService
             (int) $account->telegram_user_id,
             0,
             2,
+            $account->telegram_username,
         );
 
         if (! $ok) {
@@ -233,8 +234,7 @@ class TelegramCardToCardFlowService
 
         $client->sendMessage(
             $chatId,
-            TelegramCustomEmoji::tag('check')." رسید سفارش #{$order->id} دریافت شد.\n"
-            .TelegramCustomEmoji::tag('sparkles').' پس از تأیید دو ادمین، نتیجه همین‌جا اعلام می‌شود.',
+            TelegramCustomEmoji::tag('check')." رسید سفارش #{$order->id} دریافت شد.",
             [
                 'parse_mode' => 'HTML',
                 'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
@@ -327,11 +327,12 @@ class TelegramCardToCardFlowService
                 }
 
                 try {
+                    $ttlMinutes = max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 15));
                     $this->clients->forBot($bot)->sendMessage(
                         (int) $buyer->telegram_user_id,
                         TelegramCustomEmoji::tag('warning')
                         ." سفارش شما لغو شد.\n"
-                        .'مهلت ۱۰ دقیقه‌ای ارسال رسید کارت‌به‌کارت به پایان رسید. در صورت تمایل دوباره خرید کنید.',
+                        ."مهلت {$ttlMinutes} دقیقه‌ای ارسال رسید کارت‌به‌کارت به پایان رسید. در صورت تمایل دوباره خرید کنید.",
                         [
                             'parse_mode' => 'HTML',
                             'reply_markup' => $this->mainMenu->replyMarkup($buyer, $bot),
@@ -379,6 +380,73 @@ class TelegramCardToCardFlowService
             });
 
         return $cancelled;
+    }
+
+    /**
+     * Cancel C2C orders stuck in awaiting_review longer than the review max days.
+     *
+     * @return int cancelled count
+     */
+    public function expireStaleAwaitingReviewOrders(): int
+    {
+        $maxDays = max(1, (int) config('bahram.orders.card_to_card_review_max_days', 3));
+        $cutoff = now()->subDays($maxDays);
+        $cancelled = 0;
+
+        Order::query()
+            ->where('status', 'pending_payment')
+            ->whereNull('paid_at')
+            ->whereNotNull('customer_extra_data')
+            ->where('created_at', '<=', $cutoff)
+            ->orderBy('id')
+            ->chunkById(100, function ($orders) use (&$cancelled, $maxDays): void {
+                foreach ($orders as $order) {
+                    $status = (string) data_get($order->customer_extra_data, 'card_to_card.status', '');
+                    if ($status !== 'awaiting_review') {
+                        continue;
+                    }
+
+                    $this->cancelPendingOrder((int) $order->id, 'review_timeout');
+
+                    $bot = $this->resolveBotForOrder($order);
+                    if ($bot !== null) {
+                        $buyer = $this->resolveBuyerAccount($bot, $order->fresh());
+                        if ($buyer !== null) {
+                            try {
+                                $this->clients->forBot($bot)->sendMessage(
+                                    (int) $buyer->telegram_user_id,
+                                    TelegramCustomEmoji::tag('warning')
+                                    ." سفارش #{$order->id} لغو شد.\n"
+                                    ."مهلت بررسی کارت‌به‌کارت ({$maxDays} روز) به پایان رسید. در صورت تمایل دوباره خرید کنید.",
+                                    [
+                                        'parse_mode' => 'HTML',
+                                        'reply_markup' => $this->mainMenu->replyMarkup($buyer, $bot),
+                                    ],
+                                );
+                            } catch (Throwable $e) {
+                                Log::warning('card_to_card_review_expire_notify_failed', [
+                                    'order_id' => $order->id,
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
+                        }
+                    }
+
+                    $cancelled++;
+                }
+            });
+
+        return $cancelled;
+    }
+
+    /**
+     * Daily digest of open awaiting_review C2C orders to payment-reports chats.
+     *
+     * @return int messages sent
+     */
+    public function remindPendingReviews(): int
+    {
+        return $this->paymentReports->remindAwaitingReviewOrders();
     }
 
     /** @return 'partial'|'completed' */
@@ -601,7 +669,7 @@ class TelegramCardToCardFlowService
             return ! Carbon::parse((string) $expiresAt)->isFuture();
         }
 
-        $ttl = max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 10));
+        $ttl = max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 15));
 
         return $order->created_at !== null && $order->created_at->lte(now()->subMinutes($ttl));
     }

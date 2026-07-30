@@ -80,7 +80,7 @@ class TelegramCheckoutService
         $this->paymentLinks->revokeOpenForAccount($account);
         $order = $this->createPendingOrder($account, $product, $discountCode);
 
-        $ttl = max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 10));
+        $ttl = max(1, (int) config('bahram.orders.card_to_card_pending_ttl_minutes', 15));
         $expiresAt = now()->addMinutes($ttl);
 
         $extra = (array) ($order->customer_extra_data ?? []);

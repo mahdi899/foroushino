@@ -34,17 +34,19 @@ final class HostCardToCardFlow
         string $productTitle,
         int $amount,
         string $instructions,
-        int $ttlMinutes = 10,
+        int $ttlMinutes = 15,
+        int $productId = 0,
     ): void {
         $safeTitle = htmlspecialchars($productTitle, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $safeInstructions = htmlspecialchars($instructions, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $amountLabel = number_format($amount);
         $ttl = max(1, $ttlMinutes);
 
-        $this->cache->rememberC2cOrderBuyer($orderId, $telegramUserId, $amount, $productTitle);
+        $this->cache->rememberC2cOrderBuyer($orderId, $telegramUserId, $amount, $productTitle, $productId);
         $this->conversations->set($telegramUserId, 'waiting_for_card_to_card_receipt', [
             'checkout' => [
                 'order_id' => $orderId,
+                'product_id' => $productId,
                 'amount' => $amount,
                 'product_title' => $productTitle,
                 'c2c_status' => 'waiting_for_receipt',
@@ -122,16 +124,31 @@ final class HostCardToCardFlow
         $productTitle = (string) ($checkout['product_title'] ?? $meta['product_title'] ?? '—');
         $buyerRow = $this->accounts->get($telegramUserId);
         $buyerName = trim((string) ($buyerRow['display_name'] ?? '')) ?: 'کاربر';
+        $mobile = trim((string) ($buyerRow['mobile'] ?? ''));
+        if ($mobile === '') {
+            $mobile = '—';
+        }
+        $username = trim((string) ($message['from']['username'] ?? ''));
+        $username = ltrim($username, '@');
+
         $amount = number_format($amountValue);
         $product = htmlspecialchars($productTitle, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeName = htmlspecialchars($buyerName, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeMobile = htmlspecialchars($mobile, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $tgLink = '<a href="tg://user?id='.$telegramUserId.'">'.$telegramUserId.'</a>';
+
         $caption = TelegramCustomEmoji::tag('cash')." رسید کارت‌به‌کارت\n"
             ."────────────────\n"
             ."سفارش #{$orderId}\n"
             ."محصول: {$product}\n"
             .TelegramCustomEmoji::tag('coin')." مبلغ: <b>{$amount}</b> تومان\n"
-            .'خریدار: '.htmlspecialchars($buyerName, ENT_QUOTES | ENT_HTML5, 'UTF-8')."\n"
-            ."تلگرام: <code>{$telegramUserId}</code>\n"
-            .TelegramCustomEmoji::tag('warning').' نیاز به تأیید ۲ ادمین';
+            ."نام: {$safeName}\n"
+            ."موبایل: {$safeMobile}\n"
+            ."تلگرام: {$tgLink}";
+        if ($username !== '') {
+            $safeUser = htmlspecialchars($username, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $caption .= "\nیوزرنیم: <a href=\"https://t.me/{$safeUser}\">@{$safeUser}</a>";
+        }
 
         $keyboard = [
             'inline_keyboard' => [[
@@ -179,8 +196,7 @@ final class HostCardToCardFlow
 
         $this->api->sendMessage(
             $chatId,
-            TelegramCustomEmoji::tag('check')." رسید سفارش #{$orderId} دریافت شد.\n"
-            .TelegramCustomEmoji::tag('sparkles').' پس از تأیید دو ادمین، نتیجه همین‌جا اعلام می‌شود.',
+            TelegramCustomEmoji::tag('check')." رسید سفارش #{$orderId} دریافت شد.",
             [
                 'parse_mode' => 'HTML',
                 'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
@@ -225,14 +241,28 @@ final class HostCardToCardFlow
         }
 
         if (! $approve) {
+            $productId = (int) ($review['product_id'] ?? 0);
+            if ($productId <= 0) {
+                $productId = (int) ($this->cache->c2cOrderMeta($orderId)['product_id'] ?? 0);
+            }
             $this->live->checkoutC2cCancel($chatId, $actorTelegramUserId, $orderId, 'admin_reject');
             $this->conversations->set($buyerId, 'idle', []);
             $this->editGroupResult($chatId, $messageId, TelegramCustomEmoji::tag('cross')." رد شد — سفارش #{$orderId} لغو شد.");
             $this->api->answerCallbackQuery($callbackId, 'رد شد — سفارش لغو شد');
+
+            $params = ['parse_mode' => 'HTML'];
+            if ($productId > 0) {
+                $params['reply_markup'] = [
+                    'inline_keyboard' => [[
+                        InlineButtons::callback('خرید مجدد', 'buy:'.$productId, 'cart', 'success'),
+                    ]],
+                ];
+            }
+
             $this->api->sendMessage(
                 $buyerId,
-                TelegramCustomEmoji::tag('cross')." رسید سفارش #{$orderId} تأیید نشد و سفارش لغو شد.\nدر صورت تمایل دوباره خرید کنید.",
-                ['reply_markup' => $this->mainMenu->replyMarkup($buyerId)],
+                TelegramCustomEmoji::tag('cross')." رسید سفارش #{$orderId} تأیید نشد و سفارش لغو شد.",
+                $params,
             );
 
             return;

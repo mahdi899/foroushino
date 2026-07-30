@@ -195,7 +195,7 @@ final class PurchaseFlow
         if ($instructions === '') {
             $instructions = $this->cache->cardToCardInstructions();
         }
-        $ttl = max(1, (int) ($result['ttl_minutes'] ?? 10));
+        $ttl = max(1, (int) ($result['ttl_minutes'] ?? 15));
 
         $this->cardToCard->sendLocalInstructions(
             $chatId,
@@ -205,6 +205,7 @@ final class PurchaseFlow
             $amount,
             $instructions,
             $ttl,
+            $productId,
         );
     }
 

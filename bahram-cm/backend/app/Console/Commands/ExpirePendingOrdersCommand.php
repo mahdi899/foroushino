@@ -21,7 +21,12 @@ class ExpirePendingOrdersCommand extends Command
 
         $c2cExpired = $cardToCard->expireStaleWaitingReceiptOrders();
         if ($c2cExpired > 0) {
-            $this->info("Cancelled {$c2cExpired} stale card-to-card order(s).");
+            $this->info("Cancelled {$c2cExpired} stale card-to-card receipt order(s).");
+        }
+
+        $c2cReviewExpired = $cardToCard->expireStaleAwaitingReviewOrders();
+        if ($c2cReviewExpired > 0) {
+            $this->info("Cancelled {$c2cReviewExpired} stale card-to-card review order(s).");
         }
 
         $expired = $orders->expireStalePendingOrders(

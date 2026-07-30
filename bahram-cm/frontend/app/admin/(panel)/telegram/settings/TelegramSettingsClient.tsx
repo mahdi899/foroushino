@@ -58,25 +58,13 @@ export function TelegramSettingsClient({
         initial={infrastructure}
         workerSample={workerSample}
         loadError={infrastructureError}
+        showRegisterWebhook={false}
       />
-
-      <AdminContentPanel title="پرداخت زرین‌پال (مشترک با سایت)">
-        <p className="text-small text-text-muted leading-relaxed">
-          مرچنت‌کد و حالت sandbox/live برای خرید داخل بات همان تنظیمات تجارت است. سفارش‌های بات مثل خرید سایت در پنل تجارت ثبت می‌شوند.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link href="/admin/commerce/payment-settings" className="btn btn-primary text-small">
-            تنظیمات پرداخت
-          </Link>
-          <Link href="/admin/commerce/products" className="btn btn-secondary text-small">
-            محصولات تلگرام
-          </Link>
-        </div>
-      </AdminContentPanel>
 
       <AdminContentPanel title="کارت‌به‌کارت تلگرام">
         <p className="text-small text-text-muted leading-relaxed">
-          برای سمینار، دوره و کانال مرجع: کاربر فیش می‌فرستد، در گروه واریز دو ادمین تأیید می‌کنند، سپس سفارش تکمیل می‌شود. مهلت ارسال فیش ۱۰ دقیقه است.
+          برای سمینار، دوره و کانال مرجع: کاربر فیش می‌فرستد، در گروه واریز دو ادمین تأیید می‌کنند، سپس سفارش تکمیل می‌شود.
+          مهلت ارسال فیش ۱۵ دقیقه است؛ بعد از ارسال فیش تا تأیید ادمین ظرفیت رزرو می‌ماند (حداکثر ۳ روز).
           تنظیمات هر ربات را در کارت همان ربات پایین صفحه ویرایش کنید.
         </p>
       </AdminContentPanel>

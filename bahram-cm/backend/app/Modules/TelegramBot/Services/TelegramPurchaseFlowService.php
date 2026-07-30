@@ -228,7 +228,7 @@ class TelegramPurchaseFlowService
             (string) $product->title,
             (int) $result['amount'],
             (string) $result['instructions'],
-            (int) ($result['ttl_minutes'] ?? 10),
+            (int) ($result['ttl_minutes'] ?? 15),
         );
     }
 
