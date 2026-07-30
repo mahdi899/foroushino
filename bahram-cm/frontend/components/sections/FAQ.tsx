@@ -1,33 +1,12 @@
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { SITE_FAQ_ITEMS } from "@/lib/data/siteFaqContent";
 
-const items = [
-  {
-    question: "کمپین‌نویسی برای چه کسانی است؟",
-    answer: "صاحبان حرفه، خالقان محتوا، مشاوران؛ هر کس می‌خواهد صدا را کمپین‌محور کند.",
-  },
-  {
-    question: "نیاز به تجربه قبلی دارم؟",
-    answer: "نه؛ از نگاه و پیام شروع می‌کنیم. با پیشینه‌ی محتوا، سریع‌تر پیش می‌روی.",
-  },
-  {
-    question: "تفاوت دوره با آکادمی چیست؟",
-    answer: "دوره، در اول است؛ آکادمی، فضای بعدی برای اجرای عمیق و همراهی نزدیک.",
-  },
-  {
-    question: "چقدر باید زمان بگذارم؟",
-    answer: "هفته‌ای حدود ۳ تا ۵ ساعت برای اجرای جدی؛ خروجی با عمل است، نه با تماشا.",
-  },
-  {
-    question: "آیا بازگشت وجه دارد؟",
-    answer: "بله؛ در بازه‌ی ابتدای دوره، طبق سیاست رسمی.",
-  },
-  {
-    question: "چطور وارد آکادمی می‌شوم؟",
-    answer: "بعد از پیشرفت و ارزیابی، تیم تناسب را می‌سنجد؛ ورود انتخابی است.",
-  },
-];
+const items = SITE_FAQ_ITEMS.map((f) => ({
+  question: f.question,
+  answer: f.answer,
+}));
 
 export function FAQ() {
   return (

@@ -138,6 +138,8 @@ Import از فایل محلی (idempotent):
 cd backend
 php artisan campaign:import-licenses path/to/licenses.csv
 php artisan campaign:import-licenses path/to/licenses.csv --dry-run
+# فقط ردیف‌های کمپین‌نویسی (اگر CSV همه دوره‌هاست):
+php artisan campaign:import-licenses path/to/licenses.csv --course-contains=کمپین
 ```
 
 تبدیل XLSX پنل SpotPlayer به CSV محلی (خارج از git):
@@ -145,6 +147,8 @@ php artisan campaign:import-licenses path/to/licenses.csv --dry-run
 ```bash
 php scripts/export-spotplayer-licenses-csv.php path/to/licenses.xlsx path/to/licenses.csv
 ```
+
+دسترسی‌ها در MySQL می‌مانند؛ rebuild/deploy فرانت یا بک‌اند آن‌ها را پاک نمی‌کند. فایل لایسنس را در git نگذارید.
 
 ## License
 

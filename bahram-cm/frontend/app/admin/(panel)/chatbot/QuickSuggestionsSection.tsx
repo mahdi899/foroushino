@@ -102,7 +102,7 @@ export function QuickSuggestionsSection({ suggestions, onChange }: QuickSuggesti
                         className="field-input mt-1"
                         value={item.label}
                         onChange={(e) => updateSuggestion(item.id, { label: e.target.value })}
-                        placeholder="مثلاً: دوره‌های آکادمی بهرام چیست؟"
+                        placeholder="مثلاً: کدام دوره برای من مناسب‌تر است؟"
                         maxLength={120}
                       />
                     </div>

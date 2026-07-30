@@ -1,20 +1,13 @@
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { getFaqs } from "@/lib/services/faqs";
+import { SITE_FAQ_ITEMS } from "@/lib/data/siteFaqContent";
 
 /**
- * Admin-managed FAQ block for /faq and other public pages.
- * Renders nothing if the backend has no active FAQs (or is unreachable).
+ * Public FAQ block — content is build-stable in `lib/data/siteFaqContent.ts`.
  */
 export async function DynamicFAQ() {
-  const result = await getFaqs();
-  if (!result.ok || result.data.length === 0) return null;
-
-  const items = [...result.data]
-    .filter((f) => f.question.trim() && f.answer.trim())
-    .sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
-
+  const items = SITE_FAQ_ITEMS.filter((f) => f.question.trim() && f.answer.trim());
   if (items.length === 0) return null;
 
   return (

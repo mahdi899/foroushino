@@ -19,6 +19,7 @@ class CampaignLicenseImportService
     /**
      * @return array{
      *     rows: int,
+     *     rows_matched: int,
      *     users_created: int,
      *     users_updated: int,
      *     course_access_created: int,
@@ -30,16 +31,20 @@ class CampaignLicenseImportService
      *     skipped_invalid_phone: int,
      *     skipped_missing_key: int,
      *     skipped_duplicate_phone: int,
+     *     skipped_course_mismatch: int,
      * }
      */
     public function import(
         string $filePath,
         Product $product,
         bool $dryRun = false,
+        ?string $courseContains = null,
+        int $chunkSize = 250,
     ): array {
         $rows = $this->parseCsv($filePath);
         $stats = [
             'rows' => count($rows),
+            'rows_matched' => 0,
             'users_created' => 0,
             'users_updated' => 0,
             'course_access_created' => 0,
@@ -51,64 +56,83 @@ class CampaignLicenseImportService
             'skipped_invalid_phone' => 0,
             'skipped_missing_key' => 0,
             'skipped_duplicate_phone' => 0,
+            'skipped_course_mismatch' => 0,
         ];
 
-        $processedPhones = [];
-
-        $work = function () use ($rows, $product, &$stats, &$processedPhones, $dryRun): void {
+        if ($courseContains !== null && $courseContains !== '') {
+            $needle = mb_strtolower($courseContains);
+            $filtered = [];
             foreach ($rows as $row) {
-                if (blank($row['license_key'])) {
-                    $stats['skipped_missing_key']++;
+                if (mb_strpos(mb_strtolower($row['course']), $needle) === false) {
+                    $stats['skipped_course_mismatch']++;
 
                     continue;
                 }
-
-                $mobile = Mobile::normalize($row['mobile']);
-                if (! $mobile) {
-                    $stats['skipped_invalid_phone']++;
-
-                    continue;
-                }
-
-                if (isset($processedPhones[$mobile])) {
-                    $stats['skipped_duplicate_phone']++;
-                }
-                $processedPhones[$mobile] = true;
-
-                $userResult = $this->upsertStudent($row, $mobile, $dryRun);
-                $stats['users_created'] += $userResult['created'] ? 1 : 0;
-                $stats['users_updated'] += $userResult['updated'] ? 1 : 0;
-
-                $orderResult = $this->upsertOrder($product, $userResult['user_id'], $row, $mobile, $dryRun);
-                $stats['orders_created'] += $orderResult['created'] ? 1 : 0;
-                $stats['orders_existing'] += $orderResult['created'] ? 0 : 1;
-
-                $accessResult = $this->upsertCourseAccess(
-                    $product,
-                    $userResult['user_id'],
-                    $orderResult['order_id'],
-                    $dryRun,
-                );
-                $stats['course_access_created'] += $accessResult['created'] ? 1 : 0;
-                $stats['course_access_existing'] += $accessResult['created'] ? 0 : 1;
-
-                $licenseResult = $this->upsertLicense(
-                    $product,
-                    $userResult['user_id'],
-                    $orderResult['order_id'],
-                    $accessResult['course_access_id'],
-                    $row,
-                    $dryRun,
-                );
-                $stats['licenses_created'] += $licenseResult['created'] ? 1 : 0;
-                $stats['licenses_existing'] += $licenseResult['created'] ? 0 : 1;
+                $filtered[] = $row;
             }
-        };
+            $rows = $filtered;
+        }
 
-        if ($dryRun) {
-            $work();
-        } else {
-            DB::transaction($work);
+        $stats['rows_matched'] = count($rows);
+        $processedPhones = [];
+        $chunkSize = max(50, min(1000, $chunkSize));
+
+        foreach (array_chunk($rows, $chunkSize) as $chunk) {
+            $work = function () use ($chunk, $product, &$stats, &$processedPhones, $dryRun): void {
+                foreach ($chunk as $row) {
+                    if (blank($row['license_key'])) {
+                        $stats['skipped_missing_key']++;
+
+                        continue;
+                    }
+
+                    $mobile = Mobile::normalize($row['mobile']);
+                    if (! $mobile) {
+                        $stats['skipped_invalid_phone']++;
+
+                        continue;
+                    }
+
+                    if (isset($processedPhones[$mobile])) {
+                        $stats['skipped_duplicate_phone']++;
+                    }
+                    $processedPhones[$mobile] = true;
+
+                    $userResult = $this->upsertStudent($row, $mobile, $dryRun);
+                    $stats['users_created'] += $userResult['created'] ? 1 : 0;
+                    $stats['users_updated'] += $userResult['updated'] ? 1 : 0;
+
+                    $orderResult = $this->upsertOrder($product, $userResult['user_id'], $row, $mobile, $dryRun);
+                    $stats['orders_created'] += $orderResult['created'] ? 1 : 0;
+                    $stats['orders_existing'] += $orderResult['created'] ? 0 : 1;
+
+                    $accessResult = $this->upsertCourseAccess(
+                        $product,
+                        $userResult['user_id'],
+                        $orderResult['order_id'],
+                        $dryRun,
+                    );
+                    $stats['course_access_created'] += $accessResult['created'] ? 1 : 0;
+                    $stats['course_access_existing'] += $accessResult['created'] ? 0 : 1;
+
+                    $licenseResult = $this->upsertLicense(
+                        $product,
+                        $userResult['user_id'],
+                        $orderResult['order_id'],
+                        $accessResult['course_access_id'],
+                        $row,
+                        $dryRun,
+                    );
+                    $stats['licenses_created'] += $licenseResult['created'] ? 1 : 0;
+                    $stats['licenses_existing'] += $licenseResult['created'] ? 0 : 1;
+                }
+            };
+
+            if ($dryRun) {
+                $work();
+            } else {
+                DB::transaction($work);
+            }
         }
 
         return $stats;

@@ -1,37 +1,10 @@
+import { SITE_QUICK_SUGGESTIONS } from '@/lib/data/siteFaqContent';
 import type { ChatbotQuickSuggestion } from './types';
 
-export const DEFAULT_QUICK_SUGGESTIONS: ChatbotQuickSuggestion[] = [
-  {
-    id: 'campaign',
-    label: 'دوره کمپین‌نویسی چیست؟',
-    response:
-      'کمپین‌نویسی هسته مسیر بهرام است: از نگاه درست تا پیام و اجرای کمپین. برای جزئیات و شروع به صفحه «کمپین‌نویسی» بروید.',
-  },
-  {
-    id: 'courses',
-    label: 'چه دوره‌هایی دارید؟',
-    response:
-      'در صفحه «دوره‌ها» مسیرهای آموزشی فروش، بازاریابی و رشد حرفه‌ای را می‌بینید. هر دوره برای اجرای عملی طراحی شده است.',
-  },
-  {
-    id: 'saat',
-    label: 'سات چیست و چطور آماده شوم؟',
-    response:
-      'سات یعنی هر تماس یک فرصت فروش — سیستم، اسکریپت و اجرای حرفه‌ای. برای معرفی کامل و ثبت‌نام به صفحه «سات» سر بزنید.',
-  },
-  {
-    id: 'contact',
-    label: 'چطور با تیم تماس بگیرم؟',
-    response:
-      'از تب «تماس» در همین چت می‌توانید واتساپ یا تماس تلفنی بزنید؛ یا شماره‌تان را با دکمه «ثبت تماس» بگذارید تا تیم آکادمی هماهنگ کند.',
-  },
-  {
-    id: 'insights',
-    label: 'مقالات و insights کجاست؟',
-    response:
-      'در بخش «بلاگ / insights» مقالات آموزشی درباره فروش، برند شخصی و مسیر رشد حرفه‌ای منتشر می‌شود.',
-  },
-];
+/** Public chatbot chips — always match `SITE_FAQ_ITEMS` (build-stable). */
+export const DEFAULT_QUICK_SUGGESTIONS: ChatbotQuickSuggestion[] = SITE_QUICK_SUGGESTIONS.map(
+  (s) => ({ ...s }),
+);
 
 const MAX_SUGGESTIONS = 8;
 const MAX_LABEL = 120;
@@ -66,11 +39,19 @@ function parseRows(raw: unknown): ChatbotQuickSuggestion[] {
   return out;
 }
 
-/** Load from storage — use defaults only when the key was never saved. */
+/**
+ * Public site always uses code defaults so deploy/build cannot revert to stale DB copy.
+ * Admin form still uses `normalizeQuickSuggestions` / stored values when editing.
+ */
 export function resolveQuickSuggestions(
   raw: unknown,
-  options?: { useDefaults?: boolean },
+  options?: { useDefaults?: boolean; preferCodeDefaults?: boolean },
 ): ChatbotQuickSuggestion[] {
+  const preferCodeDefaults = options?.preferCodeDefaults ?? false;
+  if (preferCodeDefaults) {
+    return DEFAULT_QUICK_SUGGESTIONS.map((s) => ({ ...s }));
+  }
+
   const useDefaults = options?.useDefaults ?? false;
   if (raw === undefined || raw === null) {
     return useDefaults ? DEFAULT_QUICK_SUGGESTIONS.map((s) => ({ ...s })) : [];

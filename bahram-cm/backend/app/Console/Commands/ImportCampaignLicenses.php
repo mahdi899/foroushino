@@ -14,6 +14,8 @@ class ImportCampaignLicenses extends Command
                             {file : مسیر فایل CSV خروجی SpotPlayer (محلی؛ در git commit نشود)}
                             {--product-id= : شناسه محصول دوره کمپین‌نویسی}
                             {--product-slug= : اسلاگ محصول (پیش‌فرض: campaign-writing)}
+                            {--course-contains= : فقط ردیف‌هایی که نام دوره شامل این عبارت باشد (مثلاً کمپین)}
+                            {--chunk=250 : اندازه هر تراکنش دیتابیس}
                             {--dry-run : اجرای آزمایشی بدون ذخیره در دیتابیس}';
 
     protected $description = 'ایجاد اکانت دانشجو، دسترسی دوره کمپین‌نویسی و لایسنس SpotPlayer از خروجی CSV';
@@ -37,9 +39,14 @@ class ImportCampaignLicenses extends Command
         }
 
         $dryRun = (bool) $this->option('dry-run');
+        $courseContains = $this->option('course-contains');
+        $chunk = (int) ($this->option('chunk') ?: 250);
 
         $this->info("محصول: {$product->title} (#{$product->id})");
         $this->info('فایل: '.$file);
+        if (is_string($courseContains) && $courseContains !== '') {
+            $this->info("فیلتر دوره: شامل «{$courseContains}»");
+        }
         if ($dryRun) {
             $this->warn('حالت dry-run — هیچ تغییری ذخیره نمی‌شود.');
         }
@@ -48,6 +55,8 @@ class ImportCampaignLicenses extends Command
             filePath: $file,
             product: $product,
             dryRun: $dryRun,
+            courseContains: is_string($courseContains) ? $courseContains : null,
+            chunkSize: $chunk,
         );
 
         $this->newLine();
