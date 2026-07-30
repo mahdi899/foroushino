@@ -17,6 +17,10 @@ export type ProductListItem = {
   featured_image_alt?: string | null;
   featured_image_mobile?: string | null;
   featured_image_mobile_alt?: string | null;
+  landing_hero_image?: string | null;
+  landing_hero_image_alt?: string | null;
+  landing_hero_image_mobile?: string | null;
+  landing_hero_image_mobile_alt?: string | null;
   show_on_courses?: boolean;
   featured_listing?: boolean;
   course_level?: string | null;

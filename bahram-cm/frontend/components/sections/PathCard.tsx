@@ -15,6 +15,7 @@ export function PathCard({
   icon: Icon,
   tone,
   image,
+  imageMobile,
   imageAlt,
   imageClassName,
   featured = false,
@@ -28,6 +29,7 @@ export function PathCard({
   icon: LucideIcon;
   tone: "gold" | "teal";
   image: string;
+  imageMobile?: string;
   imageAlt: string;
   /** Extra object-position / crop classes for the cover image. */
   imageClassName?: string;
@@ -35,6 +37,8 @@ export function PathCard({
   level?: string;
   duration?: string;
 }) {
+  const mobileSrc = imageMobile?.trim() || image;
+
   return (
     <Link
       href={href}
@@ -43,11 +47,21 @@ export function PathCard({
     >
       <div className="main-path-card-media relative aspect-[16/13] max-h-[min(73vw,15.75rem)] w-full overflow-hidden sm:max-h-[17.875rem] md:absolute md:inset-y-0 md:end-0 md:aspect-auto md:max-h-none md:w-[48%] lg:w-[46%]">
         <SiteImage
+          src={mobileSrc}
+          alt={imageAlt}
+          fill
+          className={cn(
+            "object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.05] md:hidden",
+            imageClassName,
+          )}
+          sizes="(max-width: 767px) 50vw, 280px"
+        />
+        <SiteImage
           src={image}
           alt={imageAlt}
           fill
           className={cn(
-            "object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.05]",
+            "hidden object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.05] md:block",
             imageClassName,
           )}
           sizes="(max-width: 767px) 50vw, 280px"

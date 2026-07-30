@@ -10,6 +10,8 @@ export const sitePhotos = {
   heroBackground: siteStorageMedia('hero-background.webp'),
   /** گالری — background-mobile (مربع ۹۴۱px) */
   heroBackgroundMobile: siteStorageMedia('hero-background-mobile.webp'),
+  /** پس‌زمینه فید پیام‌های خانواده — آسمان شب (نیمه‌بلور) */
+  familyChatWallpaper: siteStorageMedia('family-chat-wallpaper.webp'),
   /** @deprecated use heroBackground */
   heroLightGrid: siteStorageMedia('hero-background.webp'),
   /** @deprecated use heroBackgroundMobile */

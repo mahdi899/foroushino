@@ -108,7 +108,7 @@ function DeferredSection({
 
 async function MainPathsSection() {
 
-  const { images: pathImages } = await getCoursePathOverrides();
+  const { images: pathImages, imagesMobile: pathImagesMobile } = await getCoursePathOverrides();
 
 
 
@@ -116,7 +116,7 @@ async function MainPathsSection() {
 
     <SectionReveal>
 
-      <MainPaths pathOverrides={{ images: pathImages }} />
+      <MainPaths pathOverrides={{ images: pathImages, imagesMobile: pathImagesMobile }} />
 
     </SectionReveal>
 

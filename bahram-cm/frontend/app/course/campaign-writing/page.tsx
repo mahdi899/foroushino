@@ -50,23 +50,16 @@ import { formatFa, toPersianDigits } from "@/lib/persian";
 import { getPublicProductBySlug, productPurchaseInitial } from "@/lib/services/products";
 import { getContentCommentsFromApi } from "@/lib/services/contentComments.server";
 import { ContentCommentsSection } from "@/components/comments/ContentCommentsSection";
-import { pageHeroBackdropPhoto, pageHeroBackdropPhotoMobile, sitePhotos } from "@/lib/site-photo-paths";
+import { sitePhotos } from "@/lib/site-photo-paths";
+import {
+  resolveProductHeroImage,
+  resolveProductHeroImageMobile,
+} from "@/lib/catalog/productFeaturedImage";
 import { site } from "@/content/site";
 import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 const FALLBACK_PRICE = 26_900_000;
 const SECTION_COUNT = 5;
-
-const heroDesktopAlt = coalesceAlt(
-  staticAltForSrc(pageHeroBackdropPhoto),
-  "دوره کمپین‌نویسی",
-  pageHeroBackdropPhoto,
-);
-const heroMobileAlt = coalesceAlt(
-  staticAltForSrc(pageHeroBackdropPhotoMobile),
-  "دوره کمپین‌نویسی",
-  pageHeroBackdropPhotoMobile,
-);
 
 const heroPurchaseCtaClassName =
   "h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg";
@@ -268,20 +261,42 @@ export default async function CourseCampaignWritingPage() {
         discountPercent: null,
       };
 
+  const heroDesktop = resolveProductHeroImage({
+    landing_hero_image: product?.landing_hero_image,
+    slug: CAMPAIGN_WRITING_SLUG,
+    landing_href: '/course/campaign-writing',
+  });
+  const heroMobile = resolveProductHeroImageMobile({
+    landing_hero_image: product?.landing_hero_image,
+    landing_hero_image_mobile: product?.landing_hero_image_mobile,
+    slug: CAMPAIGN_WRITING_SLUG,
+    landing_href: '/course/campaign-writing',
+  });
+  const heroDesktopAlt = coalesceAlt(
+    product?.landing_hero_image_alt ?? staticAltForSrc(heroDesktop),
+    "دوره کمپین‌نویسی",
+    heroDesktop,
+  );
+  const heroMobileAlt = coalesceAlt(
+    product?.landing_hero_image_mobile_alt ?? staticAltForSrc(heroMobile),
+    "دوره کمپین‌نویسی",
+    heroMobile,
+  );
+
   return (
     <ProductPurchaseProvider productSlug={CAMPAIGN_WRITING_SLUG} initial={purchase}>
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
       <link
         rel="preload"
         as="image"
-        href={primarySiteImageSrc(pageHeroBackdropPhotoMobile)}
+        href={primarySiteImageSrc(heroMobile)}
         media="(max-width: 767px)"
         fetchPriority="high"
       />
       <link
         rel="preload"
         as="image"
-        href={primarySiteImageSrc(pageHeroBackdropPhoto)}
+        href={primarySiteImageSrc(heroDesktop)}
         media="(min-width: 768px)"
         fetchPriority="high"
       />
@@ -289,8 +304,8 @@ export default async function CourseCampaignWritingPage() {
       {/* 1. HERO — full-width photo + purchase CTA */}
       <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
         <SitePhotoHeroFrame
-          desktopSrc={pageHeroBackdropPhoto}
-          mobileSrc={pageHeroBackdropPhotoMobile}
+          desktopSrc={heroDesktop}
+          mobileSrc={heroMobile}
           desktopAlt={heroDesktopAlt}
           mobileAlt={heroMobileAlt}
         >

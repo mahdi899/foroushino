@@ -1,8 +1,10 @@
+import type { CSSProperties } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import '@/styles/family.css';
 import { fontVariable } from '@/lib/fonts';
 import { cn } from '@/lib/cn';
+import { sitePhotos } from '@/lib/site-photo-paths';
 import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext';
 import { FamilyActionCelebrateProvider } from '@/lib/family/FamilyActionCelebrateContext';
 import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
@@ -50,6 +52,10 @@ export default async function FamilyLayout({ children }: { children: React.React
   const initialTheme =
     parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
 
+  const familyRootStyle = {
+    '--family-chat-wallpaper-photo': `url('${sitePhotos.familyChatWallpaper}')`,
+  } as CSSProperties;
+
   return (
     <div
       id="family-root"
@@ -59,6 +65,7 @@ export default async function FamilyLayout({ children }: { children: React.React
         'family-app family-app__canvas h-[100dvh] overflow-hidden antialiased',
         fontVariable,
       )}
+      style={familyRootStyle}
       suppressHydrationWarning
     >
       <FamilyMediaPreconnect />

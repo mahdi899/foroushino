@@ -44,6 +44,7 @@ function CatalogCard({
         icon={meta.icon}
         tone={meta.tone}
         image={course.image}
+        imageMobile={course.imageMobile}
         imageAlt={course.imageAlt}
         imageClassName={meta.imageClassName}
         featured={course.featured}

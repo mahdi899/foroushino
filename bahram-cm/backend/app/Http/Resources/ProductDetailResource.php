@@ -15,9 +15,6 @@ class ProductDetailResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $imageRef = $this->featured_image
-            ? MediaUrl::fromDiskPath($this->featured_image)
-            : null;
         $altResolver = app(MediaAltResolver::class);
         $enricher = app(HtmlImageEnricher::class);
         $seminar = $this->seminar;
@@ -26,7 +23,14 @@ class ProductDetailResource extends JsonResource
         $effectivePrice = is_array($referenceQuote)
             ? (int) $referenceQuote['final_amount']
             : (int) $this->effective_price;
-        $mobileCover = $this->resolveReferenceCoverMobile($altResolver);
+
+        $featured = $this->resolveMedia($this->featured_image, $altResolver);
+        $featuredMobile = $this->resolveFeaturedMobile($altResolver);
+        $hero = $this->resolveMedia($this->landing_hero_image, $altResolver);
+        $heroMobile = $this->resolveMedia(
+            $this->landing_hero_image_mobile ?: $this->landing_hero_image,
+            $altResolver,
+        );
 
         return [
             'id' => $this->id,
@@ -38,12 +42,14 @@ class ProductDetailResource extends JsonResource
             'price' => $this->price,
             'sale_price' => $this->sale_price,
             'effective_price' => $effectivePrice,
-            'featured_image' => $imageRef ? MediaUrl::resolve($imageRef) : null,
-            'featured_image_alt' => $imageRef
-                ? $altResolver->resolve($imageRef, $this->title)
-                : null,
-            'featured_image_mobile' => $mobileCover['url'],
-            'featured_image_mobile_alt' => $mobileCover['alt'],
+            'featured_image' => $featured['url'],
+            'featured_image_alt' => $featured['alt'],
+            'featured_image_mobile' => $featuredMobile['url'],
+            'featured_image_mobile_alt' => $featuredMobile['alt'],
+            'landing_hero_image' => $hero['url'],
+            'landing_hero_image_alt' => $hero['alt'],
+            'landing_hero_image_mobile' => $heroMobile['url'],
+            'landing_hero_image_mobile_alt' => $heroMobile['alt'],
             'show_on_courses' => (bool) $this->show_on_courses,
             'featured_listing' => (bool) $this->featured_listing,
             'course_level' => $this->course_level,
@@ -72,21 +78,31 @@ class ProductDetailResource extends JsonResource
     }
 
     /**
-     * Mobile hero for reference-channel products (falls back to desktop cover).
-     *
      * @return array{url: ?string, alt: ?string}
      */
-    private function resolveReferenceCoverMobile(MediaAltResolver $altResolver): array
+    private function resolveFeaturedMobile(MediaAltResolver $altResolver): array
     {
-        if (! $this->resource->isReferenceChannelProduct()) {
-            return ['url' => null, 'alt' => null];
+        if ($this->resource->isReferenceChannelProduct()) {
+            $this->loadMissing('referenceChannel');
+            $raw = $this->referenceChannel?->cover_image_mobile
+                ?: $this->featured_image_mobile
+                ?: $this->referenceChannel?->cover_image
+                ?: $this->featured_image;
+
+            return $this->resolveMedia($raw, $altResolver);
         }
 
-        $this->loadMissing('referenceChannel');
-        $raw = $this->referenceChannel?->cover_image_mobile
-            ?: $this->referenceChannel?->cover_image
-            ?: $this->featured_image;
+        return $this->resolveMedia(
+            $this->featured_image_mobile ?: $this->featured_image,
+            $altResolver,
+        );
+    }
 
+    /**
+     * @return array{url: ?string, alt: ?string}
+     */
+    private function resolveMedia(mixed $raw, MediaAltResolver $altResolver): array
+    {
         if (! filled($raw)) {
             return ['url' => null, 'alt' => null];
         }

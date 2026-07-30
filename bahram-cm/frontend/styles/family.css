@@ -80,6 +80,17 @@ html[data-family-host='1'] body {
   --family-tg-header-shadow: rgba(0, 0, 0, 0.05);
   --family-tg-header-highlight: rgba(255, 255, 255, 0.72);
   --family-chat-bg: #eef4f4;
+  --family-chat-wallpaper-photo: url('/storage/media/site/family-chat-wallpaper.webp');
+  --family-chat-wallpaper-blur: 14px;
+  --family-chat-wallpaper-opacity: 0.92;
+  --family-chat-wallpaper-base: #0b1419;
+  --family-chat-wallpaper-veil: linear-gradient(
+    180deg,
+    rgba(11, 20, 25, 0.34) 0%,
+    rgba(11, 20, 25, 0.2) 48%,
+    rgba(8, 22, 28, 0.32) 100%
+  );
+  /* Soft fallback when photo fails to load (sidebar / canvas). */
   --family-chat-wallpaper:
     radial-gradient(ellipse 90% 70% at 12% 8%, rgba(255, 255, 255, 0.72) 0, transparent 55%),
     radial-gradient(ellipse 70% 55% at 88% 92%, rgba(0, 140, 150, 0.1) 0, transparent 52%),
@@ -203,6 +214,14 @@ html[data-theme='dark'] .family-app {
   --family-tg-header-shadow: rgba(0, 0, 0, 0.48);
   --family-tg-header-highlight: rgba(255, 255, 255, 0.06);
   --family-chat-bg: #0b1419;
+  --family-chat-wallpaper-base: #0b1419;
+  --family-chat-wallpaper-opacity: 0.95;
+  --family-chat-wallpaper-veil: linear-gradient(
+    180deg,
+    rgba(6, 12, 16, 0.42) 0%,
+    rgba(8, 16, 22, 0.26) 50%,
+    rgba(6, 14, 18, 0.4) 100%
+  );
   --family-chat-wallpaper:
     radial-gradient(ellipse 85% 65% at 8% 12%, rgba(0, 140, 150, 0.09) 0, transparent 54%),
     radial-gradient(ellipse 75% 55% at 92% 88%, rgba(37, 160, 166, 0.07) 0, transparent 50%),
@@ -271,14 +290,6 @@ html[data-theme='dark'] .family-app .family-app__frame {
   }
 }
 
-.family-app[data-family-theme='dark'] .family-feed-scroll::before,
-html[data-theme='dark'] .family-app .family-feed-scroll::before {
-  opacity: 0.58;
-  background:
-    radial-gradient(ellipse 55% 40% at 20% 30%, rgba(0, 140, 150, 0.06) 0, transparent 70%),
-    radial-gradient(ellipse 45% 35% at 80% 70%, rgba(37, 160, 166, 0.05) 0, transparent 68%);
-}
-
 .family-app[data-family-theme='dark'] .family-sidebar__tool-btn,
 html[data-theme='dark'] .family-app .family-sidebar__tool-btn {
   background: color-mix(in oklab, var(--family-surface) 62%, transparent);
@@ -302,35 +313,14 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 .family-feed-scroll {
   position: relative;
   isolation: isolate;
-  background-color: var(--family-chat-bg);
-  background-image: var(--family-chat-wallpaper);
-  background-attachment: local;
-  background-size: cover;
+  background-color: transparent;
+  background-image: none;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   overflow-x: hidden;
   overflow-y: auto;
-}
-
-.family-feed-scroll::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 55% 40% at 20% 30%, rgba(0, 140, 150, 0.08) 0, transparent 70%),
-    radial-gradient(ellipse 45% 35% at 80% 70%, rgba(0, 59, 64, 0.04) 0, transparent 68%);
-  animation: family-wallpaper-drift 18s ease-in-out infinite alternate;
-  opacity: 0.9;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .family-feed-scroll::before {
-    animation: none;
-  }
 }
 
 .family-feed-scroll > * {
@@ -343,7 +333,47 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   isolation: isolate;
   min-width: 0;
   flex: 1;
-  background: transparent;
+  overflow: hidden;
+  background-color: var(--family-chat-wallpaper-base);
+}
+
+/* Fixed mild-blur photo wallpaper behind the message list (does not scroll with posts). */
+.family-feed-pane::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--family-chat-wallpaper-base);
+  background-image: var(--family-chat-wallpaper-photo);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(var(--family-chat-wallpaper-blur)) saturate(1.06);
+  transform: scale(1.06);
+  opacity: var(--family-chat-wallpaper-opacity);
+  animation: family-wallpaper-drift 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.family-feed-pane::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--family-chat-wallpaper-veil);
+}
+
+.family-feed-pane > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-feed-pane::before {
+    animation: none;
+  }
 }
 
 .family-feed-content {
@@ -2275,7 +2305,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-feed-empty {
-  color: var(--family-tg-subtitle);
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
 .family-feed-post {
@@ -2724,12 +2755,10 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
 
 @keyframes family-wallpaper-drift {
   0% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.75;
+    transform: translate(0, 0) scale(1.06);
   }
   100% {
-    transform: translate(-1.5%, 1%) scale(1.03);
-    opacity: 1;
+    transform: translate(-1.2%, 0.8%) scale(1.1);
   }
 }
 
@@ -3332,7 +3361,7 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .family-feed-scroll::before,
+  .family-feed-pane::before,
   .family-preview-intro,
   .family-preview-gate,
   .family-preview-gate__panel-sheen,
@@ -6133,6 +6162,7 @@ html[data-theme='dark'] .family-app .family-install-hero__card,
 /* Specificity must clear the theme blocks (`.family-app[data-family-theme='dark']`). */
 .family-app[data-family-perf='lite'] {
   --family-bubble-glass: none;
+  --family-chat-wallpaper-blur: 6px;
 }
 
 /* Blur was carrying the translucency — flatten the bubble over the canvas instead,

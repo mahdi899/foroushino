@@ -28,6 +28,9 @@ export interface AdminProduct {
   telegram_sort_order?: number;
   featured_image: string | null;
   featured_image_url: string | null;
+  featured_image_mobile?: string | null;
+  landing_hero_image?: string | null;
+  landing_hero_image_mobile?: string | null;
   show_on_courses?: boolean;
   featured_listing?: boolean;
   course_level?: string | null;
