@@ -10,8 +10,12 @@ export const sitePhotos = {
   heroBackground: siteStorageMedia('hero-background.webp'),
   /** گالری — background-mobile (مربع ۹۴۱px) */
   heroBackgroundMobile: siteStorageMedia('hero-background-mobile.webp'),
-  /** پس‌زمینه فید پیام‌های خانواده — آسمان شب (نیمه‌بلور) */
-  familyChatWallpaper: siteStorageMedia('family-chat-wallpaper.webp'),
+  /** پس‌زمینه فید خانواده — الگوی تاریک (دارک) */
+  familyChatWallpaperDark: siteStorageMedia('family-chat-wallpaper-dark.webp'),
+  /** پس‌زمینه فید خانواده — الگوی روشن (لایت) */
+  familyChatWallpaperLight: siteStorageMedia('family-chat-wallpaper-light.webp'),
+  /** @deprecated use familyChatWallpaperDark */
+  familyChatWallpaper: siteStorageMedia('family-chat-wallpaper-dark.webp'),
   /** @deprecated use heroBackground */
   heroLightGrid: siteStorageMedia('hero-background.webp'),
   /** @deprecated use heroBackgroundMobile */

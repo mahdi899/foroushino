@@ -24,9 +24,19 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     label: 'پس‌زمینه هیرو — موبایل',
     category: 'صفحه اصلی',
   },
+  'family-chat-wallpaper-dark': {
+    src: siteStorageMedia('family-chat-wallpaper-dark.webp'),
+    label: 'پس‌زمینه فید خانواده — دارک',
+    category: 'خانواده',
+  },
+  'family-chat-wallpaper-light': {
+    src: siteStorageMedia('family-chat-wallpaper-light.webp'),
+    label: 'پس‌زمینه فید خانواده — لایت',
+    category: 'خانواده',
+  },
   'family-chat-wallpaper': {
-    src: siteStorageMedia('family-chat-wallpaper.webp'),
-    label: 'پس‌زمینه فید خانواده — آسمان شب',
+    src: siteStorageMedia('family-chat-wallpaper-dark.webp'),
+    label: 'پس‌زمینه فید خانواده — دارک (قدیمی)',
     category: 'خانواده',
   },
   'portrait-founder': {

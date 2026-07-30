@@ -80,13 +80,16 @@ html[data-family-host='1'] body {
   --family-tg-header-shadow: rgba(0, 0, 0, 0.05);
   --family-tg-header-highlight: rgba(255, 255, 255, 0.72);
   --family-chat-bg: #eef4f4;
-  --family-chat-wallpaper-photo: url('/storage/media/site/family-chat-wallpaper.webp');
-  --family-chat-wallpaper-base: #0b1419;
+  --family-chat-wallpaper-photo: var(
+    --family-chat-wallpaper-photo-light,
+    url('/storage/media/site/family-chat-wallpaper-light.webp')
+  );
+  --family-chat-wallpaper-base: #d4dee8;
   --family-chat-wallpaper-veil: linear-gradient(
     180deg,
-    rgba(6, 14, 20, 0.18) 0%,
-    rgba(6, 14, 20, 0.08) 45%,
-    rgba(4, 12, 18, 0.22) 100%
+    rgba(238, 244, 248, 0.12) 0%,
+    rgba(238, 244, 248, 0.04) 50%,
+    rgba(232, 240, 246, 0.14) 100%
   );
   /* Soft fallback when photo fails to load (sidebar / canvas). */
   --family-chat-wallpaper:
@@ -212,12 +215,16 @@ html[data-theme='dark'] .family-app {
   --family-tg-header-shadow: rgba(0, 0, 0, 0.48);
   --family-tg-header-highlight: rgba(255, 255, 255, 0.06);
   --family-chat-bg: #0b1419;
-  --family-chat-wallpaper-base: #0b1419;
+  --family-chat-wallpaper-photo: var(
+    --family-chat-wallpaper-photo-dark,
+    url('/storage/media/site/family-chat-wallpaper-dark.webp')
+  );
+  --family-chat-wallpaper-base: #192532;
   --family-chat-wallpaper-veil: linear-gradient(
     180deg,
-    rgba(4, 10, 14, 0.22) 0%,
-    rgba(4, 10, 14, 0.1) 50%,
-    rgba(2, 8, 12, 0.28) 100%
+    rgba(10, 16, 24, 0.14) 0%,
+    rgba(10, 16, 24, 0.05) 50%,
+    rgba(8, 14, 22, 0.16) 100%
   );
   --family-chat-wallpaper:
     radial-gradient(ellipse 85% 65% at 8% 12%, rgba(0, 140, 150, 0.09) 0, transparent 54%),
@@ -2311,6 +2318,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-feed-empty {
+  color: var(--family-tg-subtitle);
+  text-shadow: none;
+}
+
+.family-app[data-family-theme='dark'] .family-feed-empty,
+html[data-theme='dark'] .family-app .family-feed-empty {
   color: rgba(255, 255, 255, 0.78);
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }

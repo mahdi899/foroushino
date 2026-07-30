@@ -53,10 +53,15 @@ export default async function FamilyLayout({ children }: { children: React.React
   const initialTheme =
     parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
 
-  const wallpaperSrc =
-    primarySiteImageSrc(sitePhotos.familyChatWallpaper) || sitePhotos.familyChatWallpaper;
+  const wallpaperLight =
+    primarySiteImageSrc(sitePhotos.familyChatWallpaperLight) ||
+    sitePhotos.familyChatWallpaperLight;
+  const wallpaperDark =
+    primarySiteImageSrc(sitePhotos.familyChatWallpaperDark) ||
+    sitePhotos.familyChatWallpaperDark;
   const familyRootStyle = {
-    '--family-chat-wallpaper-photo': `url('${wallpaperSrc}')`,
+    '--family-chat-wallpaper-photo-light': `url('${wallpaperLight}')`,
+    '--family-chat-wallpaper-photo-dark': `url('${wallpaperDark}')`,
   } as CSSProperties;
 
   return (
