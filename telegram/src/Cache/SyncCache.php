@@ -613,8 +613,13 @@ final class SyncCache
         }
     }
 
-    public function rememberC2cOrderBuyer(int $orderId, int $telegramUserId, int $amount = 0, string $productTitle = ''): void
-    {
+    public function rememberC2cOrderBuyer(
+        int $orderId,
+        int $telegramUserId,
+        int $amount = 0,
+        string $productTitle = '',
+        int $productId = 0,
+    ): void {
         if ($orderId <= 0 || $telegramUserId <= 0) {
             return;
         }
@@ -624,6 +629,7 @@ final class SyncCache
             '__c2c_order_meta_'.$orderId => json_encode([
                 'amount' => $amount,
                 'product_title' => $productTitle,
+                'product_id' => $productId,
             ], JSON_UNESCAPED_UNICODE),
         ]);
     }
@@ -636,7 +642,7 @@ final class SyncCache
     }
 
     /**
-     * @return array{amount: int, product_title: string}
+     * @return array{amount: int, product_title: string, product_id: int}
      */
     public function c2cOrderMeta(int $orderId): array
     {
@@ -649,6 +655,7 @@ final class SyncCache
         return [
             'amount' => (int) ($decoded['amount'] ?? 0),
             'product_title' => (string) ($decoded['product_title'] ?? ''),
+            'product_id' => (int) ($decoded['product_id'] ?? 0),
         ];
     }
 

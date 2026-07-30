@@ -709,7 +709,7 @@ class TelegramHostLiveController
                     (string) $product->title,
                     (int) $result['amount'],
                     (string) $result['instructions'],
-                    (int) ($result['ttl_minutes'] ?? 10),
+                    (int) ($result['ttl_minutes'] ?? 15),
                 );
             }
 
@@ -721,7 +721,7 @@ class TelegramHostLiveController
                 'product_title' => (string) ($result['product_title'] ?? $product->title),
                 'instructions' => (string) $result['instructions'],
                 'expires_at' => (string) ($result['expires_at'] ?? ''),
-                'ttl_minutes' => (int) ($result['ttl_minutes'] ?? 10),
+                'ttl_minutes' => (int) ($result['ttl_minutes'] ?? 15),
                 'server_sent_prompt' => ! $hostOwnedPrompt && $chatId > 0,
             ]);
         }

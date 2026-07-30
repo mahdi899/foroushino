@@ -79,6 +79,7 @@ class TelegramPaymentReportsNotifier
         int $telegramUserId,
         int $approvedCount = 0,
         int $requiredApprovals = 2,
+        ?string $telegramUsername = null,
     ): bool {
         $chatId = $bot->paymentReportsChatId();
         if (blank($chatId)) {
@@ -89,18 +90,23 @@ class TelegramPaymentReportsNotifier
 
         $amount = number_format((int) ($order->final_amount ?? 0));
         $product = htmlspecialchars((string) ($order->product?->title ?: '—'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $safeBuyer = htmlspecialchars($buyerName, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $safeMobile = htmlspecialchars($mobile, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeBuyer = htmlspecialchars($buyerName !== '' ? $buyerName : 'کاربر', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeMobile = htmlspecialchars($mobile !== '' ? $mobile : '—', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $tgLink = '<a href="tg://user?id='.$telegramUserId.'">'.$telegramUserId.'</a>';
+        $username = ltrim(trim((string) $telegramUsername), '@');
 
         $caption = TelegramCustomEmoji::tag('cash')." رسید کارت‌به‌کارت\n"
             ."────────────────\n"
             ."سفارش #{$order->id}\n"
             ."محصول: {$product}\n"
             .TelegramCustomEmoji::tag('coin')." مبلغ: <b>{$amount}</b> تومان\n"
-            ."خریدار: {$safeBuyer}\n"
+            ."نام: {$safeBuyer}\n"
             ."موبایل: {$safeMobile}\n"
-            ."تلگرام: <code>{$telegramUserId}</code>\n"
-            .TelegramCustomEmoji::tag('warning').' نیاز به تأیید ۲ ادمین';
+            ."تلگرام: {$tgLink}";
+        if ($username !== '') {
+            $safeUser = htmlspecialchars($username, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $caption .= "\nیوزرنیم: <a href=\"https://t.me/{$safeUser}\">@{$safeUser}</a>";
+        }
 
         $keyboard = $this->reviewKeyboard($order->id, $approvedCount, $requiredApprovals);
         $client = $this->clients->forBot($bot);
@@ -193,5 +199,77 @@ class TelegramPaymentReportsNotifier
                 ]);
             }
         }
+    }
+
+    /**
+     * Daily digest of open C2C awaiting_review orders per payment-reports chat.
+     *
+     * @return int messages sent
+     */
+    public function remindAwaitingReviewOrders(): int
+    {
+        $orders = Order::query()
+            ->with('product', 'user')
+            ->where('status', 'pending_payment')
+            ->whereNull('paid_at')
+            ->whereNotNull('customer_extra_data')
+            ->orderBy('id')
+            ->get()
+            ->filter(static function (Order $order): bool {
+                return (string) data_get($order->customer_extra_data, 'card_to_card.status', '') === 'awaiting_review';
+            })
+            ->values();
+
+        if ($orders->isEmpty()) {
+            return 0;
+        }
+
+        $lines = [
+            TelegramCustomEmoji::tag('warning').' یادآوری کارت‌به‌کارت',
+            '────────────────',
+            'سفارش‌های در انتظار تأیید/رد ادمین:',
+            '',
+        ];
+
+        foreach ($orders as $order) {
+            $product = htmlspecialchars((string) ($order->product?->title ?: '—'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $amount = number_format((int) ($order->final_amount ?? 0));
+            $user = $order->user;
+            $name = htmlspecialchars(
+                trim((string) ($user?->name ?? '')) ?: '—',
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8',
+            );
+            $mobile = htmlspecialchars(
+                trim((string) ($user?->mobile ?? '')) ?: '—',
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8',
+            );
+            $age = $order->created_at?->diffForHumans() ?? '—';
+            $lines[] = "#{$order->id} · {$product}";
+            $lines[] = TelegramCustomEmoji::tag('coin')." {$amount} تومان · {$name} · {$mobile}";
+            $lines[] = "ثبت: {$age}";
+            $lines[] = '';
+        }
+
+        $lines[] = 'لطفاً رسیدهای مربوط را در همین گروه تأیید یا رد کنید.';
+        $text = implode("\n", $lines);
+
+        $sent = 0;
+        foreach ($this->targets() as $target) {
+            try {
+                $this->clients->forBot($target['bot'])->sendMessage($target['chat_id'], $text, [
+                    'parse_mode' => 'HTML',
+                ]);
+                $sent++;
+            } catch (Throwable $e) {
+                Log::warning('payment_reports_c2c_reminder_failed', [
+                    'bot_id' => $target['bot']->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $sent;
     }
 }

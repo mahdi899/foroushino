@@ -275,6 +275,12 @@ class OrderService
                         continue;
                     }
 
+                    // C2C has its own receipt (15m) and review (3d) expire paths.
+                    $c2cStatus = (string) data_get($order->customer_extra_data, 'card_to_card.status', '');
+                    if (in_array($c2cStatus, ['waiting_for_receipt', 'awaiting_review'], true)) {
+                        continue;
+                    }
+
                     $order->update([
                         'status' => 'cancelled',
                         'payment_status' => 'canceled',

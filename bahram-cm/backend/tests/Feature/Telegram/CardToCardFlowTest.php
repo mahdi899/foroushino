@@ -146,7 +146,7 @@ class CardToCardFlowTest extends TestCase
 
         $result = app(TelegramCheckoutService::class)->startCardToCardCheckout($this->buyer, $product);
 
-        $this->assertSame(10, $result['ttl_minutes']);
+        $this->assertSame(15, $result['ttl_minutes']);
         $order = Order::query()->findOrFail($result['order_id']);
         $this->assertSame('pending_payment', $order->status);
         $this->assertSame('waiting_for_receipt', data_get($order->customer_extra_data, 'card_to_card.status'));
@@ -197,7 +197,7 @@ class CardToCardFlowTest extends TestCase
             $this->assertStringContainsString('ظرفیت', collect($e->errors())->flatten()->first() ?? '');
         }
 
-        Carbon::setTestNow('2026-07-30 12:11:00');
+        Carbon::setTestNow('2026-07-30 12:16:00');
         $expired = app(TelegramCardToCardFlowService::class)->expireIfWaitingForReceipt($order->id);
         $this->assertTrue($expired);
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'cancelled']);
@@ -230,7 +230,7 @@ class CardToCardFlowTest extends TestCase
             (string) $product->title,
             (int) $result['amount'],
             $this->bot->cardToCardInstructions(),
-            10,
+            15,
         );
 
         app(TelegramCardToCardFlowService::class)->handleUserMessage(
@@ -249,6 +249,62 @@ class CardToCardFlowTest extends TestCase
         Carbon::setTestNow('2026-07-30 12:20:00');
         $this->assertFalse(app(TelegramCardToCardFlowService::class)->expireIfWaitingForReceipt($order->id));
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'pending_payment']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_awaiting_review_survives_generic_pending_expire(): void
+    {
+        Carbon::setTestNow('2026-07-30 12:00:00');
+        Queue::fake();
+
+        $product = Product::query()->create([
+            'title' => 'دوره',
+            'type' => 'normal',
+            'price' => 50000,
+            'is_active' => true,
+        ]);
+        $result = app(TelegramCheckoutService::class)->startCardToCardCheckout($this->buyer, $product);
+        $order = Order::query()->findOrFail($result['order_id']);
+
+        $extra = (array) ($order->customer_extra_data ?? []);
+        $c2c = (array) ($extra['card_to_card'] ?? []);
+        $c2c['status'] = 'awaiting_review';
+        $extra['card_to_card'] = $c2c;
+        $order->update(['customer_extra_data' => $extra]);
+
+        Carbon::setTestNow('2026-07-30 14:00:00');
+        $expired = app(\App\Services\OrderService::class)->expireStalePendingOrders(60);
+        $this->assertSame(0, $expired['cancelled']);
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'pending_payment']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_awaiting_review_expires_after_max_days(): void
+    {
+        Carbon::setTestNow('2026-07-30 12:00:00');
+        Queue::fake();
+
+        $product = Product::query()->create([
+            'title' => 'دوره',
+            'type' => 'normal',
+            'price' => 50000,
+            'is_active' => true,
+        ]);
+        $result = app(TelegramCheckoutService::class)->startCardToCardCheckout($this->buyer, $product);
+        $order = Order::query()->findOrFail($result['order_id']);
+
+        $extra = (array) ($order->customer_extra_data ?? []);
+        $c2c = (array) ($extra['card_to_card'] ?? []);
+        $c2c['status'] = 'awaiting_review';
+        $extra['card_to_card'] = $c2c;
+        $order->update(['customer_extra_data' => $extra]);
+
+        Carbon::setTestNow('2026-08-03 12:01:00');
+        $cancelled = app(TelegramCardToCardFlowService::class)->expireStaleAwaitingReviewOrders();
+        $this->assertSame(1, $cancelled);
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'cancelled']);
 
         Carbon::setTestNow();
     }
@@ -276,7 +332,7 @@ class CardToCardFlowTest extends TestCase
             (string) $product->title,
             (int) $result['amount'],
             $this->bot->cardToCardInstructions(),
-            10,
+            15,
         );
         $flow->handleUserMessage(
             $this->bot,
@@ -340,7 +396,7 @@ class CardToCardFlowTest extends TestCase
             (string) $product->title,
             (int) $result2['amount'],
             $this->bot->cardToCardInstructions(),
-            10,
+            15,
         );
         $flow->handleUserMessage(
             $this->bot,
@@ -387,7 +443,7 @@ class CardToCardFlowTest extends TestCase
             (string) $product->title,
             (int) $result['amount'],
             $this->bot->cardToCardInstructions(),
-            10,
+            15,
         );
         $flow->handleUserMessage(
             $this->bot,

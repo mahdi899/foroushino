@@ -8,10 +8,12 @@ export function TelegramBridgeSettingsSection({
   initial,
   workerSample,
   loadError,
+  showRegisterWebhook = true,
 }: {
   initial: TelegramInfrastructureView | null;
   workerSample: string | null;
   loadError?: string | null;
+  showRegisterWebhook?: boolean;
 }) {
   const [status, setStatus] = useState('');
   const [, startTransition] = useTransition();
@@ -46,6 +48,7 @@ export function TelegramBridgeSettingsSection({
           initial={initial}
           workerSampleTemplate={workerSample}
           onStatus={(message) => startTransition(() => setStatus(message))}
+          showRegisterWebhook={showRegisterWebhook}
         />
       </div>
       {status ? (
