@@ -6,6 +6,7 @@ import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS } from '@/lib/admin/iden
 import { formatDate } from '@/lib/admin/academyTypes';
 import { can, getCurrentUser } from '@/lib/auth/session';
 import { formatDateFa } from '@/lib/persian';
+import { IdentityDocumentViewer } from '../IdentityDocumentViewer';
 import { IdentityReviewActions } from '../IdentityReviewActions';
 
 export const dynamic = 'force-dynamic';
@@ -194,31 +195,23 @@ export default async function IdentityVerificationDetailPage({
                     const mediaUrl = art.stream_url ?? art.view_url ?? null;
                     const isVideo =
                       art.mime_type?.startsWith('video/') || art.type === 'selfie_video';
+                    const label =
+                      art.type === 'national_card_front'
+                        ? 'کارت ملی'
+                        : art.type === 'selfie_video'
+                          ? 'ویدیوی سلفی'
+                          : art.type;
 
                     return (
                     <li key={art.id} className="rounded-lg border border-border p-3">
-                      <p className="mb-2 text-caption text-text-muted">
-                        {art.type === 'national_card_front'
-                          ? 'کارت ملی'
-                          : art.type === 'selfie_video'
-                            ? 'ویدیوی سلفی'
-                            : art.type}
-                      </p>
+                      <p className="mb-2 text-caption text-text-muted">{label}</p>
                       {mediaUrl ? (
-                        isVideo ? (
-                          <video
-                            controls
-                            className="max-h-80 w-full rounded-lg bg-black"
-                            src={mediaUrl}
-                          />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={mediaUrl}
-                            alt={art.original_name ?? art.type}
-                            className="max-h-80 rounded-lg object-contain"
-                          />
-                        )
+                        <IdentityDocumentViewer
+                          src={mediaUrl}
+                          label={label}
+                          isVideo={isVideo}
+                          mimeType={art.mime_type}
+                        />
                       ) : (
                         <p className="text-small text-text-muted">فایل مدرک در دسترس نیست.</p>
                       )}
