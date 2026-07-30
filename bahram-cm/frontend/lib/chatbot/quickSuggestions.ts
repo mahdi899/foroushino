@@ -42,8 +42,12 @@ function parseRows(raw: unknown): ChatbotQuickSuggestion[] {
 /** Load from storage — use defaults only when the key was never saved. */
 export function resolveQuickSuggestions(
   raw: unknown,
-  options?: { useDefaults?: boolean },
+  options?: { useDefaults?: boolean; preferCodeDefaults?: boolean },
 ): ChatbotQuickSuggestion[] {
+  if (options?.preferCodeDefaults) {
+    return DEFAULT_QUICK_SUGGESTIONS.map((s) => ({ ...s }));
+  }
+
   const useDefaults = options?.useDefaults ?? false;
   if (raw === undefined || raw === null) {
     return useDefaults ? DEFAULT_QUICK_SUGGESTIONS.map((s) => ({ ...s })) : [];

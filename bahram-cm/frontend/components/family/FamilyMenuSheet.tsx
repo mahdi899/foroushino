@@ -35,6 +35,8 @@ function lockBodyScroll(lock: boolean) {
   delete target.dataset.familyMenuScrollY;
 }
 
+const MENU_EXIT_MS = 220;
+
 export function FamilyMenuButton({
   className,
   isLoggedIn = false,
@@ -82,12 +84,32 @@ function FamilyMenuSheet({
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [entered, setEntered] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
   const [pushHint, setPushHint] = useState<string | null>(null);
+  const exitTimerRef = useRef<number | null>(null);
+  const closedRef = useRef(false);
 
-  useOverlayHistoryBack('menu', onClose);
+  const requestClose = useCallback(() => {
+    if (closedRef.current || exiting) return;
+    setEntered(false);
+    setExiting(true);
+    // Drop focus before unmount so iOS doesn't keep a scaled visualViewport.
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    }
+    if (exitTimerRef.current != null) window.clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = window.setTimeout(() => {
+      exitTimerRef.current = null;
+      closedRef.current = true;
+      onClose();
+    }, MENU_EXIT_MS);
+  }, [exiting, onClose]);
+
+  useOverlayHistoryBack('menu', requestClose);
 
   useEffect(() => {
     if (!isLoggedIn || !familyPushSupported()) return;
@@ -100,19 +122,27 @@ function FamilyMenuSheet({
   useEffect(() => {
     lockBodyScroll(true);
     const frame = window.requestAnimationFrame(() => setEntered(true));
-    closeBtnRef.current?.focus();
+    // Avoid auto-focus on phones — iOS can nudge visualViewport / feel like a zoom.
+    const isCoarse =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    if (!isCoarse) closeBtnRef.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') requestClose();
     };
     window.addEventListener('keydown', onKey);
 
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener('keydown', onKey);
+      if (exitTimerRef.current != null) {
+        window.clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
       lockBodyScroll(false);
     };
-  }, [onClose]);
+  }, [requestClose]);
 
   const setTheme = (next: SiteTheme) => {
     familyHaptic('selection');
@@ -180,7 +210,7 @@ function FamilyMenuSheet({
           type="button"
           className={cn('family-menu-backdrop', entered && 'family-menu-backdrop--in')}
           aria-label="بستن منو"
-          onClick={onClose}
+          onClick={requestClose}
         />
         <div
           role="dialog"
@@ -199,7 +229,7 @@ function FamilyMenuSheet({
               type="button"
               className="family-menu-sheet__close"
               aria-label="بستن"
-              onClick={onClose}
+              onClick={requestClose}
             >
               <X size={18} strokeWidth={1.85} aria-hidden />
             </button>

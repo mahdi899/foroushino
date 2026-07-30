@@ -229,7 +229,7 @@ class ChatbotService
                 'pricing' => $config['cta_pricing'],
             ],
             'operator_profiles' => $this->operatorProfiles(),
-            'quick_suggestions' => $config['quick_suggestions'],
+            'quick_suggestions' => $this->defaultQuickSuggestions(),
             'ai_available' => $this->isAiAvailable(),
             'system_prompt_extra' => $config['system_prompt_extra'],
             'max_history_messages' => $config['max_history_messages'],
