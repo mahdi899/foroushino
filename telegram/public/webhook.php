@@ -95,7 +95,7 @@ try {
 
     $reporter = new \TelegramHost\Services\IranFailureReporter($api, $cache, $accounts, $config);
     $live = new ResilientLiveClient($liveClient, $api, $reporter);
-    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter);
+    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter, $conversations);
     $adminFast = new AdminFastClient($sync, $config, $conversations);
 
     $maxRelay = max(1, (int) ($config['iran_relay_per_webhook'] ?? 2));

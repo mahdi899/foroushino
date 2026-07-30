@@ -136,10 +136,12 @@ final class MessageHandler
         }
 
         if ($conversation['state'] === 'waiting_for_card_to_card_receipt') {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'c2c_receipt_received',
-                'رسید دریافت شد و در صف ثبت سفارش است.',
-            ));
+            // Sync relay should have handled this; if we reach here, Iran was unreachable.
+            $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('warning').' '
+                .$this->cache->message(
+                    'c2c_receipt_queued',
+                    'اتصال لحظه‌ای برقرار نشد؛ رسید شما در صف ارسال به سرور قرار گرفت. چند لحظه صبر کنید.',
+                ));
 
             return;
         }

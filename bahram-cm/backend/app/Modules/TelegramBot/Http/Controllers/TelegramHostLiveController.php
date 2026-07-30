@@ -105,7 +105,27 @@ class TelegramHostLiveController
             ], 500);
         }
 
-        return $this->jsonResponse(['ok' => true]);
+        $payload = ['ok' => true];
+        $telegramUserId = (int) (
+            $update['message']['from']['id']
+            ?? $update['callback_query']['from']['id']
+            ?? $update['edited_message']['from']['id']
+            ?? 0
+        );
+        if ($telegramUserId > 0) {
+            $bot = $this->productionBot();
+            $account = \App\Modules\TelegramBot\Models\TelegramAccount::query()
+                ->where('telegram_bot_id', $bot->id)
+                ->where('telegram_user_id', $telegramUserId)
+                ->first();
+            if ($account !== null) {
+                $conversation = $this->conversations->forAccount($account);
+                $payload['state'] = $conversation->state->value;
+                $payload['context'] = $conversation->context ?? [];
+            }
+        }
+
+        return $this->jsonResponse($payload);
     }
 
     public function adminFast(Request $request, TelegramHostAdminFastService $adminFast): JsonResponse
@@ -655,6 +675,7 @@ class TelegramHostLiveController
                     (string) $product->title,
                     (int) $result['amount'],
                     (string) $result['instructions'],
+                    (int) ($result['ttl_minutes'] ?? 10),
                 );
             }
 

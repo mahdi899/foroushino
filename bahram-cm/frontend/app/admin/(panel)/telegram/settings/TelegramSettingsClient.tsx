@@ -74,6 +74,13 @@ export function TelegramSettingsClient({
         </div>
       </AdminContentPanel>
 
+      <AdminContentPanel title="کارت‌به‌کارت تلگرام">
+        <p className="text-small text-text-muted leading-relaxed">
+          برای سمینار، دوره و کانال مرجع: کاربر فیش می‌فرستد، در گروه واریز دو ادمین تأیید می‌کنند، سپس سفارش تکمیل می‌شود. مهلت ارسال فیش ۱۰ دقیقه است.
+          تنظیمات هر ربات را در کارت همان ربات پایین صفحه ویرایش کنید.
+        </p>
+      </AdminContentPanel>
+
       <AdminContentPanel
         title="ربات‌های ثبت‌شده"
         action={
@@ -113,6 +120,10 @@ export function TelegramSettingsClient({
 
                   <div className="mt-3">
                     <BotChatIdsRow bot={bot} onSaved={() => router.refresh()} />
+                  </div>
+
+                  <div className="mt-3">
+                    <BotCardToCardRow bot={bot} onSaved={() => router.refresh()} />
                   </div>
 
                   <div className="mt-4 rounded-lg border border-border/70 bg-surface-muted/30 p-3">
@@ -285,6 +296,119 @@ function BotChatIdsRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => 
         >
           {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           ذخیره گروه‌های گزارش
+        </button>
+        {status ? <span className="text-caption text-text-muted">{status}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => void }) {
+  const cfg = bot.card_to_card ?? {};
+  const [enabled, setEnabled] = useState(Boolean(bot.card_to_card_enabled));
+  const [cardNumber, setCardNumber] = useState(cfg.card_number ?? '');
+  const [cardHolder, setCardHolder] = useState(cfg.card_holder ?? '');
+  const [bankName, setBankName] = useState(cfg.bank_name ?? '');
+  const [notes, setNotes] = useState(cfg.notes ?? '');
+  const [pending, startTransition] = useTransition();
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    const next = bot.card_to_card ?? {};
+    setEnabled(Boolean(bot.card_to_card_enabled));
+    setCardNumber(next.card_number ?? '');
+    setCardHolder(next.card_holder ?? '');
+    setBankName(next.bank_name ?? '');
+    setNotes(next.notes ?? '');
+  }, [bot.card_to_card_enabled, bot.card_to_card]);
+
+  const dirty =
+    enabled !== Boolean(bot.card_to_card_enabled) ||
+    cardNumber.trim() !== (cfg.card_number ?? '') ||
+    cardHolder.trim() !== (cfg.card_holder ?? '') ||
+    bankName.trim() !== (cfg.bank_name ?? '') ||
+    notes.trim() !== (cfg.notes ?? '');
+
+  const save = () => {
+    startTransition(async () => {
+      setStatus('');
+      const res = await updateTelegramBotAction(bot.id, {
+        card_to_card_enabled: enabled,
+        card_to_card: {
+          card_number: cardNumber.trim() || null,
+          card_holder: cardHolder.trim() || null,
+          bank_name: bankName.trim() || null,
+          notes: notes.trim() || null,
+        },
+      });
+      setStatus(res.ok ? 'ذخیره شد' : res.error ?? 'خطا');
+      if (res.ok) onSaved();
+    });
+  };
+
+  return (
+    <div className="rounded-lg border border-border/70 bg-surface-muted/20 p-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-small font-semibold text-text">کارت‌به‌کارت</p>
+        <label className="flex items-center gap-2 text-caption text-text">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          فعال برای خرید بات (سمینار / دوره / کانال مرجع)
+        </label>
+      </div>
+      {!bot.payment_reports_chat_id ? (
+        <p className="mb-3 text-caption text-amber-700 dark:text-amber-400">
+          گروه گزارشات پرداخت هنوز تنظیم نشده — بدون آن فیش‌ها به ادمین نمی‌رسد.
+        </p>
+      ) : null}
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="block">
+          <span className="text-caption text-text-muted">شماره کارت</span>
+          <input
+            className="field-input mt-1 w-full"
+            dir="ltr"
+            placeholder="6037-...."
+            value={cardNumber}
+            onChange={(e) => setCardNumber(e.target.value)}
+            maxLength={64}
+          />
+        </label>
+        <label className="block">
+          <span className="text-caption text-text-muted">نام صاحب کارت</span>
+          <input
+            className="field-input mt-1 w-full"
+            value={cardHolder}
+            onChange={(e) => setCardHolder(e.target.value)}
+            maxLength={64}
+          />
+        </label>
+        <label className="block">
+          <span className="text-caption text-text-muted">نام بانک (اختیاری)</span>
+          <input
+            className="field-input mt-1 w-full"
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
+            maxLength={64}
+          />
+        </label>
+        <label className="block md:col-span-2">
+          <span className="text-caption text-text-muted">توضیحات اضافه / شبا / نکات (اختیاری)</span>
+          <textarea
+            className="field-input mt-1 min-h-20 w-full"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={500}
+          />
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={pending || !dirty}
+          onClick={() => void save()}
+          className="btn btn-primary px-3 py-1.5 text-caption"
+        >
+          {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          ذخیره کارت‌به‌کارت
         </button>
         {status ? <span className="text-caption text-text-muted">{status}</span> : null}
       </div>

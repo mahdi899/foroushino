@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace TelegramHost\Routing;
 
+use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\LiveClient;
 use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Services\IranFailureReporter;
@@ -18,6 +19,7 @@ final class IranSyncRelay
         private readonly BotApiClient $api,
         private readonly IranUpdateQueue $queue,
         private readonly IranFailureReporter $reporter,
+        private readonly ConversationRepository $conversations,
     ) {}
 
     /**
@@ -33,6 +35,14 @@ final class IranSyncRelay
             // Single attempt, short-enough for UX: no 8s+8s retry storm.
             $result = $this->live->processUpdate($update, max(5, $timeoutSeconds), false);
             if (($result['ok'] ?? false) === true) {
+                if ($telegramUserId > 0 && isset($result['state']) && is_string($result['state'])) {
+                    $this->conversations->set(
+                        $telegramUserId,
+                        $result['state'],
+                        is_array($result['context'] ?? null) ? $result['context'] : [],
+                    );
+                }
+
                 return true;
             }
 

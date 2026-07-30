@@ -76,9 +76,20 @@ final class UpdateRouter
                     return;
                 }
 
-                // Media admin input is queued for post-response drain — do not
-                // fall through to the local "admin server down" text handler.
+                // Media admin/C2C input is queued for post-response drain — do not
+                // fall through to the local "admin server down" / C2C stub handler.
                 if ($timeout > 5) {
+                    return;
+                }
+
+                $callbackData = (string) ($update['callback_query']['data'] ?? '');
+                if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
+                    return;
+                }
+
+                $conversation = $this->conversations->get($telegramUserId);
+                if (($conversation['state'] ?? '') === 'waiting_for_card_to_card_receipt') {
+                    // Queued for drain — avoid a false "receipt received" success stub.
                     return;
                 }
             } else {

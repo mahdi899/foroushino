@@ -5,6 +5,7 @@ namespace App\Modules\TelegramBot\Services;
 use App\Models\Order;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -42,6 +43,32 @@ class TelegramPaymentReportsNotifier
         return $out;
     }
 
+    /**
+     * @return array{inline_keyboard: list<list<array<string, mixed>>>}
+     */
+    public function reviewKeyboard(int $orderId, int $approvedCount = 0, int $required = 2): array
+    {
+        $required = max(2, $required);
+        $approvedCount = max(0, min($approvedCount, $required));
+
+        return [
+            'inline_keyboard' => [[
+                [
+                    'text' => TelegramCustomEmoji::buttonText("تأیید ({$approvedCount}/{$required})", 'check'),
+                    'callback_data' => 'c2c:ok:'.$orderId,
+                    'style' => 'success',
+                    ...TelegramCustomEmoji::buttonIcon('check'),
+                ],
+                [
+                    'text' => TelegramCustomEmoji::buttonText('رد', 'cross'),
+                    'callback_data' => 'c2c:no:'.$orderId,
+                    'style' => 'danger',
+                    ...TelegramCustomEmoji::buttonIcon('cross'),
+                ],
+            ]],
+        ];
+    }
+
     public function notifyCardToCardReceipt(
         TelegramBot $bot,
         Order $order,
@@ -50,6 +77,8 @@ class TelegramPaymentReportsNotifier
         string $buyerName,
         string $mobile,
         int $telegramUserId,
+        int $approvedCount = 0,
+        int $requiredApprovals = 2,
     ): bool {
         $chatId = $bot->paymentReportsChatId();
         if (blank($chatId)) {
@@ -59,36 +88,34 @@ class TelegramPaymentReportsNotifier
         }
 
         $amount = number_format((int) ($order->final_amount ?? 0));
-        $product = $order->product?->title ?: '—';
-        $caption = "🏧 رسید کارت‌به‌کارت\n"
+        $product = htmlspecialchars((string) ($order->product?->title ?: '—'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeBuyer = htmlspecialchars($buyerName, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeMobile = htmlspecialchars($mobile, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        $caption = TelegramCustomEmoji::tag('cash')." رسید کارت‌به‌کارت\n"
             ."────────────────\n"
             ."سفارش #{$order->id}\n"
             ."محصول: {$product}\n"
-            ."مبلغ: {$amount} تومان\n"
-            ."خریدار: {$buyerName}\n"
-            ."موبایل: {$mobile}\n"
-            ."تلگرام: `{$telegramUserId}`";
+            .TelegramCustomEmoji::tag('coin')." مبلغ: <b>{$amount}</b> تومان\n"
+            ."خریدار: {$safeBuyer}\n"
+            ."موبایل: {$safeMobile}\n"
+            ."تلگرام: <code>{$telegramUserId}</code>\n"
+            .TelegramCustomEmoji::tag('warning').' نیاز به تأیید ۲ ادمین';
 
-        $keyboard = [
-            'inline_keyboard' => [[
-                ['text' => '✅ تأیید پرداخت', 'callback_data' => 'c2c:ok:'.$order->id],
-                ['text' => '❌ رد رسید', 'callback_data' => 'c2c:no:'.$order->id],
-            ]],
-        ];
-
+        $keyboard = $this->reviewKeyboard($order->id, $approvedCount, $requiredApprovals);
         $client = $this->clients->forBot($bot);
 
         try {
             if ($kind === 'document') {
                 $client->sendDocument($chatId, $fileId, [
                     'caption' => $caption,
-                    'parse_mode' => 'Markdown',
+                    'parse_mode' => 'HTML',
                     'reply_markup' => $keyboard,
                 ]);
             } else {
                 $client->sendPhoto($chatId, $fileId, [
                     'caption' => $caption,
-                    'parse_mode' => 'Markdown',
+                    'parse_mode' => 'HTML',
                     'reply_markup' => $keyboard,
                 ]);
             }
@@ -101,7 +128,7 @@ class TelegramPaymentReportsNotifier
             ]);
             try {
                 $client->sendMessage($chatId, $caption."\n\n(ارسال فایل رسید ناموفق بود)", [
-                    'parse_mode' => 'Markdown',
+                    'parse_mode' => 'HTML',
                     'reply_markup' => $keyboard,
                 ]);
 
@@ -136,25 +163,28 @@ class TelegramPaymentReportsNotifier
         }
 
         $amount = number_format((int) ($order->final_amount ?? 0));
-        $product = $order->product?->title ?: '—';
+        $product = htmlspecialchars((string) ($order->product?->title ?: '—'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $user = $order->user;
         $userLabel = $user
             ? trim(($user->name ?? '').' · '.($user->mobile ?? ''))
             : '—';
-        $ref = filled($refId) ? (string) $refId : '—';
+        $safeUser = htmlspecialchars($userLabel, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $ref = filled($refId) ? htmlspecialchars((string) $refId, ENT_QUOTES | ENT_HTML5, 'UTF-8') : '—';
 
-        $text = "✅ خرید موفق\n"
+        $text = TelegramCustomEmoji::tag('check')." خرید موفق\n"
             ."────────────────\n"
             ."روش: {$gatewayLabel}\n"
             ."سفارش #{$order->id}\n"
             ."محصول: {$product}\n"
-            ."مبلغ: {$amount} تومان\n"
-            ."کاربر: {$userLabel}\n"
+            .TelegramCustomEmoji::tag('coin')." مبلغ: <b>{$amount}</b> تومان\n"
+            ."کاربر: {$safeUser}\n"
             ."رسید/رفرنس: {$ref}";
 
         foreach ($this->targets() as $target) {
             try {
-                $this->clients->forBot($target['bot'])->sendMessage($target['chat_id'], $text);
+                $this->clients->forBot($target['bot'])->sendMessage($target['chat_id'], $text, [
+                    'parse_mode' => 'HTML',
+                ]);
             } catch (Throwable $e) {
                 Log::warning('payment_reports_paid_failed', [
                     'order_id' => $order->id,

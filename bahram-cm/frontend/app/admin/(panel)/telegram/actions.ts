@@ -49,6 +49,14 @@ export async function updateTelegramBotAction(
     reports_chat_id?: string | null;
     reports_topic_id?: number | null;
     payment_reports_chat_id?: string | null;
+    card_to_card_enabled?: boolean;
+    card_to_card?: {
+      card_number?: string | null;
+      card_holder?: string | null;
+      bank_name?: string | null;
+      notes?: string | null;
+      override_text?: string | null;
+    };
   },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
