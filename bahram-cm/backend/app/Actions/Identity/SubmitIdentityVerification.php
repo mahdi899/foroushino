@@ -201,16 +201,17 @@ class SubmitIdentityVerification
         string $nationalCode,
         array $data,
     ): IdentityVerificationSubmission {
-        $routeActive = IdentityVerificationRoute::query()
+        $route = IdentityVerificationRoute::query()
             ->where('capability', IdentityCapability::PersonInfoInquiry->value)
-            ->where('is_active', true)
-            ->exists();
+            ->first();
 
-        // Admin can temporarily disable PersonInfo — skip and keep the case in the expert queue.
-        if (! $routeActive) {
+        // Missing or inactive PersonInfo route — skip lookup, keep case in expert queue.
+        if (! $route || ! $route->is_active) {
             $submission->update([
                 'registry_match_status' => null,
-                'registry_message' => 'استعلام مشخصات هویتی (PersonInfo) توسط ادمین موقتاً غیرفعال شده است.',
+                'registry_message' => $route
+                    ? 'استعلام مشخصات هویتی (PersonInfo) توسط ادمین موقتاً غیرفعال شده است.'
+                    : 'مسیر استعلام مشخصات هویتی (PersonInfo) در تنظیمات تعریف نشده بود — استعلام انجام نشد.',
                 'registry_checked_at' => now(),
             ]);
 
