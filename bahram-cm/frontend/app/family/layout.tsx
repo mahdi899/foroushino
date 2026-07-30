@@ -5,6 +5,7 @@ import '@/styles/family.css';
 import { fontVariable } from '@/lib/fonts';
 import { cn } from '@/lib/cn';
 import { sitePhotos } from '@/lib/site-photo-paths';
+import { primarySiteImageSrc } from '@/lib/mediaUrl';
 import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext';
 import { FamilyActionCelebrateProvider } from '@/lib/family/FamilyActionCelebrateContext';
 import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
@@ -52,8 +53,10 @@ export default async function FamilyLayout({ children }: { children: React.React
   const initialTheme =
     parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
 
+  const wallpaperSrc =
+    primarySiteImageSrc(sitePhotos.familyChatWallpaper) || sitePhotos.familyChatWallpaper;
   const familyRootStyle = {
-    '--family-chat-wallpaper-photo': `url('${sitePhotos.familyChatWallpaper}')`,
+    '--family-chat-wallpaper-photo': `url('${wallpaperSrc}')`,
   } as CSSProperties;
 
   return (
