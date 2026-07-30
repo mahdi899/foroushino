@@ -8,9 +8,9 @@ export const SAAT_PAGE_TITLE = `${SAAT_NAME} — ${SAAT_TAGLINE}`
 
 export const SAAT_LOGO_ALT = `${SAAT_NAME}؛ ${SAAT_TAGLINE}`
 
-/** Compact logo sizing for auth screens (portrait lockup with icon + wordmark). */
+/** Compact logo sizing for auth screens (square brand mark). */
 export const SAAT_LOGO_AUTH_CLASS =
-  'h-auto w-[min(100%,168px)] max-h-[108px] object-contain object-center'
+  'h-auto w-[min(100%,120px)] max-h-[120px] object-contain object-center'
 
 /** Organizational brand teal-green (logo). Use instead of legacy Telegram blue. */
 export const BRAND_TEXT = 'text-primary-600 dark:text-primary-400'
