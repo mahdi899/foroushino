@@ -4170,6 +4170,21 @@
             "category": "دوره‌ها",
             "legacy_path": null,
             "is_private": false
+        },
+        {
+            "path": "media/site/family-chat-wallpaper.webp",
+            "disk": "public",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 17568,
+            "width": null,
+            "height": null,
+            "alt_fa": "پس‌زمینه فید خانواده — آسمان شب",
+            "original_filename": "family-chat-wallpaper.webp",
+            "category": "خانواده",
+            "legacy_path": null,
+            "is_private": false
         }
     ]
 }

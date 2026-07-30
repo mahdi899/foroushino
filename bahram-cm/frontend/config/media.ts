@@ -24,6 +24,11 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     label: 'پس‌زمینه هیرو — موبایل',
     category: 'صفحه اصلی',
   },
+  'family-chat-wallpaper': {
+    src: siteStorageMedia('family-chat-wallpaper.webp'),
+    label: 'پس‌زمینه فید خانواده — آسمان شب',
+    category: 'خانواده',
+  },
   'portrait-founder': {
     src: siteStorageMedia('portrait-founder.webp'),
     label: 'پرتره بنیان‌گذار',
@@ -96,13 +101,33 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   'app-home': { src: siteStorageMedia('app-home.svg'), label: 'اپ — صفحه اصلی', category: 'سات' },
   'saat-hero': {
     src: siteStorageMedia('saat-hero.webp'),
-    label: 'هیرو سات — هر تماس، یک فروش',
+    label: 'هیرو سات — دسکتاپ',
+    category: 'سات',
+  },
+  'saat-hero-mobile': {
+    src: siteStorageMedia('saat-hero.webp'),
+    label: 'هیرو سات — موبایل (پیش‌فرض همان دسکتاپ تا آپلود جدا)',
     category: 'سات',
   },
   'main-path-saat': {
     src: siteStorageMedia('main-path-saat.webp'),
-    label: 'کارت مسیر سات — انقلابی در فروش تلفنی',
+    label: 'کارت مسیر سات — دسکتاپ',
     category: 'سات',
+  },
+  'main-path-saat-mobile': {
+    src: siteStorageMedia('main-path-saat.webp'),
+    label: 'کارت مسیر سات — موبایل',
+    category: 'سات',
+  },
+  'main-path-campaign': {
+    src: siteStorageMedia('main-path-campaign.webp'),
+    label: 'کارت مسیر کمپین‌نویسی — دسکتاپ',
+    category: 'دوره‌ها',
+  },
+  'main-path-campaign-mobile': {
+    src: siteStorageMedia('main-path-campaign.webp'),
+    label: 'کارت مسیر کمپین‌نویسی — موبایل',
+    category: 'دوره‌ها',
   },
   'academy-app-home': {
     src: siteStorageMedia('academy-app-home.webp'),

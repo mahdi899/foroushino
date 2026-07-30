@@ -39,19 +39,11 @@ function parseRows(raw: unknown): ChatbotQuickSuggestion[] {
   return out;
 }
 
-/**
- * Public site always uses code defaults so deploy/build cannot revert to stale DB copy.
- * Admin form still uses `normalizeQuickSuggestions` / stored values when editing.
- */
+/** Load from storage — use defaults only when the key was never saved. */
 export function resolveQuickSuggestions(
   raw: unknown,
-  options?: { useDefaults?: boolean; preferCodeDefaults?: boolean },
+  options?: { useDefaults?: boolean },
 ): ChatbotQuickSuggestion[] {
-  const preferCodeDefaults = options?.preferCodeDefaults ?? false;
-  if (preferCodeDefaults) {
-    return DEFAULT_QUICK_SUGGESTIONS.map((s) => ({ ...s }));
-  }
-
   const useDefaults = options?.useDefaults ?? false;
   if (raw === undefined || raw === null) {
     return useDefaults ? DEFAULT_QUICK_SUGGESTIONS.map((s) => ({ ...s })) : [];

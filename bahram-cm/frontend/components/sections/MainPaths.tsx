@@ -52,16 +52,20 @@ export function MainPaths({
 }: {
   pathOverrides?: {
     images?: Record<string, string>;
+    imagesMobile?: Record<string, string>;
   };
 }) {
   const pathImages = pathOverrides.images ?? {};
+  const pathImagesMobile = pathOverrides.imagesMobile ?? {};
 
   const items = site.mainPaths.items.map((item) => {
     const meta = pathMeta[item.href] ?? pathMeta["/saat"]!;
+    const image = pathImages[item.href] ?? meta.image;
     return {
       ...item,
       ...meta,
-      image: pathImages[item.href] ?? meta.image,
+      image,
+      imageMobile: pathImagesMobile[item.href] ?? image,
     };
   });
 

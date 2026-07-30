@@ -14,7 +14,12 @@ import { SpotPlayerProductSection } from './SpotPlayerProductSection';
 import type { AdminProduct, AdminProductType } from '@/lib/admin/commerceTypes';
 import { PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
 import type { SeoFixPatch } from '@/lib/ai/seoFix';
-import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
+import {
+  resolveProductSiteFeaturedImage,
+  resolveProductSiteFeaturedImageMobile,
+  resolveProductSiteHeroImage,
+  resolveProductSiteHeroImageMobile,
+} from '@/lib/catalog/productFeaturedImage';
 
 const PRODUCT_TYPE_OPTIONS = Object.entries(PRODUCT_TYPE_LABELS) as [AdminProductType, string][];
 
@@ -34,6 +39,9 @@ const empty: Partial<AdminProduct> = {
   telegram_list_visibility: 'public',
   telegram_sort_order: 0,
   featured_image: '',
+  featured_image_mobile: '',
+  landing_hero_image: '',
+  landing_hero_image_mobile: '',
   show_on_courses: false,
   featured_listing: false,
   course_level: '',
@@ -49,11 +57,18 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
   const { focusMode, toggleFocusMode } = useAdminFocus();
   const [form, setForm] = useState(() => {
     const merged = { ...empty, ...product };
+    const identity = { slug: merged.slug, landing_href: merged.landing_href };
     if (!merged.featured_image?.trim()) {
-      merged.featured_image = resolveProductSiteFeaturedImage({
-        slug: merged.slug,
-        landing_href: merged.landing_href,
-      });
+      merged.featured_image = resolveProductSiteFeaturedImage(identity);
+    }
+    if (!merged.featured_image_mobile?.trim()) {
+      merged.featured_image_mobile = resolveProductSiteFeaturedImageMobile(identity);
+    }
+    if (!merged.landing_hero_image?.trim()) {
+      merged.landing_hero_image = resolveProductSiteHeroImage(identity);
+    }
+    if (!merged.landing_hero_image_mobile?.trim()) {
+      merged.landing_hero_image_mobile = resolveProductSiteHeroImageMobile(identity);
     }
     return merged;
   });
@@ -68,13 +83,25 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
 
   const aiImagePrompt = form.title || form.short_description || focusKeyword;
 
-  const siteFeaturedImage = useMemo(
-    () =>
-      resolveProductSiteFeaturedImage({
-        slug: form.slug,
-        landing_href: form.landing_href,
-      }),
+  const siteIdentity = useMemo(
+    () => ({ slug: form.slug, landing_href: form.landing_href }),
     [form.slug, form.landing_href],
+  );
+  const siteFeaturedImage = useMemo(
+    () => resolveProductSiteFeaturedImage(siteIdentity),
+    [siteIdentity],
+  );
+  const siteFeaturedImageMobile = useMemo(
+    () => resolveProductSiteFeaturedImageMobile(siteIdentity),
+    [siteIdentity],
+  );
+  const siteHeroImage = useMemo(
+    () => resolveProductSiteHeroImage(siteIdentity),
+    [siteIdentity],
+  );
+  const siteHeroImageMobile = useMemo(
+    () => resolveProductSiteHeroImageMobile(siteIdentity),
+    [siteIdentity],
   );
 
   const canSyncSiteImage =
@@ -152,6 +179,9 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
         telegram_list_visibility: (form.telegram_list_visibility as 'public' | 'private') ?? 'public',
         telegram_sort_order: Number(form.telegram_sort_order) || 0,
         featured_image: form.featured_image || null,
+        featured_image_mobile: form.featured_image_mobile || null,
+        landing_hero_image: form.landing_hero_image || null,
+        landing_hero_image_mobile: form.landing_hero_image_mobile || null,
         show_on_courses: !!form.show_on_courses,
         featured_listing: !!form.featured_listing,
         course_level: form.course_level?.trim() || null,
@@ -373,29 +403,72 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
               />
             </div>
 
-            <CoverImageField
-              label="تصویر شاخص"
-              value={form.featured_image ?? ''}
-              onChange={(featured_image) => patch({ featured_image })}
-              alt={form.title || 'تصویر محصول'}
-              aiPrompt={aiImagePrompt}
-            />
-            {canSyncSiteImage ? (
-              <button
-                type="button"
-                onClick={() => patch({ featured_image: siteFeaturedImage })}
-                className="inline-flex items-center gap-1.5 text-caption text-primary hover:underline"
-              >
-                <ImageIcon className="h-3.5 w-3.5" />
-                همگام‌سازی با تصویر سایت
-              </button>
-            ) : null}
+            <div className="space-y-4 rounded-lg border border-border bg-surface/40 p-4">
+              <div>
+                <h3 className="text-small font-semibold text-primary-dark">رسانه لندینگ و کارت</h3>
+                <p className="mt-1 text-caption text-text-muted">
+                  هیرو صفحه لندینگ و کاور کارت‌های صفحه اصلی / دوره‌ها — دسکتاپ و موبایل جداگانه.
+                  اگر موبایل خالی باشد، همان دسکتاپ نمایش داده می‌شود.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <CoverImageField
+                  label="کاور کارت — دسکتاپ"
+                  value={form.featured_image ?? ''}
+                  onChange={(featured_image) => patch({ featured_image })}
+                  alt={form.title || 'کاور کارت'}
+                  aiPrompt={aiImagePrompt}
+                />
+                <CoverImageField
+                  label="کاور کارت — موبایل"
+                  value={form.featured_image_mobile ?? ''}
+                  onChange={(featured_image_mobile) => patch({ featured_image_mobile })}
+                  alt={`${form.title || 'کاور کارت'} — موبایل`}
+                  aiPrompt={aiImagePrompt}
+                />
+                <CoverImageField
+                  label="هیرو لندینگ — دسکتاپ"
+                  value={form.landing_hero_image ?? ''}
+                  onChange={(landing_hero_image) => patch({ landing_hero_image })}
+                  alt={`${form.title || 'هیرو'} — دسکتاپ`}
+                  aiPrompt={aiImagePrompt}
+                />
+                <CoverImageField
+                  label="هیرو لندینگ — موبایل"
+                  value={form.landing_hero_image_mobile ?? ''}
+                  onChange={(landing_hero_image_mobile) => patch({ landing_hero_image_mobile })}
+                  alt={`${form.title || 'هیرو'} — موبایل`}
+                  aiPrompt={aiImagePrompt}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                {canSyncSiteImage ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      patch({
+                        featured_image: siteFeaturedImage,
+                        featured_image_mobile: siteFeaturedImageMobile,
+                        landing_hero_image: siteHeroImage,
+                        landing_hero_image_mobile: siteHeroImageMobile,
+                      })
+                    }
+                    className="inline-flex items-center gap-1.5 text-caption text-primary hover:underline"
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    همگام‌سازی همه با تصاویر پیش‌فرض سایت
+                  </button>
+                ) : null}
+              </div>
+            </div>
 
             <div className="rounded-lg border border-border bg-surface/40 p-4 space-y-4">
               <div>
                 <h3 className="text-small font-semibold text-primary-dark">نمایش در صفحه دوره‌ها</h3>
                 <p className="mt-1 text-caption text-text-muted">
-                  تصویر شاخص و متن‌های زیر روی کارت دوره در صفحه اصلی و /courses نمایش داده می‌شوند.
+                  کاور کارت و متن‌های زیر روی کارت دوره در صفحه اصلی و /courses نمایش داده می‌شوند.
                 </p>
               </div>
 

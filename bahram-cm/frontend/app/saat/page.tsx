@@ -27,6 +27,11 @@ import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
 import { sitePhotos } from "@/lib/site-photo-paths";
+import {
+  resolveProductHeroImage,
+  resolveProductHeroImageMobile,
+} from "@/lib/catalog/productFeaturedImage";
+import { getPublicProductBySlug } from "@/lib/services/products";
 import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 
 const WAP_PRICE = 200_000_000;
@@ -202,7 +207,22 @@ async function loadSatApplicationStatus(): Promise<SatPublicApplicationStatus | 
 }
 
 export default async function SaatPage() {
-  const application = await loadSatApplicationStatus();
+  const [application, productResult] = await Promise.all([
+    loadSatApplicationStatus(),
+    getPublicProductBySlug('saat'),
+  ]);
+  const product = productResult.ok ? productResult.data : null;
+  const heroDesktop = resolveProductHeroImage({
+    landing_hero_image: product?.landing_hero_image,
+    slug: 'saat',
+    landing_href: '/saat',
+  });
+  const heroMobile = resolveProductHeroImageMobile({
+    landing_hero_image: product?.landing_hero_image,
+    landing_hero_image_mobile: product?.landing_hero_image_mobile,
+    slug: 'saat',
+    landing_href: '/saat',
+  });
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
@@ -273,8 +293,9 @@ export default async function SaatPage() {
                     label="سات"
                     badge="سات"
                     className="border-gold/25 shadow-black/35 neon-surface-framed ring-1 ring-gold/18"
-                    src={sitePhotos.saatHero}
-                    alt="سات — هر تماس، یک فروش"
+                    src={heroDesktop}
+                    mobileSrc={heroMobile}
+                    alt={product?.landing_hero_image_alt || "سات — هر تماس، یک فروش"}
                     photoCaption="none"
                     priority
                   />

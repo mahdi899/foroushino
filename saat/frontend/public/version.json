@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0",
-  "buildHash": "mrxzdhwj-or0z",
-  "buildTime": "2026-07-23T20:45:33.283Z",
-  "timestamp": 1784839533349,
+  "version": "3.0.4",
+  "buildHash": "ms7y9eld-oss5",
+  "buildTime": "2026-07-30T20:12:04.513Z",
+  "timestamp": 1785442324558,
   "updateType": "optional",
-  "minVersion": "1.0.0"
+  "minVersion": "3.0.4"
 }

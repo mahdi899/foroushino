@@ -1869,7 +1869,7 @@ export function FeedView({
 
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
               {!feedReady ? (
-                <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-[var(--family-chat-bg)]" />
+                <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-[color-mix(in_oklab,var(--family-chat-wallpaper-base)_72%,transparent)]" />
               ) : null}
               <FamilyFeedScroll
                 ref={feedScrollRef}

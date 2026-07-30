@@ -33,6 +33,8 @@ type Props = {
   showIcon?: boolean;
   /** Gallery storage path — e.g. `/storage/media/site/hero.jpg` */
   src?: string;
+  /** Optional mobile image — shown below `md`, falls back to `src`. */
+  mobileSrc?: string;
   alt?: string;
   sizes?: string;
   priority?: boolean;
@@ -64,6 +66,7 @@ export function PhotoFrame({
   children,
   showIcon = true,
   src,
+  mobileSrc,
   alt,
   sizes,
   priority,
@@ -89,6 +92,8 @@ export function PhotoFrame({
   const displayIcon = hasImage ? false : showIcon;
   const aria = alt ?? label ?? "تصویر";
   const imageSrc = hasImage ? src! : undefined;
+  const mobileImageSrc = (mobileSrc?.trim() || imageSrc) ?? undefined;
+  const hasDualImage = Boolean(hasImage && mobileImageSrc && mobileImageSrc !== imageSrc);
   const defaultSizes =
     ratio === "landscape"
       ? "(max-width: 768px) 100vw, 560px"
@@ -97,6 +102,10 @@ export function PhotoFrame({
         : ratio === "square"
           ? "(max-width: 768px) 45vw, 200px"
           : "(max-width: 768px) 90vw, 420px";
+  const imageClassName = cn(
+    "object-cover transition-transform duration-700 ease-[var(--ease-luxe)] will-change-transform",
+    interactive && "group-hover:scale-[1.08]",
+  );
 
   return (
     <div
@@ -124,17 +133,35 @@ export function PhotoFrame({
     >
       {hasImage ? (
         <>
-          <AppImage
-            src={imageSrc!}
-            alt={aria}
-            fill
-            priority={priority}
-            sizes={sizes ?? defaultSizes}
-            className={cn(
-              "object-cover transition-transform duration-700 ease-[var(--ease-luxe)] will-change-transform",
-              interactive && "group-hover:scale-[1.08]",
-            )}
-          />
+          {hasDualImage ? (
+            <>
+              <AppImage
+                src={mobileImageSrc!}
+                alt={aria}
+                fill
+                priority={priority}
+                sizes={sizes ?? defaultSizes}
+                className={cn(imageClassName, "md:hidden")}
+              />
+              <AppImage
+                src={imageSrc!}
+                alt={aria}
+                fill
+                priority={priority}
+                sizes={sizes ?? defaultSizes}
+                className={cn(imageClassName, "hidden md:block")}
+              />
+            </>
+          ) : (
+            <AppImage
+              src={imageSrc!}
+              alt={aria}
+              fill
+              priority={priority}
+              sizes={sizes ?? defaultSizes}
+              className={imageClassName}
+            />
+          )}
           {imageOverlay ? (
             <div
               aria-hidden

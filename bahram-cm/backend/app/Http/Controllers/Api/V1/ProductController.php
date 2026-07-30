@@ -128,6 +128,9 @@ class ProductController extends Controller
             'landing_href' => $product->landing_href,
             'featured_image' => $imageRef,
             'featured_image_url' => $imageRef,
+            'featured_image_mobile' => $this->mediaRef($product->featured_image_mobile),
+            'landing_hero_image' => $this->mediaRef($product->landing_hero_image),
+            'landing_hero_image_mobile' => $this->mediaRef($product->landing_hero_image_mobile),
             'spotplayer_course_id' => $product->spotplayer_course_id,
             'spotplayer_product_id' => $product->spotplayer_product_id,
             'meta_title' => $product->meta_title,
@@ -166,6 +169,9 @@ class ProductController extends Controller
             'course_duration' => ['sometimes', 'nullable', 'string', 'max:120'],
             'landing_href' => ['sometimes', 'nullable', 'string', 'max:255'],
             'featured_image' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'featured_image_mobile' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'landing_hero_image' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'landing_hero_image_mobile' => ['sometimes', 'nullable', 'string', 'max:500'],
             'spotplayer_course_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'spotplayer_product_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'meta_title' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -176,11 +182,11 @@ class ProductController extends Controller
     /** @param  array<string, mixed>  $data */
     private function normalizeProductMedia(array $data): array
     {
-        if (! array_key_exists('featured_image', $data)) {
-            return $data;
+        foreach (['featured_image', 'featured_image_mobile', 'landing_hero_image', 'landing_hero_image_mobile'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = $this->normalizeFeaturedImagePath($data[$key]);
+            }
         }
-
-        $data['featured_image'] = $this->normalizeFeaturedImagePath($data['featured_image']);
 
         return $data;
     }
@@ -194,5 +200,14 @@ class ProductController extends Controller
         $ref = MediaUrl::reference((string) $url);
 
         return $ref ?: null;
+    }
+
+    private function mediaRef(?string $path): ?string
+    {
+        if (! filled($path)) {
+            return null;
+        }
+
+        return MediaUrl::fromDiskPath($path) ?? MediaUrl::reference($path);
     }
 }

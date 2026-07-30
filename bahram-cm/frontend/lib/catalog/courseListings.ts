@@ -1,6 +1,10 @@
 import { site } from '@/content/site';
 import { getProducts, getPublicProductBySlug, type ProductListItem } from '@/lib/services/products';
-import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
+import {
+  resolveProductFeaturedImage,
+  resolveProductFeaturedImageMobile,
+  resolveProductSiteFeaturedImage,
+} from '@/lib/catalog/productFeaturedImage';
 
 export type CourseCatalogCard = {
   href: string;
@@ -12,6 +16,7 @@ export type CourseCatalogCard = {
   duration: string;
   featured: boolean;
   image: string;
+  imageMobile?: string;
   imageAlt: string;
 };
 
@@ -105,6 +110,21 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
       featured: false,
     };
     const defaultImage = defaultPathImages[item.href] ?? resolveProductSiteFeaturedImage({});
+    const image = product
+      ? resolveProductFeaturedImage({
+          featured_image: product.featured_image,
+          slug: product.slug,
+          landing_href: product.landing_href,
+        })
+      : defaultImage;
+    const imageMobile = product
+      ? resolveProductFeaturedImageMobile({
+          featured_image: product.featured_image,
+          featured_image_mobile: product.featured_image_mobile,
+          slug: product.slug,
+          landing_href: product.landing_href,
+        })
+      : image;
 
     return {
       href: item.href,
@@ -115,29 +135,43 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
       level: meta.level,
       duration: meta.duration,
       featured: meta.featured,
-      // Path cards always use site canonical covers (media/site/*) so home + /courses stay in sync.
-      image: defaultImage,
+      image,
+      imageMobile,
       imageAlt: product?.featured_image_alt || `کاور ${product?.title?.trim() || item.label}`,
     };
   });
 }
 
-/** Admin overrides for marketing path cards (title, summary; images come from sitePhotos). */
+/** Admin overrides for marketing path cards (title, summary, covers). */
 export async function getCoursePathOverrides(): Promise<{
   images: Record<string, string>;
+  imagesMobile: Record<string, string>;
   labels: Record<string, string>;
   taglines: Record<string, string>;
 }> {
   const byHref = await getPathProductsByHref();
   const images: Record<string, string> = {};
+  const imagesMobile: Record<string, string> = {};
   const labels: Record<string, string> = {};
   const taglines: Record<string, string> = {};
 
   for (const href of Object.keys(defaultPathImages)) {
     images[href] = defaultPathImages[href]!;
+    imagesMobile[href] = defaultPathImages[href]!;
   }
 
   for (const [href, product] of byHref) {
+    images[href] = resolveProductFeaturedImage({
+      featured_image: product.featured_image,
+      slug: product.slug,
+      landing_href: product.landing_href,
+    });
+    imagesMobile[href] = resolveProductFeaturedImageMobile({
+      featured_image: product.featured_image,
+      featured_image_mobile: product.featured_image_mobile,
+      slug: product.slug,
+      landing_href: product.landing_href,
+    });
     if (product.title?.trim()) labels[href] = product.title.trim();
     if (product.short_description?.trim()) taglines[href] = product.short_description.trim();
   }
@@ -146,8 +180,16 @@ export async function getCoursePathOverrides(): Promise<{
   if (labels['/saat#apply'] && !labels['/saat']) labels['/saat'] = labels['/saat#apply'];
   if (taglines['/saat'] && !taglines['/saat#apply']) taglines['/saat#apply'] = taglines['/saat'];
   if (taglines['/saat#apply'] && !taglines['/saat']) taglines['/saat'] = taglines['/saat#apply'];
+  if (images['/saat'] && !images['/saat#apply']) images['/saat#apply'] = images['/saat'];
+  if (images['/saat#apply'] && !images['/saat']) images['/saat'] = images['/saat#apply'];
+  if (imagesMobile['/saat'] && !imagesMobile['/saat#apply']) {
+    imagesMobile['/saat#apply'] = imagesMobile['/saat'];
+  }
+  if (imagesMobile['/saat#apply'] && !imagesMobile['/saat']) {
+    imagesMobile['/saat'] = imagesMobile['/saat#apply'];
+  }
 
-  return { images, labels, taglines };
+  return { images, imagesMobile, labels, taglines };
 }
 
 /** @deprecated Use getCoursePathOverrides().images */
