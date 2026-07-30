@@ -401,4 +401,51 @@ class CardToCardFlowTest extends TestCase
 
         $this->assertDatabaseHas('orders', ['id' => $orderId, 'status' => 'cancelled']);
     }
+
+    public function test_host_confirm_marks_paid_and_dispatches_fulfillment(): void
+    {
+        Bus::fake([FulfillOrderJob::class]);
+        Queue::fake();
+
+        $product = Product::query()->create([
+            'title' => 'دوره هاست',
+            'type' => 'normal',
+            'price' => 88000,
+            'is_active' => true,
+        ]);
+        $result = app(TelegramCheckoutService::class)->startCardToCardCheckout($this->buyer, $product);
+        $orderId = (int) $result['order_id'];
+
+        $confirm = app(TelegramCardToCardFlowService::class)->confirmPaidFromHost($orderId, [
+            ['telegram_user_id' => (int) $this->adminA->telegram_user_id, 'name' => 'A', 'at' => now()->toIso8601String()],
+            ['telegram_user_id' => (int) $this->adminB->telegram_user_id, 'name' => 'B', 'at' => now()->toIso8601String()],
+        ]);
+
+        $this->assertTrue($confirm['ok']);
+        $this->assertDatabaseHas('orders', [
+            'id' => $orderId,
+            'status' => 'paid',
+            'payment_status' => 'paid',
+        ]);
+        Bus::assertDispatched(FulfillOrderJob::class);
+    }
+
+    public function test_host_cancel_frees_pending_order(): void
+    {
+        Queue::fake();
+
+        $product = Product::query()->create([
+            'title' => 'دوره لغو',
+            'type' => 'normal',
+            'price' => 12000,
+            'is_active' => true,
+        ]);
+        $result = app(TelegramCheckoutService::class)->startCardToCardCheckout($this->buyer, $product);
+        $orderId = (int) $result['order_id'];
+
+        $cancel = app(TelegramCardToCardFlowService::class)->cancelFromHost($orderId, 'receipt_timeout');
+
+        $this->assertTrue($cancel['ok']);
+        $this->assertDatabaseHas('orders', ['id' => $orderId, 'status' => 'cancelled']);
+    }
 }

@@ -44,6 +44,12 @@ final class ResilientLiveClient
     }
 
     /** @return array<string, mixed> */
+    public function checkoutFlags(int $chatId = 0, int $telegramUserId = 0): array
+    {
+        return $this->invoke($chatId, $telegramUserId, 'خواندن روش‌های پرداخت', fn () => $this->live->checkoutFlags(), showTyping: false);
+    }
+
+    /** @return array<string, mixed> */
     public function checkoutZarinpal(int $chatId, int $telegramUserId, int $productId, ?string $coupon = null): array
     {
         return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت زرین‌پال', fn () => $this->live->checkoutZarinpal($telegramUserId, $productId, $coupon), showTyping: true);
@@ -65,6 +71,33 @@ final class ResilientLiveClient
     public function checkoutC2c(int $chatId, int $telegramUserId, int $productId, ?string $coupon = null): array
     {
         return $this->invoke($chatId, $telegramUserId, 'شروع پرداخت کارت‌به‌کارت', fn () => $this->live->checkoutC2c($telegramUserId, $chatId, $productId, $coupon), showTyping: true);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $approvals
+     * @return array<string, mixed>
+     */
+    public function checkoutC2cConfirm(int $chatId, int $telegramUserId, int $orderId, array $approvals = []): array
+    {
+        return $this->invoke(
+            $chatId,
+            $telegramUserId,
+            'تأیید نهایی کارت‌به‌کارت',
+            fn () => $this->live->checkoutC2cConfirm($orderId, $approvals),
+            showTyping: true,
+        );
+    }
+
+    /** @return array<string, mixed> */
+    public function checkoutC2cCancel(int $chatId, int $telegramUserId, int $orderId, string $reason = 'host_cancel'): array
+    {
+        return $this->invoke(
+            $chatId,
+            $telegramUserId,
+            'لغو سفارش کارت‌به‌کارت',
+            fn () => $this->live->checkoutC2cCancel($orderId, $reason),
+            showTyping: false,
+        );
     }
 
     /** @return array<string, mixed> */

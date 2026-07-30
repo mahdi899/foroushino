@@ -10,8 +10,8 @@ use TelegramHost\Conversation\ConversationRepository;
 /**
  * Decides which updates should be relayed to Iran in the background (never blocks the user).
  *
- * Support + SAT form + discount preview run locally. Admin panel shell is local;
- * only admin_panel / C2C receipt states sync-relay for live data.
+ * Support + SAT form + discount preview + C2C receipt/admin review run locally.
+ * Admin panel shell is local; only admin_panel / admin_waiting_input sync-relay for live data.
  */
 final class DelegationDetector
 {
@@ -20,7 +20,6 @@ final class DelegationDetector
         'waiting_for_terms',
         'waiting_for_mobile',
         'confirming_registration',
-        'waiting_for_card_to_card_receipt',
         'admin_panel',
         'admin_waiting_input',
     ];
@@ -38,6 +37,12 @@ final class DelegationDetector
 
         if (isset($update['edited_message'])) {
             return true;
+        }
+
+        // Host-owned C2C dual-admin callbacks (often in payment reports group).
+        $callbackData = (string) ($update['callback_query']['data'] ?? '');
+        if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
+            return false;
         }
 
         // Group/channel traffic (except reports-group support, handled locally first).
@@ -67,16 +72,11 @@ final class DelegationDetector
             return false;
         }
 
-        $callbackData = (string) ($update['callback_query']['data'] ?? '');
-        if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
-            return true;
-        }
-
         return false;
     }
 
     /**
-     * Synchronous live relay — only when Iran must answer immediately (admin panel / C2C).
+     * Synchronous live relay — only when Iran must answer immediately (admin panel).
      *
      * @param array<string, mixed> $update
      */
@@ -99,16 +99,7 @@ final class DelegationDetector
             return false;
         }
 
-        if (in_array($conversation['state'], ['admin_panel', 'admin_waiting_input', 'waiting_for_card_to_card_receipt'], true)) {
-            return true;
-        }
-
-        $callbackData = (string) ($update['callback_query']['data'] ?? '');
-        if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
-            return true;
-        }
-
-        return false;
+        return in_array($conversation['state'], ['admin_panel', 'admin_waiting_input'], true);
     }
 
     /**

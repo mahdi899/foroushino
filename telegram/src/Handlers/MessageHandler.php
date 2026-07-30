@@ -12,6 +12,7 @@ use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Routing\IranSyncRelay;
 use TelegramHost\Services\HostAdminShell;
+use TelegramHost\Services\HostCardToCardFlow;
 use TelegramHost\Services\HostDestinationsFlow;
 use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\HostSatFlow;
@@ -44,6 +45,7 @@ final class MessageHandler
         private readonly HostSatFlow $satFlow,
         private readonly HostAdminShell $adminShell,
         private readonly HostDestinationsFlow $destinationsFlow,
+        private readonly HostCardToCardFlow $cardToCard,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -136,12 +138,19 @@ final class MessageHandler
         }
 
         if ($conversation['state'] === 'waiting_for_card_to_card_receipt') {
-            // Sync relay should have handled this; if we reach here, Iran was unreachable.
-            $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('warning').' '
-                .$this->cache->message(
-                    'c2c_receipt_queued',
-                    'اتصال لحظه‌ای برقرار نشد؛ رسید شما در صف ارسال به سرور قرار گرفت. چند لحظه صبر کنید.',
-                ));
+            if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
+                $orderId = (int) ($conversation['context']['checkout']['order_id'] ?? 0);
+                if ($orderId > 0) {
+                    $this->cardToCard->cancelForUser($chatId, $telegramUserId, $orderId, 'user_menu_exit');
+                } else {
+                    $this->conversations->set($telegramUserId, 'idle', []);
+                }
+                $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
+
+                return;
+            }
+
+            $this->cardToCard->handleReceiptMessage($chatId, $telegramUserId, $message, $text);
 
             return;
         }

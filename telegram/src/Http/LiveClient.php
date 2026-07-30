@@ -63,6 +63,12 @@ final class LiveClient
     }
 
     /** @return array<string, mixed> */
+    public function checkoutFlags(): array
+    {
+        return $this->live('checkout/flags', [], 8, false);
+    }
+
+    /** @return array<string, mixed> */
     public function checkoutZarinpal(int $telegramUserId, int $productId, ?string $coupon = null): array
     {
         // Iran creates the order + payment token — keep headroom so a slow
@@ -90,7 +96,29 @@ final class LiveClient
             'chat_id' => $chatId,
             'product_id' => $productId,
             'coupon' => $coupon,
-        ]), 20);
+            'host_owned_prompt' => true,
+        ], static fn ($v) => $v !== null && $v !== ''), 20);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $approvals
+     * @return array<string, mixed>
+     */
+    public function checkoutC2cConfirm(int $orderId, array $approvals = []): array
+    {
+        return $this->live('checkout/c2c/confirm', [
+            'order_id' => $orderId,
+            'approvals' => $approvals,
+        ], 20);
+    }
+
+    /** @return array<string, mixed> */
+    public function checkoutC2cCancel(int $orderId, string $reason = 'host_cancel'): array
+    {
+        return $this->live('checkout/c2c/cancel', [
+            'order_id' => $orderId,
+            'reason' => $reason,
+        ], 12);
     }
 
     /** @return array<string, mixed> */

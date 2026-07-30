@@ -8,6 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
+use TelegramHost\Services\HostCardToCardFlow;
 use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
@@ -31,6 +32,7 @@ final class CallbackQueryHandler
         private readonly MessageHandler $messageHandler,
         private readonly HostRegistrationFlow $registration,
         private readonly HostSupportService $support,
+        private readonly HostCardToCardFlow $cardToCard,
     ) {}
 
     /** @param array<string, mixed> $callback */
@@ -43,6 +45,12 @@ final class CallbackQueryHandler
         $data = (string) ($callback['data'] ?? '');
 
         if ($telegramUserId <= 0) {
+            return;
+        }
+
+        if (str_starts_with($data, 'c2c:ok:') || str_starts_with($data, 'c2c:no:')) {
+            $this->cardToCard->handleAdminCallback($chatId, $messageId, $telegramUserId, $callbackId, $data);
+
             return;
         }
 

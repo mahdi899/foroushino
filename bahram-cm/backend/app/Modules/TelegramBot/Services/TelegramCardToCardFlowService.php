@@ -770,6 +770,100 @@ class TelegramCardToCardFlowService
             ->update(['status' => 'canceled']);
     }
 
+    /**
+     * Host-owned dual-admin path: mark paid + fulfill like Zarinpal verify (no Telegram UX here).
+     *
+     * @param  list<array{telegram_user_id?: int, name?: string, at?: string}>  $approvals
+     * @return array{ok: bool, order_id: int, message?: string}
+     */
+    public function confirmPaidFromHost(int $orderId, array $approvals = []): array
+    {
+        try {
+            $order = DB::transaction(function () use ($orderId, $approvals) {
+                /** @var Order|null $order */
+                $order = Order::query()->lockForUpdate()->with('product')->find($orderId);
+                if ($order === null) {
+                    throw new RuntimeException('سفارش یافت نشد.');
+                }
+                if ($order->isPaid()) {
+                    return $order;
+                }
+                if ($order->status !== 'pending_payment') {
+                    throw new RuntimeException('وضعیت سفارش قابل تأیید نیست.');
+                }
+
+                $extra = (array) ($order->customer_extra_data ?? []);
+                $c2c = (array) ($extra['card_to_card'] ?? []);
+                $c2c['status'] = 'approved';
+                $c2c['approvals'] = array_values($approvals);
+                $c2c['required_approvals'] = max(2, (int) ($c2c['required_approvals'] ?? 2));
+                $c2c['reviewed_at'] = now()->toIso8601String();
+                $extra['card_to_card'] = $c2c;
+
+                $order->update([
+                    'status' => 'paid',
+                    'payment_status' => 'paid',
+                    'paid_at' => now(),
+                    'customer_extra_data' => $extra,
+                ]);
+
+                Payment::query()->updateOrCreate(
+                    [
+                        'order_id' => $order->id,
+                        'gateway' => 'card_to_card',
+                    ],
+                    [
+                        'authority' => 'c2c-'.$order->id,
+                        'ref_id' => 'C2C-'.$order->id.'-'.now()->format('YmdHis'),
+                        'amount' => (int) ($order->final_amount ?? 0),
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                        'verify_payload' => [
+                            'approvals' => $approvals,
+                            'approved_at' => now()->toIso8601String(),
+                            'source' => 'host_dual_admin',
+                        ],
+                    ],
+                );
+
+                return $order->fresh('product');
+            });
+
+            $this->adminTelegram->notifyOrderPaid($order, 'card_to_card');
+            $this->dispatchFulfillment($order->id);
+
+            return ['ok' => true, 'order_id' => (int) $order->id];
+        } catch (RuntimeException $e) {
+            return ['ok' => false, 'order_id' => $orderId, 'message' => $e->getMessage()];
+        } catch (Throwable $e) {
+            Log::warning('card_to_card_host_confirm_failed', [
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['ok' => false, 'order_id' => $orderId, 'message' => 'خطا در تأیید سفارش'];
+        }
+    }
+
+    /** Host cancel / reject / expire — frees seminar soft capacity. */
+    public function cancelFromHost(int $orderId, string $reason = 'host_cancel'): array
+    {
+        $order = Order::query()->find($orderId);
+        if ($order === null) {
+            return ['ok' => false, 'message' => 'سفارش یافت نشد.'];
+        }
+        if ($order->isPaid()) {
+            return ['ok' => false, 'message' => 'سفارش پرداخت‌شده قابل لغو نیست.'];
+        }
+        if ($order->status !== 'pending_payment') {
+            return ['ok' => true, 'order_id' => $orderId, 'already' => true];
+        }
+
+        $this->cancelPendingOrder($orderId, $reason);
+
+        return ['ok' => true, 'order_id' => $orderId];
+    }
+
     private function dispatchFulfillment(int $orderId): void
     {
         if (app()->environment('local') && ! app()->runningUnitTests()) {

@@ -174,6 +174,8 @@ class TelegramHostLiveController
             'ok' => true,
             'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
             'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),
+            'card_to_card' => $bot->cardToCardConfig(),
+            'payment_reports_chat_id' => $bot->paymentReportsChatId() ?? '',
         ]);
     }
 
@@ -560,6 +562,36 @@ class TelegramHostLiveController
         return $this->startCheckout($request, 'c2c');
     }
 
+    public function checkoutC2cConfirm(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $orderId = (int) ($payload['order_id'] ?? 0);
+        $approvals = is_array($payload['approvals'] ?? null) ? $payload['approvals'] : [];
+        if ($orderId <= 0) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'order_id نامعتبر'], 422);
+        }
+
+        $result = $this->cardToCardFlow->confirmPaidFromHost($orderId, $approvals);
+        $status = ($result['ok'] ?? false) ? 200 : 422;
+
+        return $this->jsonResponse($result, $status);
+    }
+
+    public function checkoutC2cCancel(Request $request): JsonResponse
+    {
+        $payload = $this->hostPayload($request);
+        $orderId = (int) ($payload['order_id'] ?? 0);
+        $reason = trim((string) ($payload['reason'] ?? 'host_cancel')) ?: 'host_cancel';
+        if ($orderId <= 0) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'order_id نامعتبر'], 422);
+        }
+
+        $result = $this->cardToCardFlow->cancelFromHost($orderId, $reason);
+        $status = ($result['ok'] ?? false) ? 200 : 422;
+
+        return $this->jsonResponse($result, $status);
+    }
+
     public function checkoutRevokeOpen(Request $request): JsonResponse
     {
         $account = $this->resolveAccount($request);
@@ -666,7 +698,9 @@ class TelegramHostLiveController
                 return $this->jsonResponse(['ok' => false, 'message' => (string) $message], 422);
             }
 
-            if ($chatId > 0) {
+            // Host owns Telegram UX (instructions + receipt). Iran only creates the order.
+            $hostOwnedPrompt = filter_var($payload['host_owned_prompt'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            if (! $hostOwnedPrompt && $chatId > 0) {
                 $this->cardToCardFlow->beginWaitingForReceipt(
                     $bot,
                     $account,
@@ -679,16 +713,16 @@ class TelegramHostLiveController
                 );
             }
 
-            $conversation = $this->conversations->forAccount($account);
-
             return $this->jsonResponse([
                 'ok' => true,
                 'gateway' => 'c2c',
                 'order_id' => (int) $result['order_id'],
                 'amount' => (int) $result['amount'],
-                'server_sent_prompt' => $chatId > 0,
-                'state' => $conversation->state->value,
-                'context' => $conversation->context ?? [],
+                'product_title' => (string) ($result['product_title'] ?? $product->title),
+                'instructions' => (string) $result['instructions'],
+                'expires_at' => (string) ($result['expires_at'] ?? ''),
+                'ttl_minutes' => (int) ($result['ttl_minutes'] ?? 10),
+                'server_sent_prompt' => ! $hostOwnedPrompt && $chatId > 0,
             ]);
         }
 
