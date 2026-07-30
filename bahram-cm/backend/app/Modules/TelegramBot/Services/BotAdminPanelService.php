@@ -3749,7 +3749,8 @@ class BotAdminPanelService
 
         if ($data === 'admin:s:ac') {
             $bot->update(['is_active' => ! $bot->is_active]);
-            $this->renderSettings($bot, $client, $chatId, $messageId, 'وضعیت ربات به‌روز شد.');
+            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
+            $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, $messageId, 'وضعیت ربات به‌روز شد.');
 
             return;
         }

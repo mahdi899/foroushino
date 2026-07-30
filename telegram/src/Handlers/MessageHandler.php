@@ -97,7 +97,8 @@ final class MessageHandler
 
         if ($conversation['state'] === 'waiting_for_otp' && $text !== '') {
             $mobile = (string) ($conversation['context']['mobile'] ?? '');
-            $this->registration->verifyOtp($chatId, $telegramUserId, $mobile, $text);
+            $displayName = trim((string) ($conversation['context']['display_name'] ?? ''));
+            $this->registration->verifyOtp($chatId, $telegramUserId, $mobile, $text, $displayName);
 
             return;
         }
@@ -122,7 +123,7 @@ final class MessageHandler
             if ($this->support->isCancelText($text)) {
                 $this->conversations->set($telegramUserId, 'idle', []);
                 if (! $this->userPassesVerificationGate($telegramUserId)) {
-                    $this->registration->showLocalWelcome($chatId, $telegramUserId);
+                    $this->registration->showLocalWelcome($chatId, $telegramUserId, (array) ($message['from'] ?? []));
                 } else {
                     $this->sendMainMenu($chatId, $telegramUserId);
                 }
@@ -246,7 +247,7 @@ final class MessageHandler
 
         // Unverified users must only see the phone keyboard — never the main menu.
         if (! $this->userPassesVerificationGate($telegramUserId)) {
-            $this->registration->showLocalWelcome($chatId, $telegramUserId);
+            $this->registration->showLocalWelcome($chatId, $telegramUserId, (array) ($message['from'] ?? []));
 
             return;
         }
@@ -275,7 +276,7 @@ final class MessageHandler
         // Ask for the phone number immediately from local cache — no blocking
         // Iran round-trip. Verified identity arrives via Iran→host push
         // (or OTP/registration live), not a webhook account/fetch pull.
-        $this->registration->showLocalWelcome($chatId, $telegramUserId);
+        $this->registration->showLocalWelcome($chatId, $telegramUserId, $from);
     }
 
     private function handleMenuButton(int $chatId, int $telegramUserId, string $text, array $from = []): void
