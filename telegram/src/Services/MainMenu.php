@@ -106,9 +106,15 @@ final class MainMenu
         ];
 
         if ($this->cache->featureEnabled('referral_enabled')) {
-            $rows[] = [self::ACTION_SUPPORT, self::ACTION_ACCOUNT, self::ACTION_REFERRAL];
+            $supportRow = $this->cache->supportEnabled()
+                ? [self::ACTION_SUPPORT, self::ACTION_ACCOUNT, self::ACTION_REFERRAL]
+                : [self::ACTION_ACCOUNT, self::ACTION_REFERRAL];
+            $rows[] = $supportRow;
         } else {
-            $rows[] = [self::ACTION_SUPPORT, self::ACTION_ACCOUNT];
+            $supportRow = $this->cache->supportEnabled()
+                ? [self::ACTION_SUPPORT, self::ACTION_ACCOUNT]
+                : [self::ACTION_ACCOUNT];
+            $rows[] = $supportRow;
         }
 
         if ($this->accounts->isBotAdmin($telegramUserId)) {

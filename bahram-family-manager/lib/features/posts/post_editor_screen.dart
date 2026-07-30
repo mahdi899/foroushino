@@ -24,6 +24,7 @@ import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
+import 'package:bahram_family_manager/widgets/media/voice_recorder_panel.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_dialog.dart';
 import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
@@ -226,38 +227,21 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
-  Future<void> _pickAndUploadMedia() async {
-    final fileType = switch (_type) {
-      'voice' => FileType.audio,
-      'video' => FileType.video,
-      'image' => FileType.image,
-      _ => FileType.any,
-    };
-
-    final result = await FilePicker.platform.pickFiles(type: fileType, withData: true);
-    final picked = result?.files.singleOrNull;
-    if (picked == null) return;
-
-    final bytes = picked.bytes;
-    if (bytes == null) {
-      showAppSnackBar(context, 'خواندن فایل ناموفق بود.');
-      return;
-    }
-
+  Future<void> _uploadMediaBytes(Uint8List bytes, String filename) async {
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
       _mediaProcessing = false;
     });
 
-    await _prepareLocalPreview(bytes, picked.name, _type);
+    await _prepareLocalPreview(bytes, filename, _type);
     if (mounted) setState(() {});
 
     try {
       final manager = context.read<AppState>().manager;
       final media = await manager.uploadMedia(
             bytes: bytes,
-            filename: picked.name,
+            filename: filename,
             type: _type,
             optimizeImages: _type == 'image' ? _optimizeImages : null,
             onProgress: (p) {
@@ -287,11 +271,38 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         showAppSnackBar(context, messageOf(e));
       }
     } finally {
-      if (mounted) setState(() {
-        _uploading = false;
-        _mediaProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _uploading = false;
+          _mediaProcessing = false;
+        });
+      }
     }
+  }
+
+  Future<void> _uploadVoiceBytes(Uint8List bytes, String filename) {
+    return _uploadMediaBytes(bytes, filename);
+  }
+
+  Future<void> _pickAndUploadMedia() async {
+    final fileType = switch (_type) {
+      'voice' => FileType.audio,
+      'video' => FileType.video,
+      'image' => FileType.image,
+      _ => FileType.any,
+    };
+
+    final result = await FilePicker.platform.pickFiles(type: fileType, withData: true);
+    final picked = result?.files.singleOrNull;
+    if (picked == null) return;
+
+    final bytes = picked.bytes;
+    if (bytes == null) {
+      showAppSnackBar(context, 'خواندن فایل ناموفق بود.');
+      return;
+    }
+
+    await _uploadMediaBytes(bytes, picked.name);
   }
 
   Future<FamilyMediaRef?> _ensureMediaReady() async {
@@ -791,13 +802,49 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                     ),
                   if (_type == 'image') const SizedBox(height: AppSpacing.sm),
                   if (_mediaRef == null && _localPreviewBytes == null)
-                    UploadZone(
-                      label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
-                      uploading: _uploading || _mediaProcessing,
-                      progress: _uploadProgress,
-                      enabled: !_saving && !_mediaProcessing,
-                      onTap: _pickAndUploadMedia,
-                    )
+                    _type == 'voice'
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_uploading || _mediaProcessing)
+                                UploadZone(
+                                  label: 'ویس',
+                                  uploading: true,
+                                  progress: _uploadProgress,
+                                  enabled: false,
+                                  onTap: null,
+                                )
+                              else ...[
+                                VoiceRecorderPanel(
+                                  enabled: !_saving,
+                                  onRecorded: (result) => _uploadVoiceBytes(
+                                    result.bytes,
+                                    result.filename,
+                                  ),
+                                  onError: (message) => showAppSnackBar(context, message),
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
+                                Align(
+                                  alignment: Alignment.center,
+                                  child: TextButton.icon(
+                                    onPressed: _saving ? null : _pickAndUploadMedia,
+                                    icon: Icon(Icons.audio_file_outlined, size: 18, color: scheme.primary),
+                                    label: Text(
+                                      'انتخاب از فایل',
+                                      style: TextStyle(color: scheme.primary),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          )
+                        : UploadZone(
+                            label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
+                            uploading: _uploading || _mediaProcessing,
+                            progress: _uploadProgress,
+                            enabled: !_saving && !_mediaProcessing,
+                            onTap: _pickAndUploadMedia,
+                          )
                   else
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

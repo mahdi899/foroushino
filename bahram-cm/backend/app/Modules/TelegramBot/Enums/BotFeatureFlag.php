@@ -5,7 +5,7 @@ namespace App\Modules\TelegramBot\Enums;
 enum BotFeatureFlag: string
 {
     case TicketRequiresSubscription = 'ticket_requires_subscription';
-    case SupportRequiresSubscription = 'support_requires_subscription';
+    case SupportEnabled = 'support_enabled';
     case IranMobileOnly = 'iran_mobile_only';
     case CardToCardPayment = 'card_to_card_payment';
     case SmsOtpVerification = 'sms_otp_verification';
@@ -17,7 +17,7 @@ enum BotFeatureFlag: string
     {
         return match ($this) {
             self::TicketRequiresSubscription => 'شرط اشتراک تیکت',
-            self::SupportRequiresSubscription => 'ارسال پیام پشتیبانی',
+            self::SupportEnabled => 'ارسال پیام پشتیبانی',
             self::IranMobileOnly => 'تایید شماره‌های فقط ایران',
             self::CardToCardPayment => 'پرداخت کارت به کارت',
             self::SmsOtpVerification => 'ارسال پیامک تایید',
@@ -31,7 +31,7 @@ enum BotFeatureFlag: string
     {
         return match ($this) {
             self::TicketRequiresSubscription => false,
-            self::SupportRequiresSubscription => false,
+            self::SupportEnabled => true,
             self::IranMobileOnly => true,
             self::CardToCardPayment => false,
             self::SmsOtpVerification => false,
@@ -46,7 +46,7 @@ enum BotFeatureFlag: string
     {
         return [
             self::TicketRequiresSubscription,
-            self::SupportRequiresSubscription,
+            self::SupportEnabled,
             self::IranMobileOnly,
             self::CardToCardPayment,
             self::SmsOtpVerification,

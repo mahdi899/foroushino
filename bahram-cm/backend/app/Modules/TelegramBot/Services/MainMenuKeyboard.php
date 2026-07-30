@@ -123,6 +123,7 @@ class MainMenuKeyboard
         $family = $this->buttonLabel($bot, self::ACTION_FAMILY);
         $support = $this->buttonLabel($bot, self::ACTION_SUPPORT);
         $accountBtn = $this->buttonLabel($bot, self::ACTION_ACCOUNT);
+        $supportEnabled = $bot->featureEnabled(BotFeatureFlag::SupportEnabled);
 
         // Layout (labels/emojis unchanged — only positions):
         // 1) courses + channel
@@ -134,9 +135,13 @@ class MainMenuKeyboard
         ];
 
         if ($bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $rows[] = [$support, $accountBtn, $this->buttonLabel($bot, self::ACTION_REFERRAL)];
+            $rows[] = $supportEnabled
+                ? [$support, $accountBtn, $this->buttonLabel($bot, self::ACTION_REFERRAL)]
+                : [$accountBtn, $this->buttonLabel($bot, self::ACTION_REFERRAL)];
         } else {
-            $rows[] = [$support, $accountBtn];
+            $rows[] = $supportEnabled
+                ? [$support, $accountBtn]
+                : [$accountBtn];
         }
 
         if ($account?->isBotAdmin()) {
@@ -200,14 +205,17 @@ class MainMenuKeyboard
                     'callback_data' => 'nav:'.self::ACTION_ACCOUNT,
                     ...TelegramCustomEmoji::buttonIcon('user'),
                 ],
-                [
-                    'text' => 'پشتیبانی',
-                    'callback_data' => 'nav:'.self::ACTION_SUPPORT,
-                    'style' => 'success',
-                    ...TelegramCustomEmoji::buttonIcon('support'),
-                ],
             ],
         ];
+
+        if ($bot->featureEnabled(BotFeatureFlag::SupportEnabled)) {
+            $rows[1][] = [
+                'text' => 'پشتیبانی',
+                'callback_data' => 'nav:'.self::ACTION_SUPPORT,
+                'style' => 'success',
+                ...TelegramCustomEmoji::buttonIcon('support'),
+            ];
+        }
 
         if ($bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
             $rows[] = [[

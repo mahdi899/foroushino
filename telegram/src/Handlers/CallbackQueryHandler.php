@@ -14,6 +14,7 @@ use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
+use TelegramHost\Services\SubscriberEligibility;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
@@ -33,6 +34,7 @@ final class CallbackQueryHandler
         private readonly HostRegistrationFlow $registration,
         private readonly HostSupportService $support,
         private readonly HostCardToCardFlow $cardToCard,
+        private readonly SubscriberEligibility $subscriberEligibility,
     ) {}
 
     /** @param array<string, mixed> $callback */
@@ -74,7 +76,14 @@ final class CallbackQueryHandler
 
         if (str_starts_with($data, 'support:cat:')) {
             $this->consumeSourceMessage($chatId, $messageId);
-            if (! $this->accounts->isVerified($telegramUserId)) {
+            if (! $this->cache->supportEnabled()) {
+                $this->api->sendMessage($chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.', [
+                    'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+                ]);
+
+                return;
+            }
+            if (! $this->messageHandler->userPassesVerificationGate($telegramUserId)) {
                 $this->registration->showLocalWelcome($chatId, $telegramUserId);
 
                 return;
@@ -217,6 +226,23 @@ final class CallbackQueryHandler
             $category = 'other';
         }
 
+        if (! $this->cache->supportEnabled()) {
+            $this->api->sendMessage($chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.', [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
+            return;
+        }
+
+        if ($this->subscriberEligibility->requiresSubscriptionForSupport()
+            && ! $this->subscriberEligibility->hasQualifyingAccess($telegramUserId)) {
+            $this->api->sendMessage($chatId, $this->subscriberEligibility->denialMessage(), [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
+            return;
+        }
+
         // Entirely local — no Iran prepare call.
         $this->support->prepare($telegramUserId, $category);
         $this->api->sendMessage($chatId, $this->cache->message(
@@ -236,6 +262,11 @@ final class CallbackQueryHandler
         if ($productId <= 0) {
             return;
         }
+
+        // #region agent log
+        $memberOk = $this->membership->isSatisfied($telegramUserId);
+        @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R6', 'location' => 'CallbackQueryHandler.php:handleBuy', 'message' => 'buy_without_membership_gate', 'data' => ['telegramUserId' => $telegramUserId, 'productId' => $productId, 'membershipSatisfied' => $memberOk, 'gateEnforced' => false, 'verified' => $this->accounts->isVerified($telegramUserId)], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+        // #endregion
 
         if (! $this->accounts->isVerified($telegramUserId)) {
             $this->messageHandler->handle([

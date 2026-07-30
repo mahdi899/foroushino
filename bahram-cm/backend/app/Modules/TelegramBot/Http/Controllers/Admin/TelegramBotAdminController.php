@@ -62,6 +62,7 @@ class TelegramBotAdminController
             'reports_topic_id' => ['sometimes', 'nullable', 'integer'],
             'payment_reports_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'card_to_card_enabled' => ['sometimes', 'boolean'],
+            'iran_mobile_only' => ['sometimes', 'boolean'],
             'card_to_card' => ['sometimes', 'array'],
             'card_to_card.card_number' => ['sometimes', 'nullable', 'string', 'max:64'],
             'card_to_card.card_holder' => ['sometimes', 'nullable', 'string', 'max:64'],
@@ -90,6 +91,12 @@ class TelegramBotAdminController
                 (array) ($data['card_to_card'] ?? []),
             );
             unset($data['card_to_card_enabled'], $data['card_to_card']);
+            PushTelegramHostSyncJob::bootstrap();
+        }
+
+        if (array_key_exists('iran_mobile_only', $data)) {
+            $bot->setFeatureEnabled(BotFeatureFlag::IranMobileOnly, (bool) $data['iran_mobile_only']);
+            unset($data['iran_mobile_only']);
             PushTelegramHostSyncJob::bootstrap();
         }
 
@@ -449,6 +456,7 @@ class TelegramBotAdminController
             'reports_chat_id' => $bot->reportsGroupChatId(),
             'payment_reports_chat_id' => $bot->paymentReportsChatId(),
             'card_to_card_enabled' => $bot->featureEnabled(BotFeatureFlag::CardToCardPayment),
+            'iran_mobile_only' => $bot->featureEnabled(BotFeatureFlag::IranMobileOnly),
             'card_to_card' => $bot->cardToCardConfig(),
         ];
 

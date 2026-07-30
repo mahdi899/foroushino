@@ -219,8 +219,13 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
-        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription)
-            || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
+        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription);
+
+        if (! $bot->featureEnabled(BotFeatureFlag::SupportEnabled)) {
+            $this->answer($client, $callbackId, 'پشتیبانی غیرفعال است.', true);
+
+            return;
+        }
 
         if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
             $this->answer($client, $callbackId, 'اشتراک لازم است.', true);

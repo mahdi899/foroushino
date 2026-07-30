@@ -28,8 +28,9 @@ declare global {
         container: string | HTMLElement,
         options: {
           sitekey: string;
-          size?: 'normal' | 'compact' | 'invisible';
+          size?: 'normal' | 'flexible' | 'compact' | 'invisible';
           theme?: 'light' | 'dark' | 'auto';
+          appearance?: 'always' | 'execute' | 'interaction-only';
           callback?: (token: string) => void;
           'error-callback'?: () => void;
           'expired-callback'?: () => void;
@@ -122,6 +123,13 @@ function invisiblePayload(provider: 'turnstile' | 'recaptcha', token: string): C
   return { captcha_token: token, captcha_provider: provider };
 }
 
+function resolveAdminTurnstileTheme(): 'light' | 'dark' | 'auto' {
+  if (typeof document === 'undefined') return 'auto';
+  const theme = document.getElementById('admin-root')?.getAttribute('data-admin-theme');
+  if (theme === 'dark' || theme === 'light') return theme;
+  return 'auto';
+}
+
 export interface CaptchaFieldProps {
   className?: string;
   /** @deprecated Use recaptchaSiteKey */
@@ -139,6 +147,8 @@ export interface CaptchaFieldProps {
   inline?: boolean;
   /** Matches site footer/newsletter pill forms (charcoal + bone) */
   variant?: 'default' | 'site' | 'admin';
+  /** Force Turnstile theme; admin defaults to panel light/dark. */
+  turnstileTheme?: 'light' | 'dark' | 'auto';
   onReadyChange?: (ready: boolean) => void;
   onPayloadChange?: (payload: CaptchaPayload | null) => void;
   /** reCAPTCHA / Turnstile token obtained — verify on server before unlocking chat. */
@@ -162,6 +172,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     pillEmbed,
     inline,
     variant = 'default',
+    turnstileTheme,
     active = true,
     onReadyChange,
     onPayloadChange,
@@ -328,7 +339,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
       setTurnstileVisibleMount(true);
       // Let the visible container paint before Turnstile measures it.
       await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => resolve());
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
     } else {
       setTurnstileVisibleMount(false);
@@ -338,6 +349,12 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
       throw new Error('Turnstile container missing');
     }
 
+    const containerWidth = turnstileContainerRef.current.getBoundingClientRect().width;
+    // flexible needs ≥300px; use compact on narrow admin cards to avoid horizontal scroll.
+    const visibleSize = containerWidth >= 300 ? 'flexible' : 'compact';
+    const theme =
+      turnstileTheme ?? (visibleTurnstile ? resolveAdminTurnstileTheme() : 'auto');
+
     const token = await new Promise<string>((resolve, reject) => {
       // Invisible must resolve quickly; visible waits for the user — no short timeout.
       const timeout = visibleTurnstile
@@ -346,8 +363,9 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
 
       turnstileWidgetRef.current = window.turnstile!.render(turnstileContainerRef.current!, {
         sitekey: resolvedTurnstileSiteKey,
-        size: visibleTurnstile ? 'normal' : 'invisible',
-        theme: 'auto',
+        size: visibleTurnstile ? visibleSize : 'invisible',
+        theme,
+        ...(visibleTurnstile ? { appearance: 'always' as const } : {}),
         callback: (value) => {
           if (timeout !== null) window.clearTimeout(timeout);
           resolve(value);
@@ -384,6 +402,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     notifyReady,
     removeTurnstileWidget,
     resolvedTurnstileSiteKey,
+    turnstileTheme,
     visibleTurnstile,
   ]);
 
@@ -591,12 +610,24 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
         <div
           data-captcha-math
           className={cn(
-            'relative z-20 flex w-full min-w-0 flex-nowrap items-center gap-1.5',
-            siteInline ? 'max-w-full' : inline ? 'text-[12px]' : 'w-full text-small',
+            'relative z-20 flex w-full min-w-0 items-center gap-1.5',
+            adminInline
+              ? 'flex-col items-stretch gap-2'
+              : siteInline
+                ? 'max-w-full flex-nowrap'
+                : inline
+                  ? 'flex-nowrap text-[12px]'
+                  : 'w-full flex-nowrap text-small',
           )}
           dir="ltr"
           onPointerDown={(e) => e.stopPropagation()}
         >
+          <div
+            className={cn(
+              'flex min-w-0 items-center gap-1.5',
+              adminInline ? 'w-full' : 'contents',
+            )}
+          >
           <span
             className={cn(
               'captcha-math-question shrink-0 whitespace-nowrap font-semibold tabular-nums',
@@ -626,7 +657,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
               siteInline
                 ? 'rounded-pill p-1 text-mist hover:text-bone'
                 : adminInline
-                  ? 'rounded-md p-1.5 text-primary hover:bg-surface-soft'
+                  ? 'ms-auto rounded-md p-1.5 text-primary hover:bg-surface-soft'
                   : inline
                     ? 'rounded-full px-2 py-1 text-[#007aff] hover:bg-white/60'
                     : 'text-caption font-medium text-accent hover:underline',
@@ -637,6 +668,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
             <RefreshCw className={cn('h-3.5 w-3.5', mathLoading && 'animate-spin')} />
             {inline ? null : <span className="sr-only">سؤال جدید</span>}
           </button>
+          </div>
           <input
             id={answerInputId}
             name={inline && variant !== 'admin' ? 'chatbot_captcha_answer' : undefined}
@@ -679,7 +711,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
                 : siteInline
                   ? 'h-8 min-w-[4.5rem] flex-1 rounded-pill border border-bone/18 bg-charcoal-2/80 px-2.5 text-start text-xs text-bone placeholder:text-mist focus:border-emerald/40 focus:ring-1 focus:ring-emerald/20'
                   : adminInline
-                    ? 'field-input h-9 min-h-11 min-w-[4.5rem] flex-1 shrink-0 py-0 text-center text-small placeholder:text-text-muted'
+                    ? 'field-input h-9 min-h-11 w-full py-0 text-center text-small placeholder:text-text-muted'
                     : inline
                       ? 'h-9 w-16 shrink-0 rounded-full border border-white/75 bg-white/55 text-center text-[14px] text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md focus:border-[#007aff]/40 focus:ring-2 focus:ring-[#007aff]/15'
                       : 'h-9 w-24 shrink-0 rounded-md border border-bone/15 bg-charcoal-2/80 py-0 text-small text-bone placeholder:text-mist',
@@ -702,7 +734,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
         ref={turnstileContainerRef}
         className={cn(
           turnstileVisibleMount && mode === 'loading'
-            ? 'min-h-[65px] w-full overflow-visible'
+            ? 'admin-turnstile-host flex w-full min-w-0 flex-col items-stretch justify-center overflow-visible [&_iframe]:max-w-full'
             : 'hidden',
         )}
         aria-hidden={!turnstileVisibleMount}

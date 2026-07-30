@@ -193,6 +193,17 @@ class MessageHandler implements UpdateHandlerInterface
         }
 
         if ($conversation->state === ConversationState::WaitingForSupportMessage) {
+            if (! $bot->featureEnabled(BotFeatureFlag::SupportEnabled)) {
+                $this->conversations->transition($conversation, ConversationState::Idle, [
+                    'support' => null,
+                ]);
+                $this->outbound->reply($bot, $chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.', [
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+                ]);
+
+                return;
+            }
+
             if (in_array($text, ['لغو', '/cancel'], true)) {
                 $this->conversations->transition($conversation, ConversationState::Idle, [
                     'support' => null,
@@ -295,7 +306,9 @@ class MessageHandler implements UpdateHandlerInterface
             MainMenuKeyboard::ACTION_CHANNEL => $this->sendReferenceChannel($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_FAMILY => $this->sendFamily($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_REFERRAL => $this->sendReferral($bot, $chatId, $account),
-            MainMenuKeyboard::ACTION_SUPPORT => $this->openSupportHub($bot, $account, $chatId),
+            MainMenuKeyboard::ACTION_SUPPORT => $bot->featureEnabled(BotFeatureFlag::SupportEnabled)
+                ? $this->openSupportHub($bot, $account, $chatId)
+                : $this->replyHtml($bot, $chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.'),
             MainMenuKeyboard::ACTION_ACCOUNT => $this->sendAccount($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_ADMIN => $this->botAdmin->openDashboard($bot, $account, $chatId),
             default => $this->replyHtml($bot, $chatId, TelegramCustomEmoji::tag('home')." <b>منوی اصلی</b>\nاز دکمه‌های پایین استفاده کنید.", [
@@ -318,8 +331,13 @@ class MessageHandler implements UpdateHandlerInterface
 
     private function openSupportHub(TelegramBot $bot, TelegramAccount $account, int $chatId): void
     {
-        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription)
-            || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
+        if (! $bot->featureEnabled(BotFeatureFlag::SupportEnabled)) {
+            $this->replyHtml($bot, $chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.');
+
+            return;
+        }
+
+        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription);
 
         if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
             $this->replyHtml($bot, $chatId, $this->subscriberEligibility->denialMessage());

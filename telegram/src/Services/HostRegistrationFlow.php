@@ -82,7 +82,44 @@ final class HostRegistrationFlow
 
         $rawPhone = trim((string) ($contact['phone_number'] ?? ''));
         $contactUserId = (int) ($contact['user_id'] ?? 0);
-        $phone = MobileNormalizer::normalizeOrOriginal($rawPhone);
+
+        if ($contactUserId <= 0 || $contactUserId !== $telegramUserId) {
+            $this->conversations->set($telegramUserId, 'waiting_for_mobile', []);
+            $this->sendPhoneStepMessage($chatId, $this->cache->message(
+                'registration_contact_must_be_own',
+                'لطفاً فقط شماره تماس خودتان را با دکمه «ارسال شماره تماس» بفرستید.',
+            ));
+
+            return;
+        }
+
+        if ($rawPhone === '') {
+            $this->conversations->set($telegramUserId, 'waiting_for_mobile', []);
+            $this->sendPhoneStepMessage($chatId, $this->cache->message(
+                'registration_contact_missing',
+                'شماره تماس دریافت نشد. دوباره تلاش کنید.',
+            ));
+
+            return;
+        }
+
+        $iranOnly = $this->cache->featureEnabled('iran_mobile_only');
+        $phone = MobileNormalizer::normalizeForRegistration($rawPhone, $iranOnly);
+        if ($phone === null) {
+            $this->conversations->set($telegramUserId, 'waiting_for_mobile', []);
+            $rejectMessage = $iranOnly
+                ? $this->cache->message(
+                    'registration_iran_mobile_only',
+                    'فقط شماره موبایل ایران (09…) پذیرفته می‌شود. لطفاً شماره ایران خود را با دکمه «ارسال شماره تماس» بفرستید.',
+                )
+                : $this->cache->message(
+                    'registration_invalid_mobile',
+                    'شماره تماس معتبر نیست. دوباره تلاش کنید.',
+                );
+            $this->sendPhoneStepMessage($chatId, $rejectMessage);
+
+            return;
+        }
 
         $pending = $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
@@ -182,9 +219,13 @@ final class HostRegistrationFlow
 
     private function finishLocalRegistration(int $chatId, int $telegramUserId, string $mobile, string $displayName): void
     {
+        $smsOtpEnabled = $this->cache->featureEnabled('sms_otp_verification');
         $this->accounts->storeLocalOnlyRegistration($telegramUserId, $mobile, $displayName);
         $this->accounts->purgeDuplicateMobileRows($mobile, $telegramUserId);
         $this->conversations->set($telegramUserId, 'idle', []);
+        // #region agent log
+        @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R1', 'location' => 'HostRegistrationFlow.php:finishLocalRegistration', 'message' => 'local_reg_complete_no_otp_gate', 'data' => ['telegramUserId' => $telegramUserId, 'smsOtpEnabled' => $smsOtpEnabled, 'otpPrompted' => false, 'hasIranUserId' => false, 'displayNameLen' => mb_strlen($displayName)], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+        // #endregion
         $this->api->sendMessage($chatId, $this->cache->message(
             'main_menu_hint',
             'ثبت‌نام شما ثبت شد. منوی اصلی آکادمی بهرام',

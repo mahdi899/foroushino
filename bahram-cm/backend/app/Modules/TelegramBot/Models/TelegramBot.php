@@ -159,6 +159,13 @@ class TelegramBot extends Model
 
         $stored = data_get($this->settings, 'features.'.$enum->value);
 
+        if ($stored === null && $enum === BotFeatureFlag::SupportEnabled) {
+            $legacy = data_get($this->settings, 'features.support_requires_subscription');
+            if ($legacy !== null) {
+                return (bool) $legacy;
+            }
+        }
+
         if ($stored === null) {
             return $enum->defaultEnabled();
         }
@@ -176,6 +183,15 @@ class TelegramBot extends Model
         $this->forceFill(['settings' => $settings])->save();
 
         return $next;
+    }
+
+    public function setFeatureEnabled(BotFeatureFlag $flag, bool $enabled): void
+    {
+        $settings = (array) ($this->settings ?? []);
+        $features = (array) ($settings['features'] ?? []);
+        $features[$flag->value] = $enabled;
+        $settings['features'] = $features;
+        $this->forceFill(['settings' => $settings])->save();
     }
 
     /**

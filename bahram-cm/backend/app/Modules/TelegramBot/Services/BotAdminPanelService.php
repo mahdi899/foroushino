@@ -264,8 +264,6 @@ class BotAdminPanelService
                 'broadcast_quick' => $this->onBroadcastQuick($bot, $account, $conversation, $client, $chatId, $text),
                 'ticket_reply' => $this->onTicketReply($bot, $account, $conversation, $client, $chatId, $text),
                 'message_edit' => $this->onMessageEdit($bot, $account, $conversation, $client, $chatId, $text),
-                'zarinpal_merchant' => $this->onZarinpalMerchantInput($bot, $account, $conversation, $client, $chatId, $text),
-                'zarinpal_merchant_confirm' => $this->onZarinpalMerchantConfirm($bot, $account, $conversation, $client, $chatId, $text),
                 'events_chat_ids' => $this->onEventsChatIdsInput($bot, $account, $conversation, $client, $chatId, $text),
                 'ref_title' => $this->onReferenceChannelFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'title'),
                 'ref_price' => $this->onReferenceChannelFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'price'),
@@ -3749,36 +3747,9 @@ class BotAdminPanelService
             return;
         }
 
-        if ($data === 'admin:s:wh') {
-            $infrastructure = app(\App\Services\TelegramInfrastructureService::class);
-            $url = $infrastructure->buildWebhookUrl($bot->key);
-            try {
-                $client->setWebhook($url, $bot->resolveWebhookSecret());
-                $mode = $infrastructure->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم';
-                app(TelegramWebhookRegisteredNotifier::class)->notify($bot, $url, $mode);
-                $this->renderSettings($bot, $client, $chatId, $messageId, "✅ وب‌هوک ثبت شد:\n{$url}");
-            } catch (Throwable $e) {
-                $this->renderSettings(
-                    $bot,
-                    $client,
-                    $chatId,
-                    $messageId,
-                    '❌ ثبت وب‌هوک ناموفق: '.$e->getMessage(),
-                );
-            }
-
-            return;
-        }
-
         if ($data === 'admin:s:ac') {
             $bot->update(['is_active' => ! $bot->is_active]);
             $this->renderSettings($bot, $client, $chatId, $messageId, 'وضعیت ربات به‌روز شد.');
-
-            return;
-        }
-
-        if ($data === 'admin:s:zp') {
-            $this->beginZarinpalMerchantFlow($bot, $account, $client, $chatId);
 
             return;
         }
@@ -3930,11 +3901,7 @@ class BotAdminPanelService
             ['text' => '🏦 گزارشات پرداخت', 'callback_data' => 'admin:s:pr'],
         ];
         $keyboard[] = [
-            ['text' => '💳 مرچنت زرین‌پال', 'callback_data' => 'admin:s:zp'],
             ['text' => '📝 متن کارت به کارت', 'callback_data' => 'admin:s:c2c'],
-        ];
-        $keyboard[] = [
-            ['text' => '🔗 ثبت وب‌هوک', 'callback_data' => 'admin:s:wh'],
             ['text' => '🔄 ریست صف', 'callback_data' => 'admin:s:rs'],
         ];
         $keyboard[] = [

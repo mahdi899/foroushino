@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\Seminar;
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramRequiredChat;
@@ -72,7 +73,9 @@ class TelegramHostDatabaseExporter
         $lines[] = '';
 
         $flags = array_merge(
-            (array) ($bot->settings['features'] ?? []),
+            collect(BotFeatureFlag::cases())
+                ->mapWithKeys(fn (BotFeatureFlag $flag) => [$flag->value => $bot->featureEnabled($flag)])
+                ->all(),
             [
                 'checkout_zarinpal' => $this->checkout->zarinpalEnabled($bot),
                 'checkout_c2c' => $this->checkout->cardToCardEnabled($bot),

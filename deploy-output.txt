@@ -1,37 +1,12 @@
 SSH OK
-PID:253178
+PID:304678
 
 Deploy running on server — polling log...
 
---- poll 1 (2090 bytes) ---
+--- poll 1 (634 bytes) ---
 ==> Pull latest code
-From https://github.com/mahdi899/foroushino
- * branch            main       -> FETCH_HEAD
-   aa8cffc..cf9649d  main       -> origin/main
-Updating aa8cffc..cf9649d
-Fast-forward
- .../Commands/ExpirePendingOrdersCommand.php        |   7 +-
- .../backend/app/Jobs/ExpireCardToCardOrderJob.php  |  27 ++
- .../Admin/TelegramBotAdminController.php           |  23 +-
- .../Controllers/TelegramHostLiveController.php     |  23 +-
- .../app/Modules/TelegramBot/Models/TelegramBot.php | 102 +++++-
- .../Services/TelegramCardToCardFlowService.php     | 394 ++++++++++++++++----
- .../Services/TelegramCheckoutService.php           |  32 +-
- .../Services/TelegramPaymentReportsNotifier.php    |  74 ++--
- .../Services/TelegramPurchaseFlowService.php       |  20 +-
- bahram-cm/backend/config/bahram.php                |   2 +
- .../tests/Feature/Telegram/CardToCardFlowTest.php  | 404 +++++++++++++++++++++
- .../frontend/app/admin/(panel)/telegram/actions.ts |   8 +
- .../telegram/settings/TelegramSettingsClient.tsx   | 124 +++++++
- bahram-cm/frontend/lib/admin/telegram.types.ts     |   8 +
- deploy-output.txt                                  | Bin 52882 -> 63138 bytes
- telegram/public/webhook.php                        |   2 +-
- telegram/src/Handlers/MessageHandler.php           |  10 +-
- telegram/src/Routing/IranSyncRelay.php             |  10 +
- telegram/src/Routing/UpdateRouter.php              |  15 +-
- 19 files changed, 1163 insertions(+), 122 deletions(-)
- create mode 100644 bahram-cm/backend/app/Jobs/ExpireCardToCardOrderJob.php
- create mode 100644 bahram-cm/backend/tests/Feature/Telegram/CardToCardFlowTest.php
+fatal: could not read Username for 'https://github.com': No such device or address
+WARN: git pull failed (no credentials?) — continuing with existing tree
 ==> Backend dependencies
 Composer plugins have been disabled for safety in this non-interactive session.
 Set COMPOSER_ALLOW_SUPERUSER=1 if you want to allow plugins to run as root/super user.
@@ -41,35 +16,10 @@ Verifying lock file contents can be installed on current platform.
 Nothing to install, update or remove
 Generating optimized autoload files
 
---- poll 2 (9493 bytes) ---
+--- poll 2 (8091 bytes) ---
 ==> Pull latest code
-From https://github.com/mahdi899/foroushino
- * branch            main       -> FETCH_HEAD
-   aa8cffc..cf9649d  main       -> origin/main
-Updating aa8cffc..cf9649d
-Fast-forward
- .../Commands/ExpirePendingOrdersCommand.php        |   7 +-
- .../backend/app/Jobs/ExpireCardToCardOrderJob.php  |  27 ++
- .../Admin/TelegramBotAdminController.php           |  23 +-
- .../Controllers/TelegramHostLiveController.php     |  23 +-
- .../app/Modules/TelegramBot/Models/TelegramBot.php | 102 +++++-
- .../Services/TelegramCardToCardFlowService.php     | 394 ++++++++++++++++----
- .../Services/TelegramCheckoutService.php           |  32 +-
- .../Services/TelegramPaymentReportsNotifier.php    |  74 ++--
- .../Services/TelegramPurchaseFlowService.php       |  20 +-
- bahram-cm/backend/config/bahram.php                |   2 +
- .../tests/Feature/Telegram/CardToCardFlowTest.php  | 404 +++++++++++++++++++++
- .../frontend/app/admin/(panel)/telegram/actions.ts |   8 +
- .../telegram/settings/TelegramSettingsClient.tsx   | 124 +++++++
- bahram-cm/frontend/lib/admin/telegram.types.ts     |   8 +
- deploy-output.txt                                  | Bin 52882 -> 63138 bytes
- telegram/public/webhook.php                        |   2 +-
- telegram/src/Handlers/MessageHandler.php           |  10 +-
- telegram/src/Routing/IranSyncRelay.php             |  10 +
- telegram/src/Routing/UpdateRouter.php              |  15 +-
- 19 files changed, 1163 insertions(+), 122 deletions(-)
- create mode 100644 bahram-cm/backend/app/Jobs/ExpireCardToCardOrderJob.php
- create mode 100644 bahram-cm/backend/tests/Feature/Telegram/CardToCardFlowTest.php
+fatal: could not read Username for 'https://github.com': No such device or address
+WARN: git pull failed (no credentials?) — continuing with existing tree
 ==> Backend dependencies
 Composer plugins have been disabled for safety in this non-interactive session.
 Set COMPOSER_ALLOW_SUPERUSER=1 if you want to allow plugins to run as root/super user.
@@ -119,15 +69,16 @@ Use the `composer fund` command to find out more!
 
    ERROR  The [public/storage] link already exists.  
 
+All public media directories already have index.html.
 
---- poll 3 (13547 bytes) ---
+--- poll 3 (12091 bytes) ---
 slow_query_log	ON
 table_open_cache	4000
 tmp_table_size	67108864
 
 ==> Redis
 PONG
-used_memory_human:6.54M
+used_memory_human:6.50M
 maxmemory_human:489.00M
 maxmemory_policy:allkeys-lru
 
@@ -182,34 +133,34 @@ Next: run migrations for high-traffic indexes:
 ============================================
 ==> Reload php8.4-fpm
 ==> Nginx media CORS
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ==> Frontend build
-MemAvailable=2188MB
+MemAvailable=1818MB
 
---- poll 4 (13547 bytes) ---
+--- poll 4 (12091 bytes) ---
 slow_query_log	ON
 table_open_cache	4000
 tmp_table_size	67108864
 
 ==> Redis
 PONG
-used_memory_human:6.54M
+used_memory_human:6.50M
 maxmemory_human:489.00M
 maxmemory_policy:allkeys-lru
 
@@ -264,33 +215,33 @@ Next: run migrations for high-traffic indexes:
 ============================================
 ==> Reload php8.4-fpm
 ==> Nginx media CORS
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ==> Frontend build
-MemAvailable=2188MB
+MemAvailable=1818MB
 
---- poll 5 (13669 bytes) ---
+--- poll 6 (12213 bytes) ---
 table_open_cache	4000
 tmp_table_size	67108864
 
 ==> Redis
 PONG
-used_memory_human:6.54M
+used_memory_human:6.50M
 maxmemory_human:489.00M
 maxmemory_policy:allkeys-lru
 
@@ -345,34 +296,34 @@ Next: run migrations for high-traffic indexes:
 ============================================
 ==> Reload php8.4-fpm
 ==> Nginx media CORS
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ==> Frontend build
-MemAvailable=2188MB
+MemAvailable=1818MB
 npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
---- poll 8 (13669 bytes) ---
+--- poll 8 (12213 bytes) ---
 table_open_cache	4000
 tmp_table_size	67108864
 
 ==> Redis
 PONG
-used_memory_human:6.54M
+used_memory_human:6.50M
 maxmemory_human:489.00M
 maxmemory_policy:allkeys-lru
 
@@ -427,33 +378,33 @@ Next: run migrations for high-traffic indexes:
 ============================================
 ==> Reload php8.4-fpm
 ==> Nginx media CORS
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ==> Frontend build
-MemAvailable=2188MB
+MemAvailable=1818MB
 npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
---- poll 10 (13876 bytes) ---
+--- poll 9 (12420 bytes) ---
 tmp_table_size	67108864
 
 ==> Redis
 PONG
-used_memory_human:6.54M
+used_memory_human:6.50M
 maxmemory_human:489.00M
 maxmemory_policy:allkeys-lru
 
@@ -508,106 +459,852 @@ Next: run migrations for high-traffic indexes:
 ============================================
 ==> Reload php8.4-fpm
 ==> Nginx media CORS
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 ==> Frontend build
-MemAvailable=2188MB
-npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
-npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
-
---- poll 12 (13995 bytes) ---
-maxmemory_human:489.00M
-maxmemory_policy:allkeys-lru
-
-==> Laravel .env store drivers
-DB_CONNECTION=mysql
-SESSION_DRIVER=redis
-QUEUE_CONNECTION=redis
-CACHE_STORE=redis
-REDIS_HOST=127.0.0.1
-
-==> Writing /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
-==> MySQL config unchanged — skip restart
-==> Ensuring Redis maxmemory + allkeys-lru
-==> Redis config unchanged — skip restart
-==> Forcing Laravel cache/queue/session onto Redis
-
-   INFO  Configuration cached successfully.  
-
-
-==> Post-apply verification
-
-==> Current MySQL status
-innodb_buffer_pool_instances	1
-innodb_buffer_pool_size	1073741824
-innodb_flush_method	O_DIRECT
-innodb_redo_log_capacity	1073741824
-long_query_time	1.000000
-max_connections	200
-slow_query_log	ON
-table_open_cache	4000
-tmp_table_size	67108864
-
-==> Redis
-PONG
-used_memory_human:6.54M
-maxmemory_human:489.00M
-maxmemory_policy:allkeys-lru
-
-==> Laravel .env store drivers
-DB_CONNECTION=mysql
-SESSION_DRIVER=redis
-QUEUE_CONNECTION=redis
-CACHE_STORE=redis
-REDIS_HOST=127.0.0.1
-
-============================================
-MySQL/Redis tuning applied.
-  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
-  slow log: /var/log/mysql/bahram-slow.log
-Next: run migrations for high-traffic indexes:
-  cd /var/www/bahram-cm/backend && php artisan migrate --force
-============================================
-==> Reload php8.4-fpm
-==> Nginx media CORS
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "193.228.90.175" on [::]:80, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "www.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "cdn.rostami.app" on [::]:443, ignored
-2026/07/30 01:30:46 [warn] 253379#253379: conflicting server name "localhost" on 127.0.0.1:8010, ignored
-nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-nginx: configuration file /etc/nginx/nginx.conf test is successful
-==> Frontend build
-MemAvailable=2188MB
+MemAvailable=1818MB
 npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
 
-added 901 packages, and audited 902 packages in 2m
+--- poll 11 (13484 bytes) ---
+==> Redis
+PONG
+used_memory_human:6.54M
+maxmemory_human:489.00M
+maxmemory_policy:allkeys-lru
+
+==> Laravel .env store drivers
+DB_CONNECTION=mysql
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
 
 377 packages are looking for funding
   run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+--- poll 12 (13484 bytes) ---
+==> Redis
+PONG
+used_memory_human:6.54M
+maxmemory_human:489.00M
+maxmemory_policy:allkeys-lru
+
+==> Laravel .env store drivers
+DB_CONNECTION=mysql
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
+
+377 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+--- poll 16 (13484 bytes) ---
+==> Redis
+PONG
+used_memory_human:6.54M
+maxmemory_human:489.00M
+maxmemory_policy:allkeys-lru
+
+==> Laravel .env store drivers
+DB_CONNECTION=mysql
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
+
+377 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+--- poll 18 (13543 bytes) ---
+used_memory_human:6.54M
+maxmemory_human:489.00M
+maxmemory_policy:allkeys-lru
+
+==> Laravel .env store drivers
+DB_CONNECTION=mysql
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
+
+377 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 105s
+  Running TypeScript ...
+
+--- poll 20 (13543 bytes) ---
+used_memory_human:6.54M
+maxmemory_human:489.00M
+maxmemory_policy:allkeys-lru
+
+==> Laravel .env store drivers
+DB_CONNECTION=mysql
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
+
+377 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 105s
+  Running TypeScript ...
+
+--- poll 24 (13543 bytes) ---
+used_memory_human:6.54M
+maxmemory_human:489.00M
+maxmemory_policy:allkeys-lru
+
+==> Laravel .env store drivers
+DB_CONNECTION=mysql
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
+
+377 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 105s
+  Running TypeScript ...
+
+--- poll 27 (13622 bytes) ---
+maxmemory_policy:allkeys-lru
+
+==> Laravel .env store drivers
+DB_CONNECTION=mysql
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
+
+377 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 105s
+  Running TypeScript ...
+  Finished TypeScript in 2.3min ...
+  Collecting page data using 2 workers ...
+
+--- poll 28 (13836 bytes) ---
+SESSION_DRIVER=redis
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
+REDIS_HOST=127.0.0.1
+
+============================================
+MySQL/Redis tuning applied.
+  config: /etc/mysql/mysql.conf.d/99-bahram-innodb.cnf
+  slow log: /var/log/mysql/bahram-slow.log
+Next: run migrations for high-traffic indexes:
+  cd /var/www/bahram-cm/backend && php artisan migrate --force
+============================================
+==> Reload php8.4-fpm
+==> Nginx media CORS
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on 0.0.0.0:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "193.228.90.175" on [::]:80, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on 0.0.0.0:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "www.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "cdn.rostami.app" on [::]:443, ignored
+2026/07/30 19:14:30 [warn] 304866#304866: conflicting server name "localhost" on 127.0.0.1:8010, ignored
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+==> Frontend build
+MemAvailable=1818MB
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 901 packages, and audited 902 packages in 1m
+
+377 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (1 low, 3 moderate, 7 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> bahram-cm@3.0.0 prebuild
+> node scripts/generate-version.mjs
+
+[generate-version] 3.0.0 (ms7w9404-e5555a) name=bahram updateType=optional
+
+> bahram-cm@3.0.0 build
+> next build
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  · staleTimes
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 105s
+  Running TypeScript ...
+  Finished TypeScript in 2.3min ...
+  Collecting page data using 2 workers ...
+  Generating static pages using 2 workers (0/149) ...
+  Generating static pages using 2 workers (37/149) 
+  Generating static pages using 2 workers (74/149) 
+  Generating static pages using 2 workers (111/149) 
+
+--- poll 29 (19899 bytes) ---
+├ ƒ /en
+├ ƒ /events
+├ ƒ /events/[slug]
+├ ƒ /events/-/opengraph-image
+├ ƒ /family
+├ ƒ /family-manifest.webmanifest
+├ ƒ /family/login
+├ ƒ /family/notifications
+├ ƒ /faq
+├ ƒ /founder
+├ ƒ /guides
+├ ƒ /guides/[slug]
+├ ○ /icon                                                1h      1y
+├ ƒ /insights
+├ ƒ /insights/[slug]
+├ ƒ /insights/-/opengraph-image
+├ ƒ /legal/cookies
+├ ƒ /legal/data-request
+├ ƒ /legal/privacy
+├ ƒ /legal/terms
+├ ○ /llms.txt                                            1d      1y
+├ ƒ /mini-courses
+├ ƒ /mini-courses/[slug]
+├ ƒ /namad
+├ ○ /opengraph-image
+├ ƒ /panel
+├ ƒ /panel/courses
+├ ƒ /panel/courses/[accessId]/watch
+├ ƒ /panel/identity-verification
+├ ƒ /panel/login
+├ ƒ /panel/mini-courses/[slug]/watch
+├ ƒ /panel/notifications
+├ ƒ /panel/orders
+├ ƒ /panel/profile
+├ ƒ /panel/reference-channel
+├ ƒ /panel/reference-channel/[id]
+├ ƒ /panel/referrals
+├ ƒ /panel/sat
+├ ƒ /panel/seminars
+├ ƒ /panel/seminars/[id]
+├ ƒ /panel/support
+├ ƒ /panel/support/[id]
+├ ƒ /pay/telegram/[token]
+├ ƒ /payment/complete
+├ ƒ /payment/result
+├ ƒ /purchase/[slug]
+├ ƒ /pwa/icon/[size]
+├ ƒ /reference-channels/[slug]
+├ ƒ /resources
+├ ƒ /resources/[slug]
+├ ○ /robots.txt
+├ ƒ /saat
+├ ƒ /sat
+├ ƒ /sat/activities
+├ ƒ /sat/calls
+├ ƒ /sat/finance
+├ ƒ /sat/integrations
+├ ƒ /sat/leads
+├ ƒ /sat/login
+├ ƒ /sat/staff
+├ ƒ /seminars/[slug]
+├ ƒ /site-manifest.webmanifest
+├ ○ /sitemap.xml                                         1m      1y
+├ ƒ /spotx
+├ ƒ /sso/bridge
+├ ƒ /telegram/auth
+├ ƒ /telegram/callback
+├ ƒ /telegram/identity
+└ ƒ /transformations
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+==> Reload PM2 (Next.js)
+[PM2] Applying action reloadProcessId on app [bahram-frontend](ids: [ 0 ])
+[PM2] [bahram-frontend](0) ✓
+==> Restart queue workers
+
+--- poll 31 (20529 bytes) ---
+├ ƒ /legal/cookies
+├ ƒ /legal/data-request
+├ ƒ /legal/privacy
+├ ƒ /legal/terms
+├ ○ /llms.txt                                            1d      1y
+├ ƒ /mini-courses
+├ ƒ /mini-courses/[slug]
+├ ƒ /namad
+├ ○ /opengraph-image
+├ ƒ /panel
+├ ƒ /panel/courses
+├ ƒ /panel/courses/[accessId]/watch
+├ ƒ /panel/identity-verification
+├ ƒ /panel/login
+├ ƒ /panel/mini-courses/[slug]/watch
+├ ƒ /panel/notifications
+├ ƒ /panel/orders
+├ ƒ /panel/profile
+├ ƒ /panel/reference-channel
+├ ƒ /panel/reference-channel/[id]
+├ ƒ /panel/referrals
+├ ƒ /panel/sat
+├ ƒ /panel/seminars
+├ ƒ /panel/seminars/[id]
+├ ƒ /panel/support
+├ ƒ /panel/support/[id]
+├ ƒ /pay/telegram/[token]
+├ ƒ /payment/complete
+├ ƒ /payment/result
+├ ƒ /purchase/[slug]
+├ ƒ /pwa/icon/[size]
+├ ƒ /reference-channels/[slug]
+├ ƒ /resources
+├ ƒ /resources/[slug]
+├ ○ /robots.txt
+├ ƒ /saat
+├ ƒ /sat
+├ ƒ /sat/activities
+├ ƒ /sat/calls
+├ ƒ /sat/finance
+├ ƒ /sat/integrations
+├ ƒ /sat/leads
+├ ƒ /sat/login
+├ ƒ /sat/staff
+├ ƒ /seminars/[slug]
+├ ƒ /site-manifest.webmanifest
+├ ○ /sitemap.xml                                         1m      1y
+├ ƒ /spotx
+├ ƒ /sso/bridge
+├ ƒ /telegram/auth
+├ ƒ /telegram/callback
+├ ƒ /telegram/identity
+└ ƒ /transformations
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+==> Reload PM2 (Next.js)
+[PM2] Applying action reloadProcessId on app [bahram-frontend](ids: [ 0 ])
+[PM2] [bahram-frontend](0) ✓
+==> Restart queue workers
+bahram-queue:bahram-queue_00: stopped
+bahram-queue:bahram-queue_01: stopped
+bahram-family-queue:bahram-family-queue_00: stopped
+bahram-family-queue:bahram-family-queue_01: stopped
+bahram-family-queue:bahram-family-queue_02: stopped
+bahram-horizon: stopped
+bahram-scheduler: stopped
+bahram-queue:bahram-queue_00: started
+bahram-queue:bahram-queue_01: started
+bahram-family-queue:bahram-family-queue_00: started
+bahram-family-queue:bahram-family-queue_01: started
+bahram-family-queue:bahram-family-queue_02: started
+bahram-horizon: started
+bahram-scheduler: started
+==> OPcache reset (if available)
+OPcache reset==> Deploy complete
+
+--- verify ---
+HEAD=ef8a20a
+app:200 club:200
+laravel:200
+BUILD_ID=x_UHRtJtWEgDU4iTNizXU
+
+

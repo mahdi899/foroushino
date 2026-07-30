@@ -1134,7 +1134,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 .admin-root .admin-login-card {
   box-sizing: border-box;
-  width: min(100%, 24rem);
+  width: min(100%, 26rem);
   min-width: 0;
   margin-inline: auto;
   border-radius: 24px;
@@ -1142,6 +1142,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   padding: 1.5rem;
+  overflow: visible;
 }
 
 .admin-root[data-admin-theme='dark'] .admin-login-screen {
@@ -1162,33 +1163,40 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 @media (min-width: 640px) {
   .admin-root .admin-login-card {
-    width: min(100%, 26rem);
+    width: min(100%, 28rem);
     padding: 2rem;
   }
 }
 
+/* Always stacked: label row + Cloudflare / math captcha row (avoids horizontal scroll). */
 .admin-root .admin-login-captcha-row {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.75rem;
   border-radius: 14px;
-}
-
-@media (min-width: 480px) {
-  .admin-root .admin-login-captcha-row {
-    flex-direction: row;
-    align-items: center;
-  }
+  overflow: visible;
 }
 
 .admin-root .admin-login-captcha {
+  display: flex;
+  width: 100%;
   min-width: 0;
-  overflow-x: auto;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: visible;
 }
 
 .admin-root .admin-login-captcha > * {
   max-width: 100%;
+  min-width: 0;
+}
+
+.admin-root .admin-login-captcha .admin-turnstile-host,
+.admin-root .admin-login-captcha .cf-turnstile {
+  width: 100% !important;
+  max-width: 100%;
+  overflow: visible;
 }
 
 .admin-root .admin-login-captcha input {

@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from 'react';
 import { CaptchaField, useCaptchaGate, type CaptchaFieldHandle } from '@/components/captcha/CaptchaField';
+import { useOptionalAdminTheme } from '@/app/admin/(panel)/AdminThemeContext';
 import { isFormProtected, type CaptchaPayload, type FormSecurityTarget } from '@/lib/captcha/types';
 
 export type FormSecurityPayload = {
@@ -24,13 +25,15 @@ export function useFormSecurity(
   const captchaRef = useRef<CaptchaFieldHandle>(null);
   const honeypotId = useId();
   const [honeypot, setHoneypot] = useState('');
+  const admin = options?.captchaAdmin ?? false;
+  // Login lives under AdminThemeProvider — sync Turnstile light/dark with the panel.
+  const adminTheme = useOptionalAdminTheme();
 
   const configLoaded = !captchaGate.loading;
   const captchaRequired = configLoaded && isFormProtected(captchaGate.config, target);
   const honeypotEnabled = captchaGate.config?.honeypot_enabled ?? true;
   const captchaReady = configLoaded && (!captchaRequired || captchaGate.fieldReady);
   const securityLoading = !configLoaded;
-  const admin = options?.captchaAdmin ?? false;
   const stacked = options?.captchaStacked ?? false;
   const band = options?.captchaBand ?? false;
   const inline = options?.captchaInline ?? true;
@@ -63,11 +66,12 @@ export function useFormSecurity(
   const captchaField = captchaRequired ? (
     <CaptchaField
       ref={captchaRef}
-      key={captchaGate.resetKey}
+      key={`${captchaGate.resetKey}-${admin && adminTheme ? adminTheme : 'site'}`}
       active={configLoaded}
       turnstileSiteKey={captchaGate.turnstileSiteKey}
       recaptchaSiteKey={captchaGate.recaptchaSiteKey}
       variant={admin ? 'admin' : 'site'}
+      turnstileTheme={admin && adminTheme ? adminTheme : 'auto'}
       compact
       inline={inline}
       tight={!admin && !band && (stacked || !!options?.captchaTight)}

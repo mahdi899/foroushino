@@ -71,7 +71,10 @@ final class MembershipGate
             $this->membershipCache->remember($telegramUserId, $chatId, $isMember);
 
             return $isMember;
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            // #region agent log
+            @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R5', 'location' => 'MembershipGate.php:isMember', 'message' => 'membership_api_error_treated_as_non_member', 'data' => ['telegramUserId' => $telegramUserId, 'chatId' => $chatId, 'errorClass' => $e::class, 'cachedFalse' => false], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+            // #endregion
             return false;
         }
     }

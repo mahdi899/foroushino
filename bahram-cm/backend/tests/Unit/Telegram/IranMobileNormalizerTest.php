@@ -46,6 +46,12 @@ class IranMobileNormalizerTest extends TestCase
             ['08121234567'],
             ['09121'],
             ['not-a-phone'],
+            ['+14155552671'],
         ];
+    }
+
+    public function test_international_mode_accepts_non_iran_numbers(): void
+    {
+        $this->assertSame('14155552671', $this->normalizer->normalize('+14155552671', false));
     }
 }

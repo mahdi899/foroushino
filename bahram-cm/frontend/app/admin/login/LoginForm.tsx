@@ -237,12 +237,12 @@ export function AdminLoginForm({ redirectFrom }: Props) {
           </div>
 
           {mounted && (captchaRequired || securityLoading) ? (
-            <div className="admin-login-captcha-row min-w-0 rounded-tile border border-border bg-surface-soft px-3 py-2.5 sm:px-4">
+            <div className="admin-login-captcha-row min-w-0 rounded-tile border border-border bg-surface-soft px-3 py-3 sm:px-4">
               <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-text-muted">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-                <span className="whitespace-nowrap">تأیید امنیتی</span>
+                <span>تأیید امنیتی</span>
               </div>
-              <div className="admin-login-captcha min-w-0 flex-1">
+              <div className="admin-login-captcha min-w-0 w-full overflow-visible">
                 {securityLoading ? (
                   <p className="text-xs text-text-muted">در حال بارگذاری…</p>
                 ) : (

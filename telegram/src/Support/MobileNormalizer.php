@@ -42,6 +42,33 @@ final class MobileNormalizer
         return null;
     }
 
+    /**
+     * Non-Iran mode: accept 8–15 digit international numbers (same rule as Iran backend).
+     */
+    public static function normalizeInternational(?string $raw): ?string
+    {
+        if ($raw === null || trim($raw) === '') {
+            return null;
+        }
+
+        $iran = self::normalize($raw);
+        if ($iran !== null) {
+            return $iran;
+        }
+
+        $digits = preg_replace('/\D+/', '', $raw) ?? '';
+        if (preg_match('/^\d{8,15}$/', $digits) === 1) {
+            return $digits;
+        }
+
+        return null;
+    }
+
+    public static function normalizeForRegistration(?string $raw, bool $iranOnly): ?string
+    {
+        return $iranOnly ? self::normalize($raw) : self::normalizeInternational($raw);
+    }
+
     /** Falls back to a trimmed original value when it doesn't look like an Iranian mobile. */
     public static function normalizeOrOriginal(string $raw): string
     {

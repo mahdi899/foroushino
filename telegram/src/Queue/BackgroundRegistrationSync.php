@@ -21,6 +21,9 @@ final class BackgroundRegistrationSync
     public function drain(): void
     {
         if ((new IranCircuitBreaker)->isOpen()) {
+            // #region agent log
+            @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R2', 'location' => 'BackgroundRegistrationSync.php:drain', 'message' => 'reg_sync_skipped_circuit_open', 'data' => ['skipped' => true], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+            // #endregion
             return;
         }
 
@@ -36,6 +39,10 @@ final class BackgroundRegistrationSync
                     'display_name' => isset($payload['display_name']) ? (string) $payload['display_name'] : null,
                     'contact_user_id' => (int) ($payload['contact_user_id'] ?? 0),
                 ], 12, allowRetry: true);
+
+                // #region agent log
+                @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R2', 'location' => 'BackgroundRegistrationSync.php:drain', 'message' => 'reg_upsert_result', 'data' => ['telegramUserId' => $telegramUserId, 'ok' => ! empty($response['ok']), 'hasAccount' => is_array($response['account'] ?? null), 'iranUserId' => (int) (($response['account']['user_id'] ?? 0)), 'convState' => (string) ($response['conversation']['state'] ?? '')], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
+                // #endregion
 
                 if (empty($response['ok'])) {
                     $this->queue->markFailed($id, (string) ($response['message'] ?? 'upsert_failed'));

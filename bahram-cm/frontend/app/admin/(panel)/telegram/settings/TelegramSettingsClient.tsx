@@ -111,6 +111,10 @@ export function TelegramSettingsClient({
                   </div>
 
                   <div className="mt-3">
+                    <BotIranMobileRow bot={bot} onSaved={() => router.refresh()} />
+                  </div>
+
+                  <div className="mt-3">
                     <BotCardToCardRow bot={bot} onSaved={() => router.refresh()} />
                   </div>
 
@@ -284,6 +288,56 @@ function BotChatIdsRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => 
         >
           {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           ذخیره گروه‌های گزارش
+        </button>
+        {status ? <span className="text-caption text-text-muted">{status}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function BotIranMobileRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => void }) {
+  const [enabled, setEnabled] = useState(Boolean(bot.iran_mobile_only ?? true));
+  const [pending, startTransition] = useTransition();
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    setEnabled(Boolean(bot.iran_mobile_only ?? true));
+  }, [bot.iran_mobile_only]);
+
+  const dirty = enabled !== Boolean(bot.iran_mobile_only ?? true);
+
+  const save = () => {
+    startTransition(async () => {
+      setStatus('');
+      const res = await updateTelegramBotAction(bot.id, { iran_mobile_only: enabled });
+      setStatus(res.ok ? 'ذخیره شد' : res.error ?? 'خطا');
+      if (res.ok) onSaved();
+    });
+  };
+
+  return (
+    <div className="rounded-lg border border-border/70 bg-surface-muted/20 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-small font-semibold text-text">تأیید فقط شماره‌های ایران</p>
+          <p className="mt-1 text-caption text-text-muted">
+            وقتی روشن است فقط موبایل ایران (09…) در ثبت‌نام بات پذیرفته می‌شود.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-caption text-text">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          فعال
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={pending || !dirty}
+          onClick={() => void save()}
+          className="btn btn-primary px-3 py-1.5 text-caption"
+        >
+          {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          ذخیره محدودیت موبایل
         </button>
         {status ? <span className="text-caption text-text-muted">{status}</span> : null}
       </div>

@@ -397,8 +397,12 @@ class TelegramHostLiveController
         }
 
         $bot = $this->productionBot();
-        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription)
-            || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
+
+        if (! $bot->featureEnabled(BotFeatureFlag::SupportEnabled)) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'ارسال پیام پشتیبانی غیرفعال است.'], 403);
+        }
+
+        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription);
 
         if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
             return $this->jsonResponse([
@@ -450,6 +454,10 @@ class TelegramHostLiveController
         }
 
         $bot = $this->productionBot();
+
+        if (! $bot->featureEnabled(BotFeatureFlag::SupportEnabled)) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'ارسال پیام پشتیبانی غیرفعال است.'], 403);
+        }
 
         if (blank($bot->reportsGroupChatId())) {
             return $this->jsonResponse(['ok' => false, 'message' => 'گروه گزارشات تنظیم نشده است.'], 503);

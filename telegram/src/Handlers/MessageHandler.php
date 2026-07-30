@@ -21,7 +21,9 @@ use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
 use TelegramHost\Services\ReferenceChannelFlow;
+use TelegramHost\Services\SubscriberEligibility;
 use TelegramHost\Support\InlineButtons;
+use TelegramHost\Support\MobileNormalizer;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
 
@@ -46,6 +48,7 @@ final class MessageHandler
         private readonly HostAdminShell $adminShell,
         private readonly HostDestinationsFlow $destinationsFlow,
         private readonly HostCardToCardFlow $cardToCard,
+        private readonly SubscriberEligibility $subscriberEligibility,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -61,7 +64,7 @@ final class MessageHandler
         }
 
         if (isset($message['contact'])) {
-            if ($this->accounts->isVerified($telegramUserId)) {
+            if ($this->userPassesVerificationGate($telegramUserId)) {
                 $this->sendMainMenu($chatId, $telegramUserId);
 
                 return;
@@ -100,6 +103,15 @@ final class MessageHandler
         }
 
         if ($conversation['state'] === 'waiting_for_support_message') {
+            if (! $this->cache->supportEnabled()) {
+                $this->conversations->set($telegramUserId, 'idle', []);
+                $this->api->sendMessage($chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.', [
+                    'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+                ]);
+
+                return;
+            }
+
             // Menu buttons / cancel exit support mode — don't swallow them as tickets.
             if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
                 $this->conversations->set($telegramUserId, 'idle', []);
@@ -109,11 +121,30 @@ final class MessageHandler
             }
             if ($this->support->isCancelText($text)) {
                 $this->conversations->set($telegramUserId, 'idle', []);
-                if (! $this->accounts->isVerified($telegramUserId)) {
+                if (! $this->userPassesVerificationGate($telegramUserId)) {
                     $this->registration->showLocalWelcome($chatId, $telegramUserId);
                 } else {
                     $this->sendMainMenu($chatId, $telegramUserId);
                 }
+
+                return;
+            }
+
+            if (! $this->cache->supportEnabled()) {
+                $this->conversations->set($telegramUserId, 'idle', []);
+                $this->api->sendMessage($chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.', [
+                    'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+                ]);
+
+                return;
+            }
+
+            if ($this->subscriberEligibility->requiresSubscriptionForSupport()
+                && ! $this->subscriberEligibility->hasQualifyingAccess($telegramUserId)) {
+                $this->conversations->set($telegramUserId, 'idle', []);
+                $this->api->sendMessage($chatId, $this->subscriberEligibility->denialMessage(), [
+                    'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+                ]);
 
                 return;
             }
@@ -214,7 +245,7 @@ final class MessageHandler
         }
 
         // Unverified users must only see the phone keyboard — never the main menu.
-        if (! $this->accounts->isVerified($telegramUserId)) {
+        if (! $this->userPassesVerificationGate($telegramUserId)) {
             $this->registration->showLocalWelcome($chatId, $telegramUserId);
 
             return;
@@ -230,7 +261,7 @@ final class MessageHandler
      */
     private function handleStart(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
-        if ($this->accounts->isVerified($telegramUserId)) {
+        if ($this->userPassesVerificationGate($telegramUserId)) {
             $this->sendMainMenu($chatId, $telegramUserId);
 
             $normalized = strtolower(ltrim((string) $startPayload, " \t=_-"));
@@ -249,7 +280,7 @@ final class MessageHandler
 
     private function handleMenuButton(int $chatId, int $telegramUserId, string $text, array $from = []): void
     {
-        if (! $this->accounts->isVerified($telegramUserId)) {
+        if (! $this->userPassesVerificationGate($telegramUserId)) {
             $this->handleStart($chatId, $telegramUserId, $from);
 
             return;
@@ -279,7 +310,11 @@ final class MessageHandler
             MainMenu::ACTION_CHANNEL => $this->referenceChannel->open($chatId, $telegramUserId),
             MainMenu::ACTION_FAMILY => $this->sendFamily($chatId, $telegramUserId),
             MainMenu::ACTION_REFERRAL => $this->sendReferral($chatId, $telegramUserId),
-            MainMenu::ACTION_SUPPORT => $this->openSupportHub($chatId),
+            MainMenu::ACTION_SUPPORT => $this->cache->supportEnabled()
+                ? $this->openSupportHub($chatId, $telegramUserId)
+                : $this->api->sendMessage($chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.', [
+                    'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+                ]),
             MainMenu::ACTION_ACCOUNT => $this->sendAccount($chatId, $telegramUserId),
             MainMenu::ACTION_ADMIN => $this->openAdminShell($chatId, $telegramUserId, $text),
             default => $this->sendMainMenu($chatId, $telegramUserId),
@@ -533,8 +568,41 @@ final class MessageHandler
         $this->api->sendMessage($chatId, (string) $result['text'], $this->cachedSnapshotMessageOptions($result));
     }
 
-    private function openSupportHub(int $chatId): void
+    public function userPassesVerificationGate(int $telegramUserId): bool
     {
+        if (! $this->accounts->isVerified($telegramUserId)) {
+            return false;
+        }
+
+        if (! $this->cache->featureEnabled('iran_mobile_only')) {
+            return true;
+        }
+
+        $account = $this->accounts->get($telegramUserId);
+        $mobile = trim((string) ($account['mobile'] ?? ''));
+
+        return $mobile !== '' && MobileNormalizer::normalize($mobile) !== null;
+    }
+
+    private function openSupportHub(int $chatId, int $telegramUserId): void
+    {
+        if (! $this->cache->supportEnabled()) {
+            $this->api->sendMessage($chatId, '⛔ ارسال پیام پشتیبانی در حال حاضر غیرفعال است.', [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
+            return;
+        }
+
+        if ($this->subscriberEligibility->requiresSubscriptionForSupport()
+            && ! $this->subscriberEligibility->hasQualifyingAccess($telegramUserId)) {
+            $this->api->sendMessage($chatId, $this->subscriberEligibility->denialMessage(), [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+
+            return;
+        }
+
         // Categories from Iran→host bootstrap push (title_fa / sort_order).
         $rows = [];
         foreach ($this->cache->supportCategories() as $category) {

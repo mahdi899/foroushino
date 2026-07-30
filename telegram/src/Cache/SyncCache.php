@@ -23,6 +23,7 @@ final class SyncCache
         'card_to_card_payment' => false,
         'sms_otp_verification' => false,
         'ticket_requires_subscription' => false,
+        'support_enabled' => true,
         'support_requires_subscription' => false,
         'checkout_zarinpal' => true,
         'checkout_c2c' => false,
@@ -384,6 +385,11 @@ final class SyncCache
         }
 
         return (int) $value === 1;
+    }
+
+    public function supportEnabled(): bool
+    {
+        return $this->featureEnabled('support_enabled');
     }
 
     /** @return list<array<string, mixed>> */

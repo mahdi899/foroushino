@@ -100,3 +100,8 @@ export function useAdminTheme() {
   if (!ctx) throw new Error('useAdminTheme must be used within AdminThemeProvider');
   return ctx;
 }
+
+/** Safe outside the admin shell (e.g. public forms that share FormCaptcha). */
+export function useOptionalAdminTheme(): AdminTheme | null {
+  return useContext(AdminThemeContext)?.theme ?? null;
+}

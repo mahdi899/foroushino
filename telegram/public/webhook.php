@@ -119,6 +119,7 @@ try {
     $ticketSync = new \TelegramHost\Queue\PendingTicketSync($pdo);
     $supportForward = new \TelegramHost\Queue\PendingSupportForward($pdo);
     $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync, $supportForward);
+    $subscriberEligibility = new \TelegramHost\Services\SubscriberEligibility($accounts, $cache);
     $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $siteBaseUrl);
     $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
@@ -145,6 +146,7 @@ try {
         $adminShell,
         $destinationsFlow,
         $cardToCardFlow,
+        $subscriberEligibility,
         $siteBaseUrl
     );
 
@@ -161,6 +163,7 @@ try {
         $registration,
         $support,
         $cardToCardFlow,
+        $subscriberEligibility,
     );
 
     $router = new UpdateRouter(
