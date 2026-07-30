@@ -84,18 +84,22 @@ function FamilyMenuSheet({
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [entered, setEntered] = useState(false);
-  const [exiting, setExiting] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
   const [pushHint, setPushHint] = useState<string | null>(null);
   const exitTimerRef = useRef<number | null>(null);
+  const exitingRef = useRef(false);
   const closedRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  // Stable callback — must NOT recreate when exit state flips, or the mount
+  // effect cleanup will clear the exit timer and the sheet never unmounts.
   const requestClose = useCallback(() => {
-    if (closedRef.current || exiting) return;
+    if (closedRef.current || exitingRef.current) return;
+    exitingRef.current = true;
     setEntered(false);
-    setExiting(true);
     // Drop focus before unmount so iOS doesn't keep a scaled visualViewport.
     if (typeof document !== 'undefined') {
       const active = document.activeElement;
@@ -105,9 +109,9 @@ function FamilyMenuSheet({
     exitTimerRef.current = window.setTimeout(() => {
       exitTimerRef.current = null;
       closedRef.current = true;
-      onClose();
+      onCloseRef.current();
     }, MENU_EXIT_MS);
-  }, [exiting, onClose]);
+  }, []);
 
   useOverlayHistoryBack('menu', requestClose);
 
@@ -123,9 +127,7 @@ function FamilyMenuSheet({
     lockBodyScroll(true);
     const frame = window.requestAnimationFrame(() => setEntered(true));
     // Avoid auto-focus on phones — iOS can nudge visualViewport / feel like a zoom.
-    const isCoarse =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    const isCoarse = window.matchMedia('(hover: none), (pointer: coarse)').matches;
     if (!isCoarse) closeBtnRef.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
@@ -136,13 +138,18 @@ function FamilyMenuSheet({
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener('keydown', onKey);
+      lockBodyScroll(false);
+    };
+  }, [requestClose]);
+
+  useEffect(() => {
+    return () => {
       if (exitTimerRef.current != null) {
         window.clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
       }
-      lockBodyScroll(false);
     };
-  }, [requestClose]);
+  }, []);
 
   const setTheme = (next: SiteTheme) => {
     familyHaptic('selection');
