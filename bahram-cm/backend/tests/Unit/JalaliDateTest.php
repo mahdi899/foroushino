@@ -29,4 +29,12 @@ class JalaliDateTest extends TestCase
         $this->assertSame('1371/1/1', $formatted);
         $this->assertMatchesRegularExpression('/^[0-9]+\/[0-9]+\/[0-9]+$/', $formatted);
     }
+
+    public function test_format_api_from_date_string_converts_gregorian_ymd_without_timezone_shift(): void
+    {
+        $this->assertSame('1371/1/1', JalaliDate::formatApiFromDateString('1992-03-21'));
+        $this->assertSame('1375/7/16', JalaliDate::formatApiFromDateString('1996-10-07'));
+        $this->assertSame('1371/1/1', JalaliDate::formatApiFromDateString('1371/01/01'));
+        $this->assertSame('1371/1/1', JalaliDate::formatApiFromDateString('1371/1/1'));
+    }
 }

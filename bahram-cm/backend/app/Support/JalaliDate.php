@@ -124,6 +124,39 @@ final class JalaliDate
         return sprintf('%d/%d/%d', $jy, $jm, $jd);
     }
 
+    /**
+     * Convert Gregorian `Y-m-d` (or already-Jalali `Y/M/D`) to api.ir birthDate format.
+     * Uses calendar components directly — no timezone shift on date-only values.
+     */
+    public static function formatApiFromDateString(string $value): string
+    {
+        $value = trim(strtr($value, [
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+            '-' => '/',
+        ]));
+
+        if (preg_match('/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/', $value, $m) !== 1) {
+            return self::formatApi(Carbon::parse($value, 'Asia/Tehran'));
+        }
+
+        $y = (int) $m[1];
+        $mo = (int) $m[2];
+        $d = (int) $m[3];
+
+        // Gregorian civil date (Laravel stores identity DOB as Y-m-d Gregorian).
+        if ($y >= 1700) {
+            [$jy, $jm, $jd] = self::toJalali($y, $mo, $d);
+
+            return sprintf('%d/%d/%d', $jy, $jm, $jd);
+        }
+
+        // Already Jalali — just strip zero-padding.
+        return sprintf('%d/%d/%d', $y, $mo, $d);
+    }
+
     /** Persian (Jalali) date + time, e.g. «۳ مرداد ۱۴۰۵ — ۱۹:۴۶». */
     public static function formatDateTime(?DateTimeInterface $date = null): string
     {

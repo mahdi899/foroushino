@@ -217,7 +217,7 @@ class SubmitIdentityVerification
             return $submission->fresh();
         }
 
-        $birthDate = JalaliDate::formatApi(\Illuminate\Support\Carbon::parse($data['date_of_birth']));
+        $birthDate = JalaliDate::formatApiFromDateString((string) $data['date_of_birth']);
 
         try {
             $outcome = $this->registry->resolveForCapability(
@@ -225,9 +225,38 @@ class SubmitIdentityVerification
                 fn ($provider) => $provider->lookup($nationalCode, $birthDate),
             );
             $result = $outcome['result'];
+            $provider = $outcome['provider'];
+            $route = $outcome['route'];
         } catch (Throwable $e) {
             report($e);
             $result = null;
+            $provider = null;
+            $route = null;
+        }
+
+        if ($result) {
+            $attemptNumber = (int) IdentityVerificationAttempt::query()
+                ->where('user_id', $submission->user_id)
+                ->where('capability', IdentityCapability::PersonInfoInquiry)
+                ->count() + 1;
+
+            IdentityVerificationAttempt::query()->create([
+                'user_id' => $submission->user_id,
+                'capability' => IdentityCapability::PersonInfoInquiry,
+                'provider' => $provider?->slug() ?? 'api-ir-shahkar',
+                'route_id' => $route?->id ? (string) $route->id : null,
+                'status' => $result->normalized_result->value,
+                'normalized_result' => $result->normalized_result,
+                'provider_code' => $result->provider_code,
+                'provider_message' => $result->provider_message
+                    ? $result->provider_message.' [birthDate='.$birthDate.']'
+                    : 'birthDate='.$birthDate,
+                'provider_request_id' => $result->provider_request_id,
+                'attempt_number' => $attemptNumber,
+                'duration_ms' => $result->duration_ms,
+                'requested_at' => now(),
+                'completed_at' => now(),
+            ]);
         }
 
         // Technical / incomplete PersonInfo: soft-fail into expert queue (same as Shahkar outage).
