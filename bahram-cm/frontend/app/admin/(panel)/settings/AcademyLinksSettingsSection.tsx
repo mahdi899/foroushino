@@ -93,9 +93,9 @@ export function AcademyLinksSettingsSection() {
         <p className="text-caption text-text-muted">در حال بارگذاری…</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {field('telegram_channel_url', 'کانال تلگرام', 'https://t.me/rostami_sup')}
-          {field('rubika_channel_url', 'کانال روبیکا', 'https://rubika.ir/rostami_sup')}
-          {field('telegram_bot_url', 'ربات تلگرام', 'https://t.me/rostami_sup')}
+          {field('telegram_channel_url', 'کانال تلگرام', 'https://t.me/rostami_cm')}
+          {field('rubika_channel_url', 'کانال روبیکا', 'https://rubika.ir/live_rostami')}
+          {field('telegram_bot_url', 'ربات تلگرام', 'https://t.me/RostamiAppBot')}
         </div>
       )}
 

@@ -75,8 +75,8 @@ class DatabaseSeeder extends Seeder
                     'cta_pricing' => true,
                     'contacts' => [
                         'whatsapp' => ['enabled' => true, 'id' => '989120000000', 'label' => '۰۹۱۲۰۰۰۰۰۰۰'],
-                        'telegram' => ['enabled' => true, 'id' => 'rostami_sup', 'label' => '@rostami_sup'],
-                        'rubika' => ['enabled' => true, 'id' => 'rostami_sup', 'label' => '@rostami_sup'],
+                        'telegram' => ['enabled' => true, 'id' => 'rostami_cm', 'label' => '@rostami_cm'],
+                        'rubika' => ['enabled' => true, 'id' => 'live_rostami', 'label' => '@live_rostami'],
                         'instagram' => ['enabled' => true, 'id' => 'live_rostami', 'label' => '@live_rostami'],
                         'phone' => ['enabled' => true, 'id' => '+982100000000', 'label' => '۰۲۱-۰۰۰۰۰۰۰۰'],
                     ],
@@ -129,6 +129,7 @@ class DatabaseSeeder extends Seeder
         $this->call(SmsCenterSeeder::class);
         $this->call(AdminTelegramSeeder::class);
         $this->call(TelegramBotSeeder::class);
+        $this->call(BrandSocialLinksSeeder::class);
         $this->call(CacheIntegrationsSeeder::class);
         $this->call(MediaHostsSeeder::class);
         $this->call(CommerceSeeder::class);

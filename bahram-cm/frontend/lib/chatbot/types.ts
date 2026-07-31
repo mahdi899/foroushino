@@ -276,8 +276,8 @@ export function chatbotLogRating(metadata: Record<string, unknown> | null | unde
 
 export const DEFAULT_CHATBOT_CONTACTS: ChatbotContacts = {
   whatsapp: { enabled: true, id: '989120000000', label: '۰۹۱۲۰۰۰۰۰۰۰' },
-  telegram: { enabled: true, id: 'rostami_sup', label: '@rostami_sup' },
-  rubika: { enabled: true, id: 'rostami_sup', label: '@rostami_sup' },
+  telegram: { enabled: true, id: 'rostami_cm', label: '@rostami_cm' },
+  rubika: { enabled: true, id: 'live_rostami', label: '@live_rostami' },
   instagram: { enabled: true, id: 'live_rostami', label: '@live_rostami' },
   phone: { enabled: true, id: '+982100000000', label: '۰۲۱-۰۰۰۰۰۰۰۰' },
 };

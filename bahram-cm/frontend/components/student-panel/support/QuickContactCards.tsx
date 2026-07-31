@@ -8,7 +8,7 @@ const CHANNELS = [
     title: 'تلگرام پشتیبانی',
     desc: 'تیم پشتیبانی رستمی در تلگرام',
     hours: 'همه روزه ۹ تا ۲۱',
-    href: siteConfig.social.telegram,
+    href: siteConfig.social.telegramBot,
     icon: Send,
     cta: 'تلگرام',
   },

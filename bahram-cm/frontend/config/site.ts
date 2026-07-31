@@ -28,12 +28,16 @@ export const siteConfig = {
     { day: 'جمعه', open: 'تعطیل', close: '' },
   ],
   social: {
+    /** Public Telegram channel (footer / SEO / social). */
+    telegram: 'https://t.me/rostami_cm',
+    /** Support / panel bot deep-link. */
+    telegramBot: 'https://t.me/RostamiAppBot',
+    rubika: 'https://rubika.ir/live_rostami',
     instagram: 'https://www.instagram.com/live_rostami/',
-    telegram: 'https://t.me/rostami_sup',
-    rubika: 'https://rubika.ir/rostami_sup',
+    telegramHandle: '@rostami_cm',
+    telegramBotHandle: '@RostamiAppBot',
+    rubikaHandle: '@live_rostami',
     instagramHandle: '@live_rostami',
-    telegramHandle: '@rostami_sup',
-    rubikaHandle: '@rostami_sup',
   },
   trust: {
     yearsExperience: '۱۰+',

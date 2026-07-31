@@ -166,7 +166,8 @@ ${formatLinks(
 ## شبکه‌های اجتماعی
 
 - [اینستاگرام ${brand}](${siteConfig.social.instagram}): کانال رسمی ${siteConfig.social.instagramHandle}
-- [تلگرام پشتیبانی](${siteConfig.social.telegram}): ${siteConfig.social.telegramHandle}
+- [کانال تلگرام](${siteConfig.social.telegram}): ${siteConfig.social.telegramHandle}
+- [ربات تلگرام](${siteConfig.social.telegramBot}): ${siteConfig.social.telegramBotHandle}
 - [روبیکا](${siteConfig.social.rubika}): ${siteConfig.social.rubikaHandle}
 - [ایمیل](mailto:${siteConfig.contact.email}): ${siteConfig.contact.email}
 

@@ -17,6 +17,7 @@ export function personJsonLd() {
     sameAs: [
       siteConfig.social.instagram,
       siteConfig.social.telegram,
+      siteConfig.social.telegramBot,
       siteConfig.social.rubika,
       "https://www.youtube.com/@bahramrostami",
     ],
