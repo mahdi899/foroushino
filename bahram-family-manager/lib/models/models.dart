@@ -265,6 +265,7 @@ class FamilyPostModel {
     this.audienceSummary,
     this.isPinned = false,
     this.publishedAt,
+    this.scheduledPublishAt,
     this.createdAt,
     this.authorName,
     this.blocks = const [],
@@ -282,6 +283,7 @@ class FamilyPostModel {
   final bool commentsEnabled;
   final bool isPinned;
   final String? publishedAt;
+  final String? scheduledPublishAt;
   final String? createdAt;
   final String? authorName;
   final List<FamilyPostBlockModel> blocks;
@@ -292,6 +294,7 @@ class FamilyPostModel {
   bool get isDraft => status == 'draft';
   bool get isPublished => status == 'published';
   bool get isArchived => status == 'archived';
+  bool get isScheduled => isDraft && scheduledPublishAt != null && scheduledPublishAt!.isNotEmpty;
 
   String get channelLabel {
     if (audienceSummary != null && audienceSummary!.isNotEmpty) {
@@ -327,6 +330,7 @@ class FamilyPostModel {
         commentsEnabled: json['comments_enabled'] != false,
         isPinned: json['is_pinned'] == true,
         publishedAt: json['published_at']?.toString(),
+        scheduledPublishAt: json['scheduled_publish_at']?.toString(),
         createdAt: json['created_at']?.toString(),
         authorName: (json['author'] as Map?)?['name']?.toString(),
         blocks: (json['blocks'] as List? ?? [])

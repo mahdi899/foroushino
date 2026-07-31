@@ -8,11 +8,11 @@ namespace TelegramHost\Security;
  * Fixed-window flood guard for the public webhook endpoint.
  * The host has no Redis, so this uses a tiny MySQL table (see db/schema.sql).
  *
- * Rules: 20 updates / 30s → block for 60s with a user-facing notice.
+ * Rules: 20 updates / 30s → silence for 5 minutes with a user-facing notice.
  */
 final class RateLimiter
 {
-    private const BLOCK_SECONDS = 60;
+    private const BLOCK_SECONDS = 300;
 
     private const NOTICE_COOLDOWN_SECONDS = 10;
 

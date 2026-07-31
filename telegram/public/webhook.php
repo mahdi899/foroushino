@@ -144,7 +144,7 @@ try {
                     $api = new BotApiClient((string) $config['bot_token']);
                     $api->sendMessage(
                         $senderId,
-                        '⏱ به دلیل ارسال پیام زیاد، تا ۱ دقیقه محدود شدید. لطفاً کمی صبر کنید.',
+                        '⏱ به‌دلیل ارسال زیاد پیام، تا ۵ دقیقه سکوت شدید. لطفاً صبر کنید.',
                     );
                 } catch (\Throwable $e) {
                     error_log('[telegram-host] rate-limit notice failed: '.$e->getMessage());

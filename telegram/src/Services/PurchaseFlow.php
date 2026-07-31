@@ -88,7 +88,7 @@ final class PurchaseFlow
 
         // Bootstrap push from Iran already carries checkout flags; no live Iran hop here.
         $zp = $this->cache->checkoutZarinpalEnabled();
-        $c2c = $this->cache->checkoutC2cEnabled();
+        $c2c = $this->cache->checkoutC2cEnabled() && $this->cache->hasCardToCardDetails();
 
         if (! $zp && ! $c2c) {
             $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('warning').' پرداخت آنلاین و کارت‌به‌کارت هر دو غیرفعال‌اند. با پشتیبانی تماس بگیرید.');

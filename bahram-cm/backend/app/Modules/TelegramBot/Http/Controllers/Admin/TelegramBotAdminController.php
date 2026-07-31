@@ -93,6 +93,7 @@ class TelegramBotAdminController
                 (array) ($data['card_to_card'] ?? []),
             );
             unset($data['card_to_card_enabled'], $data['card_to_card']);
+            $this->hostPush->refreshBootstrap();
             PushTelegramHostSyncJob::bootstrap();
         }
 

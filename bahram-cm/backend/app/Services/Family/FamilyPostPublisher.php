@@ -165,6 +165,17 @@ class FamilyPostPublisher
         return $post->fresh(['blocks.media', 'targets', 'actions.options']) ?? $post;
     }
 
+    public function unschedule(User $actor, FamilyPost $post): FamilyPost
+    {
+        abort_unless($post->status === FamilyPostStatus::Draft, 422, 'فقط پیش‌نویس قابل لغو زمان‌بندی است.');
+        abort_if($post->scheduled_publish_at === null, 422, 'این پست زمان‌بندی نشده است.');
+
+        $post->update(['scheduled_publish_at' => null]);
+        $this->audit->log($actor, 'family.post_unscheduled', $post);
+
+        return $post->fresh(['blocks.media', 'targets', 'actions.options']) ?? $post;
+    }
+
     /** Publish drafts whose scheduled time has passed. */
     public function publishDueScheduled(): int
     {

@@ -96,7 +96,9 @@ class PostListTile extends StatelessWidget {
                         children: [
                           Text(post.authorName ?? 'بهرام', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                           Text(
-                            formatDateTime(post.publishedAt ?? post.createdAt),
+                            post.isScheduled
+                                ? 'زمان‌بندی: ${formatJalaliDateTime(post.scheduledPublishAt)}'
+                                : formatDateTime(post.publishedAt ?? post.createdAt),
                             style: TextStyle(color: muted, fontSize: 12),
                           ),
                         ],
@@ -203,7 +205,7 @@ class PostListTile extends StatelessWidget {
                   ),
                 ),
               ],
-              if (isImportant || post.actions.isNotEmpty || post.isPinned) ...[
+              if (isImportant || post.actions.isNotEmpty || post.isPinned || post.isScheduled) ...[
                 const SizedBox(height: AppSpacing.md),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
@@ -216,6 +218,12 @@ class PostListTile extends StatelessWidget {
                         color: AppColors.accent,
                         icon: Icons.campaign_rounded,
                       ),
+                      if (post.isScheduled)
+                        StatusChip(
+                          label: formatJalaliDateTime(post.scheduledPublishAt),
+                          color: AppColors.gold,
+                          icon: Icons.schedule_rounded,
+                        ),
                       if (isImportant)
                         const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
                       if (post.isPinned)

@@ -176,6 +176,7 @@ class PostEditorActionBar extends StatelessWidget {
                   primary: true,
                   loading: saving,
                   onPressed: saving ? null : primaryAction,
+                  onLongPress: saving || !showInstantPublish || onSchedule == null ? null : onSchedule,
                 ),
               ),
               if (_hasMoreActions) ...[
@@ -243,6 +244,7 @@ class _GlassActionButton extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onPressed,
+    this.onLongPress,
     this.primary = false,
     this.loading = false,
   });
@@ -250,6 +252,7 @@ class _GlassActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
+  final VoidCallback? onLongPress;
   final bool primary;
   final bool loading;
 
@@ -262,6 +265,7 @@ class _GlassActionButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(

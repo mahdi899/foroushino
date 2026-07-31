@@ -7,6 +7,7 @@ use App\Enums\DiscountType;
 use App\Models\DiscountCode;
 use App\Models\Product;
 use App\Models\User;
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
 use App\Modules\TelegramBot\Enums\BotAdminRank;
@@ -27,6 +28,8 @@ use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Repositories\TelegramUpdateRepository;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Support\JalaliDate;
+use App\Services\TelegramHostPushService;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
@@ -553,7 +556,7 @@ class BotAdminPanelService
     {
         $total = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->count();
         $linked = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->whereNotNull('user_id')->count();
-        $blocked = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->where('is_blocked', true)->count();
+        $unsubscribed = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->where('is_blocked', true)->count();
         $admins = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->where('is_bot_admin', true)->count();
         $requiredChats = TelegramRequiredChat::query()->where('telegram_bot_id', $bot->id)->where('is_active', true)->count();
         $e = static fn (string $key): string => TelegramCustomEmoji::tag($key);
@@ -561,7 +564,7 @@ class BotAdminPanelService
         return $e('tools').' <b>پنل ادمین بات</b>'."\n\n"
             .'ربات: '.TelegramHtml::escape((string) $bot->display_name)
             .' ('.TelegramHtml::escape((string) $bot->key).")\n"
-            .$e('user')." مخاطبان: {$total} · متصل: {$linked} · مسدود: {$blocked}\n"
+            .$e('user')." مخاطبان: {$total} · متصل: {$linked} · ربات را بستند: {$unsubscribed}\n"
             .$e('shield')." ادمین‌های بات: {$admins}\n"
             .$e('tv')." کانال اجباری فعال: {$requiredChats}\n\n"
             .'از دکمه‌های پایین برای مدیریت استفاده کنید.'."\n"
@@ -697,16 +700,6 @@ class BotAdminPanelService
 
         if ($action === 'i') {
             $this->renderUserDetail($bot, $account, $client, $chatId, $messageId, $target);
-
-            return;
-        }
-
-        if ($action === 'b') {
-            if ($target->isPermanentBotAdmin() || $target->isBotAdmin()) {
-                throw new RuntimeException('امکان مسدود کردن ادمین از بخش کاربران وجود ندارد.');
-            }
-            $target->update(['is_blocked' => ! $target->is_blocked]);
-            $this->renderUserDetail($bot, $account, $client, $chatId, $messageId, $target->fresh());
 
             return;
         }
@@ -949,7 +942,7 @@ class BotAdminPanelService
         if ($bot->hasCardToCardDetails() && ! $bot->featureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment)) {
             $bot->setFeatureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment, true);
         }
-        \App\Jobs\PushTelegramHostSyncJob::bootstrap();
+        $this->pushBootstrapToHostNow();
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
         ]);
@@ -1536,16 +1529,13 @@ class BotAdminPanelService
     ): void {
         $text = $this->userStats->formatProfileText($target);
         if ($target->is_blocked) {
-            $text .= "\n\n🚫 وضعیت: مسدود";
+            $text .= "\n\n📴 وضعیت: ربات را در تلگرام بسته است";
         }
 
         $id = $target->id;
         $backCb = $fromAdmins || $target->isBotAdmin() ? 'admin:admins:p:0' : 'admin:u:s';
 
         $keyboard = [
-            [
-                ['text' => $target->is_blocked ? '✅ رفع مسدودیت' : '🔒 بلاک کن', 'callback_data' => 'admin:u:b:'.$id],
-            ],
             [
                 ['text' => '📩 ارسال پیام', 'callback_data' => 'admin:u:msg:'.$id],
             ],
@@ -3846,7 +3836,7 @@ class BotAdminPanelService
             }
             $bot->refresh();
             $on = $bot->toggleFeature($flag);
-            \App\Jobs\PushTelegramHostSyncJob::bootstrap();
+            $this->pushBootstrapToHostNow();
             $this->renderSettings(
                 $bot->fresh() ?? $bot,
                 $client,
@@ -4041,7 +4031,7 @@ class BotAdminPanelService
     {
         $name = $account->display_name ?: trim(($account->first_name ?? '').' '.($account->last_name ?? ''));
         $name = $name !== '' ? $name : (string) $account->telegram_user_id;
-        $flags = ($account->is_blocked ? '🚫' : '').($account->is_bot_admin ? '🛠' : '');
+        $flags = ($account->is_blocked ? '📴' : '').($account->is_bot_admin ? '🛠' : '');
 
         return mb_substr($flags.$name, 0, 35);
     }
@@ -4113,6 +4103,26 @@ class BotAdminPanelService
         imagedestroy($square);
 
         return $jpgPath;
+    }
+
+    /**
+     * Push bootstrap to the foreign host immediately so checkout flags (C2C/ZP)
+     * appear in the bot without waiting for the telegram-host queue.
+     */
+    private function pushBootstrapToHostNow(): void
+    {
+        try {
+            $ok = app(TelegramHostPushService::class)->refreshBootstrap();
+            if (! $ok) {
+                PushTelegramHostSyncJob::bootstrap();
+                Log::channel('telegram')->warning('Telegram host bootstrap push queued after immediate push failed.');
+            }
+        } catch (\Throwable $e) {
+            PushTelegramHostSyncJob::bootstrap();
+            Log::channel('telegram')->warning('Telegram host bootstrap push failed; queued.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
