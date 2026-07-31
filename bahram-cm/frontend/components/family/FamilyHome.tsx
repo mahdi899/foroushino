@@ -28,6 +28,8 @@ export function FamilyHome({
   memberCount,
   needsOnboarding,
   needsName,
+  initialFirstName = '',
+  initialLastName = '',
   initialFeed = null,
   initialBranding,
   initialMemberCount,
@@ -38,6 +40,8 @@ export function FamilyHome({
   memberCount?: number;
   needsOnboarding: boolean;
   needsName: boolean;
+  initialFirstName?: string;
+  initialLastName?: string;
   initialFeed?: FamilyFeedResponse | null;
   initialBranding?: FamilyBranding;
   initialMemberCount?: number;
@@ -109,6 +113,8 @@ export function FamilyHome({
             notificationsActive={notificationsOpen}
             isLoggedIn={!isGuest}
             needsName={needsName}
+            initialFirstName={initialFirstName}
+            initialLastName={initialLastName}
             onOpenNotifications={openNotifications}
             onCloseNotifications={closeNotifications}
           />
@@ -131,6 +137,8 @@ export function FamilyHome({
           onCloseNotifications={closeNotifications}
           focusPostId={focusPostId}
           needsName={needsName}
+          initialFirstName={initialFirstName}
+          initialLastName={initialLastName}
         />
       </FamilyMain>
     </>

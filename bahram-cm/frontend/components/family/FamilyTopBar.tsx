@@ -55,6 +55,8 @@ export function FamilyTopBar({
   notificationsActive = false,
   isLoggedIn = false,
   needsName = false,
+  initialFirstName = '',
+  initialLastName = '',
   onOpenNotifications,
   onCloseNotifications,
 }: {
@@ -66,6 +68,8 @@ export function FamilyTopBar({
   notificationsActive?: boolean;
   isLoggedIn?: boolean;
   needsName?: boolean;
+  initialFirstName?: string;
+  initialLastName?: string;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
@@ -186,7 +190,13 @@ export function FamilyTopBar({
                     )}
                   </button>
                 ) : null}
-                <FamilyMenuButton className="lg:hidden" isLoggedIn={isLoggedIn} needsName={needsName} />
+                <FamilyMenuButton
+                  className="lg:hidden"
+                  isLoggedIn={isLoggedIn}
+                  needsName={needsName}
+                  initialFirstName={initialFirstName}
+                  initialLastName={initialLastName}
+                />
               </div>
             </>
           )}

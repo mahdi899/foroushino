@@ -210,72 +210,69 @@ export function FamilyNotificationsPanel({
   };
 
   return (
-    <div
-      className={cn(
-        'family-wallpaper-surface flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden',
-        className,
-      )}
-    >
+    <div className={cn('family-wallpaper-surface min-h-0 min-w-0 flex-1 overflow-x-hidden', className)}>
       <FamilyFeedWallpaper />
-      <header className="family-panel-header shrink-0">
-        <div className="family-notif-header-inner">
-          {onClose ? (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="بازگشت به فید"
-              title="بازگشت"
-              className="family-topbar__back"
-            >
-              <ChevronRight className="family-topbar__back-icon" aria-hidden />
-            </button>
-          ) : (
-            <span className="family-topbar__back invisible" aria-hidden />
-          )}
-          <h2 className="family-panel-title">
-            <Bell className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
-            اعلان‌ها
-            {unreadCount > 0 && (
-              <span className="family-notif-header-badge">{unreadCount.toLocaleString('fa-IR')}</span>
+      <div className="family-wallpaper-surface__content">
+        <header className="family-panel-header shrink-0">
+          <div className="family-notif-header-inner">
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="بازگشت به فید"
+                title="بازگشت"
+                className="family-topbar__back"
+              >
+                <ChevronRight className="family-topbar__back-icon" aria-hidden />
+              </button>
+            ) : (
+              <span className="family-topbar__back invisible" aria-hidden />
             )}
-          </h2>
-          {unreadCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => void handleMarkAll()}
-              className="family-notif-mark-all"
-            >
-              <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
-              همه
-            </button>
-          ) : (
-            <span className="family-topbar__back invisible" aria-hidden />
-          )}
-        </div>
-      </header>
+            <h2 className="family-panel-title">
+              <Bell className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
+              اعلان‌ها
+              {unreadCount > 0 && (
+                <span className="family-notif-header-badge">{unreadCount.toLocaleString('fa-IR')}</span>
+              )}
+            </h2>
+            {unreadCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => void handleMarkAll()}
+                className="family-notif-mark-all"
+              >
+                <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
+                همه
+              </button>
+            ) : (
+              <span className="family-topbar__back invisible" aria-hidden />
+            )}
+          </div>
+        </header>
 
-      <div className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-        <div className="family-notif-panel">
-          {isLoading ? (
-            <div className="family-notif-list" aria-busy aria-label="در حال بارگذاری اعلان‌ها">
-              {Array.from({ length: 6 }, (_, i) => (
-                <NotificationSkeleton key={i} index={i} />
-              ))}
-            </div>
-          ) : notifications.length === 0 ? (
-            <NotificationsEmpty />
-          ) : (
-            <div className="family-notif-list">
-              {notifications.map((notification, index) => (
-                <NotificationRow
-                  key={notification.id}
-                  notification={notification}
-                  index={index}
-                  onRead={handleMarkRead}
-                />
-              ))}
-            </div>
-          )}
+        <div className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+          <div className="family-notif-panel">
+            {isLoading ? (
+              <div className="family-notif-list" aria-busy aria-label="در حال بارگذاری اعلان‌ها">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <NotificationSkeleton key={i} index={i} />
+                ))}
+              </div>
+            ) : notifications.length === 0 ? (
+              <NotificationsEmpty />
+            ) : (
+              <div className="family-notif-list">
+                {notifications.map((notification, index) => (
+                  <NotificationRow
+                    key={notification.id}
+                    notification={notification}
+                    index={index}
+                    onRead={handleMarkRead}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

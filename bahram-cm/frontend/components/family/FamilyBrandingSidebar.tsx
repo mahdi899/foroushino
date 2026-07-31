@@ -30,6 +30,8 @@ export function FamilyBrandingSidebar({
   notificationsActive = false,
   isLoggedIn = false,
   needsName = false,
+  initialFirstName = '',
+  initialLastName = '',
   onOpenNotifications,
   onCloseNotifications,
 }: {
@@ -40,6 +42,8 @@ export function FamilyBrandingSidebar({
   notificationsActive?: boolean;
   isLoggedIn?: boolean;
   needsName?: boolean;
+  initialFirstName?: string;
+  initialLastName?: string;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
@@ -113,6 +117,8 @@ export function FamilyBrandingSidebar({
               className="family-sidebar__tool-btn"
               isLoggedIn={isLoggedIn}
               needsName={needsName}
+              initialFirstName={initialFirstName}
+              initialLastName={initialLastName}
             />
           </nav>
 
