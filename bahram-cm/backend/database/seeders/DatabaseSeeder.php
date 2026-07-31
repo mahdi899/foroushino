@@ -126,6 +126,7 @@ class DatabaseSeeder extends Seeder
         $this->call(MediaHostsSeeder::class);
         $this->call(CommerceSeeder::class);
         $this->call(SeminarSeeder::class);
+        $this->call(SeminarZaferaniyehAttendeesSeeder::class);
         $this->call(MiniCourseSeeder::class);
         $this->call(FamilySeeder::class);
         $this->call(LocalDemoStudentSeeder::class);

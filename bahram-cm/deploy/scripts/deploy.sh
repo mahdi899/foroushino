@@ -24,6 +24,13 @@ composer install --no-dev --optimize-autoloader --no-interaction
 echo "==> Run migrations"
 php artisan migrate --force
 
+# Re-apply durable Zaferaniyeh seminar roster (Excel + extras). Idempotent replace.
+# Frontend build does not touch DB; this keeps attendees intact across deploys/reseeds of seminar meta.
+if [[ -f "$APP_ROOT/backend/database/data/seminar_zaferaniyeh_attendees.json" ]]; then
+  echo "==> Sync seminar attendee roster"
+  php artisan seminar:sync-attendee-roster || echo "WARN: seminar:sync-attendee-roster failed"
+fi
+
 echo "==> Laravel production caches"
 php artisan config:cache
 php artisan route:cache
