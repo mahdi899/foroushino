@@ -14,6 +14,9 @@ vite.config.d.ts
 # Local tooling (Flutter SDK downloads)
 .tools/
 
+# Flutter pub cache (must never live in the repo; set PUB_CACHE outside the tree)
+.pub-cache/
+
 # Python (bahram-cm backend)
 __pycache__/
 *.py[cod]
