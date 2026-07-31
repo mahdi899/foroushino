@@ -40,6 +40,53 @@ saat/deploy/deploy.env
 .tmp/
 .tmp_*
 *.bundle
+*.patch
+
+# One-off deploy / smoke / diagnostic Python helpers (repo-wide)
+**/deploy-*.py
+**/deploy_*.py
+**/smoke-*.py
+**/probe-*.py
+**/check-deploy*.py
+**/check-host*.py
+**/check-infra*.py
+**/check-server*.py
+**/check-quick*.py
+**/check-progress*.py
+**/check-full-log*.py
+**/cleanup-remote*.py
+**/debug-push*.py
+**/upload-telegram-*.py
+**/emergency-*.py
+**/hotfix-*.py
+**/finish-deploy-remote.py
+**/finish-build.py
+**/reset-circuit*.py
+**/retry-host*.py
+**/push-host*.py
+**/ssh-check*.py
+**/ssh-verify*.py
+**/run-remote-deploy.py
+**/apply-updating-page.py
+**/backend-finish.py
+**/backend-finish.txt
+**/test-push-*.py
+**/test-minimal-*.py
+**/diagnose-deploy*.php
+**/diagnose-iran*
+**/publish-wallpaper.php
+**/publish-family-wallpapers.php
+
+# One-off deploy shell helpers (keep bahram-cm/deploy/scripts/*.sh tracked)
+**/remote-deploy.sh
+**/remote-wallpaper-deploy.sh
+**/fix-club-wallpaper.sh
+
+# Remote-ops helpers under deploy/scripts (may contain server credentials)
+**/deploy/scripts/*-remote.py
+**/deploy/scripts/pull-production-db.py
+**/deploy/scripts/apply-cloudflare-cache-rules.py
+**/deploy/scripts/apply-db-tuning-remote.py
 bahram-cm/deploy/scripts/_*
 bahram-cm/deploy/scripts/saat_probe.txt
 **/deploy/scripts/remote-*.py
@@ -47,6 +94,25 @@ bahram-cm/deploy/scripts/saat_probe.txt
 **/deploy/scripts/debug-*.py
 **/deploy/scripts/fix-ssl-*.py
 **/deploy/scripts/verify-*.py
+
+# Deploy / import dumps and local reports
+**/deploy-status.txt
+**/deploy-*.log
+**/server-check.txt
+**/full-log-check.txt
+**/seminar-compare-report*
+**/seminar-attendees-export*
+**/seminar-excel-preview*
+**/campaign-*.csv
+**/telegram-host-upload-notes.txt
+**/debug-push*.txt
+**/retry-host-sync.txt
+**/reset-circuit-push.txt
+**/test-push-*.txt
+**/test-minimal-*.txt
+**/upload-telegram-*.txt
+**/deploy-iran-finish.txt
+**/diagnose-iran.txt
 
 # Ad-hoc one-off SSH/deploy/diagnostic scripts at repo root — these tend to
 # contain hardcoded server credentials and must never be committed.
