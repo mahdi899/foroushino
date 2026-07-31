@@ -119,7 +119,7 @@ export function CourseAccessCard({
         ) : (
           <span className="panel-text-meta flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
             {!hasSpotPlayer
-              ? 'این محصول پخش آنلاین SpotPlayer ندارد'
+              ? 'این محصول لایسنس SpotPlayer ندارد'
               : course.is_active
                 ? 'لایسنس دوره به‌زودی فعال می‌شود'
                 : 'دسترسی این دوره غیرفعال است'}

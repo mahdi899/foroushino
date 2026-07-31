@@ -23,6 +23,7 @@ use TelegramHost\Queue\BackgroundDrainCoordinator;
 use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Queue\PendingAccountRefresh;
 use TelegramHost\Queue\PendingCheckoutRevoke;
+use TelegramHost\Queue\PendingCheckoutStart;
 use TelegramHost\Queue\PendingMembershipSync;
 use TelegramHost\Queue\PendingRegistrationSync;
 use TelegramHost\Queue\PendingSupportForward;
@@ -52,6 +53,16 @@ try {
     $accountRefreshQueue = new PendingAccountRefresh($pdo);
     $hybridCache = new HybridAccountCache($accounts, $accountRefreshQueue, $config);
 
+    $mainMenu = new \TelegramHost\Services\MainMenu($cache, $accounts);
+    $live = new \TelegramHost\Http\ResilientLiveClient(
+        $liveClient,
+        $api,
+        new \TelegramHost\Services\IranFailureReporter($api, $cache, $accounts, $config),
+    );
+    $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
+    $accountSync = new \TelegramHost\Account\AccountSyncCoordinator($accounts, $sync);
+    $checkoutStartQueue = new PendingCheckoutStart($pdo);
+
     $coordinator = new BackgroundDrainCoordinator(
         new PendingRegistrationSync($pdo),
         $supportForward,
@@ -65,6 +76,11 @@ try {
         max(1, (int) ($config['iran_relay_per_webhook'] ?? 4)),
         $accountRefreshQueue,
         $hybridCache,
+        $checkoutStartQueue,
+        $api,
+        $cache,
+        $cardToCardFlow,
+        $accountSync,
         new PendingCheckoutRevoke($pdo),
     );
 

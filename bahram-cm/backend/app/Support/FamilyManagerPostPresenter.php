@@ -26,6 +26,7 @@ final class FamilyManagerPostPresenter
             'is_pinned' => (bool) $post->is_pinned,
             'pinned_at' => FamilyDateTime::toApi($post->pinned_at),
             'published_at' => FamilyDateTime::toApi($post->published_at),
+            'scheduled_publish_at' => FamilyDateTime::toApi($post->scheduled_publish_at),
             'created_at' => FamilyDateTime::toApi($post->created_at),
             'author' => [
                 'name' => $post->author?->name ?? 'بهرام',

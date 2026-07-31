@@ -631,6 +631,7 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::patch('posts/{post}', [FamilyManagerPostController::class, 'update'])->whereNumber('post')->middleware('family.manage:family.posts.create');
     Route::post('posts/{post}/publish', [FamilyManagerPostController::class, 'publish'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/schedule', [FamilyManagerPostController::class, 'schedule'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::post('posts/{post}/unschedule', [FamilyManagerPostController::class, 'unschedule'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/archive', [FamilyManagerPostController::class, 'archive'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/recover', [FamilyManagerPostController::class, 'recover'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/pin', [FamilyManagerPostController::class, 'pin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');

@@ -1,50 +1,5 @@
-import { siteStorageMedia } from '@/config/media';
 import { cn } from '@/lib/cn';
-
-const PLATFORMS: {
-  id: string;
-  label: string;
-  logo: string;
-  href?: string;
-  comingSoon?: boolean;
-}[] = [
-  {
-    id: 'windows',
-    label: 'Windows',
-    logo: siteStorageMedia('platform-windows.png'),
-    href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.exe',
-  },
-  {
-    id: 'macos',
-    label: 'MacOS',
-    logo: siteStorageMedia('platform-macos.png'),
-    href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.dmg',
-  },
-  {
-    id: 'android',
-    label: 'Android',
-    logo: siteStorageMedia('platform-android.png'),
-    href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.apk',
-  },
-  {
-    id: 'web',
-    label: 'Web',
-    logo: siteStorageMedia('platform-web.png'),
-    href: 'https://app.spotplayer.ir/',
-  },
-  {
-    id: 'ios',
-    label: 'iOS',
-    logo: siteStorageMedia('platform-ios.png'),
-    comingSoon: true,
-  },
-  {
-    id: 'ubuntu',
-    label: 'Ubuntu',
-    logo: siteStorageMedia('platform-ubuntu.png'),
-    comingSoon: true,
-  },
-];
+import { SPOTPLAYER_DOWNLOADS } from '@/lib/spotplayer/downloads';
 
 function PlatformTile({
   label,
@@ -99,9 +54,12 @@ function PlatformTile({
 export function SpotPlayerDownloadGrid() {
   return (
     <div className="card p-4">
-      <h3 className="panel-card-title mb-2">دانلود SpotPlayer</h3>
+      <h3 className="panel-card-title mb-1">دانلود نرم‌افزار SpotPlayer</h3>
+      <p className="panel-text-caption mb-3 leading-relaxed text-text-muted">
+        دوره را فقط در اپ ویندوز یا اندروید باز کنید؛ پخش آنلاین وب پشتیبانی نمی‌شود.
+      </p>
       <div className="grid grid-cols-3 gap-0">
-        {PLATFORMS.map((platform) => (
+        {SPOTPLAYER_DOWNLOADS.map((platform) => (
           <PlatformTile
             key={platform.id}
             label={platform.label}

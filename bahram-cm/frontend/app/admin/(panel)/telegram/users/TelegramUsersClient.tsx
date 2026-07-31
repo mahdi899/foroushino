@@ -7,7 +7,6 @@ import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
 import {
   grantTelegramBotAdminByTelegramIdAction,
-  toggleTelegramAccountBlockAction,
   toggleTelegramBotAdminAction,
   unlinkTelegramAccountAction,
 } from '../actions';
@@ -38,9 +37,6 @@ export function TelegramUsersClient({
 
   const actions = (a: TelegramAccountView) => (
     <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={pending} className="btn btn-secondary text-caption px-2 py-1" onClick={() => run(() => toggleTelegramAccountBlockAction(a.id, !a.is_blocked))}>
-        {a.is_blocked ? 'رفع مسدودیت' : 'مسدود'}
-      </button>
       <button type="button" disabled={pending || !!a.is_permanent_bot_admin} className="btn btn-secondary text-caption px-2 py-1" onClick={() => run(() => toggleTelegramBotAdminAction(a.id, !a.is_bot_admin, 'simple'))}>
         {a.is_bot_admin ? 'حذف ادمین' : 'ادمین ساده'}
       </button>
@@ -102,7 +98,7 @@ export function TelegramUsersClient({
                   label: 'وضعیت',
                   value: (
                     <span className="inline-flex flex-wrap gap-1">
-                      <Badge tone={a.is_blocked ? 'danger' : a.is_linked ? 'success' : 'warning'}>{a.is_blocked ? 'مسدود' : a.is_linked ? 'متصل' : 'ثبت‌نام'}</Badge>
+                      <Badge tone={a.is_blocked ? 'danger' : a.is_linked ? 'success' : 'warning'}>{a.is_blocked ? 'ربات را بستند' : a.is_linked ? 'متصل' : 'ثبت‌نام'}</Badge>
                       {a.is_bot_admin ? (
                         <Badge tone="accent">
                           {a.is_permanent_bot_admin ? 'ادمین دائمی' : a.bot_admin_rank === 'super' ? 'ادمین برتر' : 'ادمین ساده'}
@@ -129,7 +125,7 @@ export function TelegramUsersClient({
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-1">
                   <Badge tone={a.is_blocked ? 'danger' : a.is_linked ? 'success' : 'warning'}>
-                    {a.is_blocked ? 'مسدود' : a.is_linked ? 'متصل' : 'ثبت‌نام'}
+                    {a.is_blocked ? 'ربات را بستند' : a.is_linked ? 'متصل' : 'ثبت‌نام'}
                   </Badge>
                   {a.is_bot_admin ? (
                     <Badge tone="accent">

@@ -4,7 +4,7 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
   {
     href: '/admin/telegram/users',
     label: 'کاربران و ادمین‌های بات',
-    description: 'لیست مخاطبان، مسدود کردن، و تعیین ادمین ساده/برتر داخل ربات',
+    description: 'لیست مخاطبان و تعیین ادمین ساده/برتر داخل ربات',
     icon: 'Users',
     tone: 'blue',
     permission: 'telegram.users.view',

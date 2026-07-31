@@ -6,6 +6,7 @@ import 'package:bahram_family_manager/core/utils/file_download.dart';
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 
 /// All calls under `/api/v1/family-manager/*` — the Bahram + authorized-admin
 /// surface. Every route is additionally guarded server-side by the
@@ -188,6 +189,11 @@ class FamilyManagerService {
     final res = await api.post('$_base/posts/$id/schedule', data: {
       'publish_at': publishAt.toUtc().toIso8601String(),
     });
+    return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<FamilyPostModel> unschedulePost(int id) async {
+    final res = await api.post('$_base/posts/$id/unschedule');
     return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
@@ -377,12 +383,52 @@ class FamilyManagerService {
     required String type,
     bool? optimizeImages,
     void Function(double progress)? onProgress,
+    MediaUploadStateCallback? onUploadState,
   }) async {
     final size = bytes.length;
     if (size <= _chunkThresholdBytes) {
-      return _uploadSimple(bytes, filename, type, optimizeImages: optimizeImages, onProgress: onProgress);
+      return _uploadSimple(
+        bytes,
+        filename,
+        type,
+        optimizeImages: optimizeImages,
+        onProgress: onProgress,
+        onUploadState: onUploadState,
+      );
     }
-    return _uploadChunked(bytes, filename, type, optimizeImages: optimizeImages, onProgress: onProgress);
+    return _uploadChunked(
+      bytes,
+      filename,
+      type,
+      optimizeImages: optimizeImages,
+      onProgress: onProgress,
+      onUploadState: onUploadState,
+    );
+  }
+
+  void _reportUploadState(
+    MediaUploadStateCallback? onUploadState,
+    void Function(double progress)? onProgress,
+    MediaUploadPhase phase,
+    double progress,
+  ) {
+    onUploadState?.call(phase, progress);
+    if (phase == MediaUploadPhase.uploading || phase == MediaUploadPhase.finalizing) {
+      onProgress?.call(progress);
+    }
+  }
+
+  void _reportMediaPipelineState(
+    FamilyMediaRef media,
+    MediaUploadStateCallback? onUploadState,
+  ) {
+    if (media.isReady) {
+      onUploadState?.call(MediaUploadPhase.ready, 1);
+    } else if (media.status == 'failed') {
+      onUploadState?.call(MediaUploadPhase.failed, 0);
+    } else {
+      onUploadState?.call(MediaUploadPhase.processing, 0.96);
+    }
   }
 
   Future<FamilyMediaRef> _uploadSimple(
@@ -391,7 +437,10 @@ class FamilyManagerService {
     String type, {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
+    MediaUploadStateCallback? onUploadState,
   }) async {
+    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0);
+
     final form = FormData.fromMap({
       'type': type,
       'file': MultipartFile.fromBytes(bytes, filename: filename),
@@ -402,10 +451,15 @@ class FamilyManagerService {
       '$_base/media',
       form,
       onSendProgress: (sent, total) {
-        if (total > 0) onProgress?.call(sent / total);
+        if (total > 0) {
+          final p = (sent / total) * 0.95;
+          _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, p);
+        }
       },
     );
-    return FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
+    final media = FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
+    _reportMediaPipelineState(media, onUploadState);
+    return media;
   }
 
   Future<FamilyMediaRef> _uploadChunked(
@@ -414,8 +468,11 @@ class FamilyManagerService {
     String type, {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
+    MediaUploadStateCallback? onUploadState,
   }) async {
     final totalSize = bytes.length;
+
+    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0);
 
     final sessionRes = await api.post('$_base/media/sessions', data: {
       'type': type,
@@ -438,11 +495,15 @@ class FamilyManagerService {
         'chunk': MultipartFile.fromBytes(chunk, filename: 'chunk_$index'),
       });
       await api.postForm('$_base/media/sessions/$ulid/chunk', form);
-      onProgress?.call((index + 1) / totalChunks);
+      final p = ((index + 1) / totalChunks) * 0.90;
+      _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, p);
     }
 
+    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.finalizing, 0.92);
     final completeRes = await api.post('$_base/media/sessions/$ulid/complete');
-    return FamilyMediaRef.fromJson((completeRes['data'] as Map).cast<String, dynamic>());
+    final media = FamilyMediaRef.fromJson((completeRes['data'] as Map).cast<String, dynamic>());
+    _reportMediaPipelineState(media, onUploadState);
+    return media;
   }
 
   Future<FamilyMediaRef> showMedia(int id) async {
@@ -456,22 +517,29 @@ class FamilyManagerService {
     Duration timeout = const Duration(minutes: 3),
     Duration interval = const Duration(seconds: 2),
     void Function(FamilyMediaRef media)? onUpdate,
+    MediaUploadStateCallback? onUploadState,
   }) async {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       final media = await showMedia(id);
       onUpdate?.call(media);
-      if (media.isReady) return media;
+      if (media.isReady) {
+        onUploadState?.call(MediaUploadPhase.ready, 1);
+        return media;
+      }
       if (media.status == 'failed') {
+        onUploadState?.call(MediaUploadPhase.failed, 0);
         throw ApiException(
           message: media.failureReason ?? 'پردازش رسانه ناموفق بود.',
           code: 'media_failed',
         );
       }
+      onUploadState?.call(MediaUploadPhase.processing, 0.96);
       await Future<void>.delayed(interval);
     }
+    onUploadState?.call(MediaUploadPhase.failed, 0);
     throw ApiException(
-      message: 'پردازش رسانه هنوز تمام نشده. چند لحظه صبر کنید و دوباره «انتشار» بزنید.',
+      message: 'فایل روی هاست هنوز آماده نیست. چند لحظه صبر کنید و دوباره تلاش کنید.',
       code: 'media_timeout',
     );
   }

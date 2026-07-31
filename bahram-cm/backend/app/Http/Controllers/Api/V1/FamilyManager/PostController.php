@@ -211,6 +211,13 @@ class PostController extends Controller
         return ApiResponse::success(FamilyManagerPostPresenter::present($scheduled));
     }
 
+    public function unschedule(Request $request, FamilyPost $post): JsonResponse
+    {
+        $unscheduled = $this->publisher->unschedule($request->user(), $post);
+
+        return ApiResponse::success(FamilyManagerPostPresenter::present($unscheduled));
+    }
+
     public function archive(Request $request, FamilyPost $post): JsonResponse
     {
         $post->update([

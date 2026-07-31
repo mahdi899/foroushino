@@ -144,7 +144,7 @@ try {
                     $api = new BotApiClient((string) $config['bot_token']);
                     $api->sendMessage(
                         $senderId,
-                        '⏱ به دلیل ارسال پیام زیاد، تا ۱ دقیقه محدود شدید. لطفاً کمی صبر کنید.',
+                        '⏱ به‌دلیل ارسال زیاد پیام، تا ۵ دقیقه سکوت شدید. لطفاً صبر کنید.',
                     );
                 } catch (\Throwable $e) {
                     error_log('[telegram-host] rate-limit notice failed: '.$e->getMessage());
@@ -192,11 +192,12 @@ try {
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
     $checkoutRevokeQueue = new \TelegramHost\Queue\PendingCheckoutRevoke($pdo);
+    $checkoutStartQueue = new \TelegramHost\Queue\PendingCheckoutStart($pdo);
     $membership = new MembershipGate($cache, $api, $membershipCheckCache);
     $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess, $accountSync);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
-    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview, $cardToCardFlow, $accounts, $accountSync, $checkoutRevokeQueue);
+    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview, $cardToCardFlow, $accounts, $accountSync, $checkoutRevokeQueue, $checkoutStartQueue);
     $ticketSync = new \TelegramHost\Queue\PendingTicketSync($pdo);
     $supportForward = new \TelegramHost\Queue\PendingSupportForward($pdo);
     $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync, $supportForward);
@@ -317,6 +318,11 @@ try {
                 $maxRelay,
                 $accountRefreshQueue,
                 $hybridCache,
+                $checkoutStartQueue,
+                $api,
+                $cache,
+                $cardToCardFlow,
+                $accountSync,
                 $checkoutRevokeQueue,
             ))->drainOnce($drainPerQueue);
 

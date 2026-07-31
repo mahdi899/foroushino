@@ -87,8 +87,14 @@ final class SyncCache
 
         $flags = (array) ($bootstrap['bot']['features'] ?? []);
         $checkout = (array) ($bootstrap['checkout'] ?? []);
-        $flags['checkout_zarinpal'] = (bool) ($checkout['zarinpal_enabled'] ?? ($flags['zarinpal_payment'] ?? true));
-        $flags['checkout_c2c'] = (bool) ($checkout['c2c_enabled'] ?? ($flags['card_to_card_payment'] ?? false));
+        $zpEnabled = (bool) ($checkout['zarinpal_enabled'] ?? false)
+            || (bool) ($flags['zarinpal_payment'] ?? true);
+        $c2cEnabled = (bool) ($checkout['c2c_enabled'] ?? false)
+            || (bool) ($flags['card_to_card_payment'] ?? false);
+        $flags['checkout_zarinpal'] = $zpEnabled;
+        $flags['checkout_c2c'] = $c2cEnabled;
+        $flags['zarinpal_payment'] = $zpEnabled;
+        $flags['card_to_card_payment'] = $c2cEnabled;
         $flags['bot_is_active'] = (bool) ($bootstrap['bot']['is_active'] ?? true);
 
         $cardToCard = (array) ($checkout['card_to_card'] ?? []);
@@ -549,12 +555,14 @@ final class SyncCache
 
     public function checkoutZarinpalEnabled(): bool
     {
-        return $this->featureEnabled('checkout_zarinpal');
+        return $this->featureEnabled('checkout_zarinpal')
+            || $this->featureEnabled('zarinpal_payment');
     }
 
     public function checkoutC2cEnabled(): bool
     {
-        return $this->featureEnabled('checkout_c2c');
+        return $this->featureEnabled('checkout_c2c')
+            || $this->featureEnabled('card_to_card_payment');
     }
 
     /** Write-through after live checkout/flags so UI matches Iran immediately. */

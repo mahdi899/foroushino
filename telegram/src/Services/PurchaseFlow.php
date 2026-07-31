@@ -8,6 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Queue\PendingCheckoutRevoke;
+use TelegramHost\Queue\PendingCheckoutStart;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Support\InlineButtons;
@@ -27,6 +28,7 @@ final class PurchaseFlow
         private readonly ?AccountCache $accounts = null,
         private readonly ?AccountSyncCoordinator $accountSync = null,
         private readonly ?PendingCheckoutRevoke $checkoutRevokeQueue = null,
+        private readonly ?PendingCheckoutStart $checkoutStartQueue = null,
     ) {}
 
     public function applyDiscountCode(int $chatId, int $telegramUserId, string $code): void
@@ -86,7 +88,7 @@ final class PurchaseFlow
 
         // Bootstrap push from Iran already carries checkout flags; no live Iran hop here.
         $zp = $this->cache->checkoutZarinpalEnabled();
-        $c2c = $this->cache->checkoutC2cEnabled();
+        $c2c = $this->cache->checkoutC2cEnabled() && $this->cache->hasCardToCardDetails();
 
         if (! $zp && ! $c2c) {
             $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('warning').' پرداخت آنلاین و کارت‌به‌کارت هر دو غیرفعال‌اند. با پشتیبانی تماس بگیرید.');
@@ -123,60 +125,15 @@ final class PurchaseFlow
         }
 
         $coupon = $this->couponFromContext($telegramUserId);
-        $loading = $this->api->sendMessageResult($chatId, '⏳ در حال آماده‌سازی پرداخت...');
+        $loading = $this->api->sendMessageResult($chatId, $this->buildCheckoutLoadingText('zp', $productId, $coupon));
         $loadingId = (int) ($loading['message_id'] ?? 0);
 
-        $result = $this->live->checkoutZarinpal($chatId, $telegramUserId, $productId, $coupon);
-
-        if (! empty($result['offline'])) {
-            $this->replaceLoadingMessage($chatId, $loadingId, $this->cache->message(
-                'payment_retry_soon',
-                'اتصال به سرور پرداخت لحظه‌ای برقرار نشد. با دکمه زیر دوباره تلاش کنید.',
-            ), [
+        if (! $this->enqueueCheckoutStart($chatId, $telegramUserId, $loadingId, 'zp', $productId, $coupon)) {
+            $this->replaceLoadingMessage($chatId, $loadingId, 'سرور در حال حاضر پاسخگو نیست، لطفا مجددا تلاش کنید', [
                 'reply_markup' => [
                     'inline_keyboard' => [[InlineButtons::callback('تلاش دوباره', 'pay:zp:'.$productId, 'money', 'success')]],
                 ],
             ]);
-
-            return;
-        }
-
-        if (empty($result['ok'])) {
-            $this->syncOwnedProductFromCheckout($telegramUserId, $result);
-            $message = (string) ($result['message'] ?? 'شروع پرداخت ناموفق بود.');
-            if (! empty($result['already_owned'])) {
-                $message .= "\n\n".'اطلاعات خرید شما همگام شد. «حساب من» را دوباره بزنید.';
-            }
-            $this->replaceLoadingMessage($chatId, $loadingId, $message);
-
-            return;
-        }
-
-        $amount = number_format((int) ($result['amount'] ?? 0));
-        $orderId = (int) ($result['order_id'] ?? 0);
-        $url = (string) ($result['payment_url'] ?? '');
-        $title = trim((string) ($result['product_title'] ?? ''));
-        if ($title === '') {
-            $productRow = $this->cache->findProduct($productId);
-            $title = (string) ($productRow['title'] ?? 'محصول');
-        }
-        $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        $finalText = TelegramCustomEmoji::tag('cart')." سفارش #{$orderId}\n"
-            ."<b>{$safeTitle}</b>\n"
-            .TelegramCustomEmoji::tag('money')." مبلغ قابل پرداخت: {$amount} تومان\n\n"
-            .TelegramCustomEmoji::tag('point_up').' برای پرداخت، دکمه زیر را بزنید.';
-        $finalOptions = [
-            'parse_mode' => 'HTML',
-            'reply_markup' => [
-                'inline_keyboard' => [[InlineButtons::payOnline($url)]],
-            ],
-        ];
-
-        if ($loadingId > 0) {
-            $this->api->editMessageText($chatId, $loadingId, $finalText, $finalOptions);
-        } else {
-            $this->api->sendMessage($chatId, $finalText, $finalOptions);
         }
     }
 
@@ -187,62 +144,16 @@ final class PurchaseFlow
         }
 
         $coupon = $this->couponFromContext($telegramUserId);
-        $loading = $this->api->sendMessageResult($chatId, '⏳ در حال آماده‌سازی پرداخت کارت‌به‌کارت...');
+        $loading = $this->api->sendMessageResult($chatId, $this->buildCheckoutLoadingText('c2c', $productId, $coupon));
         $loadingId = (int) ($loading['message_id'] ?? 0);
 
-        $result = $this->live->checkoutC2c($chatId, $telegramUserId, $productId, $coupon);
-
-        if ($loadingId > 0) {
-            $this->api->deleteMessage($chatId, $loadingId);
-        }
-
-        if (! empty($result['offline'])) {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'payment_retry_soon',
-                'اتصال به سرور لحظه‌ای برقرار نشد. با دکمه زیر دوباره تلاش کنید.',
-            ), [
+        if (! $this->enqueueCheckoutStart($chatId, $telegramUserId, $loadingId, 'c2c', $productId, $coupon)) {
+            $this->replaceLoadingMessage($chatId, $loadingId, 'سرور در حال حاضر پاسخگو نیست، لطفا مجددا تلاش کنید', [
                 'reply_markup' => [
                     'inline_keyboard' => [[InlineButtons::callback('تلاش دوباره', 'pay:c2c:'.$productId, 'cash', 'success')]],
                 ],
             ]);
-
-            return;
         }
-
-        if (empty($result['ok'])) {
-            $this->syncOwnedProductFromCheckout($telegramUserId, $result);
-            $message = (string) ($result['message'] ?? 'ثبت سفارش کارت‌به‌کارت ناموفق بود.');
-            if (! empty($result['already_owned'])) {
-                $message .= "\n\n".'اطلاعات خرید شما همگام شد. «حساب من» را دوباره بزنید.';
-            }
-            $this->api->sendMessage($chatId, $message);
-
-            return;
-        }
-
-        $orderId = (int) ($result['order_id'] ?? 0);
-        $amount = (int) ($result['amount'] ?? 0);
-        $title = trim((string) ($result['product_title'] ?? ''));
-        if ($title === '') {
-            $productRow = $this->cache->findProduct($productId);
-            $title = (string) ($productRow['title'] ?? 'محصول');
-        }
-        $instructions = trim((string) ($result['instructions'] ?? ''));
-        if ($instructions === '') {
-            $instructions = $this->cache->cardToCardInstructions();
-        }
-        $ttl = max(1, (int) ($result['ttl_minutes'] ?? 15));
-
-        $this->cardToCard->sendLocalInstructions(
-            $chatId,
-            $telegramUserId,
-            $orderId,
-            $title,
-            $amount,
-            $instructions,
-            $ttl,
-            $productId,
-        );
     }
 
     public function promptDiscountCode(int $chatId, int $telegramUserId, int $productId, string $title, int $basePrice, ?int $salePrice): void
@@ -320,28 +231,61 @@ final class PurchaseFlow
         $this->checkoutRevokeQueue->enqueue($telegramUserId);
     }
 
-    /** @param array<string, mixed> $result */
-    private function syncOwnedProductFromCheckout(int $telegramUserId, array $result): void
+    private function enqueueCheckoutStart(
+        int $chatId,
+        int $telegramUserId,
+        int $loadingMessageId,
+        string $method,
+        int $productId,
+        ?string $coupon,
+    ): bool {
+        if ($this->checkoutStartQueue === null) {
+            return false;
+        }
+
+        try {
+            $this->checkoutStartQueue->enqueue(
+                $telegramUserId,
+                $chatId,
+                $loadingMessageId,
+                $method,
+                $productId,
+                $coupon,
+                bin2hex(random_bytes(16)),
+            );
+
+            return true;
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] checkout start enqueue: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
+    private function buildCheckoutLoadingText(string $method, int $productId, ?string $coupon): string
     {
-        if ($telegramUserId <= 0) {
-            return;
-        }
+        $product = $this->cache->findProduct($productId);
+        $title = trim((string) ($product['title'] ?? 'محصول'));
+        $base = (int) ($product['price'] ?? 0);
+        $sale = isset($product['sale_price']) && (int) $product['sale_price'] > 0
+            ? (int) $product['sale_price']
+            : null;
+        $amount = ($sale !== null && $sale < $base) ? $sale : $base;
 
-        if (is_array($result['account'] ?? null) && $this->accounts !== null) {
-            try {
-                $this->accounts->store($telegramUserId, $result['account']);
-            } catch (\Throwable $e) {
-                error_log('[telegram-host] checkout account sync: '.$e->getMessage());
+        if ($coupon !== null && $coupon !== '') {
+            $preview = $this->discounts->preview($coupon, $productId);
+            if (! empty($preview['ok'])) {
+                $amount = (int) ($preview['final_amount'] ?? $amount);
             }
         }
 
-        if ($this->accountSync !== null) {
-            try {
-                $this->accountSync->ensureFresh($telegramUserId, true);
-            } catch (\Throwable $e) {
-                error_log('[telegram-host] checkout ensureFresh: '.$e->getMessage());
-            }
-        }
+        $headline = $method === 'c2c'
+            ? '⏳ در حال آماده‌سازی پرداخت کارت‌به‌کارت...'
+            : '⏳ در حال آماده‌سازی پرداخت...';
+
+        return $headline."\n"
+            .TelegramCustomEmoji::tag('cart')." {$title}\n"
+            .TelegramCustomEmoji::tag('money').' مبلغ تقریبی: '.number_format(max(0, $amount)).' تومان';
     }
 
     /** @param array<string, mixed> $options */
