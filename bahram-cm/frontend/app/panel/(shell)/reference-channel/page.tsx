@@ -6,6 +6,7 @@ import {
   type ReferenceChannelCardModel,
 } from '@/components/student-panel/reference-channel/ReferenceChannelShowcase';
 import { panelStudentFetch } from '@/lib/student/panelServer';
+import { isRequestFromIran } from '@/lib/geo/country';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'کانال مرجع | پنل کاربری', robots: { index: false, follow: false } };
@@ -27,6 +28,7 @@ interface ReferenceChannelOffer extends ReferenceChannelCardModel {
 }
 
 export default async function PanelReferenceChannelsPage() {
+  const isIranIp = await isRequestFromIran();
   const { data: channels } = await panelStudentFetch<{ data: ReferenceChannelListItem[] }>(
     '/reference-channels',
   );
@@ -84,6 +86,7 @@ export default async function PanelReferenceChannelsPage() {
             <ReferenceChannelShowcase
               key={channel.id}
               channel={{ ...channel, owned: true }}
+              isIranIp={isIranIp}
             />
           ))}
         </div>

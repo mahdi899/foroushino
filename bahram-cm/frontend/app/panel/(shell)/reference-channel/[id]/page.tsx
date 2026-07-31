@@ -5,6 +5,7 @@ import { Radio } from 'lucide-react';
 import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { ReferenceChannelShowcase } from '@/components/student-panel/reference-channel/ReferenceChannelShowcase';
 import { panelStudentFetch } from '@/lib/student/panelServer';
+import { isRequestFromIran } from '@/lib/geo/country';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'جزئیات کانال مرجع | پنل کاربری', robots: { index: false, follow: false } };
@@ -32,6 +33,7 @@ export default async function PanelReferenceChannelDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const isIranIp = await isRequestFromIran();
   const result = await panelStudentFetch<{ data: ReferenceChannelDetail }>(
     `/reference-channels/${id}`,
   ).catch(() => null);
@@ -48,7 +50,7 @@ export default async function PanelReferenceChannelDetailPage({
       />
 
       <div className="panel-card-grid">
-        <ReferenceChannelShowcase channel={{ ...channel, owned: true }} />
+        <ReferenceChannelShowcase channel={{ ...channel, owned: true }} isIranIp={isIranIp} />
       </div>
 
       <div>
