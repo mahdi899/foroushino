@@ -12,31 +12,6 @@ import {
   turnstileScriptUrl,
 } from '@/lib/captcha/config';
 
-declare global {
-  interface Window {
-    grecaptcha?: {
-      ready: (cb: () => void) => void;
-      execute: (siteKey: string, options: { action: string }) => Promise<string>;
-    };
-    turnstile?: {
-      render: (
-        container: string | HTMLElement,
-        options: {
-          sitekey: string;
-          size?: 'normal' | 'compact' | 'invisible';
-          theme?: 'light' | 'dark' | 'auto';
-          callback?: (token: string) => void;
-          'error-callback'?: () => void;
-          'expired-callback'?: () => void;
-        },
-      ) => string;
-      execute: (widgetId?: string) => void;
-      reset: (widgetId?: string) => void;
-      remove: (widgetId?: string) => void;
-    };
-  }
-}
-
 type TestStatus = 'idle' | 'loading' | 'ready' | 'success' | 'error';
 
 const recaptchaScriptPromises = new Map<string, Promise<void>>();

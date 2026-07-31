@@ -80,15 +80,16 @@ html[data-family-host='1'] body {
   --family-tg-header-shadow: rgba(0, 0, 0, 0.05);
   --family-tg-header-highlight: rgba(255, 255, 255, 0.72);
   --family-chat-bg: #eef4f4;
-  --family-chat-wallpaper-photo: url('/storage/media/site/family-chat-wallpaper.webp');
-  --family-chat-wallpaper-blur: 14px;
-  --family-chat-wallpaper-opacity: 0.92;
-  --family-chat-wallpaper-base: #0b1419;
+  --family-chat-wallpaper-photo: var(
+    --family-chat-wallpaper-photo-light,
+    url('/storage/media/site/family-chat-wallpaper-light.webp')
+  );
+  --family-chat-wallpaper-base: #d4dee8;
   --family-chat-wallpaper-veil: linear-gradient(
     180deg,
-    rgba(11, 20, 25, 0.34) 0%,
-    rgba(11, 20, 25, 0.2) 48%,
-    rgba(8, 22, 28, 0.32) 100%
+    rgba(238, 244, 248, 0.12) 0%,
+    rgba(238, 244, 248, 0.04) 50%,
+    rgba(232, 240, 246, 0.14) 100%
   );
   /* Soft fallback when photo fails to load (sidebar / canvas). */
   --family-chat-wallpaper:
@@ -214,13 +215,16 @@ html[data-theme='dark'] .family-app {
   --family-tg-header-shadow: rgba(0, 0, 0, 0.48);
   --family-tg-header-highlight: rgba(255, 255, 255, 0.06);
   --family-chat-bg: #0b1419;
-  --family-chat-wallpaper-base: #0b1419;
-  --family-chat-wallpaper-opacity: 0.95;
+  --family-chat-wallpaper-photo: var(
+    --family-chat-wallpaper-photo-dark,
+    url('/storage/media/site/family-chat-wallpaper-dark.webp')
+  );
+  --family-chat-wallpaper-base: #192532;
   --family-chat-wallpaper-veil: linear-gradient(
     180deg,
-    rgba(6, 12, 16, 0.42) 0%,
-    rgba(8, 16, 22, 0.26) 50%,
-    rgba(6, 14, 18, 0.4) 100%
+    rgba(10, 16, 24, 0.14) 0%,
+    rgba(10, 16, 24, 0.05) 50%,
+    rgba(8, 14, 22, 0.16) 100%
   );
   --family-chat-wallpaper:
     radial-gradient(ellipse 85% 65% at 8% 12%, rgba(0, 140, 150, 0.09) 0, transparent 54%),
@@ -334,44 +338,53 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  background-color: var(--family-chat-wallpaper-base);
-}
-
-/* Fixed mild-blur photo wallpaper behind the message list (does not scroll with posts). */
-.family-feed-pane::before {
-  content: '';
-  position: absolute;
-  inset: -20px;
-  z-index: 0;
-  pointer-events: none;
+  /* Fallback if <img> is slow/blocked — still shows the photo on mobile. */
   background-color: var(--family-chat-wallpaper-base);
   background-image: var(--family-chat-wallpaper-photo);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  filter: blur(var(--family-chat-wallpaper-blur)) saturate(1.06);
-  transform: scale(1.06);
-  opacity: var(--family-chat-wallpaper-opacity);
-  animation: family-wallpaper-drift 22s ease-in-out infinite alternate;
-  will-change: transform;
 }
 
-.family-feed-pane::after {
-  content: '';
+.family-feed-wallpaper {
   position: absolute;
   inset: 0;
   z-index: 0;
+  overflow: hidden;
   pointer-events: none;
+}
+
+.family-feed-wallpaper__img {
+  position: absolute;
+  inset: -12px;
+  width: calc(100% + 24px);
+  height: calc(100% + 24px);
+  max-width: none;
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.04);
+  animation: family-wallpaper-drift 22s ease-in-out infinite alternate;
+}
+
+.family-feed-wallpaper__veil {
+  position: absolute;
+  inset: 0;
   background: var(--family-chat-wallpaper-veil);
 }
 
-.family-feed-pane > * {
+/* Keep feed/chrome above the wallpaper — never force overlays to `relative`
+   (that demoted notifications/comments and left posts visible underneath). */
+.family-feed-pane > *:not(.family-feed-wallpaper):not(.family-feed-overlay) {
   position: relative;
   z-index: 1;
 }
 
+.family-feed-pane > .family-feed-overlay {
+  z-index: 50;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .family-feed-pane::before {
+  .family-feed-wallpaper__img {
     animation: none;
   }
 }
@@ -2305,6 +2318,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-feed-empty {
+  color: var(--family-tg-subtitle);
+  text-shadow: none;
+}
+
+.family-app[data-family-theme='dark'] .family-feed-empty,
+html[data-theme='dark'] .family-app .family-feed-empty {
   color: rgba(255, 255, 255, 0.78);
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
@@ -3361,7 +3380,7 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .family-feed-pane::before,
+  .family-feed-wallpaper__img,
   .family-preview-intro,
   .family-preview-gate,
   .family-preview-gate__panel-sheen,
@@ -5503,6 +5522,8 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   inset: 0;
   z-index: 10060;
   pointer-events: none;
+  /* Block pinch/double-tap zoom while the sheet is up (iOS gesture handoff). */
+  touch-action: manipulation;
 }
 
 .family-menu-backdrop {
@@ -5513,6 +5534,7 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   background: rgba(0, 0, 0, 0.45);
   opacity: 0;
   transition: opacity 180ms ease;
+  touch-action: manipulation;
 }
 
 .family-menu-backdrop--in {
@@ -5526,6 +5548,9 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   pointer-events: auto;
   max-height: min(78dvh, 32rem);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   border-radius: 1.125rem 1.125rem 0 0;
   background: var(--family-surface-elevated, var(--family-surface));
   color: var(--family-text);
@@ -6162,7 +6187,10 @@ html[data-theme='dark'] .family-app .family-install-hero__card,
 /* Specificity must clear the theme blocks (`.family-app[data-family-theme='dark']`). */
 .family-app[data-family-perf='lite'] {
   --family-bubble-glass: none;
-  --family-chat-wallpaper-blur: 6px;
+}
+
+[data-family-perf='lite'] .family-feed-wallpaper__img {
+  animation: none;
 }
 
 /* Blur was carrying the translucency — flatten the bubble over the canvas instead,

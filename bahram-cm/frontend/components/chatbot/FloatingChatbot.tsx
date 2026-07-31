@@ -640,10 +640,10 @@ export function FloatingChatbot({
     () =>
       activeQuickSuggestions(
         resolveQuickSuggestions(config.quick_suggestions, {
-          useDefaults: config.quick_suggestions === undefined,
+          preferCodeDefaults: true,
         }),
       ),
-    [config.quick_suggestions],
+    [],
   );
 
   /** Skip polling when visitor only uses AI — saves server + battery. */

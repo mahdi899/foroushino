@@ -20,6 +20,7 @@ import { GUEST_BLURRED_POST_COUNT, type FamilyGuestAction } from '@/lib/family/g
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
+import { FamilyFeedWallpaper } from '@/components/family/FamilyFeedWallpaper';
 import { VirtualFeedList, type VirtualFeedListHandle } from '@/components/family/VirtualFeedList';
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
@@ -1826,8 +1827,9 @@ export function FeedView({
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <FamilyFeedWallpaper />
           {!isPreview && notificationsOpen ? (
-            <div className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[var(--family-bg)]">
+            <div className="family-feed-overlay absolute inset-0 z-50 flex min-h-0 flex-col bg-[var(--family-bg)]">
               <FamilyNotificationsPanel
                 enabled={!isPreview}
                 onClose={() => onCloseNotifications?.()}
@@ -1846,12 +1848,11 @@ export function FeedView({
           ) : null}
 
           <div
-            className={
-              commentsTarget || notificationsOpen
-                ? 'pointer-events-none flex min-h-0 min-w-0 flex-1 flex-col'
-                : 'flex min-h-0 min-w-0 flex-1 flex-col'
-            }
-            aria-hidden={Boolean(commentsTarget) || notificationsOpen}
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1 flex-col',
+              !showFeed && 'invisible pointer-events-none absolute inset-0 z-0',
+            )}
+            aria-hidden={!showFeed}
           >
           <div ref={chromeStackRef} className="family-feed-chrome-stack">
             <div className="family-feed-chrome-stack__pin">
