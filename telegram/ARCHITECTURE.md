@@ -18,7 +18,7 @@
                             │
           ┌─────────────────┴─────────────────┐
           │                                    │
-    کش (push رویدادی + سیکل ۵ دقیقه)      delegate/API فقط ضروری
+    کش (push رویدادی + reconcile دوره‌ای)      delegate/API فقط ضروری
           │                                    │
           ▼                                    ▼
    bootstrap, catalog,                 OTP، شروع پرداخت،
@@ -44,15 +44,15 @@
 
 - **وب‌هوک:** فقط MySQL محلی + تلگرام — **هیچ انتظاری برای ایران نیست.**
 - **push فوری (event-driven):** ثبت‌نام، ویرایش حساب، **تکمیل سفارش** → `push_account` بلافاصله از ایران به `host-sync.php` (+ پیام آنی `notification` برای پرداخت).
-- **سیکل reconcile هر ۵ دقیقه:** `telegram:host-sync-accounts --skip-catalog` روی ایران — پوشش خریدهایی که push فوری‌شان fail شده؛ کاتالوگ/bootstrap جداگانه با push رویدادی یا `refresh_catalog` دستی.
-- **ثبت‌نام / پرداخت:** در صف `pending_iran_updates` → `BackgroundIranRelay` وقتی ایران در دسترس بود.
+- **سیکل reconcile (heal):** `telegram:host-sync-accounts` هر **۶ ساعت** روی ایران + `telegram:host-push-retry` هر ۳ دقیقه — پوشش خریدهایی که push فوری‌شان fail شده؛ کاتالوگ/bootstrap جداگانه با push رویدادی یا `refresh_catalog` دستی.
+- **ثبت‌نام / پرداخت:** صف‌های `pending_registration_sync` و `pending_checkout_start` — drain بعد از ACK وب‌هوک / cron؛ ایران فقط در پس‌زمینه صدا زده می‌شود.
 - **پشتیبانی:** کاملاً محلی روی هاست (فوروارد به گروه گزارشات + پاسخ ادمین) — بدون ایران.
 
 | لایه | نقش |
 |------|-----|
 | **MySQL هاست** | کاتالوگ، پیام‌ها، حساب کاربر (snapshot)، منو، map پیام‌های پشتیبانی |
 | **Push فوری ایران** | `push_account` + `notification` بلافاصله بعد از پرداخت/ثبت‌نام |
-| **سیکل ۵ دقیقه ایران** | `telegram:host-sync-accounts` — همهٔ حساب‌های verified + خریداران ۶۰ دقیقهٔ اخیر + `refresh_catalog`/`refresh_bootstrap` |
+| **سیکل heal ایران** | `telegram:host-sync-accounts` (۶h) + `telegram:host-push-retry` (۳m) — پوشش pushهای miss‌شده |
 | **صف ایران** | relay بعد از هر webhook (`iran_relay_per_webhook`) — فقط برای delegate ضروری |
 
 ### بدون ایران چه کار می‌کند؟
@@ -68,11 +68,11 @@ OTP/SMS، شروع زرین‌پال/C2C روی سرور، پنل ادمین، �
 | **MySQL هاست** | `telegram_accounts_cache` — هویت، لیست محصولات خریداری‌شده، متن «حساب من»، خانواده، معرفی، صفحهٔ دسترسی به دوره |
 | **سرور ایران** | منبع حقیقت (کاربر سایت، سفارش، دسترسی دوره) |
 | **Push فوری** | بعد از ثبت‌نام، ویرایش حساب، **تکمیل سفارش** → `push_account` (+ پیام فوری `notification` برای پرداخت) |
-| **Reconcile ۵ دقیقه** | `telegram:host-sync-accounts` (بدون `--sync` → صف؛ با `--sync` → push مستقیم) — پوشش خریدهایی که push فوری‌شان miss شده |
+| **Reconcile heal** | `telegram:host-sync-accounts` (۶h) + push-retry (۳m) — پوشش خریدهایی که push فوری‌شان miss شده |
 | **Pull** | فقط دستی/اضطراری — `pull_sync_enabled=false` پیش‌فرض |
 | **وب‌هوک** | فقط MySQL محلی → تلگرام؛ هیچ درخواستی به ایران ندارد (به‌جز delegate ضروری) |
 
-خرید سایت (نه از طریق ربات) هم همین مسیر را طی می‌کند: `FulfillOrderJob` بلافاصله `push_account` می‌زند و اگر آن push fail شود، حداکثر ظرف ۵ دقیقه توسط سیکل reconcile جبران می‌شود — چون کاربرِ سفارشِ paid اخیر حتی اگر پیش‌تر sync شده باشد، دوباره در همان اجرا push می‌شود.
+خرید سایت (نه از طریق ربات) هم همین مسیر را طی می‌کند: `FulfillOrderJob` بلافاصله `push_account` می‌زند و اگر آن push fail شود، `telegram:host-push-retry` و reconcile دوره‌ای جبران می‌کنند — **ربات ایران را poll نمی‌کند**.
 
 ## endpointهای live (فقط ضروری)
 
@@ -85,14 +85,14 @@ OTP/SMS، شروع زرین‌پال/C2C روی سرور، پنل ادمین، �
 
 | بخش | وضعیت |
 |-----|--------|
-| ثبت‌نام (قوانین، OTP، نام، start_payload) | ✅ ثبت‌نام محلی + OTP API |
-| منو + خرید + تخفیف + زرین‌پال شروع | ✅ محلی (شروع پرداخت delegate) |
+| ثبت‌نام (قوانین، OTP، نام، start_payload) | ✅ ثبت‌نام محلی فوری + upsert ایران در صف پس‌زمینه |
+| منو + خرید + تخفیف + زرین‌پال شروع | ✅ محلی؛ شروع پرداخت در `pending_checkout_start` (بدون block وب‌هوک) |
 | C2C + رسید عکس | ✅ سرور (state مشترک) |
 | پشتیبانی متن/رسانه/reply | ✅ محلی (گروه گزارشات) |
 | سات / خانواده / معرفی | ✅ کش محلی (+ سات زنده delegate) |
 | عکس کاتالوگ | ✅ محلی |
 | پنل ادمین | ✅ فقط وقتی ایران وصل است (relay) |
-| سینک حساب/خرید | ✅ push فوری + reconcile هر ۵ دقیقه |
+| سینک حساب/خرید | ✅ push فوری `host-sync` (بدون poll) + heal دوره‌ای |
 | bot غیرفعال | ✅ |
 
 ## خارج از این فاز (آگاهانه)
@@ -121,7 +121,7 @@ OTP/SMS، شروع زرین‌پال/C2C روی سرور، پنل ادمین، �
 1. **`config.php` روی هاست** را بررسی کن: اگر `iran_relay_per_webhook` روی `0` است، به `2` تغییرش بده (نمونهٔ به‌روز در `config.sample.php`) — مقدار زیر ۱ دیگر پذیرفته نمی‌شود (webhook حداقل ۱ drain می‌کند).
 2. فایل `telegram/storage/iran-circuit-state.json` روی هاست را حذف کن، یا `diagnose.php?token=…&reset_circuit=1` را باز کن.
 3. `telegram/public/diagnose.php?token=<webhook_secret>` را باز کن و اتصال MySQL، `sync_base_url`، `api.telegram.org`، و وضعیت circuit را تأیید کن.
-4. روی سرور ایران یک‌بار `php artisan telegram:host-sync-accounts --sync` بزن تا حساب‌های verified و خریداران اخیر فوراً push شوند؛ با `php artisan schedule:list` تأیید کن هر **۵ دقیقه** هم تکرار می‌شود. `config:clear` و queue worker (Horizon) را چک کن.
+4. روی سرور ایران یک‌بار `php artisan telegram:host-sync-accounts --sync` بزن تا حساب‌های verified و خریداران اخیر فوراً push شوند؛ `telegram:host-push-retry` هر ۳ دقیقه و reconcile حساب هر ۶ ساعت را در `schedule:list` چک کن. `config:clear` و queue worker (Horizon) را چک کن.
 5. مطمئن شو ربات در «گروه گزارشات (پشتیبانی)» عضو و ادمین است و `reports_group_chat_id` در بوت‌استرپ ایران ست شده.
 6. تست دستی:
    - **مهمان**: `/start` با یک تلگرام‌آیدی جدید → شماره → نام → منو باید بیاید بدون خطای مکرر.

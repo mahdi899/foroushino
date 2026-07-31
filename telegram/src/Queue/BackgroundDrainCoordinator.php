@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace TelegramHost\Queue;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Account\HybridAccountCache;
+use TelegramHost\Cache\SyncCache;
 use TelegramHost\Http\LiveClient;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Services\HostCardToCardFlow;
 use TelegramHost\Services\HostSupportService;
+use TelegramHost\Telegram\BotApiClient;
 
 /** Shared post-ACK drain used by webhook.php (limited) and cron/drain.php (budgeted). */
 final class BackgroundDrainCoordinator
@@ -26,6 +30,11 @@ final class BackgroundDrainCoordinator
         private readonly int $iranRelayPerRun,
         private readonly ?PendingAccountRefresh $accountRefreshQueue = null,
         private readonly ?HybridAccountCache $hybridCache = null,
+        private readonly ?PendingCheckoutStart $checkoutStartQueue = null,
+        private readonly ?BotApiClient $api = null,
+        private readonly ?SyncCache $cache = null,
+        private readonly ?HostCardToCardFlow $cardToCardFlow = null,
+        private readonly ?AccountSyncCoordinator $accountSync = null,
         private readonly ?PendingCheckoutRevoke $checkoutRevokeQueue = null,
     ) {}
 
@@ -38,6 +47,25 @@ final class BackgroundDrainCoordinator
         }
 
         $processed = 0;
+
+        if ($this->checkoutStartQueue !== null && $this->api !== null && $this->cache !== null) {
+            try {
+                $before = $this->checkoutStartQueue->countPending();
+                (new BackgroundCheckoutStart(
+                    $this->checkoutStartQueue,
+                    $this->liveClient,
+                    $this->api,
+                    $this->cache,
+                    $this->accounts,
+                    $this->cardToCardFlow,
+                    $this->accountSync,
+                    $maxPerQueue,
+                ))->drain();
+                $processed += max(0, $before - $this->checkoutStartQueue->countPending());
+            } catch (\Throwable $e) {
+                error_log('[telegram-host] checkout start: '.$e->getMessage());
+            }
+        }
 
         try {
             $before = $this->registrationQueue->countPending();
@@ -134,6 +162,7 @@ final class BackgroundDrainCoordinator
             'pending_ticket_sync' => $this->ticketQueue->countPending(),
             'pending_membership_sync' => $this->membershipQueue->countPending(),
             'pending_account_refresh' => $this->accountRefreshQueue?->countPending() ?? 0,
+            'pending_checkout_start' => $this->checkoutStartQueue?->countPending() ?? 0,
             'pending_checkout_revoke' => $this->checkoutRevokeQueue?->countPending() ?? 0,
         ];
     }

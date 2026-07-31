@@ -69,7 +69,7 @@ final class LiveClient
     }
 
     /** @return array<string, mixed> */
-    public function checkoutZarinpal(int $telegramUserId, int $productId, ?string $coupon = null): array
+    public function checkoutZarinpal(int $telegramUserId, int $productId, ?string $coupon = null, int $timeoutSeconds = 28): array
     {
         // Iran creates the order + payment token — keep headroom so a slow
         // round-trip is not misread as "payment server offline".
@@ -77,7 +77,7 @@ final class LiveClient
             'telegram_user_id' => $telegramUserId,
             'product_id' => $productId,
             'coupon' => $coupon,
-        ]), 28);
+        ]), $timeoutSeconds);
     }
 
     /** @return array<string, mixed> */
@@ -105,7 +105,7 @@ final class LiveClient
     }
 
     /** @return array<string, mixed> */
-    public function checkoutC2c(int $telegramUserId, int $chatId, int $productId, ?string $coupon = null): array
+    public function checkoutC2c(int $telegramUserId, int $chatId, int $productId, ?string $coupon = null, int $timeoutSeconds = 20): array
     {
         return $this->live('checkout/c2c/start', array_filter([
             'telegram_user_id' => $telegramUserId,
@@ -113,7 +113,7 @@ final class LiveClient
             'product_id' => $productId,
             'coupon' => $coupon,
             'host_owned_prompt' => true,
-        ], static fn ($v) => $v !== null && $v !== ''), 20);
+        ], static fn ($v) => $v !== null && $v !== ''), $timeoutSeconds);
     }
 
     /**

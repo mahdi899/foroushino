@@ -133,6 +133,34 @@ CREATE TABLE IF NOT EXISTS pending_registration_sync (
     INDEX idx_pending_registration_updated (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS pending_checkout_start (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    telegram_user_id BIGINT NOT NULL,
+    chat_id BIGINT NOT NULL,
+    loading_message_id BIGINT NOT NULL DEFAULT 0,
+    method VARCHAR(8) NOT NULL,
+    product_id INT NOT NULL,
+    coupon VARCHAR(64) NULL,
+    local_token VARCHAR(64) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uniq_pending_checkout_start_user_method_product (telegram_user_id, method, product_id),
+    INDEX idx_pending_checkout_start_updated (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pending_checkout_revoke (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    telegram_user_id BIGINT NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_error VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uniq_pending_checkout_revoke_user (telegram_user_id),
+    INDEX idx_pending_checkout_revoke_updated (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS discount_codes_cache (
     code VARCHAR(64) NOT NULL PRIMARY KEY,
     discount_type VARCHAR(32) NOT NULL DEFAULT 'percent',
