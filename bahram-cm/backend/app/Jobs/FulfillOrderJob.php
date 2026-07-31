@@ -15,6 +15,7 @@ use App\Models\SeminarAttendee;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
+use App\Services\TelegramHostAccountSnapshotService;
 use App\Services\TelegramHostAccountSync;
 use App\Services\AdminTelegramLogService;
 use App\Services\DiscountService;
@@ -284,7 +285,9 @@ class FulfillOrderJob implements ShouldQueue
 
             // Keep host ownership mirror fresh even when notify went via Bot API.
             foreach ($telegramAccounts as $account) {
-                $hostSync->queuePush($account);
+                PushTelegramHostSyncJob::accountNow(
+                    app(TelegramHostAccountSnapshotService::class)->accountPayload($account->fresh(['user', 'bot'])),
+                );
             }
         }
     }

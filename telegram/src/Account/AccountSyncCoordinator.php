@@ -38,9 +38,7 @@ final class AccountSyncCoordinator
 
         if (! $force && ! $needsReconcile) {
             if ($this->accounts->isVerified($telegramUserId)) {
-                $account = $this->accounts->get($telegramUserId);
-                // Push-maintained snapshot — do not poll Iran on every menu tap.
-                if ($account !== null && ! empty($account['profile_json'])) {
+                if ($this->accounts->hasRenderableProfile($telegramUserId)) {
                     return true;
                 }
             } elseif (! $this->accounts->shouldAttemptIranPull(

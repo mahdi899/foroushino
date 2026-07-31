@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OtpPurpose;
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Models\User;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Enums\ConversationState;
@@ -515,7 +516,12 @@ class TelegramHostRegistrationService
 
         $account->refresh();
         if ($bot->key === 'production') {
-            app(TelegramHostAccountSync::class)->queuePush($account);
+            $fresh = $account->fresh(['user', 'bot']);
+            $payload = $this->snapshots->accountPayload($fresh);
+            $push = app(TelegramHostPushService::class);
+            if (! $push->pushAccount($payload)) {
+                PushTelegramHostSyncJob::accountNow($payload);
+            }
         }
 
         $conversation->refresh();

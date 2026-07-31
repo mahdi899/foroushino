@@ -142,7 +142,10 @@ class TelegramHostPushService
             return true;
         }
 
-        if ($action !== 'push_account') {
+        $ownershipActions = ['push_account', 'push_mobile_access'];
+        if (in_array($action, $ownershipActions, true)) {
+            $this->pushState->markPending($action, $extra);
+        } elseif ($action !== 'push_account') {
             $this->pushState->markPending($action);
         }
 
@@ -209,13 +212,14 @@ class TelegramHostPushService
         // host down, etc.) skip the network call for a short cooldown instead
         // of blocking the caller (registration, order notify, queue worker)
         // for the full HTTP timeout on every single attempt.
-        if ($this->pushState->isCircuitOpen() && $action !== 'register_webhook') {
+        $circuitExempt = in_array($action, ['register_webhook', 'push_account', 'push_mobile_access'], true);
+        if ($this->pushState->isCircuitOpen() && ! $circuitExempt) {
             Log::channel('telegram')->info('Telegram host push skipped — circuit open.', [
                 'action' => $action,
                 'retry_in_seconds' => $this->pushState->secondsUntilRetry(),
             ]);
 
-            if ($action !== 'push_account') {
+            if (! in_array($action, ['push_account', 'push_mobile_access'], true)) {
                 $this->pushState->markPending($action);
             }
 

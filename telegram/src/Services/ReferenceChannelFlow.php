@@ -6,6 +6,7 @@ namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
+use TelegramHost\Account\OwnershipResolver;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
@@ -22,6 +23,7 @@ final class ReferenceChannelFlow
         private readonly SyncCache $cache,
         private readonly AccountCache $accounts,
         private readonly AccountSyncCoordinator $accountSync,
+        private readonly OwnershipResolver $ownership,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -29,7 +31,7 @@ final class ReferenceChannelFlow
     {
         $product = $this->cache->findReferenceChannelProduct();
 
-        if ($product !== null && $this->accounts->ownsProduct($telegramUserId, (int) $product['id'])) {
+        if ($product !== null && $this->ownership->ownsProduct($telegramUserId, (int) $product['id'])) {
             $this->openOwned($chatId, $telegramUserId, (int) $product['id'], $product);
 
             return;

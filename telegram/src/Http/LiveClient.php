@@ -50,7 +50,7 @@ final class LiveClient
         return $this->live('access/owns', [
             'telegram_user_id' => $telegramUserId,
             'product_id' => $productId,
-        ]);
+        ], 5, false);
     }
 
     /** @return array<string, mixed> */
@@ -124,7 +124,7 @@ final class LiveClient
     /** @return array<string, mixed> */
     public function userProfile(int $telegramUserId): array
     {
-        return $this->live('user/profile', ['telegram_user_id' => $telegramUserId]);
+        return $this->live('user/profile', ['telegram_user_id' => $telegramUserId], 8, false);
     }
 
     /** @return array<string, mixed> */

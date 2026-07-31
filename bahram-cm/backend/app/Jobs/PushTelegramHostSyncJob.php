@@ -108,6 +108,28 @@ class PushTelegramHostSyncJob implements ShouldQueue
     }
 
     /** @param  array<string, mixed>  $extra */
+    public static function dispatchNow(string $action, array $extra = []): void
+    {
+        self::dispatch($action, $extra)->onQueue('telegram-host');
+    }
+
+    /** @param  array<string, mixed>  $account */
+    public static function accountNow(array $account): void
+    {
+        self::dispatchNow('push_account', ['account' => $account]);
+    }
+
+    /** @param  list<int>  $ownedProductIds */
+    public static function mobileAccessNow(string $mobile, array $ownedProductIds, ?string $displayName = null): void
+    {
+        self::dispatchNow('push_mobile_access', [
+            'mobile' => $mobile,
+            'owned_product_ids' => $ownedProductIds,
+            'display_name' => $displayName,
+        ]);
+    }
+
+    /** @param  array<string, mixed>  $extra */
     private static function dispatchAfterResponse(string $action, array $extra = []): void
     {
         self::dispatch($action, $extra)->afterResponse();

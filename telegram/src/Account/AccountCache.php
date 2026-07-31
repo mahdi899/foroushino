@@ -108,7 +108,19 @@ final class AccountCache
         if ($snapshot !== null) {
             $snapRev = (string) ($snapshot['revision'] ?? '');
             if (isset($snapshot['owned_product_ids'])) {
-                $ownedJson = json_encode($snapshot['owned_product_ids'], JSON_UNESCAPED_UNICODE);
+                $incoming = is_array($snapshot['owned_product_ids'])
+                    ? array_values(array_map('intval', $snapshot['owned_product_ids']))
+                    : [];
+                $existing = $this->get($telegramUserId);
+                $current = $existing !== null
+                    ? $this->decodeIntList((string) ($existing['owned_product_ids'] ?? '[]'))
+                    : [];
+                if ($incoming === []) {
+                    $ownedJson = $current !== [] ? json_encode($current, JSON_UNESCAPED_UNICODE) : null;
+                } else {
+                    $merged = array_values(array_unique(array_merge($current, $incoming)));
+                    $ownedJson = json_encode($merged, JSON_UNESCAPED_UNICODE);
+                }
             }
             $profile = $snapshot['profile'] ?? null;
             if (is_array($profile)) {
@@ -659,6 +671,43 @@ final class AccountCache
         return false;
     }
 
+    public function hasRenderableProfile(int $telegramUserId): bool
+    {
+        $profile = $this->profileResponse($telegramUserId);
+        if (! is_array($profile) || empty($profile['ok'])) {
+            return false;
+        }
+
+        return trim((string) ($profile['text'] ?? '')) !== '';
+    }
+
+    /** @param array<string, mixed> $profile */
+    public function storeProfileSnapshot(int $telegramUserId, array $profile): void
+    {
+        $profileJson = json_encode($profile, JSON_UNESCAPED_UNICODE);
+        $verificationLevel = isset($profile['verification_level'])
+            ? max(1, (int) $profile['verification_level'])
+            : null;
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO telegram_accounts_cache (telegram_user_id, profile_json, verification_level, is_bot_admin, updated_at)
+             VALUES (:id, :profile, :level, 0, NOW())
+             ON DUPLICATE KEY UPDATE
+                profile_json = :profile2,
+                verification_level = IF(:level2 IS NOT NULL, :level2, verification_level),
+                updated_at = NOW()',
+        );
+        $stmt->execute([
+            'id' => $telegramUserId,
+            'profile' => $profileJson,
+            'level' => $verificationLevel ?? 1,
+            'profile2' => $profileJson,
+            'level2' => $verificationLevel,
+        ]);
+
+        unset($this->rowMemo[$telegramUserId]);
+    }
+
     /** @return array<string, mixed>|null */
     public function profileResponse(int $telegramUserId): ?array
     {
@@ -749,7 +798,7 @@ final class AccountCache
         }
 
         $account = $this->get($telegramUserId);
-        if ($account === null || empty($account['profile_json'])) {
+        if ($account === null || ! $this->hasRenderableProfile($telegramUserId)) {
             return true;
         }
 

@@ -6,7 +6,9 @@ namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
+use TelegramHost\Http\LiveClient;
 use TelegramHost\Queue\PendingMembershipSync;
+use TelegramHost\Support\IranSyncFailureException;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
@@ -29,6 +31,7 @@ final class HostDestinationsFlow
         private readonly AccountCache $accounts,
         private readonly PendingMembershipSync $membershipQueue,
         private readonly string $siteBaseUrl,
+        private readonly LiveClient $live,
         private readonly ?MembershipCheckCache $membershipCache = null,
     ) {}
 
@@ -37,6 +40,10 @@ final class HostDestinationsFlow
      */
     public function sendAccount(int $chatId, int $telegramUserId): bool
     {
+        if (! $this->accounts->hasRenderableProfile($telegramUserId)) {
+            $this->hydrateProfileFromIran($telegramUserId);
+        }
+
         $profile = $this->accounts->profileResponse($telegramUserId);
         if ($profile === null || empty($profile['ok'])) {
             return false;
@@ -177,6 +184,24 @@ final class HostDestinationsFlow
         }
 
         return true;
+    }
+
+    private function hydrateProfileFromIran(int $telegramUserId): void
+    {
+        if ($telegramUserId <= 0 || ! $this->accounts->isVerified($telegramUserId)) {
+            return;
+        }
+
+        try {
+            $response = $this->live->userProfile($telegramUserId);
+            if (! empty($response['ok']) && trim((string) ($response['text'] ?? '')) !== '') {
+                $this->accounts->storeProfileSnapshot($telegramUserId, $response);
+            }
+        } catch (IranSyncFailureException) {
+            // Iran unreachable — caller falls back to pending message.
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] live user/profile: '.$e->getMessage());
+        }
     }
 
     /**
