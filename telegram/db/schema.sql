@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS telegram_accounts_cache (
     mobile VARCHAR(20) NULL,
     mobile_verified_at DATETIME NULL,
     display_name VARCHAR(191) NULL,
+    verification_level TINYINT UNSIGNED NOT NULL DEFAULT 1,
     is_bot_admin TINYINT(1) NOT NULL DEFAULT 0,
     snapshot_revision VARCHAR(64) NULL,
     owned_product_ids TEXT NULL,

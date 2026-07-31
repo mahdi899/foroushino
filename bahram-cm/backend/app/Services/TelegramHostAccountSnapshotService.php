@@ -56,6 +56,8 @@ class TelegramHostAccountSnapshotService
     {
         $account->loadMissing(['user', 'bot']);
 
+        $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 1);
+
         return [
             'telegram_user_id' => (int) $account->telegram_user_id,
             'user_id' => $account->user_id,
@@ -63,6 +65,7 @@ class TelegramHostAccountSnapshotService
             'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
             'display_name' => StudentDisplayName::forTelegramAccount($account),
             'is_bot_admin' => $account->isBotAdmin(),
+            'verification_level' => $verificationLevel,
             'snapshot' => $this->buildSnapshot($account),
         ];
     }
@@ -94,10 +97,19 @@ class TelegramHostAccountSnapshotService
      */
     public function buildRegistrationSnapshot(TelegramAccount $account): array
     {
-        return [
+        $account->loadMissing('user.identityProfile');
+        $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
+
+        $snapshot = [
             'revision' => $this->newRevision(),
             'owned_product_ids' => $this->ownedProductIdsFast($account),
         ];
+
+        if ($verificationLevel > 0) {
+            $snapshot['profile'] = ['verification_level' => $verificationLevel];
+        }
+
+        return $snapshot;
     }
 
     /** @return list<int> */

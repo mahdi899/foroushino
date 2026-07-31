@@ -288,7 +288,7 @@ class TelegramHostRegistrationService
 
             return [
                 'ok' => true,
-                'account' => $result['account'] ?? $this->snapshots->accountPayloadForRegistration($account->fresh(['user', 'bot'])),
+                'account' => $result['account'] ?? $this->snapshots->accountPayload($account->fresh(['user', 'bot'])),
                 'conversation' => $result['conversation'] ?? [
                     'state' => ConversationState::Idle->value,
                     'context' => [],
@@ -547,7 +547,7 @@ class TelegramHostRegistrationService
                 'remove_keyboard' => true,
                 'show_main_menu' => true,
             ]),
-        ], $conversation, $account, includeAccount: true, registrationSnapshot: true);
+        ], $conversation, $account, includeAccount: true, registrationSnapshot: false);
     }
 
     /**
