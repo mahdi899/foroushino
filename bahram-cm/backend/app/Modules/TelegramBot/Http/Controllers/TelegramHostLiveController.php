@@ -175,6 +175,8 @@ class TelegramHostLiveController
             'ok' => true,
             'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
             'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),
+            'c2c_has_details' => $bot->hasCardToCardDetails(),
+            'c2c_ready' => $bot->cardToCardReady(),
             'card_to_card' => $bot->cardToCardConfig(),
             'payment_reports_chat_id' => $bot->paymentReportsChatId() ?? '',
         ]);

@@ -86,9 +86,10 @@ final class PurchaseFlow
             'checkout' => ['product_id' => $productId, 'coupon' => $coupon],
         ]);
 
-        // Bootstrap push from Iran already carries checkout flags; no live Iran hop here.
+        $this->refreshCheckoutFlagsFromIran($chatId, $telegramUserId);
+
         $zp = $this->cache->checkoutZarinpalEnabled();
-        $c2c = $this->cache->checkoutC2cEnabled() && $this->cache->hasCardToCardDetails();
+        $c2c = $this->cache->checkoutC2cReady();
 
         if (! $zp && ! $c2c) {
             $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('warning').' پرداخت آنلاین و کارت‌به‌کارت هر دو غیرفعال‌اند. با پشتیبانی تماس بگیرید.');
@@ -298,5 +299,15 @@ final class PurchaseFlow
         }
 
         $this->api->sendMessage($chatId, $text, $options);
+    }
+
+    private function refreshCheckoutFlagsFromIran(int $chatId, int $telegramUserId): void
+    {
+        $live = $this->live->checkoutFlags($chatId, $telegramUserId);
+        if (empty($live['ok'])) {
+            return;
+        }
+
+        $this->cache->applyLiveCheckoutFlags($live);
     }
 }

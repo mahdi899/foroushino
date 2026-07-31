@@ -98,8 +98,11 @@ final class SyncCache
         $flags['bot_is_active'] = (bool) ($bootstrap['bot']['is_active'] ?? true);
 
         $cardToCard = (array) ($checkout['card_to_card'] ?? []);
+        $c2cHasDetails = trim((string) ($cardToCard['override_text'] ?? '')) !== ''
+            || trim((string) ($cardToCard['card_number'] ?? '')) !== '';
         $this->storeMessages([
             '__checkout_card_to_card' => json_encode($cardToCard, JSON_UNESCAPED_UNICODE),
+            '__checkout_c2c_has_details' => $c2cHasDetails ? '1' : '0',
             '__payment_reports_chat_id' => (string) ($checkout['payment_reports_chat_id'] ?? ''),
         ]);
 
@@ -613,6 +616,11 @@ final class SyncCache
         return $config['override_text'] !== '' || $config['card_number'] !== '';
     }
 
+    public function checkoutC2cReady(): bool
+    {
+        return $this->checkoutC2cEnabled() && $this->hasCardToCardDetails();
+    }
+
     public function cardToCardInstructions(): string
     {
         $config = $this->cardToCardConfig();
@@ -662,7 +670,13 @@ final class SyncCache
 
         $messages = [];
         if (isset($payload['card_to_card']) && is_array($payload['card_to_card'])) {
-            $messages['__checkout_card_to_card'] = json_encode($payload['card_to_card'], JSON_UNESCAPED_UNICODE);
+            $cardToCard = $payload['card_to_card'];
+            $messages['__checkout_card_to_card'] = json_encode($cardToCard, JSON_UNESCAPED_UNICODE);
+            $hasDetails = trim((string) ($cardToCard['override_text'] ?? '')) !== ''
+                || trim((string) ($cardToCard['card_number'] ?? '')) !== '';
+            $messages['__checkout_c2c_has_details'] = $hasDetails ? '1' : '0';
+        } elseif (array_key_exists('c2c_has_details', $payload)) {
+            $messages['__checkout_c2c_has_details'] = ! empty($payload['c2c_has_details']) ? '1' : '0';
         }
         if (array_key_exists('payment_reports_chat_id', $payload)) {
             $messages['__payment_reports_chat_id'] = (string) ($payload['payment_reports_chat_id'] ?? '');
