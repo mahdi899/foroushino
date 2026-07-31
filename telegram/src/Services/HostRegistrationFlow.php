@@ -27,6 +27,7 @@ final class HostRegistrationFlow
         private readonly MainMenu $mainMenu,
         private readonly SyncCache $cache,
         private readonly PendingRegistrationSync $registrationQueue,
+        private readonly ?MembershipGate $membership = null,
         private readonly ?PendingMobileAccess $pendingMobileAccess = null,
     ) {}
 
@@ -44,6 +45,9 @@ final class HostRegistrationFlow
             }
             $this->accounts->storeLocalOnlyRegistration($telegramUserId, '', $displayName);
             $this->conversations->set($telegramUserId, 'idle', []);
+            if ($this->membership !== null && ! $this->membership->requireMembership($chatId, $telegramUserId)) {
+                return;
+            }
             $this->api->sendMessage($chatId, $this->cache->message(
                 'registration_collect_phone_disabled',
                 'خوش آمدید! دریافت شماره و نام فعلاً غیرفعال است.',
@@ -326,6 +330,9 @@ final class HostRegistrationFlow
     private function showMainMenu(int $chatId, int $telegramUserId): void
     {
         $this->conversations->set($telegramUserId, 'idle', []);
+        if ($this->membership !== null && ! $this->membership->requireMembership($chatId, $telegramUserId)) {
+            return;
+        }
         $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
             'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
         ]);

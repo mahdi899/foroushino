@@ -15,6 +15,10 @@ class ChatMemberHandler implements UpdateHandlerInterface
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
     {
+        if (app(\App\Services\TelegramInfrastructureService::class)->usesHostBridge()) {
+            return;
+        }
+
         $userId = (int) data_get($update->payload, 'chat_member.from.id');
         $chatId = (string) data_get($update->payload, 'chat_member.chat.id');
 

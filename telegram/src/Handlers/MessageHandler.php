@@ -65,7 +65,9 @@ final class MessageHandler
 
         if (isset($message['contact'])) {
             if ($this->userPassesVerificationGate($telegramUserId)) {
-                $this->sendMainMenu($chatId, $telegramUserId);
+                if ($this->membership->requireMembership($chatId, $telegramUserId)) {
+                    $this->sendMainMenu($chatId, $telegramUserId);
+                }
 
                 return;
             }
@@ -263,6 +265,10 @@ final class MessageHandler
     private function handleStart(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
         if ($this->userPassesVerificationGate($telegramUserId)) {
+            if (! $this->membership->requireMembership($chatId, $telegramUserId)) {
+                return;
+            }
+
             $this->sendMainMenu($chatId, $telegramUserId);
 
             $normalized = strtolower(ltrim((string) $startPayload, " \t=_-"));
@@ -287,11 +293,7 @@ final class MessageHandler
             return;
         }
 
-        if (! $this->membership->isSatisfied($telegramUserId)) {
-            $this->api->sendMessage($chatId, $this->cache->message('membership_required', 'ابتدا در کانال‌های اجباری عضو شوید.'), [
-                'reply_markup' => $this->membership->joinPromptMarkup(),
-            ]);
-
+        if (! $this->membership->requireMembership($chatId, $telegramUserId)) {
             return;
         }
 

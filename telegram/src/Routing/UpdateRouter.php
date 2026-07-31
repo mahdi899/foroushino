@@ -14,6 +14,7 @@ use TelegramHost\Services\GroupJoinMessageCleaner;
 use TelegramHost\Services\HostAdminShell;
 use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
+use TelegramHost\Services\MembershipGate;
 use TelegramHost\Telegram\BotApiClient;
 use TelegramHost\Support\TelegramCustomEmoji;
 
@@ -34,11 +35,16 @@ final class UpdateRouter
         private readonly ConversationRepository $conversations,
         private readonly HostAdminShell $adminShell,
         private readonly GroupJoinMessageCleaner $groupJoinCleaner,
+        private readonly MembershipGate $membership,
     ) {}
 
     /** @param array<string, mixed> $update */
     public function handle(array $update): void
     {
+        if (isset($update['chat_member']) && is_array($update['chat_member'])) {
+            $this->membership->invalidateFromChatMemberUpdate($update['chat_member']);
+        }
+
         // Reports-group support replies are handled locally — no Iran needed.
         if (isset($update['message']) && ! $this->delegation->isPrivateUserFacing($update)) {
             if ($this->support->tryHandleGroupMessage($update['message'])) {

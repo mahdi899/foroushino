@@ -128,11 +128,7 @@ final class CallbackQueryHandler
                 return;
             }
 
-            if (! $this->membership->isSatisfied($telegramUserId)) {
-                $this->api->sendMessage($chatId, $this->cache->message('membership_required', 'عضویت الزامی است.'), [
-                    'reply_markup' => $this->membership->joinPromptMarkup(),
-                ]);
-
+            if (! $this->membership->requireMembership($chatId, $telegramUserId)) {
                 return;
             }
 
@@ -263,11 +259,6 @@ final class CallbackQueryHandler
             return;
         }
 
-        // #region agent log
-        $memberOk = $this->membership->isSatisfied($telegramUserId);
-        @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R6', 'location' => 'CallbackQueryHandler.php:handleBuy', 'message' => 'buy_without_membership_gate', 'data' => ['telegramUserId' => $telegramUserId, 'productId' => $productId, 'membershipSatisfied' => $memberOk, 'gateEnforced' => false, 'verified' => $this->accounts->isVerified($telegramUserId)], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-        // #endregion
-
         if (! $this->accounts->isVerified($telegramUserId)) {
             $this->messageHandler->handle([
                 'chat' => ['id' => $chatId],
@@ -275,6 +266,10 @@ final class CallbackQueryHandler
                 'text' => '/start',
             ]);
 
+            return;
+        }
+
+        if (! $this->membership->requireMembership($chatId, $telegramUserId)) {
             return;
         }
 

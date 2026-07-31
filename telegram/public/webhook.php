@@ -111,7 +111,7 @@ try {
     $mainMenu = new MainMenu($cache, $accounts);
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
-    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $pendingMobileAccess);
+    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess);
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
@@ -180,6 +180,7 @@ try {
         $conversations,
         $adminShell,
         $groupJoinCleaner,
+        $membership,
     );
 
     (new Bot($router))->handle($update);
