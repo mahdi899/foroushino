@@ -1850,7 +1850,7 @@ export function FeedView({
         <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
           <FamilyFeedWallpaper />
           {!isPreview && notificationsOpen ? (
-            <div className="family-feed-overlay absolute inset-0 z-50 flex min-h-0 flex-col bg-[var(--family-bg)]">
+            <div className="family-feed-overlay absolute inset-0 z-50 flex min-h-0 flex-col overflow-hidden">
               <FamilyNotificationsPanel
                 enabled={!isPreview}
                 onClose={() => onCloseNotifications?.()}

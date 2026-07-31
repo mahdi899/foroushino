@@ -383,6 +383,31 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   z-index: 50;
 }
 
+/* Comments / notifications overlays — same chat wallpaper as the feed */
+.family-wallpaper-surface {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--family-chat-wallpaper-base);
+  background-image: var(--family-chat-wallpaper-photo);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.family-wallpaper-surface > .family-feed-wallpaper {
+  z-index: 0;
+}
+
+.family-wallpaper-surface > *:not(.family-feed-wallpaper) {
+  position: relative;
+  z-index: 1;
+}
+
+.family-wallpaper-surface > .family-panel-header {
+  position: sticky;
+  z-index: 30;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .family-feed-wallpaper__img {
     animation: none;

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronRight, MessageCircle } from 'lucide-react';
 import { CommentsPanel } from '@/components/family/CommentsPanel';
+import { FamilyFeedWallpaper } from '@/components/family/FamilyFeedWallpaper';
 import { cn } from '@/lib/cn';
 import { useBackgroundScrollLock } from '@/lib/hooks/useBackgroundScrollLock';
 import { useVisualViewportBox } from '@/lib/hooks/useVisualViewportBox';
@@ -41,7 +42,7 @@ export function FeedCommentsPanel({
     <div
       ref={panelRef}
       className={cn(
-        'family-feed-overlay z-50 flex min-h-0 flex-col overflow-hidden bg-[var(--family-bg)]',
+        'family-feed-overlay family-wallpaper-surface z-50 flex min-h-0 flex-col overflow-hidden',
         mobile ? 'fixed inset-x-0' : 'absolute inset-0',
         className,
       )}
@@ -54,6 +55,7 @@ export function FeedCommentsPanel({
           : undefined
       }
     >
+      <FamilyFeedWallpaper />
       <header className="family-panel-header shrink-0 gap-2">
         <button
           type="button"
