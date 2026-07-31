@@ -15,6 +15,7 @@ import { SessionOperatorPanel } from './SessionOperatorPanel';
 import { OperatorQueuePanel } from './OperatorQueuePanel';
 import { OperatorProfilesSection } from './OperatorProfilesSection';
 import { QuickSuggestionsSection } from './QuickSuggestionsSection';
+import { ContactChannelsSection } from './ContactChannelsSection';
 import { getChatbotOperatorProfiles, saveChatbotOperatorProfiles } from '@/lib/chatbot/operatorProfiles';
 
 type Tab = 'settings' | 'operator' | 'sessions' | 'logs';
@@ -473,12 +474,24 @@ export default function ChatbotAdminPage() {
               />
             </div>
 
-            <h2 className="pt-2 text-h3 text-primary-dark">دکمه‌های CTA</h2>
+            <h2 className="pt-2 text-h3 text-primary-dark">دکمه‌های CTA پاسخ AI</h2>
             <div className="grid gap-2 sm:grid-cols-2">
-              <Toggle checked={form.ctaConsultation} onChange={(v) => setForm({ ...form, ctaConsultation: v })} label="مشاوره رایگان" />
+              <Toggle checked={form.ctaConsultation} onChange={(v) => setForm({ ...form, ctaConsultation: v })} label="مشاوره / دوره‌ها" />
               <Toggle checked={form.ctaPricing} onChange={(v) => setForm({ ...form, ctaPricing: v })} label="قیمت‌ها" />
-              <Toggle checked={form.ctaWhatsapp} onChange={(v) => setForm({ ...form, ctaWhatsapp: v })} label="واتساپ" />
-              <Toggle checked={form.ctaPhone} onChange={(v) => setForm({ ...form, ctaPhone: v })} label="تماس" />
+            </div>
+
+            <div className="pt-4">
+              <ContactChannelsSection
+                contacts={form.contacts}
+                onChange={(contacts) =>
+                  setForm({
+                    ...form,
+                    contacts,
+                    ctaWhatsapp: contacts.whatsapp.enabled,
+                    ctaPhone: contacts.phone.enabled,
+                  })
+                }
+              />
             </div>
           </div>
 

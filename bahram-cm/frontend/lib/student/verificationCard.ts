@@ -74,7 +74,7 @@ export function resolveVerificationCard(user: StudentUser): VerificationCardStat
       hint: IDENTITY_CARD_HINT_FA.draft,
       action: {
         href: '/panel/identity-verification',
-        label: 'ادامه تأیید هویت',
+        label: 'ادامه احراز هویت',
         variant: 'primary',
       },
     };
@@ -84,7 +84,7 @@ export function resolveVerificationCard(user: StudentUser): VerificationCardStat
     hint: ACCOUNT_STATUS_HINT_FA[1],
     action: {
       href: '/panel/identity-verification',
-      label: 'شروع تأیید هویت',
+      label: 'شروع احراز هویت',
       variant: 'primary',
     },
   };

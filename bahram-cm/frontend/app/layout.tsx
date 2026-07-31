@@ -137,7 +137,11 @@ export default async function RootLayout({
         >
           <StudentSessionBootstrap enabled={useStaticMarketingShell} />
           <PerformanceProvider config={perfConfig}>
-            <AdminAwareChrome promo={seminarPromo} bareShell={isBareShellRoute}>
+            <AdminAwareChrome
+              promo={seminarPromo}
+              bareShell={isBareShellRoute}
+              contacts={isBareShellRoute ? null : chatbotConfig.contacts}
+            >
               {children}
             </AdminAwareChrome>
           </PerformanceProvider>

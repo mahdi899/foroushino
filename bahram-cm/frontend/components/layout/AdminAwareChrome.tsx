@@ -7,6 +7,7 @@ import { SiteFooter } from '@/components/nav/SiteFooter';
 import { SiteNav } from '@/components/nav/SiteNav';
 import { SitePromoBar } from '@/components/layout/SitePromoBar';
 import type { SeminarPromo } from '@/lib/services/seminarPromo';
+import type { ChatbotPublicContacts } from '@/lib/chatbot/types';
 
 function isBareShellPath(pathname: string | null | undefined): boolean {
   return Boolean(
@@ -20,11 +21,14 @@ export function AdminAwareChrome({
   children,
   promo,
   bareShell,
+  contacts,
 }: {
   children: React.ReactNode;
   promo?: SeminarPromo | null;
   /** From root layout — covers rostami.club where pathname is `/` not `/family`. */
   bareShell?: boolean;
+  /** Social contact channels from /admin/chatbot — drives footer links. */
+  contacts?: ChatbotPublicContacts | null;
 }) {
   const pathname = usePathname();
   const onFamilyHost =
@@ -49,7 +53,7 @@ export function AdminAwareChrome({
       <SiteNav />
       <div className="site-chrome-body relative z-[2] min-w-0 w-full max-w-full">
         {children}
-        <SiteFooter />
+        <SiteFooter contacts={contacts} />
       </div>
       <AnalyticsGate />
     </SmoothScroll>

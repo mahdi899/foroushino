@@ -113,8 +113,8 @@ export function unavailableFallbackCtasFromPublic(config: ChatbotPublicConfig): 
   return unavailableFallbackCtas({
     ...DEFAULT_CHATBOT_CONFIG,
     cta_consultation: config.ctas.consultation,
-    cta_whatsapp: config.ctas.whatsapp,
-    cta_phone: config.ctas.phone,
+    cta_whatsapp: config.contacts?.whatsapp?.enabled ?? config.ctas.whatsapp,
+    cta_phone: config.contacts?.phone?.enabled ?? config.ctas.phone,
     cta_pricing: config.ctas.pricing,
   });
 }

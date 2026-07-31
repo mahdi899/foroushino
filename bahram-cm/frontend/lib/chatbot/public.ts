@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cache } from 'react';
 import { PUBLIC_API_URL, SERVER_API_URL } from '@/lib/api/config';
+import { mergeChatbotContacts } from './contacts';
 import {
   DEFAULT_CHATBOT_CONFIG,
   EMPTY_CHATBOT_PUBLIC,
@@ -10,6 +11,41 @@ import {
 } from './types';
 
 function mapPublicToStored(pub: ChatbotPublicConfig): ChatbotStoredConfig {
+  const rawContacts = pub.contacts
+    ? {
+        whatsapp: {
+          enabled: pub.contacts.whatsapp.enabled,
+          id: pub.contacts.whatsapp.id,
+          label: pub.contacts.whatsapp.label,
+        },
+        telegram: {
+          enabled: pub.contacts.telegram.enabled,
+          id: pub.contacts.telegram.id,
+          label: pub.contacts.telegram.label,
+        },
+        rubika: {
+          enabled: pub.contacts.rubika.enabled,
+          id: pub.contacts.rubika.id,
+          label: pub.contacts.rubika.label,
+        },
+        instagram: {
+          enabled: pub.contacts.instagram.enabled,
+          id: pub.contacts.instagram.id,
+          label: pub.contacts.instagram.label,
+        },
+        phone: {
+          enabled: pub.contacts.phone.enabled,
+          id: pub.contacts.phone.id,
+          label: pub.contacts.phone.label,
+        },
+      }
+    : null;
+
+  const contacts = mergeChatbotContacts(rawContacts, {
+    cta_whatsapp: pub.ctas.whatsapp,
+    cta_phone: pub.ctas.phone,
+  });
+
   return {
     enabled: pub.enabled,
     assistant_name: pub.assistant_name,
@@ -20,9 +56,10 @@ function mapPublicToStored(pub: ChatbotPublicConfig): ChatbotStoredConfig {
     honeypot_enabled: pub.honeypot_enabled ?? DEFAULT_CHATBOT_CONFIG.honeypot_enabled,
     max_history_messages: pub.max_history_messages ?? DEFAULT_CHATBOT_CONFIG.max_history_messages,
     cta_consultation: pub.ctas.consultation,
-    cta_whatsapp: pub.ctas.whatsapp,
-    cta_phone: pub.ctas.phone,
+    cta_whatsapp: contacts.whatsapp.enabled,
+    cta_phone: contacts.phone.enabled,
     cta_pricing: pub.ctas.pricing,
+    contacts,
     rate_limit_per_minute: DEFAULT_CHATBOT_CONFIG.rate_limit_per_minute,
     rate_limit_per_hour: DEFAULT_CHATBOT_CONFIG.rate_limit_per_hour,
     operator_rate_limit_per_minute: DEFAULT_CHATBOT_CONFIG.operator_rate_limit_per_minute,

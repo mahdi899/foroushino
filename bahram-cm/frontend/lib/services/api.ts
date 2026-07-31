@@ -12,6 +12,20 @@ export const API_BASE_URL = (
   "http://localhost:3000"
 );
 
+/** Browser: same-origin (avoids CORS on app.lvh.me vs localhost). Server: env base. */
+function resolveClientApiOrigin(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return API_BASE_URL;
+}
+
+function apiUrl(path: string): string {
+  const origin = resolveClientApiOrigin();
+  const suffix = `/api${path.startsWith("/") ? path : `/${path}`}`;
+  return `${origin}${suffix}`;
+}
+
 export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; code?: string; status?: number };
@@ -43,7 +57,7 @@ export async function getJson<T>(
 ): Promise<ApiResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const url = `${API_BASE_URL}/api${path.startsWith("/") ? path : `/${path}`}`;
+  const url = apiUrl(path);
 
   try {
     const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
@@ -86,7 +100,7 @@ export async function postJson<T>(
 ): Promise<ApiResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const url = `${API_BASE_URL}/api${path.startsWith("/") ? path : `/${path}`}`;
+  const url = apiUrl(path);
 
   try {
     const res = await fetch(url, {

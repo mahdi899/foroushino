@@ -1,4 +1,4 @@
-import { Briefcase, GraduationCap, Home, PenLine } from "lucide-react";
+import { Briefcase, Home, PenLine, Radio } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type SiteBottomNavItem = {
@@ -17,6 +17,11 @@ export const SITE_BOTTOM_NAV_ITEMS: SiteBottomNavItem[] = [
     shortLabel: "کمپین",
     icon: PenLine,
   },
-  { href: "/courses", label: "دوره‌ها", shortLabel: "دوره", icon: GraduationCap },
+  {
+    href: "/reference-channels/kanal-mrgf",
+    label: "کانال مرجع",
+    shortLabel: "مرجع",
+    icon: Radio,
+  },
   { href: "/saat", label: "سات", icon: Briefcase },
 ];

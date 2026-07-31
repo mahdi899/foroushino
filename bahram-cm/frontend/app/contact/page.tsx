@@ -25,7 +25,7 @@ export default function ContactPage() {
             </div>
           </Reveal>
 
-          <div className="mt-8 grid min-w-0 items-stretch gap-5 md:mt-10 md:gap-6 lg:grid-cols-12 lg:gap-8">
+          <div className="mt-6 grid min-w-0 items-stretch gap-4 md:mt-10 md:gap-6 lg:grid-cols-12 lg:gap-8">
             <Reveal className="lg:col-span-4">
               <ContactMethods className="lg:sticky lg:top-24" />
             </Reveal>

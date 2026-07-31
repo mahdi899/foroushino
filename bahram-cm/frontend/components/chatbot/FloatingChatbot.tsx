@@ -33,8 +33,8 @@ import { TypingText } from '@/components/chatbot/TypingText';
 import { clearCaptchaTrust, isCaptchaTrusted, markCaptchaTrusted } from '@/lib/captcha/trust';
 import type { CaptchaPayload } from '@/lib/captcha/types';
 import { FaqAccordion } from '@/components/FaqAccordion';
-import { siteConfig } from '@/config/site';
 import { sendChatbotMessage, rateChatbotMessage, submitChatbotRatingFeedback, queueChatbotVisitorMessage, saveChatbotVisitorInfo } from '@/lib/chatbot/actions';
+import { resolveContactHref } from '@/lib/chatbot/contacts';
 import { pollChatbotUpdatesClient } from '@/lib/chatbot/poll.client';
 import {
   CHATBOT_UNAVAILABLE_REPLY,
@@ -67,9 +67,10 @@ import type {
   ChatbotPublicConfig,
   ChatbotQuickSuggestion,
 } from '@/lib/chatbot/types';
+import { EMPTY_CHATBOT_PUBLIC } from '@/lib/chatbot/types';
 import { activeQuickSuggestions, resolveQuickSuggestions } from '@/lib/chatbot/quickSuggestions';
 import type { FaqGroup } from '@/lib/data/chatbotFaq';
-import { loadChatbotFaqGroups } from '@/lib/chatbot/faqLoader';
+import { defaultChatbotFaqGroups, loadChatbotFaqGroups } from '@/lib/chatbot/faqLoader';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
@@ -112,9 +113,13 @@ function getSessionId(): string {
   return id;
 }
 
-function ctaHref(cta: ChatbotCta): string {
-  if (cta.type === 'whatsapp') return `https://wa.me/${siteConfig.contact.whatsappRaw}`;
-  if (cta.type === 'phone') return `tel:${siteConfig.contact.phoneRaw}`;
+function ctaHref(cta: ChatbotCta, contacts = EMPTY_CHATBOT_PUBLIC.contacts): string {
+  if (cta.type === 'whatsapp') {
+    return contacts.whatsapp.href || resolveContactHref('whatsapp', contacts.whatsapp.id);
+  }
+  if (cta.type === 'phone') {
+    return contacts.phone.href || resolveContactHref('phone', contacts.phone.id);
+  }
   return cta.href.startsWith('/') ? cta.href : `/${cta.href}`;
 }
 
@@ -589,12 +594,15 @@ export function FloatingChatbot({
   initialOpen = false,
 }: FloatingChatbotProps) {
   const chatEnabled = config.enabled;
+  const contacts = config.contacts ?? EMPTY_CHATBOT_PUBLIC.contacts;
   const defaultTab: AssistantTab = chatEnabled ? 'chat' : 'contact';
   const operatorMode = chatEnabled && !aiAvailable;
 
   const [open, setOpen] = useState(initialOpen);
   const [tab, setTab] = useState<AssistantTab>(defaultTab);
-  const [faqGroups, setFaqGroups] = useState<FaqGroup[]>(initialFaqGroups);
+  const [faqGroups, setFaqGroups] = useState<FaqGroup[]>(() =>
+    initialFaqGroups.length > 0 ? initialFaqGroups : defaultChatbotFaqGroups(),
+  );
   const [faqLoading, setFaqLoading] = useState(false);
   const faqFetchAttemptedRef = useRef(false);
   const [messages, setMessages] = useState<ChatbotMessage[]>([]);
@@ -640,10 +648,10 @@ export function FloatingChatbot({
     () =>
       activeQuickSuggestions(
         resolveQuickSuggestions(config.quick_suggestions, {
-          preferCodeDefaults: true,
+          useDefaults: config.quick_suggestions === undefined,
         }),
       ),
-    [],
+    [config.quick_suggestions],
   );
 
   /** Skip polling when visitor only uses AI — saves server + battery. */
@@ -992,7 +1000,6 @@ export function FloatingChatbot({
 
   useEffect(() => {
     if (!lazyLoadFaqs || tab !== 'faq') return;
-    if (faqGroups.length > 0) return;
     if (faqFetchAttemptedRef.current) return;
 
     faqFetchAttemptedRef.current = true;
@@ -1000,7 +1007,7 @@ export function FloatingChatbot({
     setFaqLoading(true);
     void loadChatbotFaqGroups()
       .then((groups) => {
-        if (active) setFaqGroups(groups);
+        if (active && groups.length > 0) setFaqGroups(groups);
       })
       .finally(() => {
         if (active) setFaqLoading(false);
@@ -1008,7 +1015,7 @@ export function FloatingChatbot({
     return () => {
       active = false;
     };
-  }, [lazyLoadFaqs, tab, faqGroups.length]);
+  }, [lazyLoadFaqs, tab]);
 
   useEffect(() => {
     if (!chatEnabled || !needsOperatorPoll) return;
@@ -1783,15 +1790,20 @@ export function FloatingChatbot({
                                     </button>
                                   );
                                 }
-                                const href = ctaHref(cta);
+                                const href = ctaHref(cta, contacts);
                                 const external = cta.type === 'whatsapp' || cta.type === 'phone';
                                 const cls = chatbotCtaButtonClass(chatTheme, cta.type);
                                 return external ? (
                                   <a
                                     key={`${cta.label}-${cta.href}`}
                                     href={href}
+                                    target={cta.type === 'whatsapp' ? '_blank' : undefined}
+                                    rel={cta.type === 'whatsapp' ? 'noopener noreferrer' : undefined}
                                     className={cls}
-                                    onClick={() => track('chatbot_cta', { type: cta.type })}
+                                    onClick={() => {
+                                      track('chatbot_cta', { type: cta.type });
+                                      setOpen(false);
+                                    }}
                                   >
                                     <CtaIcon type={cta.type} />
                                     {cta.label}
@@ -1801,7 +1813,10 @@ export function FloatingChatbot({
                                     key={`${cta.label}-${cta.href}`}
                                     href={href}
                                     className={cls}
-                                    onClick={() => track('chatbot_cta', { type: cta.type })}
+                                    onClick={() => {
+                                      track('chatbot_cta', { type: cta.type });
+                                      setOpen(false);
+                                    }}
                                   >
                                     <CtaIcon type={cta.type} />
                                     {cta.label}
@@ -1863,10 +1878,15 @@ export function FloatingChatbot({
                 <p className={cn('mb-1 text-[12px] leading-relaxed', chatTheme.muted)}>
                   برای سوال درباره دوره‌ها، سات یا درخواست دسترسی یکی از راه‌های زیر را انتخاب کنید:
                 </p>
-                {config.ctas.whatsapp && (
+                {contacts.whatsapp.enabled && (
                 <a
-                  href={`https://wa.me/${siteConfig.contact.whatsappRaw}`}
-                  onClick={() => track('whatsapp_click', { from: 'assistant' })}
+                  href={contacts.whatsapp.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    track('whatsapp_click', { from: 'assistant' });
+                    setOpen(false);
+                  }}
                   className={chatbotCtaButtonClass(chatTheme, 'whatsapp', true)}
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-success/15 text-success transition group-hover:scale-105">
@@ -1874,14 +1894,16 @@ export function FloatingChatbot({
                   </span>
                   <span className="flex-1">
                     <span className={cn('block text-[13px] font-bold', chatTheme.body)}>واتساپ</span>
-                    <span className={cn('text-[10px]', chatTheme.muted)}>پاسخ سریع در واتساپ</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{contacts.whatsapp.label || 'پاسخ سریع در واتساپ'}</span>
                   </span>
                 </a>
                 )}
+                {contacts.telegram.enabled && (
                 <a
-                  href={siteConfig.social.telegram}
+                  href={contacts.telegram.href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
                   className={chatbotCtaButtonClass(chatTheme, 'link', true)}
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-500/15 text-sky-400 transition group-hover:scale-105">
@@ -1889,13 +1911,16 @@ export function FloatingChatbot({
                   </span>
                   <span className="flex-1">
                     <span className={cn('block text-[13px] font-bold', chatTheme.body)}>تلگرام پشتیبانی</span>
-                    <span className={cn('text-[10px]', chatTheme.muted)}>{siteConfig.social.telegramHandle}</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{contacts.telegram.label}</span>
                   </span>
                 </a>
+                )}
+                {contacts.rubika.enabled && (
                 <a
-                  href={siteConfig.social.rubika}
+                  href={contacts.rubika.href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
                   className={chatbotCtaButtonClass(chatTheme, 'link', true)}
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violet-500/15 text-violet-300 transition group-hover:scale-105">
@@ -1903,13 +1928,16 @@ export function FloatingChatbot({
                   </span>
                   <span className="flex-1">
                     <span className={cn('block text-[13px] font-bold', chatTheme.body)}>روبیکا پشتیبانی</span>
-                    <span className={cn('text-[10px]', chatTheme.muted)}>{siteConfig.social.rubikaHandle}</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{contacts.rubika.label}</span>
                   </span>
                 </a>
+                )}
+                {contacts.instagram.enabled && (
                 <a
-                  href={siteConfig.social.instagram}
+                  href={contacts.instagram.href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
                   className={chatbotCtaButtonClass(chatTheme, 'link', true)}
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pink-500/15 text-pink-300 transition group-hover:scale-105">
@@ -1917,13 +1945,17 @@ export function FloatingChatbot({
                   </span>
                   <span className="flex-1">
                     <span className={cn('block text-[13px] font-bold', chatTheme.body)}>اینستاگرام</span>
-                    <span className={cn('text-[10px]', chatTheme.muted)}>{siteConfig.social.instagramHandle}</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{contacts.instagram.label}</span>
                   </span>
                 </a>
-                {config.ctas.phone && (
+                )}
+                {contacts.phone.enabled && (
                 <a
-                  href={`tel:${siteConfig.contact.phoneRaw}`}
-                  onClick={() => track('call_click', { from: 'assistant' })}
+                  href={contacts.phone.href}
+                  onClick={() => {
+                    track('call_click', { from: 'assistant' });
+                    setOpen(false);
+                  }}
                   className={chatbotCtaButtonClass(chatTheme, 'phone', true)}
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald/10 text-emerald transition group-hover:scale-105">
@@ -1931,12 +1963,16 @@ export function FloatingChatbot({
                   </span>
                   <span className="flex-1">
                     <span className={cn('block text-[13px] font-bold', chatTheme.body)}>تماس تلفنی</span>
-                    <span className={cn('text-[10px]', chatTheme.muted)}>{siteConfig.contact.phone}</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{contacts.phone.label}</span>
                   </span>
                 </a>
                 )}
                 {config.ctas.pricing && (
-                  <Link href="/courses" className={chatbotCtaButtonClass(chatTheme, 'pricing', true)}>
+                  <Link
+                    href="/courses"
+                    onClick={() => setOpen(false)}
+                    className={chatbotCtaButtonClass(chatTheme, 'pricing', true)}
+                  >
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald/15 text-emerald transition group-hover:scale-105">
                       <Tag className="h-4 w-4" />
                     </span>
@@ -1946,7 +1982,11 @@ export function FloatingChatbot({
                     </span>
                   </Link>
                 )}
-                <Link href="/contact" className={chatbotCtaButtonClass(chatTheme, 'link', true)}>
+                <Link
+                  href="/contact"
+                  onClick={() => setOpen(false)}
+                  className={chatbotCtaButtonClass(chatTheme, 'link', true)}
+                >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald/10 text-emerald transition group-hover:scale-105">
                     <MessagesSquare className="h-4 w-4" />
                   </span>
@@ -1955,7 +1995,11 @@ export function FloatingChatbot({
                     <span className={cn('text-[10px]', chatTheme.muted)}>ارسال پیام از سایت</span>
                   </span>
                 </Link>
-                <Link href="/saat" className={chatbotCtaButtonClass(chatTheme, 'link', true)}>
+                <Link
+                  href="/saat"
+                  onClick={() => setOpen(false)}
+                  className={chatbotCtaButtonClass(chatTheme, 'link', true)}
+                >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald/10 text-emerald transition group-hover:scale-105">
                     <Bot className="h-4 w-4" />
                   </span>
@@ -1983,6 +2027,7 @@ export function FloatingChatbot({
                     ))}
                     <Link
                       href="/faq"
+                      onClick={() => setOpen(false)}
                       className={cn('block pt-1 text-center text-[11px]', chatTheme.accentLink)}
                     >
                       مشاهده همه سوالات →

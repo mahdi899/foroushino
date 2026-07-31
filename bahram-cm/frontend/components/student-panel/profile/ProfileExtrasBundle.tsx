@@ -1,5 +1,7 @@
 import { Sparkles } from 'lucide-react';
+import { ProfileAgeField } from '@/components/student-panel/profile/ProfileAgeField';
 import { ProfileCardHead } from '@/components/student-panel/profile/ProfileCardHead';
+import { ProfileExperienceField } from '@/components/student-panel/profile/ProfileExperienceField';
 import { ProfileIncomeGoalField } from '@/components/student-panel/profile/ProfileIncomeGoalField';
 import { ProfilePasswordFields } from '@/components/student-panel/profile/ProfilePasswordFields';
 import { shouldCollectProfileAge } from '@/lib/student/age';
@@ -21,22 +23,7 @@ export function ProfileExtrasBundle({
 
       <div className="panel-profile-card-body panel-profile-card-body--stacked">
         <div className="panel-profile-grid panel-profile-grid--bundle">
-          {collectAge ? (
-            <div className="panel-profile-field">
-              <label className="field-label" htmlFor="age">
-                سن
-              </label>
-              <input
-                id="age"
-                name="age"
-                type="number"
-                min={10}
-                max={120}
-                defaultValue={profile?.age ?? ''}
-                className="field-input"
-              />
-            </div>
-          ) : null}
+          {collectAge ? <ProfileAgeField defaultValue={profile?.age} onChange={onFieldChange} /> : null}
           <div className="panel-profile-field">
             <label className="field-label" htmlFor="email">
               ایمیل
@@ -61,18 +48,7 @@ export function ProfileExtrasBundle({
               className="field-input"
             />
           </div>
-          <div className="panel-profile-field">
-            <label className="field-label" htmlFor="experience_level">
-              سطح تجربه
-            </label>
-            <input
-              id="experience_level"
-              name="experience_level"
-              defaultValue={profile?.experience_level ?? ''}
-              className="field-input"
-              placeholder="مثلاً: مبتدی، متوسط، حرفه‌ای"
-            />
-          </div>
+          <ProfileExperienceField defaultValue={profile?.experience_level} onChange={onFieldChange} />
           <div className="panel-profile-field">
             <label className="field-label" htmlFor="instagram">
               اینستاگرام

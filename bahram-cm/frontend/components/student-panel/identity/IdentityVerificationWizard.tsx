@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { JalaliWheelDateField } from '@/components/ui/JalaliWheelDateField';
+import { PanelCitySheetField } from '@/components/ui/PanelCitySheetField';
+import { PanelOptionSheetField } from '@/components/ui/PanelOptionSheetField';
 import { LiveSelfieVideoStep } from './LiveSelfieVideoStep';
 import { NationalCardUploadStep } from './NationalCardUploadStep';
 import { IdentityVerificationFeedback } from './IdentityVerificationFeedback';
@@ -354,30 +356,33 @@ export function IdentityVerificationWizard({
               />
             </div>
             <div>
-              <label className="field-label" htmlFor="gender">
+              <label className="field-label" htmlFor="gender" id="gender-label">
                 جنسیت
               </label>
-              <select
+              <PanelOptionSheetField
                 id="gender"
-                className="field-input"
+                title="جنسیت"
+                placeholder="انتخاب کنید"
                 value={draft.gender}
-                onChange={(e) => setDraft((d) => ({ ...d, gender: e.target.value }))}
+                onChange={(gender) => setDraft((d) => ({ ...d, gender }))}
+                options={[
+                  { value: 'male', label: 'مرد' },
+                  { value: 'female', label: 'زن' },
+                ]}
+                layout="grid"
                 required
-              >
-                <option value="">انتخاب کنید</option>
-                <option value="male">مرد</option>
-                <option value="female">زن</option>
-              </select>
+              />
             </div>
             <div>
-              <label className="field-label" htmlFor="city">
+              <label className="field-label" htmlFor="city" id="city-label">
                 شهر
               </label>
-              <input
+              <PanelCitySheetField
                 id="city"
-                className="field-input"
+                title="شهر"
+                placeholder="انتخاب شهر"
                 value={draft.city}
-                onChange={(e) => setDraft((d) => ({ ...d, city: e.target.value }))}
+                onChange={(city) => setDraft((d) => ({ ...d, city }))}
                 required
               />
             </div>

@@ -33,7 +33,7 @@ export const siteConfig = {
     rubika: 'https://rubika.ir/rostami_sup',
     instagramHandle: '@live_rostami',
     telegramHandle: '@rostami_sup',
-    rubikaHandle: 'rostami_sup',
+    rubikaHandle: '@rostami_sup',
   },
   trust: {
     yearsExperience: '۱۰+',
