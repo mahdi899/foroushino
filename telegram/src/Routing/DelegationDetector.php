@@ -31,8 +31,13 @@ final class DelegationDetector
 
     public function shouldRelayToIran(array $update): bool
     {
-        if (isset($update['my_chat_member']) || isset($update['chat_member']) || isset($update['chat_join_request'])) {
+        if (isset($update['my_chat_member']) || isset($update['chat_join_request'])) {
             return true;
+        }
+
+        // Membership gate runs on this host — do not relay join/leave to Iran.
+        if (isset($update['chat_member'])) {
+            return false;
         }
 
         if (isset($update['edited_message'])) {

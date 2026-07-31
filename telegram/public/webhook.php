@@ -111,8 +111,8 @@ try {
     $mainMenu = new MainMenu($cache, $accounts);
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
-    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess);
     $membership = new MembershipGate($cache, $api, $membershipCache);
+    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview, $cardToCardFlow);
