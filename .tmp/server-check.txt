@@ -1,5 +1,0 @@
-f9aa435f
-BUILD_ID=Hq7FSelo66xm2XvxVm2R2
-353793 bash -c  cd /var/www/foroushino && git rev-parse --short HEAD test -f /var/www/bahram-cm/frontend/.next/BUILD_ID && echo BUILD_ID=$(cat /var/www/bahram-cm/frontend/.next/BUILD_ID) || echo no BUILD_ID pgrep -af 'next build' || echo no next build curl -sf -m 5 -o /dev/null -w 'Laravel: %{http_code} ' http://127.0.0.1:8010/up || echo Laravel fail curl -sf -m 5 -o /dev/null -w 'Next: %{http_code} ' http://127.0.0.1:3000/ || echo Next fail 
-Laravel: 200
-Next: 200
