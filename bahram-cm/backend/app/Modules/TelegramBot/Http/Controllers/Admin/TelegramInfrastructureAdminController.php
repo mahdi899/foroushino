@@ -12,6 +12,7 @@ use App\Services\TelegramHostPushState;
 use App\Services\TelegramInfrastructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TelegramInfrastructureAdminController
@@ -139,11 +140,20 @@ class TelegramInfrastructureAdminController
         if (in_array($scope, ['accounts', 'full'], true)) {
             $accounts = $this->hostAccountSync->accountsNeedingReconcile($limit);
             $accounts->each(function (TelegramAccount $account) use (&$result): void {
-                $payload = $this->hostSnapshots->accountPayload($account->fresh(['user', 'bot']));
-                if ($this->hostPush->pushAccount($payload)) {
-                    $result['accounts_pushed']++;
-                } else {
+                try {
+                    $payload = $this->hostSnapshots->accountPayload($account->fresh(['user', 'bot']));
+                    if ($this->hostPush->pushAccount($payload)) {
+                        $result['accounts_pushed']++;
+                    } else {
+                        $result['accounts_failed']++;
+                    }
+                } catch (\Throwable $e) {
                     $result['accounts_failed']++;
+                    Log::channel('telegram')->error('telegram.host.push_account_snapshot_failed', [
+                        'telegram_user_id' => $account->telegram_user_id,
+                        'user_id' => $account->user_id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             });
         }
