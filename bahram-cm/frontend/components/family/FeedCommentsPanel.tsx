@@ -59,16 +59,16 @@ export function FeedCommentsPanel({
           type="button"
           onClick={onClose}
           aria-label="بازگشت به فید"
-          className="family-panel-back"
+          title="بازگشت"
+          className="family-topbar__back"
         >
-          <ChevronRight className="h-5 w-5" aria-hidden />
-          <span>فید</span>
+          <ChevronRight className="family-topbar__back-icon" aria-hidden />
         </button>
         <h2 className="family-panel-title">
           <MessageCircle className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
           نظرات
         </h2>
-        <span className="w-[72px]" aria-hidden />
+        <span className="family-topbar__back invisible" aria-hidden />
       </header>
 
       <CommentsPanel

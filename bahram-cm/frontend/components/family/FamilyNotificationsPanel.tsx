@@ -173,13 +173,13 @@ export function FamilyNotificationsPanel({
               type="button"
               onClick={onClose}
               aria-label="بازگشت به فید"
-              className="family-panel-back"
+              title="بازگشت"
+              className="family-topbar__back"
             >
-              <ChevronRight className="h-5 w-5" aria-hidden />
-              <span>فید</span>
+              <ChevronRight className="family-topbar__back-icon" aria-hidden />
             </button>
           ) : (
-            <span className="w-[72px]" aria-hidden />
+            <span className="family-topbar__back invisible" aria-hidden />
           )}
           <h2 className="family-panel-title">
             <Bell className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
@@ -192,13 +192,13 @@ export function FamilyNotificationsPanel({
             <button
               type="button"
               onClick={() => void handleMarkAll()}
-              className="family-panel-back family-notif-mark-all text-[12px]"
+              className="family-notif-mark-all"
             >
               <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
               همه
             </button>
           ) : (
-            <span className="w-[72px]" aria-hidden />
+            <span className="family-topbar__back invisible" aria-hidden />
           )}
         </div>
       </header>

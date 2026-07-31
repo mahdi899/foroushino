@@ -38,13 +38,13 @@ export function CommentsPage({
             type="button"
             onClick={onClose}
             aria-label="بازگشت"
-            className="flex items-center gap-1 rounded-full px-1 py-1 text-bone/70 transition hover:bg-[var(--family-surface-muted)] hover:text-bone"
+            title="بازگشت"
+            className="family-topbar__back"
           >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-            <span className="text-sm font-medium">بازگشت</span>
+            <ChevronRight className="family-topbar__back-icon" aria-hidden />
           </button>
-          <h3 className="flex-1 text-center text-sm font-semibold text-bone">نظرات</h3>
-          <span className="w-[72px]" aria-hidden />
+          <h3 className="family-panel-title">نظرات</h3>
+          <span className="family-topbar__back invisible" aria-hidden />
         </header>
 
         <CommentsPanel postId={postId} onCommentAdded={onCommentAdded} variant="page" className="min-h-0 flex-1" />
