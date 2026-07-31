@@ -17,10 +17,6 @@ use Illuminate\Validation\ValidationException;
  */
 class ReferralService
 {
-    public function __construct(
-        private readonly TelegramHostAccountSync $hostSync,
-    ) {}
-
     public function getOrCreateCode(User $user): ReferralCode
     {
         return $user->referralCode ?? ReferralCode::create([
@@ -148,7 +144,7 @@ class ReferralService
         // push شدن خود او تازه می‌شه — بدون این، تا بعدی sync دوره‌ای عقب می‌مونه.
         $referrer = User::query()->find($referralCode->user_id);
         if ($referrer !== null) {
-            $this->hostSync->pushUserAccountsImmediate($referrer);
+            app(TelegramHostAccountSync::class)->pushUserAccountsImmediate($referrer);
         }
     }
 
