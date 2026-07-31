@@ -201,7 +201,7 @@ class FulfillOrderJob implements ShouldQueue
             }
         }
         if ($botStartUrl && $isReferencePurchase) {
-            foreach (\App\Modules\TelegramBot\Support\TelegramSiteUrl::urlKeyboardRow('استارت ربات — کانال مرجع', $botStartUrl, 'primary', 'channel') as $row) {
+            foreach (\App\Modules\TelegramBot\Support\TelegramSiteUrl::urlKeyboardRow('به عضویت در کانال مرجع', $botStartUrl, 'primary', 'channel') as $row) {
                 $keyboard[] = $row;
             }
         }

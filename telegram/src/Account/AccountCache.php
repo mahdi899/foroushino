@@ -62,15 +62,16 @@ final class AccountCache
     public function store(int $telegramUserId, array $account): void
     {
         $this->ensureSatColumn();
+        $this->ensureVerificationLevelColumn();
         $snapshot = is_array($account['snapshot'] ?? null) ? $account['snapshot'] : null;
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO telegram_accounts_cache (
-                telegram_user_id, user_id, mobile, mobile_verified_at, display_name, is_bot_admin,
+                telegram_user_id, user_id, mobile, mobile_verified_at, display_name, verification_level, is_bot_admin,
                 snapshot_revision, owned_product_ids, profile_json, referral_json, family_json, owned_presents_json, sat_json,
                 snapshot_synced_at, updated_at
              ) VALUES (
-                :id, :user_id, :mobile, :verified_at, :display_name, :is_admin,
+                :id, :user_id, :mobile, :verified_at, :display_name, :verification_level, :is_admin,
                 :snap_rev, :owned, :profile, :referral, :family, :presents, :sat,
                 :snap_at, NOW()
              )
@@ -79,14 +80,15 @@ final class AccountCache
                 mobile = :mobile2,
                 mobile_verified_at = :verified_at2,
                 display_name = :display_name2,
+                verification_level = IF(:verification_level2 IS NOT NULL, :verification_level2, verification_level),
                 is_bot_admin = :is_admin2,
                 snapshot_revision = COALESCE(:snap_rev2, snapshot_revision),
                 owned_product_ids = COALESCE(:owned2, owned_product_ids),
-                profile_json = COALESCE(:profile2, profile_json),
-                referral_json = COALESCE(:referral2, referral_json),
-                family_json = COALESCE(:family2, family_json),
-                owned_presents_json = COALESCE(:presents2, owned_presents_json),
-                sat_json = COALESCE(:sat2, sat_json),
+                profile_json = IF(:profile2 IS NOT NULL, :profile2, profile_json),
+                referral_json = IF(:referral2 IS NOT NULL, :referral2, referral_json),
+                family_json = IF(:family2 IS NOT NULL, :family2, family_json),
+                owned_presents_json = IF(:presents2 IS NOT NULL, :presents2, owned_presents_json),
+                sat_json = IF(:sat2 IS NOT NULL, :sat2, sat_json),
                 snapshot_synced_at = COALESCE(:snap_at2, snapshot_synced_at),
                 updated_at = NOW()',
         );
@@ -99,15 +101,34 @@ final class AccountCache
         $satJson = null;
         $snapRev = null;
         $snapAt = null;
+        $verificationLevel = isset($account['verification_level'])
+            ? max(1, (int) $account['verification_level'])
+            : null;
 
         if ($snapshot !== null) {
             $snapRev = (string) ($snapshot['revision'] ?? '');
-            $ownedJson = json_encode($snapshot['owned_product_ids'] ?? [], JSON_UNESCAPED_UNICODE);
-            $profileJson = json_encode($snapshot['profile'] ?? null, JSON_UNESCAPED_UNICODE);
-            $referralJson = json_encode($snapshot['referral'] ?? null, JSON_UNESCAPED_UNICODE);
-            $familyJson = json_encode($snapshot['family'] ?? null, JSON_UNESCAPED_UNICODE);
-            $presentsJson = json_encode($snapshot['owned_presents'] ?? [], JSON_UNESCAPED_UNICODE);
-            $satJson = json_encode($snapshot['sat'] ?? null, JSON_UNESCAPED_UNICODE);
+            if (isset($snapshot['owned_product_ids'])) {
+                $ownedJson = json_encode($snapshot['owned_product_ids'], JSON_UNESCAPED_UNICODE);
+            }
+            $profile = $snapshot['profile'] ?? null;
+            if (is_array($profile)) {
+                $profileJson = json_encode($profile, JSON_UNESCAPED_UNICODE);
+                if (isset($profile['verification_level'])) {
+                    $verificationLevel = max(1, (int) $profile['verification_level']);
+                }
+            }
+            if (isset($snapshot['referral'])) {
+                $referralJson = json_encode($snapshot['referral'], JSON_UNESCAPED_UNICODE);
+            }
+            if (isset($snapshot['family'])) {
+                $familyJson = json_encode($snapshot['family'], JSON_UNESCAPED_UNICODE);
+            }
+            if (isset($snapshot['owned_presents'])) {
+                $presentsJson = json_encode($snapshot['owned_presents'], JSON_UNESCAPED_UNICODE);
+            }
+            if (isset($snapshot['sat'])) {
+                $satJson = json_encode($snapshot['sat'], JSON_UNESCAPED_UNICODE);
+            }
             $snapAt = date('Y-m-d H:i:s');
         }
 
@@ -117,6 +138,7 @@ final class AccountCache
             'mobile' => $account['mobile'] ?? null,
             'verified_at' => $this->normalizeDateTime($account['mobile_verified_at'] ?? null),
             'display_name' => $account['display_name'] ?? null,
+            'verification_level' => $verificationLevel ?? 1,
             'is_admin' => ! empty($account['is_bot_admin']) ? 1 : 0,
             'snap_rev' => $snapRev,
             'owned' => $ownedJson,
@@ -133,6 +155,7 @@ final class AccountCache
             'mobile2' => $params['mobile'],
             'verified_at2' => $params['verified_at'],
             'display_name2' => $params['display_name'],
+            'verification_level2' => $verificationLevel,
             'is_admin2' => $params['is_admin'],
             'snap_rev2' => $snapRev,
             'owned2' => $ownedJson,
@@ -299,6 +322,25 @@ final class AccountCache
         $ready = true;
     }
 
+    private function ensureVerificationLevelColumn(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        try {
+            $columns = $this->pdo->query('SHOW COLUMNS FROM telegram_accounts_cache')->fetchAll(\PDO::FETCH_COLUMN);
+            $existing = is_array($columns) ? array_map('strval', $columns) : [];
+            if (! in_array('verification_level', $existing, true)) {
+                $this->pdo->exec(
+                    'ALTER TABLE telegram_accounts_cache ADD COLUMN verification_level TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER display_name',
+                );
+            }
+        } catch (\Throwable) {
+        }
+        $ready = true;
+    }
+
     /**
      * Local-first registration step 1: remember the phone number right away,
      * before/without waiting for Iran to confirm. Does not mark the account
@@ -437,6 +479,50 @@ final class AccountCache
         return $ts !== false && $ts > 0 ? max(0, time() - $ts) : PHP_INT_MAX;
     }
 
+    /**
+     * Verified accounts to refresh from Iran — prioritise KYC/purchase mismatches.
+     *
+     * @return list<int>
+     */
+    public function telegramUserIdsForReconcile(int $limit): array
+    {
+        $this->ensureVerificationLevelColumn();
+        $limit = max(1, min(200, $limit));
+
+        $stmt = $this->pdo->prepare(
+            'SELECT telegram_user_id FROM telegram_accounts_cache
+             WHERE mobile_verified_at IS NOT NULL
+             ORDER BY
+               CASE
+                 WHEN verification_level < 2
+                   AND owned_product_ids IS NOT NULL
+                   AND owned_product_ids <> :empty_json
+                   AND owned_product_ids <> :empty_array
+                 THEN 0
+                 WHEN user_id IS NULL OR user_id = 0 THEN 1
+                 WHEN snapshot_synced_at IS NULL THEN 2
+                 ELSE 3
+               END,
+               COALESCE(snapshot_synced_at, updated_at) ASC,
+               telegram_user_id ASC
+             LIMIT '.$limit,
+        );
+        $stmt->execute([
+            'empty_json' => '[]',
+            'empty_array' => '[]',
+        ]);
+
+        $ids = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $id = (int) ($row['telegram_user_id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
     public function isBotAdmin(int $telegramUserId): bool
     {
         if ($this->isPermanentBotAdmin($telegramUserId)) {
@@ -505,6 +591,11 @@ final class AccountCache
             return false;
         }
 
+        $columnLevel = (int) ($account['verification_level'] ?? 0);
+        if ($columnLevel >= 2) {
+            return true;
+        }
+
         $level = null;
         $profile = $this->decodeJsonObject($account['profile_json'] ?? null);
         if (is_array($profile) && array_key_exists('verification_level', $profile)) {
@@ -543,8 +634,7 @@ final class AccountCache
             return $max;
         }
 
-        // Fallback: any seminar ownership without configured discount amounts.
-        return $this->legacyHasSeminarFlag($telegramUserId, $cache) ? 0 : 0;
+        return 0;
     }
 
     private function legacyHasSeminarFlag(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): bool

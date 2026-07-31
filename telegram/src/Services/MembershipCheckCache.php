@@ -64,4 +64,15 @@ final class MembershipCheckCache
         } catch (\Throwable) {
         }
     }
+
+    public function forgetChat(int $telegramUserId, string $chatId): void
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                'DELETE FROM membership_cache WHERE telegram_user_id = :uid AND chat_id = :chat',
+            );
+            $stmt->execute(['uid' => $telegramUserId, 'chat' => $chatId]);
+        } catch (\Throwable) {
+        }
+    }
 }

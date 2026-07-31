@@ -7,6 +7,7 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramRequiredChat;
 use App\Modules\TelegramBot\Support\TelegramChatIdResolver;
+use App\Services\TelegramInfrastructureService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -17,11 +18,21 @@ class RequiredChatMembershipService
     public function __construct(
         private readonly TelegramBotClientFactory $clientFactory,
         private readonly TelegramOutboundMessenger $outbound,
+        private readonly TelegramInfrastructureService $infrastructure,
     ) {}
+
+    /** Forced-join membership is verified on the external Telegram host (getChatMember). */
+    private function hostOwnsMembershipGate(): bool
+    {
+        return $this->infrastructure->usesHostBridge();
+    }
 
     /** @return list<array{chat: TelegramRequiredChat, is_member: bool}> */
     public function checkAll(TelegramBot $bot, TelegramAccount $account): array
     {
+        if ($this->hostOwnsMembershipGate()) {
+            return [];
+        }
         $chats = TelegramRequiredChat::query()
             ->where('telegram_bot_id', $bot->id)
             ->where('is_active', true)
@@ -43,6 +54,10 @@ class RequiredChatMembershipService
 
     public function allRequiredJoined(TelegramBot $bot, TelegramAccount $account): bool
     {
+        if ($this->hostOwnsMembershipGate()) {
+            return true;
+        }
+
         $cacheKey = sprintf('telegram:membership:all:%d:%d', $bot->id, $account->telegram_user_id);
         $ttl = (int) config('telegram_bot.membership_cache_seconds', 900);
 
@@ -64,6 +79,10 @@ class RequiredChatMembershipService
 
     public function promptJoin(TelegramBot $bot, TelegramAccount $account): void
     {
+        if ($this->hostOwnsMembershipGate()) {
+            return;
+        }
+
         $results = $this->checkAll($bot, $account);
         $buttons = [];
         $missing = 0;
@@ -106,6 +125,10 @@ class RequiredChatMembershipService
 
     public function invalidateCache(TelegramBot $bot, int $telegramUserId, ?string $chatId = null): void
     {
+        if ($this->hostOwnsMembershipGate()) {
+            return;
+        }
+
         Cache::forget(sprintf('telegram:membership:all:%d:%d', $bot->id, $telegramUserId));
 
         if ($chatId !== null) {
@@ -130,6 +153,10 @@ class RequiredChatMembershipService
 
     public function isMember(TelegramBot $bot, int $telegramUserId, TelegramRequiredChat|string $chat): bool
     {
+        if ($this->hostOwnsMembershipGate()) {
+            return true;
+        }
+
         $chatId = $chat instanceof TelegramRequiredChat ? $chat->resolvedChatId() : (string) $chat;
         $cacheKey = sprintf('telegram:membership:%d:%s:%d', $bot->id, $chatId, $telegramUserId);
         $ttl = (int) config('telegram_bot.membership_cache_seconds', 300);

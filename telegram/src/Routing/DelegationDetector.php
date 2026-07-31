@@ -17,9 +17,6 @@ final class DelegationDetector
 {
     /** @var list<string> */
     private const SERVER_STATES = [
-        'waiting_for_terms',
-        'waiting_for_mobile',
-        'confirming_registration',
         'admin_panel',
         'admin_waiting_input',
     ];
@@ -31,8 +28,13 @@ final class DelegationDetector
 
     public function shouldRelayToIran(array $update): bool
     {
-        if (isset($update['my_chat_member']) || isset($update['chat_member']) || isset($update['chat_join_request'])) {
+        if (isset($update['my_chat_member']) || isset($update['chat_join_request'])) {
             return true;
+        }
+
+        // Membership gate runs on this host — do not relay join/leave to Iran.
+        if (isset($update['chat_member'])) {
+            return false;
         }
 
         if (isset($update['edited_message'])) {
@@ -126,7 +128,12 @@ final class DelegationDetector
     public function isPrivateUserFacing(array $update): bool
     {
         if (isset($update['callback_query'])) {
-            return true;
+            $message = $update['callback_query']['message'] ?? null;
+            if (! is_array($message)) {
+                return false;
+            }
+
+            return (string) ($message['chat']['type'] ?? 'private') === 'private';
         }
 
         if (isset($update['message'])) {

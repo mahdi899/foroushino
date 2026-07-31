@@ -21,6 +21,7 @@ use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
+use App\Services\TelegramInfrastructureService;
 
 class CallbackQueryHandler implements UpdateHandlerInterface
 {
@@ -129,7 +130,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
                 return;
             }
 
-            if (! $this->membership->isSatisfied($bot, $account)) {
+            if (! $this->hostOwnsMembershipGate() && ! $this->membership->isSatisfied($bot, $account)) {
                 $this->answer($client, $callbackId, 'عضویت الزامی است.', true);
                 $this->membership->promptJoin($bot, $account);
 
@@ -251,6 +252,12 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
     private function handleMembershipRecheck($client, TelegramBot $bot, TelegramAccount $account, int $chatId, string $callbackId): void
     {
+        if ($this->hostOwnsMembershipGate()) {
+            $this->answer($client, $callbackId, 'بررسی عضویت روی هاست خارج انجام می‌شود.', true);
+
+            return;
+        }
+
         $this->membership->invalidateCache($bot, $account->telegram_user_id);
 
         if ($this->membership->isSatisfied($bot, $account)) {
@@ -417,5 +424,10 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             'text' => mb_substr($text, 0, 200),
             'show_alert' => $showAlert,
         ]);
+    }
+
+    private function hostOwnsMembershipGate(): bool
+    {
+        return app(TelegramInfrastructureService::class)->usesHostBridge();
     }
 }

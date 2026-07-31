@@ -189,16 +189,14 @@ final class HostSatFlow
             'age' => $age,
         ]);
 
-        $this->conversations->set($telegramUserId, 'idle', []);
-
         if (! empty($result['offline'])) {
-            // #region agent log
-            @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R4', 'location' => 'HostSatFlow.php:onAge', 'message' => 'sat_offline_draft_wiped', 'data' => ['telegramUserId' => $telegramUserId, 'draftClearedBeforeOfflineCheck' => true, 'hadName' => trim((string) ($draft['name'] ?? '')) !== ''], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-            // #endregion
+            $this->conversations->set($telegramUserId, 'filling_sat_application', [
+                'sat' => ['step' => 'age', 'draft' => $draft],
+            ]);
             $url = $this->cache->siteUrl('sat', $this->siteBaseUrl.'/sat');
             $this->api->sendMessage($chatId, $this->cache->message(
                 'sat_use_site',
-                'الان ثبت از ربات ممکن نیست. فرم سات را از لینک زیر تکمیل کنید:',
+                'اتصال به سرور برقرار نشد. لطفاً دوباره سن را بفرستید یا از لینک زیر استفاده کنید:',
             ), [
                 'reply_markup' => ['inline_keyboard' => [[InlineButtons::url('ثبت‌نام سات', $url, 'bell', 'primary')]]],
             ]);
@@ -207,6 +205,9 @@ final class HostSatFlow
         }
 
         if (empty($result['ok'])) {
+            $this->conversations->set($telegramUserId, 'filling_sat_application', [
+                'sat' => ['step' => 'age', 'draft' => $draft],
+            ]);
             $this->api->sendMessage(
                 $chatId,
                 (string) ($result['message'] ?? 'ثبت درخواست سات ناموفق بود.'),
@@ -215,6 +216,8 @@ final class HostSatFlow
 
             return true;
         }
+
+        $this->conversations->set($telegramUserId, 'idle', []);
 
         $satUrl = $this->cache->siteUrl('sat', $this->siteBaseUrl.'/sat');
         $this->api->sendMessage(

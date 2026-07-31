@@ -33,6 +33,7 @@ use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 use App\Services\ReferralService;
+use App\Services\TelegramInfrastructureService;
 
 class MessageHandler implements UpdateHandlerInterface
 {
@@ -278,7 +279,7 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        if (! $this->membership->isSatisfied($bot, $account)) {
+        if (! $this->hostOwnsMembershipGate() && ! $this->membership->isSatisfied($bot, $account)) {
             $this->membership->promptJoin($bot, $account);
 
             return;
@@ -780,5 +781,11 @@ class MessageHandler implements UpdateHandlerInterface
             $message,
             TelegramSiteUrl::linkMarkup($url, $label, [], $style, $iconKey),
         );
+    }
+
+    /** External Telegram host calls getChatMember — Iran must not gate users in host-bridge mode. */
+    private function hostOwnsMembershipGate(): bool
+    {
+        return app(TelegramInfrastructureService::class)->usesHostBridge();
     }
 }

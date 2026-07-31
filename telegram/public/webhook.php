@@ -70,6 +70,8 @@ try {
                     error_log('[telegram-host] rate-limit notice failed: '.$e->getMessage());
                 }
             }
+            http_response_code(200);
+            echo 'ok';
             exit;
         }
     }
@@ -111,8 +113,8 @@ try {
     $mainMenu = new MainMenu($cache, $accounts);
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
-    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $pendingMobileAccess);
     $membership = new MembershipGate($cache, $api, $membershipCache);
+    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview, $cardToCardFlow);
@@ -120,7 +122,7 @@ try {
     $supportForward = new \TelegramHost\Queue\PendingSupportForward($pdo);
     $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync, $supportForward);
     $subscriberEligibility = new \TelegramHost\Services\SubscriberEligibility($accounts, $cache);
-    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $siteBaseUrl);
+    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $accountSync, $siteBaseUrl);
     $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
     $groupJoinCleaner = new \TelegramHost\Services\GroupJoinMessageCleaner($api);
@@ -180,6 +182,7 @@ try {
         $conversations,
         $adminShell,
         $groupJoinCleaner,
+        $membership,
     );
 
     (new Bot($router))->handle($update);

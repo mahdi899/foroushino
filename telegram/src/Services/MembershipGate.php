@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace TelegramHost\Services;
 
 use TelegramHost\Support\InlineButtons;
-use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
 
 final class MembershipGate
@@ -35,16 +34,66 @@ final class MembershipGate
         return true;
     }
 
+    /** Prompt join buttons when required channels are missing; return true if satisfied. */
+    public function requireMembership(int $chatId, int $telegramUserId): bool
+    {
+        if ($this->isSatisfied($telegramUserId)) {
+            return true;
+        }
+
+        $this->promptJoin($chatId, $telegramUserId);
+
+        return false;
+    }
+
+    public function promptJoin(int $chatId, int $telegramUserId): void
+    {
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'membership_required',
+            'برای ادامه استفاده از ربات، در کانال‌های اجباری عضو شوید.',
+        ), [
+            'reply_markup' => $this->joinPromptMarkup($telegramUserId),
+        ]);
+    }
+
     public function clearCacheForUser(int $telegramUserId): void
     {
         $this->membershipCache->forgetUser($telegramUserId);
     }
 
+    /** @param array<string, mixed> $chatMember */
+    public function invalidateFromChatMemberUpdate(array $chatMember): void
+    {
+        $userId = (int) ($chatMember['new_chat_member']['user']['id'] ?? 0);
+        if ($userId <= 0) {
+            return;
+        }
+
+        $chatId = (string) ($chatMember['chat']['id'] ?? '');
+        if ($chatId !== '') {
+            $this->membershipCache->forgetChat($userId, $chatId);
+        }
+
+        $newStatus = (string) ($chatMember['new_chat_member']['status'] ?? '');
+        if (in_array($newStatus, ['left', 'kicked'], true)) {
+            $this->clearCacheForUser($userId);
+        }
+    }
+
     /** @return array<string, mixed> */
-    public function joinPromptMarkup(): array
+    public function joinPromptMarkup(int $telegramUserId): array
     {
         $buttons = [];
         foreach ($this->cache->requiredChats() as $chat) {
+            if (empty($chat['is_required'])) {
+                continue;
+            }
+
+            $chatId = (string) ($chat['chat_id'] ?? '');
+            if ($chatId !== '' && $this->isMember($telegramUserId, $chatId)) {
+                continue;
+            }
+
             $url = (string) ($chat['invite_link'] ?? '');
             if ($url === '') {
                 continue;
@@ -72,9 +121,8 @@ final class MembershipGate
 
             return $isMember;
         } catch (\Throwable $e) {
-            // #region agent log
-            @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R5', 'location' => 'MembershipGate.php:isMember', 'message' => 'membership_api_error_treated_as_non_member', 'data' => ['telegramUserId' => $telegramUserId, 'chatId' => $chatId, 'errorClass' => $e::class, 'cachedFalse' => false], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-            // #endregion
+            error_log('[telegram-host] membership getChatMember chat='.$chatId.' user='.$telegramUserId.': '.$e->getMessage());
+
             return false;
         }
     }
