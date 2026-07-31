@@ -29,6 +29,7 @@ export function FamilyBrandingSidebar({
   initialBranding,
   notificationsActive = false,
   isLoggedIn = false,
+  needsName = false,
   onOpenNotifications,
   onCloseNotifications,
 }: {
@@ -38,6 +39,7 @@ export function FamilyBrandingSidebar({
   initialBranding?: FamilyBranding;
   notificationsActive?: boolean;
   isLoggedIn?: boolean;
+  needsName?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
@@ -107,7 +109,11 @@ export function FamilyBrandingSidebar({
 
             <span className="family-sidebar__toolbar-spacer" aria-hidden />
 
-            <FamilyMenuButton className="family-sidebar__tool-btn" isLoggedIn={isLoggedIn} />
+            <FamilyMenuButton
+              className="family-sidebar__tool-btn"
+              isLoggedIn={isLoggedIn}
+              needsName={needsName}
+            />
           </nav>
 
           <div className="family-sidebar__body">

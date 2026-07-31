@@ -189,6 +189,7 @@ export function FeedView({
   onOpenNotifications,
   onCloseNotifications,
   focusPostId,
+  needsName = false,
 }: {
   memberCount?: number;
   onMemberCountChange?: (memberCount?: number) => void;
@@ -206,6 +207,7 @@ export function FeedView({
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
   focusPostId?: number;
+  needsName?: boolean;
 }) {
   const isPreview = Boolean(previewMode);
   const pageVisible = usePageVisible();
@@ -1842,6 +1844,7 @@ export function FeedView({
         initialBranding={initialBranding}
         notificationsActive={notificationsOpen}
         isLoggedIn={previewMode !== 'guest'}
+        needsName={needsName}
         onOpenNotifications={onOpenNotifications}
         onCloseNotifications={onCloseNotifications}
       />
