@@ -198,7 +198,6 @@ final class CallbackQueryHandler
 
                 return;
             }
-            $this->membership->clearCacheForUser($telegramUserId);
             if ($this->membership->isSatisfied($telegramUserId)) {
                 $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('check').' عضویت تأیید شد.', [
                     'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),

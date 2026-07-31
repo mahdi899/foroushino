@@ -102,10 +102,6 @@ try {
 
     $maxRelay = max(1, (int) ($config['iran_relay_per_webhook'] ?? 2));
     $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
-    $membershipCache = new \TelegramHost\Services\MembershipCheckCache(
-        $pdo,
-        max(300, (int) ($config['membership_cache_ttl_seconds'] ?? 900)),
-    );
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
     $accountSync = new AccountSyncCoordinator($accounts, $sync);
@@ -114,7 +110,7 @@ try {
     $mainMenu = new MainMenu($cache, $accounts);
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
-    $membership = new MembershipGate($cache, $api, $membershipCache);
+    $membership = new MembershipGate($cache, $api);
     $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
@@ -128,7 +124,7 @@ try {
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
     $groupJoinCleaner = new \TelegramHost\Services\GroupJoinMessageCleaner($api);
     $membershipSync = new \TelegramHost\Queue\PendingMembershipSync($pdo);
-    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $liveClient, $membershipCache);
+    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $liveClient);
 
     $messageHandler = new MessageHandler(
         $api,

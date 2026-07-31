@@ -68,7 +68,6 @@ return [
     'pull_sync_account_enabled' => true,
     'pull_sync_account_interval_seconds' => 300,
     'pull_sync_account_batch_size' => 35,
-    'membership_cache_ttl_seconds' => 900,
 
     // Optional override — normally synced from Iran bootstrap (گروه گزارشات پشتیبانی).
     // 'reports_group_chat_id' => '-100xxxxxxxxxx',

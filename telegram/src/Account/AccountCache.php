@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace TelegramHost\Account;
 
 /**
- * Local mirror of Telegram-linked users — identity, entitlements, and
- * pre-rendered menu payloads. Updated via push from Iran or account/fetch pull.
+ * Only persistent user-data cache on the Telegram host.
+ * Identity, ownership, profile, referral, family, and SAT snapshots
+ * come from Iran via push_account — never poll Iran on every menu tap.
  */
 final class AccountCache
 {

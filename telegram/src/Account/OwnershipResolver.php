@@ -8,7 +8,7 @@ use TelegramHost\Http\LiveClient;
 use TelegramHost\Support\IranSyncFailureException;
 
 /**
- * Local cache first, then Iran live/access/owns before showing buy UI.
+ * Cache hit first; on miss asks Iran live/access/owns and merges into {@see AccountCache}.
  */
 final class OwnershipResolver
 {

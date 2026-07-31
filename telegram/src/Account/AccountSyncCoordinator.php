@@ -7,9 +7,8 @@ namespace TelegramHost\Account;
 use TelegramHost\Http\SyncClient;
 
 /**
- * Pulls account identity/snapshot from Iran. Local-first: verified accounts
- * with a snapshot rely on Iran→host push — account/fetch only for OTP
- * reconcile, empty snapshot, or host-only ghost registration.
+ * Pulls account identity/snapshot from Iran only when the local user row is
+ * missing or incomplete. Day-to-day user cache is maintained via push_account.
  */
 final class AccountSyncCoordinator
 {

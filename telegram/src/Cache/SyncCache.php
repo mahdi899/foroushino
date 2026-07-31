@@ -787,49 +787,20 @@ final class SyncCache
     /** @param list<array<string, mixed>> $chats */
     private function storeRequiredChats(array $chats): void
     {
-        $previousRequired = [];
-        try {
-            $rows = $this->pdo->query('SELECT chat_id FROM required_chats WHERE is_required = 1')->fetchAll(\PDO::FETCH_ASSOC);
-            foreach ($rows as $row) {
-                if (! is_array($row)) {
-                    continue;
-                }
-                $chatId = trim((string) ($row['chat_id'] ?? ''));
-                if ($chatId !== '') {
-                    $previousRequired[$chatId] = true;
-                }
-            }
-        } catch (\Throwable) {
-        }
-
         $this->pdo->exec('DELETE FROM required_chats');
         $stmt = $this->pdo->prepare(
             'INSERT INTO required_chats (id, chat_id, title, invite_link, is_required, updated_at)
              VALUES (:id, :chat_id, :title, :invite_link, :is_required, NOW())',
         );
 
-        $nextRequired = [];
         foreach ($chats as $chat) {
-            $chatId = (string) ($chat['chat_id'] ?? '');
-            $isRequired = ! empty($chat['is_required']);
-            if ($isRequired && $chatId !== '') {
-                $nextRequired[$chatId] = true;
-            }
-
             $stmt->execute([
                 'id' => (int) $chat['id'],
-                'chat_id' => $chatId,
+                'chat_id' => (string) ($chat['chat_id'] ?? ''),
                 'title' => $chat['title'] ?? null,
                 'invite_link' => $chat['invite_link'] ?? null,
-                'is_required' => $isRequired ? 1 : 0,
+                'is_required' => ! empty($chat['is_required']) ? 1 : 0,
             ]);
-        }
-
-        if ($previousRequired !== $nextRequired) {
-            try {
-                $this->pdo->exec('DELETE FROM membership_cache');
-            } catch (\Throwable) {
-            }
         }
     }
 
