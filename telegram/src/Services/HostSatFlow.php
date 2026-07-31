@@ -33,6 +33,19 @@ final class HostSatFlow
 
     public function open(int $chatId, int $telegramUserId): void
     {
+        if (! $this->cache->featureEnabled('sat_enabled')) {
+            $this->api->sendMessage(
+                $chatId,
+                $this->cache->message(
+                    'sat_disabled',
+                    'کالسنتر سات به زودی فعال می‌شود',
+                ),
+                ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
+            );
+
+            return;
+        }
+
         $sat = $this->accounts->satSnapshot($telegramUserId);
         $satUrl = $this->cache->siteUrl('sat', $this->siteBaseUrl.'/sat');
 
@@ -99,6 +112,13 @@ final class HostSatFlow
         $conversation = $this->conversations->get($telegramUserId);
         if ($conversation['state'] !== 'filling_sat_application') {
             return false;
+        }
+
+        if (! $this->cache->featureEnabled('sat_enabled')) {
+            $this->conversations->set($telegramUserId, 'idle', []);
+            $this->open($chatId, $telegramUserId);
+
+            return true;
         }
 
         if (in_array(trim($text), self::CANCEL, true)) {

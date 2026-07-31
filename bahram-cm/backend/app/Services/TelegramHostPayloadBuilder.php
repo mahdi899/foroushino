@@ -174,7 +174,11 @@ class TelegramHostPayloadBuilder
             })
             ->values();
 
-        $seminars = $this->seminars->listUpcoming()->map(function (Seminar $s) {
+        $seminars = $this->seminars->listUpcoming()
+            ->merge($this->seminarsWithReferenceDiscount())
+            ->unique('id')
+            ->values()
+            ->map(function (Seminar $s) {
             $s->loadMissing('product');
             $product = $s->product;
             $base = (int) ($s->price ?: $product?->price ?: 0);
@@ -324,5 +328,23 @@ class TelegramHostPayloadBuilder
             ->value('invite_link');
 
         return filled($url) ? (string) $url : null;
+    }
+
+    /**
+     * Past/ended seminars still unlock reference-channel discount when
+     * {@see Seminar::$reference_discount_amount} is set in admin.
+     *
+     * @return \Illuminate\Support\Collection<int, Seminar>
+     */
+    private function seminarsWithReferenceDiscount(): \Illuminate\Support\Collection
+    {
+        return Seminar::query()
+            ->with(['product:id,slug,is_active,price,sale_price,show_in_telegram,title'])
+            ->where('status', 'published')
+            ->where('reference_discount_amount', '>', 0)
+            ->whereHas('product', fn ($q) => $q->where('is_active', true))
+            ->orderByDesc('reference_discount_amount')
+            ->limit(20)
+            ->get();
     }
 }

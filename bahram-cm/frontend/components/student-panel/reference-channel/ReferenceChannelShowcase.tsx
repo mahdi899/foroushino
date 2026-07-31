@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ExternalLink, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { ShieldCheck, ShoppingCart } from 'lucide-react';
 import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { PanelTomanAmount } from '@/components/student-panel/ui/PanelTomanAmount';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
@@ -23,7 +23,6 @@ export type ReferenceChannelCardModel = {
   identity_ready?: boolean;
   bot_start_url?: string | null;
   invite_status?: string | null;
-  invite_url?: string | null;
   purchase_path?: string;
   amount?: number;
   final_amount?: number;
@@ -43,7 +42,7 @@ function ownedStatus(channel: ReferenceChannelCardModel): {
   if (channel.invite_status === 'member') {
     return { label: 'عضو گروه', variant: 'success' };
   }
-  if (channel.invite_url) {
+  if (channel.invite_status === 'invite') {
     return { label: 'دسترسی فعال', variant: 'success' };
   }
   if (channel.invite_status === 'need_telegram') {
@@ -129,26 +128,14 @@ export function ReferenceChannelShowcase({
           </Link>
         ) : null}
 
-        {owned && channel.identity_ready && channel.invite_url ? (
-          <a
-            href={channel.invite_url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-primary w-full"
-          >
-            <ExternalLink size={16} />
-            ورود به گروه مرجع
-          </a>
+        {owned && channel.identity_ready && channel.bot_start_url ? (
+          <TelegramBotLaunchButton
+            href={channel.bot_start_url}
+            label="ورود به گروه مرجع"
+          />
         ) : null}
 
-        {owned &&
-        channel.identity_ready &&
-        !channel.invite_url &&
-        channel.bot_start_url ? (
-          <TelegramBotLaunchButton href={channel.bot_start_url} />
-        ) : null}
-
-        {owned && channel.identity_ready && !channel.invite_url && !channel.bot_start_url ? (
+        {owned && channel.identity_ready && !channel.bot_start_url ? (
           <span className="panel-text-meta flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
             لینک دعوت به‌زودی فعال می‌شود
           </span>

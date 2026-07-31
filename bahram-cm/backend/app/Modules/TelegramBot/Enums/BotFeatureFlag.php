@@ -12,6 +12,7 @@ enum BotFeatureFlag: string
     case CollectPhoneAndName = 'collect_phone_and_name';
     case ReferralEnabled = 'referral_enabled';
     case ZarinpalPayment = 'zarinpal_payment';
+    case SatEnabled = 'sat_enabled';
 
     public function labelFa(): string
     {
@@ -24,6 +25,7 @@ enum BotFeatureFlag: string
             self::CollectPhoneAndName => 'دریافت شماره و نام',
             self::ReferralEnabled => 'زیرمجموعه‌گیری',
             self::ZarinpalPayment => 'پرداخت زرین‌پال (آنلاین)',
+            self::SatEnabled => 'کالسنتر سات',
         };
     }
 
@@ -38,6 +40,7 @@ enum BotFeatureFlag: string
             self::CollectPhoneAndName => true,
             self::ReferralEnabled => true,
             self::ZarinpalPayment => true,
+            self::SatEnabled => true,
         };
     }
 
@@ -53,6 +56,7 @@ enum BotFeatureFlag: string
             self::CollectPhoneAndName,
             self::ReferralEnabled,
             self::ZarinpalPayment,
+            self::SatEnabled,
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Modules\TelegramBot\Services;
 use App\Enums\SatApplicationStatus;
 use App\Models\SatApplication;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
@@ -21,6 +22,7 @@ class TelegramSatFlowService
         private readonly AdminTelegramLogService $adminTelegram,
         private readonly TelegramUserDestinationsService $userDestinations,
         private readonly SatParticipantAccessService $satAccess,
+        private readonly BotMessageCatalog $messages,
     ) {}
 
     /**
@@ -31,6 +33,15 @@ class TelegramSatFlowService
         $client = $this->clients->forBot($bot);
         $satUrl = TelegramSiteUrl::satPage();
         $identityUrl = TelegramSiteUrl::identityPage();
+
+        if (! $bot->featureEnabled(BotFeatureFlag::SatEnabled)) {
+            $payload = [
+                'text' => $this->messages->get($bot, 'sat_disabled', 'کالسنتر سات به زودی فعال می‌شود'),
+                'options' => ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+            ];
+
+            return $deliverViaHost ? $payload : $this->sendPayload($client, $chatId, $payload);
+        }
 
         if (! $account->user_id || ! $account->hasVerifiedMobile()) {
             $payload = [
@@ -124,6 +135,13 @@ class TelegramSatFlowService
         $conversation = $this->conversations->forAccount($account);
         if ($conversation->state !== ConversationState::FillingSatApplication) {
             return false;
+        }
+
+        if (! $bot->featureEnabled(BotFeatureFlag::SatEnabled)) {
+            $this->conversations->transition($conversation, ConversationState::Idle, []);
+            $this->open($bot, $account, $chatId);
+
+            return true;
         }
 
         $client = $this->clients->forBot($bot);
@@ -271,6 +289,11 @@ class TelegramSatFlowService
      */
     public function submitFromHost(TelegramAccount $account, array $draft): array
     {
+        $bot = $account->bot ?? \App\Modules\TelegramBot\Models\TelegramBot::query()->find($account->telegram_bot_id);
+        if ($bot instanceof TelegramBot && ! $bot->featureEnabled(BotFeatureFlag::SatEnabled)) {
+            return ['ok' => false, 'message' => $this->messages->get($bot, 'sat_disabled', 'کالسنتر سات به زودی فعال می‌شود')];
+        }
+
         if (! $account->user_id) {
             return ['ok' => false, 'message' => 'حساب شما به سایت متصل نیست. دوباره /start کنید.'];
         }

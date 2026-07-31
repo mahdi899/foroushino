@@ -420,6 +420,26 @@ final class BotApiClient
         return is_array($result['result'] ?? null) ? $result['result'] : [];
     }
 
+    public function approveChatJoinRequest(int|string $chatId, int $userId): bool
+    {
+        $this->call('approveChatJoinRequest', [
+            'chat_id' => $chatId,
+            'user_id' => $userId,
+        ]);
+
+        return true;
+    }
+
+    public function declineChatJoinRequest(int|string $chatId, int $userId): bool
+    {
+        $this->call('declineChatJoinRequest', [
+            'chat_id' => $chatId,
+            'user_id' => $userId,
+        ]);
+
+        return true;
+    }
+
     /**
      * @param  array<string, mixed>  $options
      * @return array<string, mixed>

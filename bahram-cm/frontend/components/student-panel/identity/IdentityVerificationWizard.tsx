@@ -408,10 +408,12 @@ export function IdentityVerificationWizard({
           />
         ) : null}
 
-        {showSelfieHandoff ? <SelfieMobileHandoff onBack={() => setStep(1)} /> : null}
-
         {showSelfieLoading ? (
           <p className="text-sm text-text-muted">در حال بررسی دستگاه…</p>
+        ) : null}
+
+        {showSelfieHandoff ? (
+          <p className="text-sm text-text-muted">در حال آماده‌سازی ادامه با گوشی موبایل…</p>
         ) : null}
 
         {showSelfieRecorder ? (
@@ -448,6 +450,8 @@ export function IdentityVerificationWizard({
           <IdentityVerificationFeedback error={error} errorTitle={errorTitle ?? undefined} />
         ) : null}
       </div>
+
+      {showSelfieHandoff ? <SelfieMobileHandoff onBack={() => setStep(1)} /> : null}
     </div>
   );
 }

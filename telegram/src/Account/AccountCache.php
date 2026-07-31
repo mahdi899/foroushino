@@ -668,6 +668,17 @@ final class AccountCache
 
     public function maxReferenceDiscount(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): int
     {
+        // Source of truth: Iran snapshot (attendance roster + admin reference_discount_amount).
+        $account = $this->get($telegramUserId);
+        if ($account !== null) {
+            $profile = $this->decodeJsonObject($account['profile_json'] ?? null);
+            if (is_array($profile) && array_key_exists('reference_seminar_discount', $profile)) {
+                return max(0, (int) $profile['reference_seminar_discount']);
+            }
+        }
+
+        // Offline fallback before snapshot lands: only if they own a seminar product
+        // that still carries an admin-configured reference_discount_amount.
         $max = 0;
         foreach ($cache->seminars() as $seminar) {
             $productId = (int) ($seminar['product_id'] ?? 0);
@@ -677,11 +688,7 @@ final class AccountCache
             }
         }
 
-        if ($max > 0) {
-            return $max;
-        }
-
-        return 0;
+        return $max;
     }
 
     private function legacyHasSeminarFlag(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): bool

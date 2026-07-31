@@ -85,7 +85,7 @@ class ProcessTelegramUpdateJob implements ShouldQueue
                 'message' => $e->getMessage(),
             ]);
 
-            if ($this->isExpiredCallbackError($e)) {
+            if ($this->isNonRetryableTelegramError($e)) {
                 $updates->markSkipped($update);
 
                 return;
@@ -98,12 +98,13 @@ class ProcessTelegramUpdateJob implements ShouldQueue
         }
     }
 
-    private function isExpiredCallbackError(Throwable $e): bool
+    private function isNonRetryableTelegramError(Throwable $e): bool
     {
         $message = strtolower($e->getMessage());
 
         return str_contains($message, 'query is too old')
             || str_contains($message, 'query id is invalid')
-            || str_contains($message, 'response timeout expired');
+            || str_contains($message, 'response timeout expired')
+            || str_contains($message, 'hide_requester_missing');
     }
 }

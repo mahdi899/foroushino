@@ -39,5 +39,6 @@ export interface StudentUser {
   mobile_ownership_status?: string | null;
   verified_bank_accounts_count?: number;
   sat_membership_status?: string | null;
+  has_reference_channel?: boolean;
   national_code_masked?: string | null;
 }

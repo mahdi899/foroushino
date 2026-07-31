@@ -31,6 +31,7 @@ class TelegramHostPayloadBuilderTest extends TestCase
         $bot->setFeatureEnabled(BotFeatureFlag::CardToCardPayment, true);
         $bot->setFeatureEnabled(BotFeatureFlag::SmsOtpVerification, true);
         $bot->setFeatureEnabled(BotFeatureFlag::CollectPhoneAndName, false);
+        $bot->setFeatureEnabled(BotFeatureFlag::SatEnabled, false);
 
         $payload = app(TelegramHostPayloadBuilder::class)->bootstrapPayload($bot->fresh());
         $features = (array) ($payload['bot']['features'] ?? []);
@@ -43,6 +44,7 @@ class TelegramHostPayloadBuilderTest extends TestCase
         $this->assertTrue($features[BotFeatureFlag::CardToCardPayment->value]);
         $this->assertTrue($features[BotFeatureFlag::SmsOtpVerification->value]);
         $this->assertFalse($features[BotFeatureFlag::CollectPhoneAndName->value]);
+        $this->assertFalse($features[BotFeatureFlag::SatEnabled->value]);
     }
 
     public function test_bootstrap_payload_includes_bot_active_state(): void

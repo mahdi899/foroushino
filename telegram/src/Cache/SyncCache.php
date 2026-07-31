@@ -30,6 +30,7 @@ final class SyncCache
         'checkout_zarinpal' => true,
         'checkout_c2c' => false,
         'bot_is_active' => true,
+        'sat_enabled' => true,
     ];
 
     private readonly HotCache $hotCache;

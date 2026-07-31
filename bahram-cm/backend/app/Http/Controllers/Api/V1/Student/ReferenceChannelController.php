@@ -80,7 +80,6 @@ class ReferenceChannelController extends Controller
                 'source' => $channel->entitlements->first()?->source,
                 'seminar_badges' => $badges,
                 'invite_status' => $inviteStatus,
-                'invite_url' => $inviteUrl,
                 'owned' => true,
             ];
         }));
@@ -192,7 +191,6 @@ class ReferenceChannelController extends Controller
             'bot_start_url' => $botUrl,
             'telegram_linked' => $telegramLinked,
             'invite_status' => $inviteStatus,
-            'invite_url' => $inviteUrl,
             'destination_title' => $model->telegramDestination?->title,
             'seminar_badges' => $this->seminarBadgesPayload($pricing, $user),
             'owned' => true,

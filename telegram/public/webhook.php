@@ -259,6 +259,13 @@ try {
         $catalogPhotos,
     );
 
+    $joinRequests = new \TelegramHost\Services\HostChatJoinRequestHandler(
+        $api,
+        $cache,
+        $accounts,
+        $siteBaseUrl,
+    );
+
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
         $iranSync,
@@ -274,6 +281,7 @@ try {
         $adminShell,
         $groupJoinCleaner,
         $membership,
+        $joinRequests,
     );
 
     (new Bot($router))->handle($update);

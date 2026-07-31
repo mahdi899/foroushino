@@ -181,6 +181,8 @@ final class ReferenceChannelFlow
             $listPrice = (int) $this->cache->message('__reference_channel_price', '0');
         }
 
+        // Discount only when Iran/host says they qualify (seminar attendance /
+        // ownership) — amount comes from admin seminar.reference_discount_amount.
         $discount = $this->accounts->maxReferenceDiscount($telegramUserId, $this->cache);
         $finalPrice = max(0, $listPrice - $discount);
 

@@ -5629,10 +5629,45 @@
   grid-column: 1 / -1;
 }
 
-.panel-identity-selfie-handoff {
+.panel-identity-selfie-handoff-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.panel-identity-selfie-handoff-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #020617 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.panel-identity-selfie-handoff {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(100%, 36rem);
+  max-height: min(92vh, 44rem);
   flex-direction: column;
   gap: 1rem;
+  overflow: auto;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, rgba(234, 251, 251, 0.08));
+  background: var(--color-surface);
+  box-shadow:
+    0 24px 48px color-mix(in srgb, #020617 42%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+@media (min-width: 640px) {
+  .panel-identity-selfie-handoff {
+    padding: 1.5rem;
+  }
 }
 
 .panel-identity-selfie-handoff__header {
@@ -5655,8 +5690,9 @@
 
 .panel-identity-selfie-handoff__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 700;
+  line-height: 1.5;
   color: var(--color-text);
 }
 
@@ -5720,15 +5756,29 @@
 }
 
 .panel-identity-selfie-handoff__link {
+  display: block;
   margin: 0;
   padding: 0.625rem 0.75rem;
   border-radius: 0.625rem;
   border: 1px solid var(--color-border);
   background: var(--color-surface-soft);
-  color: var(--color-text);
+  color: var(--color-primary);
   font-size: 0.75rem;
   line-height: 1.6;
   word-break: break-all;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.panel-identity-selfie-handoff__link:hover,
+.panel-identity-selfie-handoff__link:focus-visible {
+  border-color: color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-soft));
+  color: var(--color-primary);
+  outline: none;
 }
 
 .panel-identity-selfie-handoff__copy {
@@ -5761,6 +5811,23 @@
   border-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
   background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface-soft));
   color: var(--color-text-muted);
+}
+
+.panel-root[data-panel-theme='dark'] .panel-identity-selfie-handoff-overlay__backdrop {
+  background: color-mix(in srgb, #020617 84%, transparent);
+}
+
+.panel-root[data-panel-theme='dark'] .panel-identity-selfie-handoff {
+  border-color: color-mix(in srgb, var(--color-border) 88%, rgba(234, 251, 251, 0.1));
+  background: color-mix(in srgb, var(--color-surface) 96%, rgba(234, 251, 251, 0.02));
+  box-shadow:
+    0 28px 56px color-mix(in srgb, #000 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.panel-root[data-panel-theme='dark'] .panel-identity-selfie-handoff__link:hover,
+.panel-root[data-panel-theme='dark'] .panel-identity-selfie-handoff__link:focus-visible {
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-soft));
 }
 
 @media (min-width: 640px) {

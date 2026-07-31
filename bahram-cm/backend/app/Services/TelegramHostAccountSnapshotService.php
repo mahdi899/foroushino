@@ -275,6 +275,7 @@ class TelegramHostAccountSnapshotService
         $account->loadMissing('user.identityProfile');
         $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
         $pricing = app(SeminarAttendeeCoursePricing::class);
+        $referencePricing = app(ReferenceChannelPricingService::class);
         $needsIdentityForReference = $verificationLevel < 2
             && $account->user_id
             && \App\Models\ReferenceChannelEntitlement::query()
@@ -297,6 +298,11 @@ class TelegramHostAccountSnapshotService
             'verification_level' => $verificationLevel,
             'needs_identity_for_reference' => $needsIdentityForReference,
             'has_seminar' => $pricing->userHasSeminar($account->user, $account->mobile),
+            // Max seminar→reference discount from admin panel, only if attendee (or owns seminar).
+            'reference_seminar_discount' => $referencePricing->maxSeminarDiscount(
+                $account->user,
+                (string) ($account->mobile ?? ''),
+            ),
             // Meta only (no is_member) — host checks Telegram live.
             'destinations' => $this->accessibleDestinationsMeta($bot, $account),
             'options' => array_filter([

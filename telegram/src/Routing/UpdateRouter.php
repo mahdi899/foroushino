@@ -12,6 +12,7 @@ use TelegramHost\Handlers\CallbackQueryHandler;
 use TelegramHost\Handlers\MessageHandler;
 use TelegramHost\Services\GroupJoinMessageCleaner;
 use TelegramHost\Services\HostAdminShell;
+use TelegramHost\Services\HostChatJoinRequestHandler;
 use TelegramHost\Services\HostSupportService;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
@@ -36,6 +37,7 @@ final class UpdateRouter
         private readonly HostAdminShell $adminShell,
         private readonly GroupJoinMessageCleaner $groupJoinCleaner,
         private readonly MembershipGate $membership,
+        private readonly HostChatJoinRequestHandler $joinRequests,
     ) {}
 
     /** @param array<string, mixed> $update */
@@ -43,6 +45,12 @@ final class UpdateRouter
     {
         if (isset($update['chat_member']) && is_array($update['chat_member'])) {
             $this->membership->invalidateFromChatMemberUpdate($update['chat_member']);
+        }
+
+        if (isset($update['chat_join_request']) && is_array($update['chat_join_request'])) {
+            $this->joinRequests->handle($update['chat_join_request']);
+
+            return;
         }
 
         // Reports-group support replies are handled locally — no Iran needed.

@@ -945,11 +945,15 @@ class BotAdminPanelService
         }
 
         $bot->setCardToCardInstructions($body);
+        $bot->refresh();
+        if ($bot->hasCardToCardDetails() && ! $bot->featureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment)) {
+            $bot->setFeatureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment, true);
+        }
         \App\Jobs\PushTelegramHostSyncJob::bootstrap();
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
         ]);
-        $client->sendMessage($chatId, '✅ متن کارت‌به‌کارت ذخیره شد.', [
+        $client->sendMessage($chatId, '✅ متن کارت‌به‌کارت ذخیره شد'.($bot->featureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment) ? ' و پرداخت کارت‌به‌کارت فعال شد.' : '.'), [
             'reply_markup' => $this->adminMenuMarkup($actor),
         ]);
         $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, 0);

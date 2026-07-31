@@ -75,6 +75,13 @@ class ReferenceChannelAccessService
             ->exists();
     }
 
+    public function userHasAnyEntitlement(User $user): bool
+    {
+        return ReferenceChannelEntitlement::query()
+            ->where('user_id', $user->id)
+            ->exists();
+    }
+
     public function findByProduct(Product $product): ?ReferenceChannel
     {
         if ($product->relationLoaded('referenceChannel')) {

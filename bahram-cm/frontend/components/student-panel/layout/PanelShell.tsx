@@ -13,6 +13,7 @@ import { PanelPwaRegistrar } from './PanelPwaRegistrar';
 import { BahramUpdateBanner } from '@/components/pwa/BahramUpdateBanner';
 import { PANEL_PWA_ENABLED } from '@/lib/panel/pwa';
 import { PanelSidebar } from './PanelSidebar';
+import { ReferenceChannelPostIdentityRedirect } from '@/components/student-panel/reference-channel/ReferenceChannelPostIdentityRedirect';
 
 const SIDEBAR_COLLAPSED_KEY = 'panel-sidebar-collapsed';
 
@@ -109,6 +110,7 @@ export function PanelShell({
       <PanelToastProvider>
         <PanelAvatarCacheProvider>
         <PanelNotificationProvider initialUnreadCount={unreadCount} onUnreadCountChange={handleUnreadCountChange}>
+        <ReferenceChannelPostIdentityRedirect user={user} />
         <div className="panel-shell">
           <PanelPwaRegistrar />
           <PanelSidebar

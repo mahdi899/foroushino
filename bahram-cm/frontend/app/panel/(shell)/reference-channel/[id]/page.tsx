@@ -22,7 +22,6 @@ interface ReferenceChannelDetail {
   bot_start_url: string | null;
   telegram_linked: boolean;
   invite_status: string;
-  invite_url: string | null;
   destination_title: string | null;
   owned?: boolean;
 }

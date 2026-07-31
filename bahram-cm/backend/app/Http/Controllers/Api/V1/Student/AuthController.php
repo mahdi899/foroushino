@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AdminTelegramLogService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
+use App\Services\ReferenceChannelAccessService;
 use App\Services\StudentOnboardingService;
 use App\Support\ApiResponse;
 use App\Support\Mobile;
@@ -24,6 +25,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly OtpService $otp,
         private readonly StudentOnboardingService $onboarding,
+        private readonly ReferenceChannelAccessService $referenceChannelAccess,
     ) {}
 
     public function sendOtp(SendOtpRequest $request): \Illuminate\Http\JsonResponse
@@ -188,6 +190,7 @@ class AuthController extends Controller
         }
 
         $identity = $user->identityProfile;
+        $this->referenceChannelAccess->syncFromPaidOrders($user);
 
         return [
             'id' => $user->id,
@@ -201,6 +204,7 @@ class AuthController extends Controller
             'mobile_ownership_status' => $identity?->mobile_ownership_status?->value ?? 'not_started',
             'verified_bank_accounts_count' => $user->verifiedBankAccounts()->whereNotNull('verified_at')->count(),
             'sat_membership_status' => $user->satMembership?->status?->value ?? 'inactive',
+            'has_reference_channel' => $this->referenceChannelAccess->userHasAnyEntitlement($user),
             'national_code_masked' => $identity?->maskNationalCode(),
             'identity' => $identity ? [
                 'first_name' => $identity->first_name,

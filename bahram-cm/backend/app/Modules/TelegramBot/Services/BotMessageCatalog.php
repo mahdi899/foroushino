@@ -117,6 +117,11 @@ class BotMessageCatalog
                 'category' => 'ثبت‌نام',
                 'body' => $e('check').' <b>ثبت‌نام شما انجام شد</b>'.$nl.$nl.'به جمع آکادمی خوش آمدید '.$e('party').$nl.'منوی پایین همیشه در دسترس است.',
             ],
+            'sat_disabled' => [
+                'label' => 'سات غیرفعال',
+                'category' => 'سات',
+                'body' => 'کالسنتر سات به زودی فعال می‌شود',
+            ],
             'purchase_need_course' => [
                 'label' => 'نیاز به خرید دوره (کمپین و …)',
                 'category' => 'خرید',
