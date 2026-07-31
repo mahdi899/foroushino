@@ -75,4 +75,12 @@ final class MembershipCheckCache
         } catch (\Throwable) {
         }
     }
+
+    public function forgetAll(): void
+    {
+        try {
+            $this->pdo->exec('DELETE FROM membership_cache');
+        } catch (\Throwable) {
+        }
+    }
 }
