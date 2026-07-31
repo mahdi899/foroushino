@@ -146,6 +146,14 @@ final class HostRegistrationFlow
 
         $pending = $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
+        $iranResponse = $this->trySyncContactWithIran($telegramUserId, $phone, $contactUserId);
+        if ($iranResponse !== null && ! empty($iranResponse['ok'])) {
+            $this->apply($chatId, $telegramUserId, $iranResponse);
+            $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
+
+            return;
+        }
+
         if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
             return;
         }
@@ -306,11 +314,28 @@ final class HostRegistrationFlow
         $this->accounts->purgeDuplicateMobileRows($mobile, $telegramUserId);
         $this->conversations->set($telegramUserId, 'idle', []);
         $this->api->sendMessage($chatId, $this->cache->message(
-            'main_menu_hint',
-            'ثبت‌نام شما ثبت شد. منوی اصلی آکادمی بهرام',
-        ), [
-            'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-        ]);
+            'registration_complete_offline',
+            'ثبت‌نام شما ثبت شد. اطلاعات حساب به‌زودی از سرور اصلی همگام می‌شود.',
+        ), ['reply_markup' => ['remove_keyboard' => true]]);
+        $this->showMainMenu($chatId, $telegramUserId);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function trySyncContactWithIran(int $telegramUserId, string $phone, int $contactUserId): ?array
+    {
+        try {
+            return $this->sync->call('registration/contact', [
+                'telegram_user_id' => $telegramUserId,
+                'phone' => $phone,
+                'contact_user_id' => $contactUserId,
+            ], 12, allowRetry: true);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration/contact: '.$e->getMessage());
+
+            return null;
+        }
     }
 
     private function tryShowVerifiedLocalAccount(int $chatId, int $telegramUserId, string $mobile): bool
@@ -345,6 +370,21 @@ final class HostRegistrationFlow
         if ($mobile === '') {
             $account = $this->accounts->get($telegramUserId);
             $mobile = trim((string) ($account['mobile'] ?? ''));
+        }
+
+        try {
+            $response = $this->sync->call('registration/name', [
+                'telegram_user_id' => $telegramUserId,
+                'name' => $name,
+            ], 12, allowRetry: true);
+            if (! empty($response['ok'])) {
+                $this->apply($chatId, $telegramUserId, $response);
+                $this->enqueueRegistrationSync($telegramUserId, $mobile, $name, (int) ($conversation['context']['contact_user_id'] ?? 0));
+
+                return;
+            }
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration/name: '.$e->getMessage());
         }
 
         $this->finishLocalRegistration($chatId, $telegramUserId, $mobile, $name);
@@ -382,6 +422,9 @@ final class HostRegistrationFlow
                 $this->accounts->store($telegramUserId, $response['account']);
             }
             $this->conversations->set($telegramUserId, 'idle', []);
+            if ($this->membership !== null && ! $this->membership->requireMembership($chatId, $telegramUserId)) {
+                return;
+            }
             $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
                 'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
             ]);

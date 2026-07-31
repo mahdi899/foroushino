@@ -86,10 +86,10 @@ final class InboundSyncHandler
         }
 
         return [
-            'ok' => true,
+            'ok' => false,
+            'error' => 'unknown_action',
             'action' => $action,
-            'defer' => true,
-            'payload' => $body,
+            'defer' => false,
         ];
     }
 
@@ -152,25 +152,17 @@ final class InboundSyncHandler
         return ['ok' => true, 'action' => 'push_mobile_access', 'defer' => false];
     }
 
-    /** Run heavy sync after HTTP response was flushed to Iran. */
+    /** Run deferred work after HTTP response was flushed to Iran. */
     public function runDeferred(string $action, array $body): void
     {
-        $pdo = Connection::get($this->config);
-        $sync = new SyncClient($this->config);
-        $cache = new SyncCache($pdo, $sync, $this->config);
-
         if ($action === 'push_account') {
+            $pdo = Connection::get($this->config);
             $this->pushAccount($pdo, $body);
 
             return;
         }
 
-        match ($action) {
-            'refresh_bootstrap' => $this->refreshBootstrap($cache),
-            'refresh_catalog' => $this->refreshCatalog($cache),
-            'refresh_all' => $this->refreshAll($cache),
-            default => $this->refreshAll($cache),
-        };
+        error_log('[telegram-host] host-sync: ignored deferred action '.$action);
     }
 
     /**
@@ -197,32 +189,6 @@ final class InboundSyncHandler
         return is_array($payload)
             ? ['ok' => true, 'payload' => $payload]
             : ['ok' => false, 'error' => 'invalid_payload'];
-    }
-
-    /** @return array{ok: bool, action: string} */
-    private function refreshBootstrap(SyncCache $cache): array
-    {
-        $bootstrap = (new SyncClient($this->config))->call('bootstrap');
-        $cache->storeBootstrapOnly($bootstrap);
-
-        return ['ok' => true, 'action' => 'refresh_bootstrap'];
-    }
-
-    /** @return array{ok: bool, action: string} */
-    private function refreshCatalog(SyncCache $cache): array
-    {
-        $catalog = (new SyncClient($this->config))->call('catalog');
-        $cache->storeCatalogOnly($catalog);
-
-        return ['ok' => true, 'action' => 'refresh_catalog'];
-    }
-
-    /** @return array{ok: bool, action: string} */
-    private function refreshAll(SyncCache $cache): array
-    {
-        $cache->refreshAll();
-
-        return ['ok' => true, 'action' => 'refresh_all'];
     }
 
     /**

@@ -634,8 +634,7 @@ final class AccountCache
             return $max;
         }
 
-        // Fallback: any seminar ownership without configured discount amounts.
-        return $this->legacyHasSeminarFlag($telegramUserId, $cache) ? 0 : 0;
+        return 0;
     }
 
     private function legacyHasSeminarFlag(int $telegramUserId, \TelegramHost\Cache\SyncCache $cache): bool

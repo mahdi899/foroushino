@@ -70,6 +70,8 @@ try {
                     error_log('[telegram-host] rate-limit notice failed: '.$e->getMessage());
                 }
             }
+            http_response_code(200);
+            echo 'ok';
             exit;
         }
     }

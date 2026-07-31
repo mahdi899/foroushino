@@ -66,6 +66,16 @@ final class CallbackQueryHandler
             return;
         }
 
+        if (! $this->isKnownCallback($data)) {
+            $this->api->answerCallbackQuery(
+                $callbackId,
+                'این دکمه منقضی شده است. از منو دوباره تلاش کنید.',
+                true,
+            );
+
+            return;
+        }
+
         $this->api->answerCallbackQuery($callbackId);
 
         if (str_starts_with($data, 'reg:')) {
@@ -193,12 +203,26 @@ final class CallbackQueryHandler
                 ]);
             } else {
                 $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('warning').' هنوز در همه کانال‌های اجباری عضو نیستید.', [
-                    'reply_markup' => $this->membership->joinPromptMarkup(),
+                    'reply_markup' => $this->membership->joinPromptMarkup($telegramUserId),
                 ]);
             }
 
             return;
         }
+    }
+
+    private function isKnownCallback(string $data): bool
+    {
+        return str_starts_with($data, 'reg:')
+            || str_starts_with($data, 'support:cat:')
+            || $data === 'support:cancel'
+            || $data === 'sat:cancel'
+            || str_starts_with($data, 'nav:')
+            || str_starts_with($data, 'buy:skip:')
+            || str_starts_with($data, 'buy:')
+            || str_starts_with($data, 'pay:zp:')
+            || str_starts_with($data, 'pay:c2c:')
+            || $data === 'membership:recheck';
     }
 
     /** Delete the callback source message so inline buttons cannot be re-clicked. */

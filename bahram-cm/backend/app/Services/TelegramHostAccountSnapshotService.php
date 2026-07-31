@@ -9,7 +9,6 @@ use App\Models\CourseAccess;
 use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
 use App\Models\FamilyPostView;
-use App\Models\Product;
 use App\Models\SatApplication;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
@@ -139,7 +138,7 @@ class TelegramHostAccountSnapshotService
             return ['revision' => $this->newRevision()];
         }
 
-        $ownedIds = $this->ownedProductIds($account);
+        $ownedIds = $this->ownedProductIdsFast($account);
         $presents = [];
         foreach ($ownedIds as $productId) {
             $product = $this->catalog->findForTelegram($productId);
@@ -214,39 +213,6 @@ class TelegramHostAccountSnapshotService
             'text' => TelegramCustomEmoji::tag('bell').' <b>درخواست سات</b>'
                 ."\nوضعیت: {$label}",
         ];
-    }
-
-    /** @return list<int> */
-    private function ownedProductIds(TelegramAccount $account): array
-    {
-        if (! $account->user_id && blank($account->mobile)) {
-            return [];
-        }
-
-        $ids = [];
-        foreach ($this->catalog->listPublicCourses() as $product) {
-            if ($this->access->owns($account, $product)) {
-                $ids[] = (int) $product->id;
-            }
-        }
-
-        foreach ($this->seminars->listUpcoming() as $seminar) {
-            $product = $seminar->product;
-            if (! $product instanceof Product) {
-                continue;
-            }
-            if ($this->access->owns($account, $product)) {
-                $ids[] = (int) $product->id;
-            }
-        }
-
-        foreach ($this->catalog->listPublicReferenceChannels() as $product) {
-            if ($this->access->owns($account, $product)) {
-                $ids[] = (int) $product->id;
-            }
-        }
-
-        return array_values(array_unique($ids));
     }
 
     /**

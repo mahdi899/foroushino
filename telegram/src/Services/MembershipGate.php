@@ -41,18 +41,18 @@ final class MembershipGate
             return true;
         }
 
-        $this->promptJoin($chatId);
+        $this->promptJoin($chatId, $telegramUserId);
 
         return false;
     }
 
-    public function promptJoin(int $chatId): void
+    public function promptJoin(int $chatId, int $telegramUserId): void
     {
         $this->api->sendMessage($chatId, $this->cache->message(
             'membership_required',
             'برای ادامه استفاده از ربات، در کانال‌های اجباری عضو شوید.',
         ), [
-            'reply_markup' => $this->joinPromptMarkup(),
+            'reply_markup' => $this->joinPromptMarkup($telegramUserId),
         ]);
     }
 
@@ -64,7 +64,7 @@ final class MembershipGate
     /** @param array<string, mixed> $chatMember */
     public function invalidateFromChatMemberUpdate(array $chatMember): void
     {
-        $userId = (int) ($chatMember['from']['id'] ?? 0);
+        $userId = (int) ($chatMember['new_chat_member']['user']['id'] ?? 0);
         if ($userId <= 0) {
             return;
         }
@@ -81,10 +81,19 @@ final class MembershipGate
     }
 
     /** @return array<string, mixed> */
-    public function joinPromptMarkup(): array
+    public function joinPromptMarkup(int $telegramUserId): array
     {
         $buttons = [];
         foreach ($this->cache->requiredChats() as $chat) {
+            if (empty($chat['is_required'])) {
+                continue;
+            }
+
+            $chatId = (string) ($chat['chat_id'] ?? '');
+            if ($chatId !== '' && $this->isMember($telegramUserId, $chatId)) {
+                continue;
+            }
+
             $url = (string) ($chat['invite_link'] ?? '');
             if ($url === '') {
                 continue;

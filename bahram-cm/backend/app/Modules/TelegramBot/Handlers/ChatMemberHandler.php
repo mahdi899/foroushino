@@ -19,7 +19,7 @@ class ChatMemberHandler implements UpdateHandlerInterface
             return;
         }
 
-        $userId = (int) data_get($update->payload, 'chat_member.from.id');
+        $userId = (int) data_get($update->payload, 'chat_member.new_chat_member.user.id');
         $chatId = (string) data_get($update->payload, 'chat_member.chat.id');
 
         if ($userId > 0) {

@@ -47,9 +47,6 @@ final class PurchaseFlow
         // Local preview (incl. capacity via uses_reserved) — no Iran / no typing.
         // Iran re-validates authoritatively when starting the payment gateway.
         $preview = $this->discounts->preview($code, $productId);
-        // #region agent log
-        @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R3', 'location' => 'PurchaseFlow.php:applyDiscountCode', 'message' => 'host_discount_preview', 'data' => ['productId' => $productId, 'ok' => ! empty($preview['ok']), 'finalAmount' => (int) ($preview['final_amount'] ?? 0), 'couponDiscount' => (int) ($preview['coupon_discount'] ?? 0), 'message' => (string) ($preview['message'] ?? '')], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-        // #endregion
         if (empty($preview['ok'])) {
             $this->api->sendMessage($chatId, ((string) ($preview['message'] ?? 'کد تخفیف معتبر نیست.'))."\n\nدوباره کد را بفرستید یا «بدون کد تخفیف» را بزنید.");
 
@@ -118,10 +115,6 @@ final class PurchaseFlow
     {
         $coupon = $this->couponFromContext($telegramUserId);
         $result = $this->live->checkoutZarinpal($chatId, $telegramUserId, $productId, $coupon);
-
-        // #region agent log
-        @file_put_contents('c:\\Users\\Msi\\Desktop\\foroushino\\debug-e2b7b2.log', json_encode(['sessionId' => 'e2b7b2', 'hypothesisId' => 'R3', 'location' => 'PurchaseFlow.php:startZarinpal', 'message' => 'zarinpal_start_result', 'data' => ['productId' => $productId, 'coupon' => $coupon, 'ok' => ! empty($result['ok']), 'offline' => ! empty($result['offline']), 'amount' => (int) ($result['amount'] ?? 0), 'orderId' => (int) ($result['order_id'] ?? 0), 'message' => (string) ($result['message'] ?? '')], 'timestamp' => (int) (microtime(true) * 1000), 'runId' => 'non-c2c'], JSON_UNESCAPED_UNICODE)."\n", FILE_APPEND);
-        // #endregion
 
         if (! empty($result['offline'])) {
             $this->api->sendMessage($chatId, $this->cache->message(
