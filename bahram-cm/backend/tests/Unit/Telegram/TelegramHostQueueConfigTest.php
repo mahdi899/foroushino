@@ -28,16 +28,15 @@ class TelegramHostQueueConfigTest extends TestCase
         $this->assertSame(45, $job->timeout);
     }
 
-    public function test_account_now_dispatches_on_telegram_host_queue(): void
+    public function test_account_now_dispatches_sync_immediately(): void
     {
         Bus::fake();
 
         PushTelegramHostSyncJob::accountNow(['telegram_user_id' => 42]);
 
-        Bus::assertDispatched(PushTelegramHostSyncJob::class, function (PushTelegramHostSyncJob $job): bool {
+        Bus::assertDispatchedSync(PushTelegramHostSyncJob::class, function (PushTelegramHostSyncJob $job): bool {
             return $job->action === 'push_account'
-                && (int) ($job->extra['account']['telegram_user_id'] ?? 0) === 42
-                && $job->queue === 'telegram-host';
+                && (int) ($job->extra['account']['telegram_user_id'] ?? 0) === 42;
         });
     }
 }

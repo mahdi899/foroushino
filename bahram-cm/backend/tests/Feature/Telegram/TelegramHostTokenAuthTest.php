@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Telegram;
 
+use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Services\SettingService;
 use App\Services\TelegramInfrastructureService;
@@ -103,5 +104,56 @@ class TelegramHostTokenAuthTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('found', false);
         $this->assertNotNull(TelegramBot::query()->where('key', 'production')->first());
+    }
+
+    public function test_account_fetch_finds_verified_account_by_mobile(): void
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->firstOrFail();
+        TelegramAccount::query()->create([
+            'telegram_bot_id' => $bot->id,
+            'telegram_user_id' => 111111111,
+            'mobile' => '09123456789',
+            'mobile_verified_at' => now(),
+            'display_name' => 'تست موبایل',
+        ]);
+
+        $response = $this->withHeaders([
+            'X-Proxy-Origin' => 'Telegram-Host-App',
+            'Authorization' => 'Bearer '.self::SYNC_SECRET,
+        ])->postJson('/api/v1/integrations/telegram-host/account/fetch', [
+            'mobile' => '09123456789',
+            'telegram_user_id' => 222222222,
+            'include_snapshot' => false,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('found', true);
+        $response->assertJsonPath('account.mobile', '09123456789');
+        $response->assertJsonPath('account.telegram_user_id', 222222222);
+        $this->assertSame(1, TelegramAccount::query()->where('mobile', '09123456789')->count());
+    }
+
+    public function test_account_fetch_accepts_mobile_only_without_telegram_user_id(): void
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->firstOrFail();
+        TelegramAccount::query()->create([
+            'telegram_bot_id' => $bot->id,
+            'telegram_user_id' => 333333333,
+            'mobile' => '09129876543',
+            'mobile_verified_at' => now(),
+            'display_name' => 'فقط موبایل',
+        ]);
+
+        $response = $this->withHeaders([
+            'X-Proxy-Origin' => 'Telegram-Host-App',
+            'Authorization' => 'Bearer '.self::SYNC_SECRET,
+        ])->postJson('/api/v1/integrations/telegram-host/account/fetch', [
+            'mobile' => '09129876543',
+            'include_snapshot' => false,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('found', true);
+        $response->assertJsonPath('account.telegram_user_id', 333333333);
     }
 }

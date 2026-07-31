@@ -234,6 +234,7 @@ class TelegramHostRegistrationService
 
         if ($account->isLinked() && $account->hasVerifiedMobile()) {
             $fresh = $account->fresh(['user', 'bot']);
+            $this->pushAccountToHost($bot, $fresh);
 
             return [
                 'ok' => true,
@@ -516,12 +517,7 @@ class TelegramHostRegistrationService
 
         $account->refresh();
         if ($bot->key === 'production') {
-            $fresh = $account->fresh(['user', 'bot']);
-            $payload = $this->snapshots->accountPayload($fresh);
-            $push = app(TelegramHostPushService::class);
-            if (! $push->pushAccount($payload)) {
-                PushTelegramHostSyncJob::accountNow($payload);
-            }
+            $this->pushAccountToHost($bot, $account);
         }
 
         $conversation->refresh();
@@ -635,5 +631,18 @@ class TelegramHostRegistrationService
     private function reply(string $text, array $options = []): array
     {
         return array_merge(['text' => $text], $options);
+    }
+
+    private function pushAccountToHost(TelegramBot $bot, TelegramAccount $account): void
+    {
+        if ($bot->key !== 'production') {
+            return;
+        }
+
+        $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
+        $push = app(TelegramHostPushService::class);
+        if (! $push->pushAccount($payload)) {
+            PushTelegramHostSyncJob::accountNow($payload);
+        }
     }
 }

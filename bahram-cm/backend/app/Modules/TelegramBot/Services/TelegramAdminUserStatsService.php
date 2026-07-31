@@ -21,7 +21,6 @@ class TelegramAdminUserStatsService
 {
     public function __construct(
         private readonly ReferralService $referrals,
-        private readonly TelegramHostAccountSync $hostSync,
     ) {}
 
     /**
@@ -152,7 +151,7 @@ class TelegramAdminUserStatsService
         // چون شمارش "زیرمجموعه" فقط با push روی خود کاربر معرف رفرش می‌شه.
         $referrer = $code->user ?? User::query()->find($code->user_id);
         if ($referrer !== null) {
-            $this->hostSync->pushUserAccountsImmediate($referrer);
+            app(TelegramHostAccountSync::class)->pushUserAccountsImmediate($referrer);
         }
     }
 

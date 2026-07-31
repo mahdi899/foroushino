@@ -45,10 +45,7 @@ final class AccountSyncCoordinator
         }
 
         try {
-            $response = $this->sync->call('account/fetch', [
-                'telegram_user_id' => $telegramUserId,
-                'include_snapshot' => true,
-            ]);
+            $response = $this->sync->call('account/fetch', $this->accountFetchPayload($telegramUserId));
             if (! empty($response['found']) && is_array($response['account'] ?? null)) {
                 $account = $response['account'];
                 $id = (int) ($account['telegram_user_id'] ?? $telegramUserId);
@@ -85,10 +82,7 @@ final class AccountSyncCoordinator
     private function refetchAccount(int $telegramUserId): void
     {
         try {
-            $response = $this->sync->call('account/fetch', [
-                'telegram_user_id' => $telegramUserId,
-                'include_snapshot' => true,
-            ]);
+            $response = $this->sync->call('account/fetch', $this->accountFetchPayload($telegramUserId));
             if (! empty($response['found']) && is_array($response['account'] ?? null)) {
                 $id = (int) ($response['account']['telegram_user_id'] ?? $telegramUserId);
                 $this->accounts->store($id, $response['account']);
@@ -96,6 +90,27 @@ final class AccountSyncCoordinator
         } catch (\Throwable $e) {
             error_log('[telegram-host] account refetch: '.$e->getMessage());
         }
+    }
+
+    /** @return array<string, mixed> */
+    private function accountFetchPayload(int $telegramUserId): array
+    {
+        $payload = [
+            'telegram_user_id' => $telegramUserId,
+            'include_snapshot' => true,
+        ];
+
+        $row = $this->accounts->get($telegramUserId);
+        $mobile = is_array($row) ? trim((string) ($row['mobile'] ?? '')) : '';
+        if ($mobile === '') {
+            $pending = $this->accounts->pendingRegistration($telegramUserId);
+            $mobile = is_array($pending) ? trim((string) ($pending['mobile'] ?? '')) : '';
+        }
+        if ($mobile !== '') {
+            $payload['mobile'] = $mobile;
+        }
+
+        return $payload;
     }
 
     /**

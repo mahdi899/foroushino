@@ -5,6 +5,7 @@ namespace App\Modules\TelegramBot\Http\Controllers;
 use App\Enums\OtpPurpose;
 use App\Models\DiscountCode;
 use App\Models\Seminar;
+use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\AccountLinkService;
 use App\Modules\TelegramBot\Services\BotResolver;
@@ -17,6 +18,7 @@ use App\Services\TelegramHostCatalogRevision;
 use App\Services\TelegramHostPayloadBuilder;
 use App\Services\TelegramHostRegistrationService;
 use App\Services\TelegramInfrastructureService;
+use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -182,16 +184,21 @@ class TelegramHostSyncController
     {
         $hostPayload = $this->hostPayload($request);
         $telegramUserId = (int) ($hostPayload['telegram_user_id'] ?? 0);
+        $mobileRaw = trim((string) ($hostPayload['mobile'] ?? $hostPayload['phone'] ?? ''));
+
+        if ($telegramUserId <= 0 && $mobileRaw === '') {
+            return $this->jsonResponse(['ok' => false, 'message' => 'mobile یا telegram_user_id لازم است.'], 422);
+        }
 
         $bot = $this->productionBot();
-        $account = $bot->accounts()->where('telegram_user_id', $telegramUserId)->first();
+        $account = $this->resolveHostAccount($bot, $telegramUserId, $mobileRaw);
 
         if ($account === null) {
             return $this->jsonResponse(['ok' => true, 'found' => false]);
         }
 
         $accountPayload = [
-            'telegram_user_id' => $telegramUserId,
+            'telegram_user_id' => (int) $account->telegram_user_id,
             'user_id' => $account->user_id,
             'mobile' => $account->mobile,
             'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
@@ -205,7 +212,8 @@ class TelegramHostSyncController
                 $accountPayload['snapshot'] = $this->accountSnapshots->buildSnapshot($account);
             } catch (\Throwable $e) {
                 Log::channel('telegram')->error('telegram.host.account_fetch_snapshot_failed', [
-                    'telegram_user_id' => $telegramUserId,
+                    'telegram_user_id' => $account->telegram_user_id,
+                    'mobile' => $account->mobile,
                     'user_id' => $account->user_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -351,6 +359,38 @@ class TelegramHostSyncController
     private function productionBot(): TelegramBot
     {
         return $this->botResolver->resolve('production');
+    }
+
+    private function resolveHostAccount(TelegramBot $bot, int $telegramUserId, string $mobileRaw): ?TelegramAccount
+    {
+        $mobile = Mobile::normalize($mobileRaw);
+
+        if ($mobile !== null) {
+            $account = $bot->accounts()
+                ->where('mobile', $mobile)
+                ->whereNotNull('mobile_verified_at')
+                ->orderByDesc('updated_at')
+                ->first();
+
+            if ($account !== null) {
+                if ($telegramUserId > 0 && (int) $account->telegram_user_id !== $telegramUserId) {
+                    $stub = $bot->accounts()->where('telegram_user_id', $telegramUserId)->first()
+                        ?? $this->accountLinks->findOrCreateAccount($bot, $telegramUserId);
+
+                    if ((int) $stub->id !== (int) $account->id) {
+                        $account = $this->accountLinks->reclaimVerifiedAccountByMobile($bot, $stub, $mobile);
+                    }
+                }
+
+                return $account;
+            }
+        }
+
+        if ($telegramUserId > 0) {
+            return $bot->accounts()->where('telegram_user_id', $telegramUserId)->first();
+        }
+
+        return null;
     }
 
     /** @param  array<string, mixed>  $data */

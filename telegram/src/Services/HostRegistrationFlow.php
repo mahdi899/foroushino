@@ -231,7 +231,9 @@ final class HostRegistrationFlow
 
         if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
             $this->pullFullAccountSnapshot($telegramUserId);
-            $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
+            if (! $this->syncRegistrationWithIran($telegramUserId, $phone, null, $contactUserId)) {
+                $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
+            }
 
             return;
         }
@@ -280,7 +282,9 @@ final class HostRegistrationFlow
 
         $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $displayName);
         $this->pullFullAccountSnapshot($telegramUserId);
-        $this->enqueueRegistrationSync($telegramUserId, $phone, $displayName, $contactUserId);
+        if (! $this->syncRegistrationWithIran($telegramUserId, $phone, $displayName, $contactUserId)) {
+            $this->enqueueRegistrationSync($telegramUserId, $phone, $displayName, $contactUserId);
+        }
     }
 
     /** @param array<string, mixed> $from */
@@ -292,7 +296,9 @@ final class HostRegistrationFlow
 
             if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
                 $this->pullFullAccountSnapshot($telegramUserId);
-                $this->enqueueRegistrationSync($telegramUserId, $phone, null, $telegramUserId);
+                if (! $this->syncRegistrationWithIran($telegramUserId, $phone, null, $telegramUserId)) {
+                    $this->enqueueRegistrationSync($telegramUserId, $phone, null, $telegramUserId);
+                }
 
                 return true;
             }
@@ -307,7 +313,9 @@ final class HostRegistrationFlow
 
             $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $knownName);
             $this->pullFullAccountSnapshot($telegramUserId);
-            $this->enqueueRegistrationSync($telegramUserId, $phone, $knownName, $telegramUserId);
+            if (! $this->syncRegistrationWithIran($telegramUserId, $phone, $knownName, $telegramUserId)) {
+                $this->enqueueRegistrationSync($telegramUserId, $phone, $knownName, $telegramUserId);
+            }
 
             return true;
         } catch (\Throwable $e) {
@@ -559,12 +567,11 @@ final class HostRegistrationFlow
             $this->finishLocalRegistration($chatId, $telegramUserId, $mobile, $name);
         }
 
-        $this->enqueueRegistrationSync(
-            $telegramUserId,
-            $mobile,
-            $name,
-            (int) ($conversation['context']['contact_user_id'] ?? 0),
-        );
+        $contactUserId = (int) ($conversation['context']['contact_user_id'] ?? 0);
+        $this->pullFullAccountSnapshot($telegramUserId);
+        if (! $this->syncRegistrationWithIran($telegramUserId, $mobile, $name, $contactUserId)) {
+            $this->enqueueRegistrationSync($telegramUserId, $mobile, $name, $contactUserId);
+        }
     }
 
     public function callback(int $chatId, int $telegramUserId, string $data): void
@@ -740,5 +747,42 @@ final class HostRegistrationFlow
         }
 
         $this->registrationQueue->enqueue($telegramUserId, $payload);
+    }
+
+    private function syncRegistrationWithIran(
+        int $telegramUserId,
+        string $phone,
+        ?string $displayName,
+        int $contactUserId,
+    ): bool {
+        if ($telegramUserId <= 0 || trim($phone) === '') {
+            return false;
+        }
+
+        $contactUserId = $contactUserId > 0 ? $contactUserId : $telegramUserId;
+
+        try {
+            $payload = [
+                'telegram_user_id' => $telegramUserId,
+                'phone' => $phone,
+                'contact_user_id' => $contactUserId,
+            ];
+            if ($displayName !== null && trim($displayName) !== '') {
+                $payload['display_name'] = trim($displayName);
+            }
+
+            $response = $this->sync->call('registration/upsert', $payload, 12, allowRetry: true);
+            if (empty($response['ok']) || ! is_array($response['account'] ?? null)) {
+                return false;
+            }
+
+            $this->accounts->store($telegramUserId, $response['account']);
+
+            return true;
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration/upsert sync: '.$e->getMessage());
+
+            return false;
+        }
     }
 }

@@ -55,7 +55,7 @@ return [
 
     // Event-driven only — Iran pushes to host-sync.php; optional cron drains queues.
     // After each webhook, drain a few items per queue (heavy work also runs in cron/drain.php).
-    'webhook_drain_per_queue' => 3,
+    'webhook_drain_per_queue' => 8,
     'cron_drain_budget_seconds' => 50,
     'cron_drain_per_queue' => 5,
     // Admin panel: call Iran live/admin/fast instead of heavy process-update (recommended).
@@ -64,11 +64,11 @@ return [
     // Iran relay batch size when cron/drain.php runs (and cap inside webhook post-ACK drain).
     'iran_relay_per_webhook' => 4,
 
-    'pull_sync_enabled' => false,
+    'pull_sync_enabled' => true,
     'pull_sync_min_interval_seconds' => 3600,
     // When pull_sync_enabled=true: refresh user rows (KYC, purchases) from Iran via account/fetch.
     'pull_sync_account_enabled' => true,
-    'pull_sync_account_interval_seconds' => 300,
+    'pull_sync_account_interval_seconds' => 60,
     'pull_sync_account_batch_size' => 35,
 
     // Optional override — normally synced from Iran bootstrap (گروه گزارشات پشتیبانی).

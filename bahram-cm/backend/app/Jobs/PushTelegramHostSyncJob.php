@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 
 class PushTelegramHostSyncJob implements ShouldQueue
@@ -113,14 +114,17 @@ class PushTelegramHostSyncJob implements ShouldQueue
     /** @param  array<string, mixed>  $account */
     public static function accountNow(array $account): void
     {
-        self::dispatchNow('push_account', ['account' => $account]);
+        Bus::dispatchSync(new self('push_account', ['account' => $account]));
     }
 
     /** @param  list<int>  $ownedProductIds */
     /** @param  array<string, mixed>|null  $preProvision */
     public static function mobileAccessNow(string $mobile, array $ownedProductIds, ?string $displayName = null, ?array $preProvision = null): void
     {
-        self::dispatchNow('push_mobile_access', self::mobileAccessPayload($mobile, $ownedProductIds, $displayName, $preProvision));
+        Bus::dispatchSync(new self(
+            'push_mobile_access',
+            self::mobileAccessPayload($mobile, $ownedProductIds, $displayName, $preProvision),
+        ));
     }
 
     /**
