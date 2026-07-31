@@ -9,7 +9,7 @@
 
 import { extractError } from '@/lib/student/panelFormUtils';
 import { FamilyApiError } from './errors';
-import { familyFetch } from './session';
+import { familyFetch, familyFetchConditional } from './session';
 import type {
   FamilyBranding,
   FamilyComment,
@@ -46,14 +46,25 @@ export async function getFeed(
   return run(() => familyFetch<FamilyFeedResponse>(`/feed${qs}`), 'دریافت فید ناموفق بود.');
 }
 
+export type FeedUnreadSummary = {
+  unread_count: number;
+  latest_post_id: number;
+  feed_revision?: number;
+};
+
+export type FeedUnreadSummaryResult =
+  | { notModified: true }
+  | { notModified: false; data: FeedUnreadSummary; etag: string | null };
+
 export async function getFeedUnreadSummary(
   afterId: number,
-): Promise<{ data: { unread_count: number; latest_post_id: number; feed_revision?: number } }> {
+  ifNoneMatch?: string | null,
+): Promise<FeedUnreadSummaryResult> {
   const qs = `?after_id=${Math.max(0, Math.floor(afterId))}`;
-  return run(
-    () => familyFetch<{ data: { unread_count: number; latest_post_id: number } }>(`/feed/unread-summary${qs}`),
-    'دریافت پست‌های جدید ناموفق بود.',
-  );
+  return run(async () => {
+    const result = await familyFetchConditional<FeedUnreadSummary>(`/feed/unread-summary${qs}`, ifNoneMatch);
+    return result;
+  }, 'دریافت پست‌های جدید ناموفق بود.');
 }
 
 export async function getBranding(): Promise<{ data: FamilyBranding }> {
@@ -130,6 +141,20 @@ export async function joinFamily(entryContext: Record<string, string | undefined
 
 export async function completeOnboarding(): Promise<{ data: FamilyMeResponse }> {
   return run(() => familyFetch(`/onboarding/complete`, { method: 'POST' }), 'تکمیل خوش‌آمدگویی ناموفق بود.');
+}
+
+export async function setFamilyDisplayName(
+  firstName: string,
+  lastName: string,
+): Promise<{ data: { needs_name: boolean; display_name: string } }> {
+  return run(
+    () =>
+      familyFetch<{ data: { needs_name: boolean; display_name: string } }>(`/profile/name`, {
+        method: 'POST',
+        body: { first_name: firstName, last_name: lastName },
+      }),
+    'ثبت نام ناموفق بود.',
+  );
 }
 
 export async function getMe(): Promise<{ data: FamilyMeResponse }> {

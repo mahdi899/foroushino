@@ -17,6 +17,10 @@ use Illuminate\Validation\ValidationException;
  */
 class ReferralService
 {
+    public function __construct(
+        private readonly TelegramHostAccountSync $hostSync,
+    ) {}
+
     public function getOrCreateCode(User $user): ReferralCode
     {
         return $user->referralCode ?? ReferralCode::create([
@@ -139,6 +143,13 @@ class ReferralService
             'cashback_amount' => $cashbackAmount,
             'converted_at' => now(),
         ]);
+
+        // آمار "تراکنش زیرمجموعه" / "مبلغ زیرمجموعه" روی پروفایل معرف فقط با
+        // push شدن خود او تازه می‌شه — بدون این، تا بعدی sync دوره‌ای عقب می‌مونه.
+        $referrer = User::query()->find($referralCode->user_id);
+        if ($referrer !== null) {
+            $this->hostSync->pushUserAccountsImmediate($referrer);
+        }
     }
 
     /** @return array<int, array{title: string, slug: string, type: string, value: int, label: string}> */

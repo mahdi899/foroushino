@@ -52,6 +52,11 @@ import {
 } from '@/lib/family/feedReadCursor';
 import { getFeedUnreadSummary } from '@/lib/family/api';
 import {
+  getCachedUnreadSummary,
+  getUnreadSummaryEtag,
+  rememberUnreadSummary,
+} from '@/lib/family/unreadSummaryCache';
+import {
   familyFeedDebug,
   installFamilyFeedDebugGlobals,
 } from '@/lib/family/feedDebug';
@@ -183,6 +188,7 @@ export function FeedView({
   notificationsOpen = false,
   onOpenNotifications,
   onCloseNotifications,
+  focusPostId,
 }: {
   memberCount?: number;
   onMemberCountChange?: (memberCount?: number) => void;
@@ -199,6 +205,7 @@ export function FeedView({
   notificationsOpen?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
+  focusPostId?: number;
 }) {
   const isPreview = Boolean(previewMode);
   const pageVisible = usePageVisible();
@@ -376,9 +383,10 @@ export function FeedView({
 
     const loadedLatest = chronologicalLatestPostId(postsRef.current);
     try {
-      const res = await getFeedUnreadSummary(loadedLatest);
-      const serverLatest = res.data.latest_post_id;
-      const revision = res.data.feed_revision;
+      const result = await getFeedUnreadSummary(loadedLatest, getUnreadSummaryEtag());
+      const summary = result.notModified ? getCachedUnreadSummary() : rememberUnreadSummary(result.data, result.etag);
+      const serverLatest = summary.latest_post_id;
+      const revision = summary.feed_revision;
 
       if (
         revision != null &&
@@ -1187,6 +1195,16 @@ export function FeedView({
     return () => onRegisterScrollToPost?.(null);
   }, [onRegisterScrollToPost, scrollToPost]);
 
+  const focusedPostRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focusPostId || focusPostId <= 0 || isPreview) return;
+    if (focusedPostRef.current === focusPostId) return;
+    if (isLoading && posts.length === 0) return;
+
+    focusedPostRef.current = focusPostId;
+    void scrollToPost(focusPostId, { behavior: 'auto', highlight: true });
+  }, [focusPostId, isLoading, isPreview, posts.length, scrollToPost]);
+
   useEffect(() => {
     if (isValidating) return;
     if (!scrollRestoreRef.current) {
@@ -1352,13 +1370,16 @@ export function FeedView({
         });
         setUnreadDividerCount(Math.max(localCount, 1));
         pushUnreadBadge(Math.max(localCount, 1));
-        void getFeedUnreadSummary(lastRead)
-          .then((res) => {
-            const apiCount = res.data.unread_count;
+        void getFeedUnreadSummary(lastRead, getUnreadSummaryEtag())
+          .then((result) => {
+            const summary = result.notModified
+              ? getCachedUnreadSummary()
+              : rememberUnreadSummary(result.data, result.etag);
+            const apiCount = summary.unread_count;
             familyFeedDebug.info('boot', 'api unread summary', {
               afterId: lastRead,
               apiCount,
-              latest: res.data.latest_post_id,
+              latest: summary.latest_post_id,
             });
             if (apiCount > 0) {
               setUnreadDividerCount(apiCount);

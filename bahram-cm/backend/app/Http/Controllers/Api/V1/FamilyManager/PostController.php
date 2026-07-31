@@ -334,7 +334,7 @@ class PostController extends Controller
         $this->audit->log($request->user(), 'family.bahram_replied', $comment, ['post_id' => $published->id]);
 
         if ($comment->user) {
-            $this->notifications->bahramReplied($comment->user);
+            $this->notifications->bahramReplied($comment->user, (int) $published->id);
         }
 
         return ApiResponse::success(FamilyManagerPostPresenter::present($published), 201);

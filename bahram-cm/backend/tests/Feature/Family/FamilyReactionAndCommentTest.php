@@ -7,6 +7,7 @@ use App\Enums\Family\FamilyCommentStatus;
 use App\Enums\Family\FamilyPostStatus;
 use App\Models\FamilyPost;
 use App\Models\User;
+use App\Models\UserProfile;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -114,6 +115,33 @@ class FamilyReactionAndCommentTest extends TestCase
         $this->actingAs($admin, 'sanctum')
             ->postJson("/api/v1/family-manager/comments/{$comment['id']}/approve")
             ->assertStatus(422);
+    }
+
+    public function test_comment_includes_resolved_student_avatar_url(): void
+    {
+        Queue::fake();
+
+        config([
+            'bahram.media_url' => 'https://cdn.example.com',
+            'bahram.frontend_url' => 'https://rostami.app',
+        ]);
+
+        $user = $this->joinedUser();
+        UserProfile::create([
+            'user_id' => $user->id,
+            'avatar' => '/storage/media/avatars/'.$user->id.'/face.jpg',
+        ]);
+
+        $post = $this->publishedPost();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'عالی بود!'])
+            ->assertCreated()
+            ->assertJsonPath(
+                'data.user.avatar',
+                'https://cdn.example.com/media/avatars/'.$user->id.'/face.jpg',
+            )
+            ->assertJsonPath('data.user.avatar_version', fn ($value) => is_int($value) && $value > 0);
     }
 
     public function test_non_admin_manager_route_is_forbidden(): void

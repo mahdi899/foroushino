@@ -1,8 +1,8 @@
-/** Shared SWR defaults — keep family channel gentle on the API. */
+/** Shared SWR defaults — aligned with backend family.cache unread_ttl (45s). */
 export const familySwrDefaults = {
   revalidateOnFocus: false,
   revalidateOnReconnect: true,
-  dedupingInterval: 10_000,
+  dedupingInterval: 45_000,
 } as const;
 
 /** Feed: restore from SSR/IndexedDB; network only when revision/tip diverges. */
@@ -18,7 +18,7 @@ export const familyFeedSwr = {
 
 export const familyPinnedSwr = {
   ...familySwrDefaults,
-  dedupingInterval: 5 * 60_000,
+  dedupingInterval: 60_000,
   revalidateIfStale: false,
 } as const;
 
@@ -26,6 +26,6 @@ export const familyBrandingSwr = {
   ...familySwrDefaults,
   revalidateOnFocus: false,
   revalidateOnMount: false,
-  dedupingInterval: 60_000,
+  dedupingInterval: 300_000,
   keepPreviousData: true,
 } as const;

@@ -79,9 +79,12 @@ return [
 
     // Hybrid per-user cache on the host: hot fields (orders, licenses, KYC)
     // refresh in the background; cold fields (family, referral, SAT) use a longer TTL.
+    // Family member_count only refreshes for co-members via this TTL (or when
+    // that member's own account is pushed) — pushing every co-member on each
+    // join doesn't scale for large families, so keep this reasonably short.
     'hybrid_cache' => [
         'hot_ttl_seconds' => 120,
-        'cold_ttl_seconds' => 3600,
+        'cold_ttl_seconds' => 900,
         'refresh_on_start' => true,
     ],
 

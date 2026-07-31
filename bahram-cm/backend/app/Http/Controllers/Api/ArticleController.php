@@ -9,6 +9,7 @@ use App\Models\Article;
 use App\Services\MediaAltResolver;
 use App\Support\ApiResponse;
 use App\Support\ArticleSlug;
+use App\Support\HttpCache;
 use App\Support\MediaUrl;
 use App\Support\RuntimeCache;
 use Illuminate\Http\Request;
@@ -24,7 +25,8 @@ class ArticleController extends Controller
         $perPage = min((int) $request->integer('per_page', 12), 50) ?: 12;
         $cacheKey = 'public_articles:index:'.$page.':'.$perPage;
 
-        return RuntimeCache::remember($cacheKey, 3600, function () use ($request, $perPage) {
+        return HttpCache::withPublicCache(
+            RuntimeCache::remember($cacheKey, 3600, function () use ($request, $perPage) {
             $articles = Article::query()
                 ->published()
                 ->orderByDesc('published_at')
@@ -41,7 +43,10 @@ class ArticleController extends Controller
             app(MediaAltResolver::class)->warmReferences($refs);
 
             return ArticleListResource::collection($articles);
-        }, 'articles');
+        }, 'articles'),
+            300,
+            600,
+        );
     }
 
     /**
@@ -78,6 +83,6 @@ class ArticleController extends Controller
             app(MediaAltResolver::class)->warmReferences($refs);
         }
 
-        return ArticleDetailResource::make($article);
+        return HttpCache::withPublicCache(ArticleDetailResource::make($article), 300, 600);
     }
 }

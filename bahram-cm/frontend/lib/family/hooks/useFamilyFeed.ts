@@ -9,6 +9,10 @@ import {
   writeFeedBrowserCache,
 } from '@/lib/family/browserCache';
 import { getFeed, getFeedUnreadSummary, getPostJumpContext } from '@/lib/family/api';
+import {
+  getUnreadSummaryEtag,
+  rememberUnreadSummary,
+} from '@/lib/family/unreadSummaryCache';
 import { readFeedCache, type FeedCachePage } from '@/lib/family/feedCache';
 import { reconcileDiskCacheWithCurrent, latestPostIdFromPages } from '@/lib/family/feedMerge';
 import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
@@ -47,9 +51,13 @@ async function shouldRefreshFeedTip(
   localRevision: number | null,
 ): Promise<boolean> {
   try {
-    const res = await getFeedUnreadSummary(localTipId);
-    const serverLatest = res.data.latest_post_id;
-    const serverRev = res.data.feed_revision ?? null;
+    const result = await getFeedUnreadSummary(localTipId, getUnreadSummaryEtag());
+    if (result.notModified) {
+      return false;
+    }
+    rememberUnreadSummary(result.data, result.etag);
+    const serverLatest = result.data.latest_post_id;
+    const serverRev = result.data.feed_revision ?? null;
     if (serverLatest !== localTipId) return true;
     if (serverRev != null && localRevision != null && serverRev !== localRevision) return true;
     return false;

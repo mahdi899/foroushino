@@ -64,7 +64,7 @@ class CommentModerationController extends Controller
         $this->audit->log($request->user(), 'family.comment_approved', $comment);
 
         if ($comment->user) {
-            $this->notifications->commentApproved($comment->user);
+            $this->notifications->commentApproved($comment->user, (int) $comment->post_id);
         }
 
         return ApiResponse::success($this->present($comment->fresh(['user', 'family'])));
@@ -122,7 +122,7 @@ class CommentModerationController extends Controller
             $this->stats->incrementApprovedComments((int) $comment->post_id, (int) $comment->family_id);
 
             if ($comment->user) {
-                $this->notifications->commentApproved($comment->user);
+                $this->notifications->commentApproved($comment->user, (int) $comment->post_id);
             }
         }
 

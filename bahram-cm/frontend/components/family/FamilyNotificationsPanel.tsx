@@ -1,10 +1,15 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatRelativeTimeFa } from '@/components/student-panel/utils/relativeTime';
 import { useFamilyNotifications, useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
+import {
+  extractFamilyNotificationPostId,
+  isOffClubFamilyNotificationLink,
+  resolveFamilyNotificationHref,
+} from '@/lib/family/notificationLink';
 import type { FamilyNotification } from '@/lib/family/types';
 import {
   familyNotificationIcon,
@@ -43,13 +48,33 @@ function NotificationRow({
   index: number;
   onRead: (id: number) => void;
 }) {
+  const router = useRouter();
   const isUnread = !notification.read_at;
   const Icon = familyNotificationIcon(notification.type);
   const variant = familyNotificationVariant(notification.type);
-  const hasLink = Boolean(notification.link?.trim());
+  const resolvedLink = resolveFamilyNotificationHref(notification.link);
+  const hasLink = Boolean(resolvedLink);
+  const isExternal =
+    Boolean(resolvedLink && /^https?:\/\//i.test(resolvedLink)) ||
+    isOffClubFamilyNotificationLink(notification.link);
 
   const handleRead = () => {
     if (isUnread) onRead(notification.id);
+  };
+
+  const handleNavigate = () => {
+    handleRead();
+    if (!resolvedLink) return;
+    const externalTarget = isOffClubFamilyNotificationLink(notification.link)
+      ? notification.link?.trim()
+      : isExternal
+        ? resolvedLink
+        : null;
+    if (externalTarget) {
+      window.location.assign(externalTarget);
+      return;
+    }
+    router.push(resolvedLink);
   };
 
   const rowContent = (
@@ -96,17 +121,36 @@ function NotificationRow({
 
   const enterStyle = { animationDelay: `${Math.min(index, 14) * 48}ms` };
 
-  if (hasLink && notification.link) {
+  if (hasLink && resolvedLink) {
+    if (isExternal) {
+      const externalTarget = isOffClubFamilyNotificationLink(notification.link)
+        ? notification.link?.trim()
+        : resolvedLink;
+      if (!externalTarget) return null;
+
+      return (
+        <a
+          href={externalTarget}
+          className={rowClass}
+          style={enterStyle}
+          onClick={handleRead}
+          aria-label={`${notification.title}. ${notification.body}`}
+        >
+          {rowContent}
+        </a>
+      );
+    }
+
     return (
-      <Link
-        href={notification.link}
+      <button
+        type="button"
         className={rowClass}
         style={enterStyle}
-        onClick={handleRead}
+        onClick={handleNavigate}
         aria-label={`${notification.title}. ${notification.body}`}
       >
         {rowContent}
-      </Link>
+      </button>
     );
   }
 

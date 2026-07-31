@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\V1\Family\ActionController as FamilyActionControlle
 use App\Http\Controllers\Api\V1\Family\BrandingController as FamilyBrandingController;
 use App\Http\Controllers\Api\V1\Family\CommentController as FamilyCommentController;
 use App\Http\Controllers\Api\V1\Family\FeedController as FamilyFeedController;
+use App\Http\Controllers\Api\V1\Family\NotificationController as FamilyNotificationController;
 use App\Http\Controllers\Api\V1\Family\MediaProgressController as FamilyMediaProgressController;
 use App\Http\Controllers\Api\V1\Family\PostViewController as FamilyPostViewController;
 use App\Http\Controllers\Api\V1\Family\PushSubscriptionController as FamilyPushSubscriptionController;
@@ -574,6 +575,8 @@ Route::prefix('family')->group(function () {
         Route::post('stories/{story}/view', [FamilyStoryController::class, 'recordView'])->whereNumber('story')->middleware('throttle:120,1');
         Route::post('join', [FamilyFeedController::class, 'join'])->middleware('throttle:20,1');
         Route::post('onboarding/complete', [FamilyFeedController::class, 'completeOnboarding']);
+        Route::post('profile/name', [FamilyFeedController::class, 'updateDisplayName'])
+            ->middleware('throttle:20,1');
 
         Route::put('posts/{post}/reaction', [FamilyReactionController::class, 'upsert'])
             ->whereNumber('post')->middleware('throttle:family-reaction');
@@ -597,10 +600,10 @@ Route::prefix('family')->group(function () {
             ->whereNumber('medium')
             ->middleware('throttle:240,1');
 
-        Route::get('notifications', [StudentNotificationController::class, 'index']);
-        Route::get('notifications/unread-count', [StudentNotificationController::class, 'unreadCount']);
-        Route::post('notifications/read-all', [StudentNotificationController::class, 'markAllRead']);
-        Route::post('notifications/{notification}/read', [StudentNotificationController::class, 'markRead']);
+        Route::get('notifications', [FamilyNotificationController::class, 'index']);
+        Route::get('notifications/unread-count', [FamilyNotificationController::class, 'unreadCount']);
+        Route::post('notifications/read-all', [FamilyNotificationController::class, 'markAllRead']);
+        Route::post('notifications/{notification}/read', [FamilyNotificationController::class, 'markRead']);
 
         Route::get('push/status', [FamilyPushSubscriptionController::class, 'status'])
             ->middleware('throttle:60,1');

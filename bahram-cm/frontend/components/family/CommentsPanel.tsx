@@ -35,7 +35,12 @@ function CommentRow({
 }) {
   return (
     <li className="flex items-start gap-3 py-1">
-      <CommentAvatar name={comment.user.name} avatar={comment.user.avatar} size={avatarSize} />
+      <CommentAvatar
+        name={comment.user.name}
+        avatar={comment.user.avatar}
+        avatarVersion={comment.user.avatar_version}
+        size={avatarSize}
+      />
       <div className="family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="family-comment-bubble__author">{comment.user.name}</span>

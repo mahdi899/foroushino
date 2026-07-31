@@ -271,4 +271,40 @@ class InAppNotificationTest extends TestCase
 
         $this->assertEquals(0, $user->notificationRecipients()->whereNull('read_at')->count());
     }
+
+    public function test_student_and_family_notification_lists_are_scoped_separately(): void
+    {
+        $user = User::factory()->create(['mobile' => '09127770001', 'is_admin' => false]);
+
+        $panelNotification = Notification::create([
+            'title' => 'پنل',
+            'body' => 'اعلان پنل',
+            'type' => InAppNotificationType::TicketReply->value,
+            'link' => '/panel/support/1',
+        ]);
+        $familyNotification = Notification::create([
+            'title' => 'کلاب',
+            'body' => 'اعلان کلاب',
+            'type' => InAppNotificationType::FamilyImportantPost->value,
+            'link' => 'https://rostami.club/?post=12',
+        ]);
+
+        NotificationRecipient::create(['notification_id' => $panelNotification->id, 'user_id' => $user->id]);
+        NotificationRecipient::create(['notification_id' => $familyNotification->id, 'user_id' => $user->id]);
+
+        $token = $user->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/student/notifications')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'پنل');
+
+        $this->withToken($token)
+            ->getJson('/api/v1/family/notifications')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'کلاب')
+            ->assertJsonPath('data.0.link', 'https://rostami.club/?post=12');
+    }
 }

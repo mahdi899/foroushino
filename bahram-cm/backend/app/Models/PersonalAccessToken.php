@@ -18,7 +18,7 @@ use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
  */
 class PersonalAccessToken extends SanctumPersonalAccessToken
 {
-    private const CACHE_TTL_SECONDS = 60;
+    private const CACHE_TTL_SECONDS = 120;
 
     public static function findToken($token)
     {

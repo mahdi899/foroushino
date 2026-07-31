@@ -186,6 +186,7 @@ export interface FamilyFeedMeta {
   has_active_stories?: boolean;
   member_count?: number;
   onboarding_completed?: boolean;
+  needs_name?: boolean;
   is_staff?: boolean;
   feed_revision?: number;
 }
@@ -200,7 +201,7 @@ export interface FamilyComment {
   body: string;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
-  user: { name: string; avatar: string | null };
+  user: { name: string; avatar: string | null; avatar_version?: number | null };
   rejection_reason?: string | null;
   is_pending_mine: boolean;
 }

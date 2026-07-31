@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { cn } from '@/lib/cn';
+import { resolveStudentAvatarDisplayUrl } from '@/lib/student/avatar';
 
 function avatarInitial(name: string): string {
   const trimmed = name.trim();
@@ -9,12 +10,14 @@ function avatarInitial(name: string): string {
 export function CommentAvatar({
   name,
   avatar,
+  avatarVersion,
   size = 'sm',
   className,
   style,
 }: {
   name: string;
   avatar: string | null;
+  avatarVersion?: number | null;
   size?: 'xs' | 'sm' | 'md';
   className?: string;
   style?: CSSProperties;
@@ -26,6 +29,8 @@ export function CommentAvatar({
         ? 'h-10 w-10 text-sm'
         : 'h-8 w-8 text-[11px]';
 
+  const avatarSrc = resolveStudentAvatarDisplayUrl(avatar, avatarVersion);
+
   return (
     <span
       className={cn(
@@ -36,9 +41,9 @@ export function CommentAvatar({
       style={style}
       title={name}
     >
-      {avatar ? (
+      {avatarSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatar} alt="" className="h-full w-full object-cover" />
+        <img src={avatarSrc} alt="" className="h-full w-full object-cover" />
       ) : (
         avatarInitial(name)
       )}

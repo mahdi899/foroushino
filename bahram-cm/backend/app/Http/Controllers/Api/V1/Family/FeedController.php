@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Api\V1\Family;
 
 use App\Actions\Family\JoinFamily;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Family\UpdateFamilyDisplayNameRequest;
 use App\Http\Resources\V1\Family\FamilyPostResource;
+use App\Modules\TelegramBot\Services\DisplayNameValidator;
+use App\Services\AdminTelegramLogService;
+use App\Support\StudentDisplayName;
 use App\Models\FamilyPost;
 use App\Services\Family\EntryContext;
 use App\Services\Family\FamilyAccessService;
@@ -14,8 +18,10 @@ use App\Services\Family\FamilyStoryService;
 use App\Services\Family\FeedService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
+use App\Support\HttpCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class FeedController extends Controller
 {
@@ -28,7 +34,7 @@ class FeedController extends Controller
         private readonly FamilyMemberCountService $memberCounts,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse|Response
     {
         // Not behind `auth:sanctum` middleware (guests must reach this route too),
         // so the default guard won't see the bearer token — resolve explicitly.
@@ -39,6 +45,19 @@ class FeedController extends Controller
             $preview = $this->feed->guestPreview();
             $branding = $this->branding->publicPayload();
             $memberCount = $this->memberCounts->total();
+            $revision = FeedService::feedRevision();
+            $limit = (int) config('family.feed.guest_preview_posts', 6);
+            $tipId = (int) ($preview['data']->first()?->id ?? 0);
+            $etag = HttpCache::etag('guest-feed', $revision, $limit, $tipId);
+            $cacheControl = HttpCache::publicMaxAge(
+                (int) config('family.cache.guest_feed_ttl', 30),
+            );
+
+            if (HttpCache::matches($request, $etag)) {
+                return response('', 304)
+                    ->header('ETag', $etag)
+                    ->header('Cache-Control', $cacheControl);
+            }
 
             return ApiResponse::success(
                 FamilyPostResource::collection($preview['data'])->resolve(),
@@ -52,8 +71,11 @@ class FeedController extends Controller
                     'branding' => $branding,
                     'has_active_stories' => $this->stories->hasActiveStories(),
                     'member_count' => $memberCount > 0 ? $memberCount : null,
-                ]
-            );
+                    'feed_revision' => $revision,
+                ],
+            )
+                ->header('ETag', $etag)
+                ->header('Cache-Control', $cacheControl);
         }
 
         $limit = $request->integer('limit');
@@ -70,6 +92,28 @@ class FeedController extends Controller
 
         $family = $result['membership']->family;
         $branding = $this->branding->publicPayload();
+        $revision = FeedService::feedRevision();
+        $cursor = (string) $request->query('cursor', '');
+        $resolvedLimit = $limit ?? (int) config('family.feed.per_page', 4);
+        $tipId = (int) ($result['data']->first()?->id ?? 0);
+        $etag = HttpCache::etag(
+            'member-feed',
+            (int) $family->id,
+            $revision,
+            $direction,
+            $cursor,
+            $resolvedLimit,
+            $tipId,
+            (int) $user->id,
+        );
+        $cacheControl = HttpCache::privateMaxAge(0);
+
+        if (HttpCache::matches($request, $etag)) {
+            return response('', 304)
+                ->header('ETag', $etag)
+                ->header('Cache-Control', $cacheControl)
+                ->header('Vary', 'Authorization');
+        }
 
         return ApiResponse::success(
             FamilyPostResource::collection($result['data'])->resolve(),
@@ -84,29 +128,63 @@ class FeedController extends Controller
                 'has_active_stories' => $this->stories->hasActiveStories((int) $family->id),
                 'member_count' => (int) $family->member_count,
                 'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
+                'needs_name' => StudentDisplayName::needsDisplayName($user),
                 'is_staff' => $this->access->canManage($user),
-                'feed_revision' => FeedService::feedRevision(),
-            ]
-        );
+                'feed_revision' => $revision,
+            ],
+        )
+            ->header('ETag', $etag)
+            ->header('Cache-Control', $cacheControl)
+            ->header('Vary', 'Authorization');
     }
 
-    public function unreadSummary(Request $request): JsonResponse
+    public function unreadSummary(Request $request): JsonResponse|Response
     {
         $afterId = max(0, $request->integer('after_id'));
         $user = $request->user('sanctum');
+        $membership = $user ? $this->access->homeMembership($user) : null;
+        $familyId = $membership ? (int) $membership->family_id : 0;
 
-        return ApiResponse::success(
-            $this->feed->unreadSummary($afterId, $user),
+        $payload = $this->feed->unreadSummary($afterId, $user);
+        $etag = HttpCache::etag(
+            'unread',
+            $familyId,
+            $afterId,
+            $payload['feed_revision'] ?? FeedService::feedRevision(),
+            $payload['latest_post_id'],
+            $payload['unread_count'],
         );
+
+        return HttpCache::conditionalJson(
+            $request,
+            $payload,
+            $etag,
+            HttpCache::privateMaxAge((int) config('family.cache.unread_ttl', 45)),
+        )->header('Vary', 'Authorization');
     }
 
-    public function pinned(Request $request): JsonResponse
+    public function pinned(Request $request): JsonResponse|Response
     {
-        $posts = $this->feed->pinnedForMember($request->user());
+        $user = $request->user();
+        $membership = $this->access->requireMembership($user);
+        $familyId = (int) $membership->family_id;
+        $posts = $this->feed->pinnedForMember($user, $membership);
+        $revision = FeedService::feedRevision();
+        $etag = HttpCache::etag('pinned', $familyId, $revision, (int) $user->id, $posts->count());
+
+        if (HttpCache::matches($request, $etag)) {
+            return response('', 304)
+                ->header('ETag', $etag)
+                ->header('Cache-Control', HttpCache::privateMaxAge((int) config('family.cache.pinned_ttl', 60)))
+                ->header('Vary', 'Authorization');
+        }
 
         return ApiResponse::success(
             FamilyPostResource::collection($posts)->resolve(),
-        );
+        )
+            ->header('ETag', $etag)
+            ->header('Cache-Control', HttpCache::privateMaxAge((int) config('family.cache.pinned_ttl', 60)))
+            ->header('Vary', 'Authorization');
     }
 
     public function show(Request $request, FamilyPost $post): JsonResponse
@@ -182,8 +260,46 @@ class FeedController extends Controller
         return ApiResponse::success([
             'joined' => true,
             'onboarding_completed' => (bool) $membership->onboarding_completed,
+            'needs_name' => StudentDisplayName::needsDisplayName($user),
             'member_count' => (int) $membership->family->member_count,
             'display_name' => $this->branding->publicPayload()['display_name'],
+        ]);
+    }
+
+    public function updateDisplayName(UpdateFamilyDisplayNameRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $this->access->requireMembership($user);
+
+        if (! StudentDisplayName::needsDisplayName($user)) {
+            return ApiResponse::success([
+                'needs_name' => false,
+                'display_name' => StudentDisplayName::fromUser($user),
+            ]);
+        }
+
+        $validator = new DisplayNameValidator;
+        $firstName = $validator->sanitize($request->string('first_name')->toString());
+        $lastName = $validator->sanitize($request->string('last_name')->toString());
+
+        if (! $firstName || ! $lastName) {
+            return ApiResponse::error('invalid_name', 'نام یا نام خانوادگی معتبر نیست.', 422);
+        }
+
+        $fullName = trim($firstName.' '.$lastName);
+
+        $user->profile()->updateOrCreate(
+            ['user_id' => $user->id],
+            ['first_name' => $firstName, 'last_name' => $lastName],
+        );
+        $user->update(['name' => $fullName]);
+        $user->refresh()->loadMissing('profile');
+
+        app(AdminTelegramLogService::class)->notifyProfileUpdated($user);
+
+        return ApiResponse::success([
+            'needs_name' => false,
+            'display_name' => $fullName,
         ]);
     }
 
@@ -230,6 +346,7 @@ class FeedController extends Controller
             'has_active_stories' => $this->stories->hasActiveStories((int) $membership->family_id),
             'member_count' => (int) $membership->family->member_count,
             'onboarding_completed' => (bool) $membership->onboarding_completed,
+            'needs_name' => StudentDisplayName::needsDisplayName($request->user()),
             'joined_at' => $membership->joined_at?->toIso8601String(),
             'is_staff' => $this->access->canManage($request->user()),
         ]);

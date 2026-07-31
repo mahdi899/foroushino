@@ -10,6 +10,7 @@ use App\Models\FamilyPost;
 use App\Models\Notification as NotificationModel;
 use App\Models\PushSubscription;
 use App\Services\WebPushSender;
+use App\Support\FamilySiteUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
@@ -53,12 +54,13 @@ class DispatchFamilyPostPushJob implements ShouldQueue
         }
 
         $payload = $this->buildPayload($post);
+        $postLink = FamilySiteUrl::postUrl((int) $post->id);
 
         $notification = NotificationModel::create([
             'title' => $payload['title'],
             'body' => $payload['body'],
             'type' => InAppNotificationType::FamilyImportantPost->value,
-            'link' => '/family',
+            'link' => $postLink,
             'link_label' => 'مشاهده',
             'created_by' => $post->author_id,
         ]);
@@ -151,16 +153,8 @@ class DispatchFamilyPostPushJob implements ShouldQueue
         return [
             'title' => 'پیام مهم از بهرام',
             'body' => $excerpt ?: 'یک پیام مهم جدید در خانواده منتشر شده است.',
-            'url' => $this->targetUrl(),
-            'tag' => 'family-important-post',
+            'url' => FamilySiteUrl::postUrl((int) $post->id),
+            'tag' => 'family-important-post-'.$post->id,
         ];
-    }
-
-    private function targetUrl(): string
-    {
-        $base = rtrim((string) config('family.entry.base_url', config('app.url')), '/');
-        $path = trim((string) config('family.entry.path', ''), '/');
-
-        return $path === '' ? $base.'/' : $base.'/'.$path;
     }
 }

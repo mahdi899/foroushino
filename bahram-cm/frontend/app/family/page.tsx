@@ -2,6 +2,7 @@ import { FamilyHome } from '@/components/family/FamilyHome';
 import { brandingFromMeAndFeed } from '@/lib/family/shellCache';
 import { familyFetch } from '@/lib/family/session';
 import { getCurrentStudent } from '@/lib/student/session';
+import { needsFamilyDisplayName } from '@/lib/student/displayName';
 import type { FamilyFeedResponse, FamilyMeResponse } from '@/lib/family/types';
 
 const FEED_PAGE_SIZE = 15;
@@ -91,6 +92,7 @@ export default async function FamilyPage({
       <FamilyHome
         mode="guest"
         needsOnboarding={false}
+        needsName={false}
         initialFeed={initialFeed}
         initialBranding={initialBranding}
         initialMemberCount={initialMemberCount}
@@ -111,11 +113,18 @@ export default async function FamilyPage({
   const initialMemberCount = resolveInitialMemberCount(me, initialFeed);
   const viewerKey = user.id;
 
+  const needsName = Boolean(
+    user && me.is_member && (me.needs_name ?? needsFamilyDisplayName(user)),
+  );
+  const rawFocusPost = oneParam(sp, 'post');
+  const focusPostId = rawFocusPost && Number.isFinite(Number(rawFocusPost)) ? Number(rawFocusPost) : undefined;
+
   if (!me.is_member) {
     return (
       <FamilyHome
         mode="join"
         needsOnboarding={false}
+        needsName={false}
         initialFeed={initialFeed}
         initialBranding={initialBranding}
         initialMemberCount={initialMemberCount}
@@ -129,10 +138,12 @@ export default async function FamilyPage({
       mode="member"
       memberCount={initialMemberCount}
       needsOnboarding={!me.onboarding_completed}
+      needsName={needsName}
       initialFeed={initialFeed}
       initialBranding={initialBranding}
       initialMemberCount={initialMemberCount}
       viewerKey={viewerKey}
+      focusPostId={focusPostId}
     />
   );
 }

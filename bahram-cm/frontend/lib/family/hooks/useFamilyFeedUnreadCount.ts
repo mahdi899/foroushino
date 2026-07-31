@@ -1,12 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { getFeedUnreadSummary } from '@/lib/family/api';
 import {
   FAMILY_FEED_READ_EVENT,
   getGlobalLastReadPostId,
 } from '@/lib/family/feedReadCursor';
+import {
+  getCachedUnreadSummary,
+  getUnreadSummaryEtag,
+  rememberUnreadSummary,
+} from '@/lib/family/unreadSummaryCache';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { familySwrDefaults } from '@/lib/family/swr';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
@@ -15,6 +20,7 @@ import { isRealtimeConfigured } from '@/lib/realtime/config';
 export function useFamilyFeedUnreadCount(enabled = true) {
   const pageVisible = usePageVisible();
   const [afterId, setAfterId] = useState(0);
+  const etagRef = useRef<string | null>(getUnreadSummaryEtag());
 
   const syncAfterId = useCallback(() => {
     setAfterId(getGlobalLastReadPostId());
@@ -47,7 +53,12 @@ export function useFamilyFeedUnreadCount(enabled = true) {
     enabled && pageVisible && afterId > 0 ? ['family-feed-unread-summary', afterId] : null,
     async () => {
       try {
-        return (await getFeedUnreadSummary(afterId)).data;
+        const result = await getFeedUnreadSummary(afterId, etagRef.current);
+        if (result.notModified) {
+          return getCachedUnreadSummary();
+        }
+        etagRef.current = result.etag;
+        return rememberUnreadSummary(result.data, result.etag);
       } catch {
         return { unread_count: 0, latest_post_id: 0 };
       }

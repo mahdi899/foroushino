@@ -21,6 +21,20 @@ export function hasIdentityLegalFields(user: Pick<StudentUser, 'identity'>): boo
   return Boolean(user.identity?.first_name?.trim() && user.identity?.last_name?.trim());
 }
 
+/** Club-only gate: OTP placeholder accounts without a real first/last name. */
+export function needsFamilyDisplayName(user: NameSource): boolean {
+  if (hasIdentityLegalFields(user as StudentUser)) return false;
+
+  const first = user.profile?.first_name?.trim() ?? '';
+  const last = user.profile?.last_name?.trim() ?? '';
+  if (first && last) return false;
+
+  const name = user.name.trim();
+  if (name && name !== 'دانشجو') return false;
+
+  return true;
+}
+
 export function splitDisplayName(name: string): { first_name: string; last_name: string } {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { first_name: '', last_name: '' };

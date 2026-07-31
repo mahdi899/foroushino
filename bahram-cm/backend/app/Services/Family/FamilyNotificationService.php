@@ -7,6 +7,7 @@ use App\Events\FamilyNotificationCreated;
 use App\Jobs\Family\SendFamilyUserPushJob;
 use App\Models\User;
 use App\Services\InAppNotificationService;
+use App\Support\FamilySiteUrl;
 use App\Support\SafeBroadcast;
 
 class FamilyNotificationService
@@ -15,15 +16,15 @@ class FamilyNotificationService
         private readonly InAppNotificationService $notifications,
     ) {}
 
-    public function commentApproved(User $user): void
+    public function commentApproved(User $user, int $postId): void
     {
         $this->notify(
             $user,
             'نظر شما تأیید شد',
             'نظر شما در خانواده داداش بهرام منتشر شد.',
             InAppNotificationType::FamilyCommentApproved,
-            '/family',
-            'مشاهده خانواده',
+            FamilySiteUrl::postUrl($postId),
+            'مشاهده پست',
         );
     }
 
@@ -34,22 +35,23 @@ class FamilyNotificationService
             'نظر شما منتشر نشد',
             "دلیل:\n{$reasonLabel}",
             InAppNotificationType::FamilyCommentRejected,
-            '/family/notifications',
+            FamilySiteUrl::notificationsUrl(),
             'مشاهده جزئیات',
         );
     }
 
-    public function bahramReplied(User $user): void
+    public function bahramReplied(User $user, int $postId): void
     {
         $title = 'بهرام به نظرت پاسخ داد';
         $body = 'پاسخ بهرام را در خانواده ببین.';
+        $link = FamilySiteUrl::postUrl($postId);
 
         $this->notify(
             $user,
             $title,
             $body,
             InAppNotificationType::FamilyBahramReplied,
-            '/family',
+            $link,
             'مشاهده پاسخ',
         );
 
@@ -58,7 +60,8 @@ class FamilyNotificationService
         SendFamilyUserPushJob::dispatch($user->id, [
             'title' => $title,
             'body' => $body,
-            'tag' => 'family-bahram-replied',
+            'url' => $link,
+            'tag' => 'family-bahram-replied-'.$postId,
         ]);
     }
 
@@ -69,19 +72,19 @@ class FamilyNotificationService
             'یادآوری تمرین',
             $message,
             InAppNotificationType::FamilyActionFollowUp,
-            '/family',
+            FamilySiteUrl::homeUrl(),
             'باز کردن خانواده',
         );
     }
 
-    public function importantPost(User $user, string $title = 'پیام مهم از بهرام'): void
+    public function importantPost(User $user, int $postId, string $title = 'پیام مهم از بهرام'): void
     {
         $this->notify(
             $user,
             $title,
             'یک پیام مهم جدید در خانواده منتشر شده است.',
             InAppNotificationType::FamilyImportantPost,
-            '/family',
+            FamilySiteUrl::postUrl($postId),
             'مشاهده',
         );
     }

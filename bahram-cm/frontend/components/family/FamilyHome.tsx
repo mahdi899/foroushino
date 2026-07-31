@@ -9,6 +9,7 @@ import { FamilyGuestAccessProvider } from '@/components/family/FamilyGuestAccess
 import { JoinBanner } from '@/components/family/JoinBanner';
 import { JoinContextBoot } from '@/components/family/JoinContextBoot';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
+import { FamilyNameModal } from '@/components/family/FamilyNameModal';
 import { FamilyPushDailyOptIn } from '@/components/family/FamilyPushDailyOptIn';
 import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
 import { useOverlayHistoryBack } from '@/lib/family/hooks/useOverlayHistoryBack';
@@ -27,18 +28,22 @@ export function FamilyHome({
   mode,
   memberCount,
   needsOnboarding,
+  needsName,
   initialFeed = null,
   initialBranding,
   initialMemberCount,
   viewerKey = 'anon',
+  focusPostId,
 }: {
   mode: Mode;
   memberCount?: number;
   needsOnboarding: boolean;
+  needsName: boolean;
   initialFeed?: FamilyFeedResponse | null;
   initialBranding?: FamilyBranding;
   initialMemberCount?: number;
   viewerKey?: string | number;
+  focusPostId?: number;
 }) {
   const { memberCount: resolvedMemberCount, syncMemberCount } = useFamilyMemberCount(
     memberCount ?? initialMemberCount,
@@ -64,7 +69,8 @@ export function FamilyHome({
     }
   }, [viewerKey]);
 
-  const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
+  const [showNamePrompt, setShowNamePrompt] = useState(needsName);
+  const [showOnboarding, setShowOnboarding] = useState(needsOnboarding && !needsName);
   const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -124,6 +130,7 @@ export function FamilyHome({
           notificationsOpen={notificationsOpen}
           onOpenNotifications={openNotifications}
           onCloseNotifications={closeNotifications}
+          focusPostId={focusPostId}
         />
       </FamilyMain>
     </>
@@ -151,8 +158,16 @@ export function FamilyHome({
           <JoinBanner id="family-join-cta" />
         </Suspense>
       )}
-      {showOnboarding && <OnboardingModal onDone={() => setShowOnboarding(false)} />}
-      {isMember ? <FamilyPushDailyOptIn enabled={!showOnboarding} /> : null}
+      {showNamePrompt ? (
+        <FamilyNameModal
+          onDone={() => {
+            setShowNamePrompt(false);
+            if (needsOnboarding) setShowOnboarding(true);
+          }}
+        />
+      ) : null}
+      {showOnboarding ? <OnboardingModal onDone={() => setShowOnboarding(false)} /> : null}
+      {isMember ? <FamilyPushDailyOptIn enabled={!showOnboarding && !showNamePrompt} /> : null}
     </FamilyShell>
   );
 }

@@ -38,6 +38,36 @@ final class StudentDisplayName
         return 'دانشجو';
     }
 
+  /** True when the account still has the OTP placeholder label and no legal first/last name. */
+    public static function needsDisplayName(User $user): bool
+    {
+        $user->loadMissing(['profile', 'identityProfile']);
+
+        $identity = $user->identityProfile;
+        if ((int) ($identity?->verification_level ?? 0) >= 2) {
+            $fromIdentity = trim(implode(' ', array_filter([
+                $identity?->first_name,
+                $identity?->last_name,
+            ])));
+            if ($fromIdentity !== '') {
+                return false;
+            }
+        }
+
+        $first = trim((string) ($user->profile?->first_name ?? ''));
+        $last = trim((string) ($user->profile?->last_name ?? ''));
+        if ($first !== '' && $last !== '') {
+            return false;
+        }
+
+        $name = trim((string) $user->name);
+        if ($name !== '' && $name !== 'دانشجو') {
+            return false;
+        }
+
+        return true;
+    }
+
     public static function forTelegramAccount(\App\Modules\TelegramBot\Models\TelegramAccount $account): string
     {
         $account->loadMissing(['user.profile', 'user.identityProfile']);

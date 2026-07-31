@@ -1,30 +1,23 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1\Student;
+namespace App\Http\Controllers\Api\V1\Family;
 
 use App\Enums\InAppNotificationType;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
 use App\Models\NotificationRecipient;
-use App\Services\InAppNotificationService;
 use App\Support\ApiResponse;
+use App\Support\FamilySiteUrl;
 use App\Support\NotificationRecipientQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class NotificationController extends Controller
+class NotificationController extends StudentNotificationController
 {
-    public function __construct(
-        private readonly InAppNotificationService $notifications,
-    ) {}
-
     public function index(Request $request): JsonResponse
     {
-        // Collapse historical welcome spam (same bug as repeated first-login side effects).
-        $this->notifications->dedupeWelcomeNotifications($request->user());
-
         $perPage = min(max((int) $request->input('per_page', 50), 1), 100);
 
-        $query = NotificationRecipientQuery::forUser($request->user(), 'student');
+        $query = NotificationRecipientQuery::forUser($request->user(), 'family');
 
         if ($request->boolean('unread_only')) {
             $query->whereNull('read_at');
@@ -45,7 +38,7 @@ class NotificationController extends Controller
 
     public function unreadCount(Request $request): JsonResponse
     {
-        $count = NotificationRecipientQuery::forUser($request->user(), 'student')
+        $count = NotificationRecipientQuery::forUser($request->user(), 'family')
             ->whereNull('read_at')
             ->count();
 
@@ -55,17 +48,18 @@ class NotificationController extends Controller
     public function markRead(Request $request, NotificationRecipient $notification): JsonResponse
     {
         abort_unless($notification->user_id === $request->user()->id, 403);
+        $notification->loadMissing('notification');
+        abort_unless(
+            str_starts_with((string) $notification->notification?->type, 'family_'),
+            404,
+        );
 
-        if ($notification->read_at === null) {
-            $notification->update(['read_at' => now()]);
-        }
-
-        return ApiResponse::success(['read_at' => $notification->read_at?->toIso8601String()]);
+        return parent::markRead($request, $notification);
     }
 
     public function markAllRead(Request $request): JsonResponse
     {
-        $updated = NotificationRecipientQuery::forUser($request->user(), 'student')
+        $updated = NotificationRecipientQuery::forUser($request->user(), 'family')
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
@@ -80,7 +74,9 @@ class NotificationController extends Controller
             'title' => $recipient->notification->title,
             'body' => $recipient->notification->body,
             'type' => $recipient->notification->type,
-            'link' => $recipient->notification->link,
+            'link' => filled($recipient->notification->link)
+                ? FamilySiteUrl::absolute($recipient->notification->link)
+                : null,
             'link_label' => $recipient->notification->link_label,
             'read_at' => $recipient->read_at?->toIso8601String(),
             'created_at' => $recipient->created_at?->toIso8601String(),

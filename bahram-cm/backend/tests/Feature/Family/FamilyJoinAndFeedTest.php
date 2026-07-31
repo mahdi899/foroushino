@@ -103,4 +103,43 @@ class FamilyJoinAndFeedTest extends TestCase
         $me2 = $this->actingAs($user, 'sanctum')->getJson('/api/v1/family/me');
         $me2->assertJsonPath('data.onboarding_completed', true);
     }
+
+    public function test_placeholder_student_is_prompted_for_display_name_in_family(): void
+    {
+        $user = User::factory()->create(['name' => 'دانشجو']);
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/family/join')->assertOk();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/family/me')
+            ->assertOk()
+            ->assertJsonPath('data.needs_name', true);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/family/profile/name', [
+                'first_name' => 'علی',
+                'last_name' => 'احمدی',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.needs_name', false)
+            ->assertJsonPath('data.display_name', 'علی احمدی');
+
+        $user->refresh()->load('profile');
+        $this->assertSame('علی احمدی', $user->name);
+        $this->assertSame('علی', $user->profile?->first_name);
+        $this->assertSame('احمدی', $user->profile?->last_name);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/family/me')
+            ->assertJsonPath('data.needs_name', false);
+    }
+
+    public function test_student_with_real_name_is_not_prompted_in_family(): void
+    {
+        $user = User::factory()->create(['name' => 'سارا رضایی']);
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/family/join')->assertOk();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/family/me')
+            ->assertJsonPath('data.needs_name', false);
+    }
 }

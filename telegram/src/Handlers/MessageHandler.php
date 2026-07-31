@@ -382,12 +382,17 @@ final class MessageHandler
         foreach (array_slice($courses, 0, 12) as $course) {
             $productId = (int) $course['id'];
             $title = trim((string) ($course['title'] ?? 'دوره'));
+            $owns = $productId > 0 && $this->ownership->ownsProduct($telegramUserId, $productId);
             $price = isset($course['sale_price']) && (int) $course['sale_price'] > 0
                 ? (int) $course['sale_price']
                 : (int) ($course['price'] ?? 0);
             $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8')
-                .($price > 0 ? ' — '.number_format($price).' تومان' : '');
-            $keyboard[] = [InlineButtons::buy($productId, mb_substr($title, 0, 28))];
+                .($owns ? ' — دسترسی شما فعال است' : ($price > 0 ? ' — '.number_format($price).' تومان' : ''));
+            // callback_data می‌مونه buy:<id> — همون هندلر روی محصولات مالکیت‌شده
+            // دسترسی/فایل رو نشون می‌ده و کاربر رو دوباره وارد پرداخت نمی‌کنه.
+            $keyboard[] = [InlineButtons::buy($productId, $owns
+                ? '✅ '.mb_substr($title, 0, 26)
+                : mb_substr($title, 0, 28))];
         }
 
         $this->api->sendMessage($chatId, implode("\n", $lines), [

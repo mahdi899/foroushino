@@ -171,6 +171,17 @@ class FeedService
             );
             $prevCursor = null;
             $hasNewer = false;
+        } elseif ($direction === 'older' && $cursor !== null) {
+            $cacheKey = $this->feedCursorCacheKey($familyId, $cursor, $limit);
+            $page = Cache::remember(
+                $cacheKey,
+                (int) config('family.cache.feed_cursor_ttl', 60),
+                fn () => $this->fetchFeedPage($familyId, $cursor, $limit, 'older'),
+            );
+            $posts = $page['data'];
+            $nextCursor = $page['next_cursor'];
+            $prevCursor = $page['prev_cursor'];
+            $hasNewer = $page['has_newer'];
         } else {
             $page = $this->fetchFeedPage($familyId, $cursor, $limit, $direction);
             $posts = $page['data'];
@@ -318,6 +329,20 @@ class FeedService
         return "family:feed:{$familyId}:{$limit}:v{$version}";
     }
 
+    private function feedCursorCacheKey(int $familyId, string $cursor, int $limit): string
+    {
+        $version = (int) Cache::get(self::FEED_CACHE_VERSION_KEY, 0);
+
+        return "family:feed:cursor:{$familyId}:{$limit}:{$cursor}:v{$version}";
+    }
+
+    private function pinnedCacheKey(int $familyId): string
+    {
+        $version = (int) Cache::get(self::FEED_CACHE_VERSION_KEY, 0);
+
+        return "family:pinned:{$familyId}:v{$version}";
+    }
+
     /**
      * Bump the shared feed-tip cache version, invalidating every family's cached tip page
      * at once. Simpler and safer than resolving exactly which families a given post's
@@ -408,6 +433,25 @@ class FeedService
         $membership = $membership ?? $this->access->requireMembership($user);
         $familyId = (int) $membership->family_id;
 
+        $posts = Cache::remember(
+            $this->pinnedCacheKey($familyId),
+            (int) config('family.cache.pinned_ttl', 60),
+            fn () => $this->fetchPinnedPosts($familyId),
+        );
+
+        $this->attachUserReactions($posts, $user->id);
+        $this->attachCommentPreviews($posts, $familyId);
+        $this->attachActionResults($posts, $familyId);
+        $this->attachUserActionResponses($posts, $user->id);
+
+        return $posts;
+    }
+
+    /**
+     * @return Collection<int, FamilyPost>
+     */
+    private function fetchPinnedPosts(int $familyId): Collection
+    {
         $query = FamilyPost::query()
             ->where('status', FamilyPostStatus::Published->value)
             ->where('is_pinned', true)
@@ -429,10 +473,8 @@ class FeedService
             ->orderByDesc('pinned_at')
             ->get();
 
-        $this->attachUserReactions($posts, $user->id);
         $this->attachCommentPreviews($posts, $familyId);
         $this->attachActionResults($posts, $familyId);
-        $this->attachUserActionResponses($posts, $user->id);
         $this->applyBrandingAuthor($posts);
 
         return $posts;

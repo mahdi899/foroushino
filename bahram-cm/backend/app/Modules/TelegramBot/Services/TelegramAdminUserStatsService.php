@@ -14,12 +14,14 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Support\JalaliDate;
 use App\Support\StudentDisplayName;
 use App\Services\ReferralService;
+use App\Services\TelegramHostAccountSync;
 use Carbon\Carbon;
 
 class TelegramAdminUserStatsService
 {
     public function __construct(
         private readonly ReferralService $referrals,
+        private readonly TelegramHostAccountSync $hostSync,
     ) {}
 
     /**
@@ -145,6 +147,13 @@ class TelegramAdminUserStatsService
         $metadata['referred_by_code'] = $code->code;
         $metadata['referred_by_user_id'] = (int) $code->user_id;
         $account->update(['metadata' => $metadata]);
+
+        // زیرمجموعه‌ی جدید اضافه شد — پروفایل هاست معرف باید همین الان تازه بشه،
+        // چون شمارش "زیرمجموعه" فقط با push روی خود کاربر معرف رفرش می‌شه.
+        $referrer = $code->user ?? User::query()->find($code->user_id);
+        if ($referrer !== null) {
+            $this->hostSync->pushUserAccountsImmediate($referrer);
+        }
     }
 
     /** @return array{subset_count: int, buyer_subset_count: int, subset_tx_count: int, subset_tx_amount: int} */

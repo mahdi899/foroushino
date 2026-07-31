@@ -68,7 +68,7 @@ class FamilyCommentModerationService
         $this->stats->incrementApprovedComments((int) $comment->post_id, (int) $comment->family_id);
 
         if ($comment->user) {
-            $this->notifications->commentApproved($comment->user);
+            $this->notifications->commentApproved($comment->user, (int) $comment->post_id);
         }
 
         $this->audit->log(null, $auto ? 'family.comment_auto_approved' : 'family.comment_approved', $comment, [
