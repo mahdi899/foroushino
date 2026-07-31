@@ -11,6 +11,7 @@ use App\Models\SatApplication;
 use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Services\BotResolver;
 use App\Modules\TelegramBot\Services\TelegramAdminUserStatsService;
 use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
@@ -25,6 +26,7 @@ use App\Services\Family\FeedService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\InflatedMemberCount;
 use App\Support\StudentDisplayName;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -153,6 +155,28 @@ class TelegramHostAccountSnapshotService
      * @return array<string, mixed>
      */
     public function buildSnapshot(TelegramAccount $account): array
+    {
+        try {
+            return $this->buildSnapshotCore($account);
+        } catch (Throwable $e) {
+            Log::channel('telegram')->error('telegram.host.build_snapshot_failed', [
+                'telegram_user_id' => $account->telegram_user_id,
+                'user_id' => $account->user_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'revision' => $this->newRevision(),
+                'owned_product_ids' => $this->safeOwnedProductIds($account),
+                'snapshot_degraded' => true,
+            ];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildSnapshotCore(TelegramAccount $account): array
     {
         $bot = $this->productionBotFor($account);
         if ($bot === null) {
@@ -445,11 +469,25 @@ class TelegramHostAccountSnapshotService
 
     private function productionBotFor(TelegramAccount $account): ?TelegramBot
     {
-        if ($account->bot?->key === 'production') {
+        if ($account->relationLoaded('bot') && $account->bot?->key === 'production') {
             return $account->bot;
         }
 
-        return TelegramBot::query()->where('key', 'production')->first();
+        try {
+            return app(BotResolver::class)->resolve('production');
+        } catch (Throwable) {
+            return TelegramBot::query()->where('key', 'production')->first();
+        }
+    }
+
+    /** @return list<int> */
+    private function safeOwnedProductIds(TelegramAccount $account): array
+    {
+        try {
+            return $this->ownership->ownedProductIdsForAccount($account);
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     private function newRevision(): string
