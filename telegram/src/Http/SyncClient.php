@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace TelegramHost\Http;
 
+use TelegramHost\Support\CheckoutCircuitBreaker;
 use TelegramHost\Support\HostBridgeConfig;
 use TelegramHost\Support\IranCircuitBreaker;
 use TelegramHost\Support\IranSyncFailureException;
@@ -21,10 +22,13 @@ final class SyncClient
 {
     private readonly IranCircuitBreaker $breaker;
 
+    private readonly CheckoutCircuitBreaker $checkoutBreaker;
+
     /** @param array<string, mixed> $config */
     public function __construct(private readonly array $config)
     {
         $this->breaker = new IranCircuitBreaker();
+        $this->checkoutBreaker = new CheckoutCircuitBreaker();
     }
 
     /**
@@ -38,12 +42,11 @@ final class SyncClient
      */
     public function call(string $path, array $payload = [], int $timeoutSeconds = 8, bool $allowRetry = true): array
     {
-        if ($this->breaker->isOpen()) {
-            // Fail fast — no network attempt, and critically no recordFailure()
-            // here: that used to refresh last_failure_at on every single skip,
-            // which meant the 20s cooldown never actually elapsed while users
-            // kept messaging the bot (see IranSyncFailureException docblock).
-            $outcome = $this->breaker->peekOpenNotification();
+        $checkoutPath = str_starts_with($path, 'live/checkout/');
+        $breaker = $checkoutPath ? $this->checkoutBreaker : $this->breaker;
+
+        if ($breaker->isOpen()) {
+            $outcome = $breaker->peekOpenNotification();
 
             throw new IranSyncFailureException(
                 'Sync request skipped: Iran main server is currently marked unreachable (circuit open).',
@@ -55,24 +58,15 @@ final class SyncClient
 
         try {
             $result = $this->doCall($path, $payload, $timeoutSeconds);
-            $this->breaker->recordSuccess();
+            $breaker->recordSuccess();
 
             return $result;
         } catch (\Throwable $e) {
-            // One quick retry for transient network blips (connect/timeout,
-            // TLS reset, DNS hiccup) before giving up — this is exactly the
-            // class of failure users saw as "checkout unavailable" for a
-            // momentary Iran/host connectivity dip that a single retry a
-            // couple hundred ms later would have sailed through. Real
-            // outages (Iran genuinely down) still fail fast on the retry and
-            // open the circuit breaker as before.
-            // Registration paths pass allowRetry=false so a dead Iran fails
-            // into the offline local flow instead of doubling the wait.
             if ($allowRetry && $this->isTransientNetworkError($e)) {
                 try {
                     usleep(300_000);
                     $result = $this->doCall($path, $payload, $timeoutSeconds);
-                    $this->breaker->recordSuccess();
+                    $breaker->recordSuccess();
 
                     return $result;
                 } catch (\Throwable $retryError) {
@@ -80,7 +74,7 @@ final class SyncClient
                 }
             }
 
-            $outcome = $this->breaker->recordFailure();
+            $outcome = $breaker->recordFailure();
 
             throw new IranSyncFailureException(
                 $e->getMessage(),

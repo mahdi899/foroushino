@@ -15,7 +15,10 @@ class TelegramHostAccountSync
     /** Catch any purchase whose immediate push_account failed/was skipped (circuit open, host down). */
     private const RECENT_PAID_WINDOW_MINUTES = 60;
 
-    public function __construct(private readonly TelegramHostAccountSnapshotService $snapshots) {}
+    public function __construct(
+        private readonly TelegramHostAccountSnapshotService $snapshots,
+        private readonly TelegramHostOwnershipResolver $ownership,
+    ) {}
 
     public function queuePush(TelegramAccount $account): void
     {
@@ -144,15 +147,11 @@ class TelegramHostAccountSync
     /** @return list<int> */
     private function ownedProductIdsFromOrders(int $userId): array
     {
-        return Order::query()
-            ->where('user_id', $userId)
-            ->whereIn('status', ['paid', 'fulfilled'])
-            ->pluck('product_id')
-            ->filter()
-            ->unique()
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
+        $user = User::query()->find($userId);
+
+        return $user !== null
+            ? $this->ownership->ownedProductIdsForUser($user)
+            : [];
     }
 
     /**
@@ -216,7 +215,7 @@ class TelegramHostAccountSync
         $ok = $push->pushMobileAccess($mobile, $ownedProductIds, $displayName);
 
         if (! $ok) {
-            PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, $displayName);
+            PushTelegramHostSyncJob::mobileAccessNow($mobile, $ownedProductIds, $displayName);
         }
 
         return $ok;

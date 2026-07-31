@@ -58,7 +58,7 @@ return [
     // delegates that were queued while Iran was briefly unreachable). Keep this
     // at 2+: a value of 0 means the queue never drains and delegated updates
     // (e.g. admin panel actions) pile up forever once even one relay fails.
-    'iran_relay_per_webhook' => 2,
+    'iran_relay_per_webhook' => 4,
     // Admin panel: call Iran live/admin/fast instead of heavy process-update (recommended).
     'admin_fast_api' => true,
 
@@ -68,7 +68,6 @@ return [
     'pull_sync_account_enabled' => true,
     'pull_sync_account_interval_seconds' => 300,
     'pull_sync_account_batch_size' => 35,
-    'membership_cache_ttl_seconds' => 900,
 
     // Optional override — normally synced from Iran bootstrap (گروه گزارشات پشتیبانی).
     // 'reports_group_chat_id' => '-100xxxxxxxxxx',

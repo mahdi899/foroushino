@@ -7,6 +7,10 @@ namespace TelegramHost\Services;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Telegram\BotApiClient;
 
+/**
+ * Mandatory channel membership — always checked live via Telegram getChatMember.
+ * User account data is the only thing cached on this host ({@see AccountCache}).
+ */
 final class MembershipGate
 {
     /** @var list<string> */
@@ -15,7 +19,6 @@ final class MembershipGate
     public function __construct(
         private readonly \TelegramHost\Cache\SyncCache $cache,
         private readonly BotApiClient $api,
-        private readonly MembershipCheckCache $membershipCache,
     ) {}
 
     public function isSatisfied(int $telegramUserId): bool
@@ -56,28 +59,10 @@ final class MembershipGate
         ]);
     }
 
-    public function clearCacheForUser(int $telegramUserId): void
-    {
-        $this->membershipCache->forgetUser($telegramUserId);
-    }
-
     /** @param array<string, mixed> $chatMember */
     public function invalidateFromChatMemberUpdate(array $chatMember): void
     {
-        $userId = (int) ($chatMember['new_chat_member']['user']['id'] ?? 0);
-        if ($userId <= 0) {
-            return;
-        }
-
-        $chatId = (string) ($chatMember['chat']['id'] ?? '');
-        if ($chatId !== '') {
-            $this->membershipCache->forgetChat($userId, $chatId);
-        }
-
-        $newStatus = (string) ($chatMember['new_chat_member']['status'] ?? '');
-        if (in_array($newStatus, ['left', 'kicked'], true)) {
-            $this->clearCacheForUser($userId);
-        }
+        // Membership is never cached — join/leave is picked up on the next live check.
     }
 
     /** @return array<string, mixed> */
@@ -108,18 +93,11 @@ final class MembershipGate
 
     private function isMember(int $telegramUserId, string $chatId): bool
     {
-        $cached = $this->membershipCache->get($telegramUserId, $chatId);
-        if ($cached !== null) {
-            return $cached;
-        }
-
         try {
             $result = $this->api->getChatMember($chatId, $telegramUserId);
             $status = (string) ($result['status'] ?? '');
-            $isMember = in_array($status, self::MEMBER_STATUSES, true);
-            $this->membershipCache->remember($telegramUserId, $chatId, $isMember);
 
-            return $isMember;
+            return in_array($status, self::MEMBER_STATUSES, true);
         } catch (\Throwable $e) {
             error_log('[telegram-host] membership getChatMember chat='.$chatId.' user='.$telegramUserId.': '.$e->getMessage());
 

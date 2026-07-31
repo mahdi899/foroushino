@@ -6,6 +6,7 @@ namespace TelegramHost\Handlers;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
+use TelegramHost\Account\OwnershipResolver;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\AdminFastClient;
@@ -49,6 +50,7 @@ final class MessageHandler
         private readonly HostDestinationsFlow $destinationsFlow,
         private readonly HostCardToCardFlow $cardToCard,
         private readonly SubscriberEligibility $subscriberEligibility,
+        private readonly OwnershipResolver $ownership,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -400,7 +402,7 @@ final class MessageHandler
         foreach (array_slice($seminars, 0, 8) as $seminar) {
             $productId = (int) ($seminar['product_id'] ?? 0);
             $title = trim((string) ($seminar['title'] ?? 'سمینار'));
-            $owns = $productId > 0 && $this->accounts->ownsProduct($telegramUserId, $productId);
+            $owns = $productId > 0 && $this->ownership->ownsProduct($telegramUserId, $productId);
             $closedStatus = $this->seminarClosedStatus($seminar);
 
             if ($closedStatus !== null && ! $owns) {

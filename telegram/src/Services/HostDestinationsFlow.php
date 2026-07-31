@@ -6,7 +6,9 @@ namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Cache\SyncCache;
+use TelegramHost\Http\LiveClient;
 use TelegramHost\Queue\PendingMembershipSync;
+use TelegramHost\Support\IranSyncFailureException;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
@@ -15,8 +17,7 @@ use TelegramHost\Telegram\BotApiClient;
  * «حساب من» destinations on the foreign host.
  *
  * Membership is decided by this host bot calling Telegram getChatMember
- * (api.telegram.org) with the bot token — never Iran. Short-lived local
- * MembershipCheckCache avoids repeating slow API calls on every «حساب من» tap.
+ * (api.telegram.org) with the bot token — never Iran. Not cached locally.
  */
 final class HostDestinationsFlow
 {
@@ -29,7 +30,7 @@ final class HostDestinationsFlow
         private readonly AccountCache $accounts,
         private readonly PendingMembershipSync $membershipQueue,
         private readonly string $siteBaseUrl,
-        private readonly ?MembershipCheckCache $membershipCache = null,
+        private readonly LiveClient $live,
     ) {}
 
     /**
@@ -37,6 +38,10 @@ final class HostDestinationsFlow
      */
     public function sendAccount(int $chatId, int $telegramUserId): bool
     {
+        if (! $this->accounts->hasRenderableProfile($telegramUserId)) {
+            $this->hydrateProfileFromIran($telegramUserId);
+        }
+
         $profile = $this->accounts->profileResponse($telegramUserId);
         if ($profile === null || empty($profile['ok'])) {
             return false;
@@ -179,6 +184,24 @@ final class HostDestinationsFlow
         return true;
     }
 
+    private function hydrateProfileFromIran(int $telegramUserId): void
+    {
+        if ($telegramUserId <= 0 || ! $this->accounts->isVerified($telegramUserId)) {
+            return;
+        }
+
+        try {
+            $response = $this->live->userProfile($telegramUserId);
+            if (! empty($response['ok']) && trim((string) ($response['text'] ?? '')) !== '') {
+                $this->accounts->storeProfileSnapshot($telegramUserId, $response);
+            }
+        } catch (IranSyncFailureException) {
+            // Iran unreachable — caller falls back to pending message.
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] live user/profile: '.$e->getMessage());
+        }
+    }
+
     /**
      * Host bot → Telegram getChatMember. Source of truth for group membership.
      */
@@ -186,11 +209,6 @@ final class HostDestinationsFlow
     {
         if ($chatId === '' || $telegramUserId <= 0) {
             return false;
-        }
-
-        $cached = $this->membershipCache?->get($telegramUserId, $chatId);
-        if ($cached !== null) {
-            return $cached;
         }
 
         try {
@@ -205,7 +223,6 @@ final class HostDestinationsFlow
                     $telegramUserId,
                     $status === '' ? '(empty)' : $status,
                 ));
-                $this->membershipCache?->remember($telegramUserId, $chatId, false);
 
                 return false;
             }
@@ -218,7 +235,6 @@ final class HostDestinationsFlow
                 $status,
                 $isMember ? 'member' : 'not member',
             ));
-            $this->membershipCache?->remember($telegramUserId, $chatId, $isMember);
 
             return $isMember;
         } catch (\Throwable $e) {
@@ -229,7 +245,6 @@ final class HostDestinationsFlow
                 $telegramUserId,
                 $e->getMessage(),
             ));
-            $this->membershipCache?->remember($telegramUserId, $chatId, false);
 
             return false;
         }

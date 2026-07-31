@@ -24,10 +24,18 @@ class TelegramHostPushRetryService
             return;
         }
 
+        $payload = $this->state->pendingPayload() ?? [];
+
         $ok = match ($action) {
             'refresh_bootstrap' => $this->push->refreshBootstrap(),
             'refresh_catalog' => $this->push->refreshCatalog(),
             'refresh_all' => $this->push->refreshAll(),
+            'push_account' => $this->push->runAction('push_account', $payload),
+            'push_mobile_access' => $this->push->pushMobileAccess(
+                (string) ($payload['mobile'] ?? ''),
+                array_map('intval', (array) ($payload['owned_product_ids'] ?? [])),
+                $payload['display_name'] ?? null,
+            ),
             default => $this->push->refreshAll(),
         };
         if ($ok) {

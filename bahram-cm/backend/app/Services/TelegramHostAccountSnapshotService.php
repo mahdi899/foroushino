@@ -2,10 +2,8 @@
 
 namespace App\Services;
 
-use App\Enums\CourseAccessStatus;
 use App\Enums\Family\FamilyPostStatus;
 use App\Enums\SatApplicationStatus;
-use App\Models\CourseAccess;
 use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
 use App\Models\FamilyPostView;
@@ -46,6 +44,7 @@ class TelegramHostAccountSnapshotService
         private readonly FamilyAssignmentService $familyAssignment,
         private readonly FeedService $familyFeed,
         private readonly PostAudienceResolver $postAudience,
+        private readonly TelegramHostOwnershipResolver $ownership,
     ) {}
 
     /**
@@ -80,6 +79,9 @@ class TelegramHostAccountSnapshotService
     {
         $account->loadMissing(['user', 'bot']);
 
+        $account->loadMissing('user.identityProfile');
+        $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
+
         return [
             'telegram_user_id' => (int) $account->telegram_user_id,
             'user_id' => $account->user_id,
@@ -87,6 +89,7 @@ class TelegramHostAccountSnapshotService
             'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
             'display_name' => StudentDisplayName::forTelegramAccount($account),
             'is_bot_admin' => $account->isBotAdmin(),
+            'verification_level' => $verificationLevel > 0 ? $verificationLevel : 1,
             'snapshot' => $this->buildRegistrationSnapshot($account),
         ];
     }
@@ -96,36 +99,10 @@ class TelegramHostAccountSnapshotService
      */
     public function buildRegistrationSnapshot(TelegramAccount $account): array
     {
-        $account->loadMissing('user.identityProfile');
-        $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
-
-        $snapshot = [
+        return [
             'revision' => $this->newRevision(),
-            'owned_product_ids' => $this->ownedProductIdsFast($account),
+            'owned_product_ids' => $this->ownership->ownedProductIdsForAccount($account),
         ];
-
-        if ($verificationLevel > 0) {
-            $snapshot['profile'] = ['verification_level' => $verificationLevel];
-        }
-
-        return $snapshot;
-    }
-
-    /** @return list<int> */
-    private function ownedProductIdsFast(TelegramAccount $account): array
-    {
-        if (! $account->user_id) {
-            return [];
-        }
-
-        return CourseAccess::query()
-            ->where('user_id', $account->user_id)
-            ->where('status', CourseAccessStatus::Active)
-            ->pluck('product_id')
-            ->map(static fn ($id): int => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
     }
 
     /**
@@ -138,7 +115,7 @@ class TelegramHostAccountSnapshotService
             return ['revision' => $this->newRevision()];
         }
 
-        $ownedIds = $this->ownedProductIdsFast($account);
+        $ownedIds = $this->ownership->ownedProductIdsForAccount($account);
         $presents = [];
         foreach ($ownedIds as $productId) {
             $product = $this->catalog->findForTelegram($productId);

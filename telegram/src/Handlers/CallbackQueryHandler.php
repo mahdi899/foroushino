@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Handlers;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\OwnershipResolver;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
@@ -35,6 +36,7 @@ final class CallbackQueryHandler
         private readonly HostSupportService $support,
         private readonly HostCardToCardFlow $cardToCard,
         private readonly SubscriberEligibility $subscriberEligibility,
+        private readonly OwnershipResolver $ownership,
     ) {}
 
     /** @param array<string, mixed> $callback */
@@ -196,7 +198,6 @@ final class CallbackQueryHandler
 
                 return;
             }
-            $this->membership->clearCacheForUser($telegramUserId);
             if ($this->membership->isSatisfied($telegramUserId)) {
                 $this->api->sendMessage($chatId, TelegramCustomEmoji::tag('check').' عضویت تأیید شد.', [
                     'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
@@ -297,7 +298,7 @@ final class CallbackQueryHandler
             return;
         }
 
-        if ($this->accounts->ownsProduct($telegramUserId, $productId)) {
+        if ($this->ownership->ownsProduct($telegramUserId, $productId)) {
             $present = $this->resolveOwnedPresent($chatId, $telegramUserId, $productId);
             if ($present !== null && isset($present['text'])) {
                 $text = (string) $present['text'];

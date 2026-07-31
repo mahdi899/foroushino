@@ -16,6 +16,8 @@ class TelegramHostPushState
 
     public const KEY = 'host_push_pending_action';
 
+    public const KEY_PAYLOAD = 'host_push_pending_payload';
+
     /** Consecutive failures before opening the circuit. */
     private const FAILURE_THRESHOLD = 3;
 
@@ -28,10 +30,16 @@ class TelegramHostPushState
 
     public function __construct(private readonly SettingService $settings) {}
 
-    public function markPending(string $action): void
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function markPending(string $action, array $payload = []): void
     {
         $group = $this->settings->group(self::GROUP);
         $group[self::KEY] = $action;
+        if ($payload !== []) {
+            $group[self::KEY_PAYLOAD] = $payload;
+        }
         $this->settings->updateGroup(self::GROUP, $group);
     }
 
@@ -41,8 +49,16 @@ class TelegramHostPushState
         // unsetting a key in PHP does not delete the DB row. Delete explicitly.
         Setting::query()
             ->where('group', self::GROUP)
-            ->where('key', self::KEY)
+            ->whereIn('key', [self::KEY, self::KEY_PAYLOAD])
             ->delete();
+    }
+
+    /** @return array<string, mixed>|null */
+    public function pendingPayload(): ?array
+    {
+        $value = $this->settings->group(self::GROUP)[self::KEY_PAYLOAD] ?? null;
+
+        return is_array($value) ? $value : null;
     }
 
     public function pendingAction(): ?string

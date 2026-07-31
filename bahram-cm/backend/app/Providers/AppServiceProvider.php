@@ -22,8 +22,10 @@ use App\Observers\FamilyMediaObserver;
 use App\Observers\ProductTelegramCatalogObserver;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramDestination;
+use App\Modules\TelegramBot\Models\TelegramRequiredChat;
 use App\Observers\TelegramAccountHostSyncObserver;
 use App\Observers\TelegramDestinationHostSyncObserver;
+use App\Observers\TelegramRequiredChatHostSyncObserver;
 use App\Observers\SeminarAttendeeObserver;
 use App\Observers\SeminarObserver;
 use App\Observers\UserIdentityProfileTelegramSyncObserver;
@@ -53,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
         Product::observe(ProductTelegramCatalogObserver::class);
         DiscountCode::observe(DiscountCodeHostSyncObserver::class);
         TelegramDestination::observe(TelegramDestinationHostSyncObserver::class);
+        TelegramRequiredChat::observe(TelegramRequiredChatHostSyncObserver::class);
         TelegramAccount::observe(TelegramAccountHostSyncObserver::class);
         User::observe(UserTelegramDisplayNameObserver::class);
         UserIdentityProfile::observe(UserIdentityProfileTelegramSyncObserver::class);

@@ -102,18 +102,15 @@ try {
 
     $maxRelay = max(1, (int) ($config['iran_relay_per_webhook'] ?? 2));
     $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
-    $membershipCache = new \TelegramHost\Services\MembershipCheckCache(
-        $pdo,
-        max(300, (int) ($config['membership_cache_ttl_seconds'] ?? 900)),
-    );
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
     $accountSync = new AccountSyncCoordinator($accounts, $sync);
+    $ownership = new \TelegramHost\Account\OwnershipResolver($accounts, $liveClient);
 
     $mainMenu = new MainMenu($cache, $accounts);
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
-    $membership = new MembershipGate($cache, $api, $membershipCache);
+    $membership = new MembershipGate($cache, $api);
     $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
@@ -122,12 +119,12 @@ try {
     $supportForward = new \TelegramHost\Queue\PendingSupportForward($pdo);
     $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync, $supportForward);
     $subscriberEligibility = new \TelegramHost\Services\SubscriberEligibility($accounts, $cache);
-    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $accountSync, $siteBaseUrl);
+    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $accountSync, $ownership, $siteBaseUrl);
     $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
     $groupJoinCleaner = new \TelegramHost\Services\GroupJoinMessageCleaner($api);
     $membershipSync = new \TelegramHost\Queue\PendingMembershipSync($pdo);
-    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $membershipCache);
+    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $liveClient);
 
     $messageHandler = new MessageHandler(
         $api,
@@ -149,6 +146,7 @@ try {
         $destinationsFlow,
         $cardToCardFlow,
         $subscriberEligibility,
+        $ownership,
         $siteBaseUrl
     );
 
@@ -166,6 +164,7 @@ try {
         $support,
         $cardToCardFlow,
         $subscriberEligibility,
+        $ownership,
     );
 
     $router = new UpdateRouter(
@@ -203,6 +202,12 @@ try {
 
     // Account mirror is Iran→host push only — do not pull Iran on every webhook.
     try {
+        (new \TelegramHost\Queue\BackgroundRegistrationSync($registrationQueue, $sync, $accounts))->drain();
+    } catch (\Throwable $e) {
+        error_log('[telegram-host] registration sync: '.$e->getMessage());
+    }
+
+    try {
         (new \TelegramHost\Queue\BackgroundSupportForward($supportForward, $support))->drain();
     } catch (\Throwable $e) {
         error_log('[telegram-host] support forward: '.$e->getMessage());
@@ -224,12 +229,6 @@ try {
         (new \TelegramHost\Queue\BackgroundMembershipSync($membershipSync, $liveClient))->drain();
     } catch (\Throwable $e) {
         error_log('[telegram-host] membership sync: '.$e->getMessage());
-    }
-
-    try {
-        (new \TelegramHost\Queue\BackgroundRegistrationSync($registrationQueue, $sync, $accounts))->drain();
-    } catch (\Throwable $e) {
-        error_log('[telegram-host] registration sync: '.$e->getMessage());
     }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());

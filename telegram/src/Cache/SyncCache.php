@@ -796,7 +796,7 @@ final class SyncCache
         foreach ($chats as $chat) {
             $stmt->execute([
                 'id' => (int) $chat['id'],
-                'chat_id' => (string) $chat['chat_id'],
+                'chat_id' => (string) ($chat['chat_id'] ?? ''),
                 'title' => $chat['title'] ?? null,
                 'invite_link' => $chat['invite_link'] ?? null,
                 'is_required' => ! empty($chat['is_required']) ? 1 : 0,
