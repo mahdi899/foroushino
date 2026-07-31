@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
@@ -20,6 +21,7 @@ final class ReferenceChannelFlow
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
         private readonly AccountCache $accounts,
+        private readonly AccountSyncCoordinator $accountSync,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -43,6 +45,11 @@ final class ReferenceChannelFlow
     {
         $marketing = $this->buildCaption($product, $telegramUserId, includePrice: false);
         $photo = $this->resolvePhoto($product, null);
+
+        if (! $this->accounts->hasIdentityLevel2($telegramUserId)) {
+            // Host cache can lag after Iran-side KYC approval (push missed/delayed).
+            $this->accountSync->ensureFresh($telegramUserId, force: true);
+        }
 
         if (! $this->accounts->hasIdentityLevel2($telegramUserId)) {
             $identityUrl = $this->cache->siteUrl('identity', $this->siteBaseUrl.'/panel/identity-verification');
