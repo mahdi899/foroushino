@@ -19,7 +19,10 @@ Telegram → public/webhook.php → UpdateRouter
 3. `config.sample.php` → `config.php` (از پنل ادمین سایت).
 4. Document Root → `telegram/public`
 5. **هیچ Cron Job در cPanel نگذارید** (نه pull-sync، نه iran-relay). همه‌چیز event-driven است.
-6. نصب اول (اختیاری): یک‌بار `php cron/pull-sync.php --force` فقط اگر کش خالی است و موقتاً `pull_sync_enabled=true` گذاشته‌اید؛ بعد دوباره `false`.
+6. نصب اول (اختیاری): یک‌بار `php cron/pull-sync.php --force` با `pull_sync_enabled=true`؛ برای کش خالی یا بعد از deploy.
+   - **اکانت (KYC/خرید):** هر ۵ دقیقه `account/fetch` از ایران — `pull_sync_account_interval_seconds=300`
+   - **کاتالوگ:** پیش‌فرض هر ۱ ساعت — `pull_sync_min_interval_seconds=3600`
+   - دستی/کرون: `cron/pull-sync.php?token=<webhook_secret>&force=1` (هاست خارج)
 7. در پنل ادمین: حالت «هاست خارج» + ثبت webhook
 
 **آپلود نکنید:** `config.php` لوکال، پوشه `scripts/telegram-local/` (فقط توسعه روی ویندوز)، و فایل‌های `storage/*.lock` / runtime JSON.
@@ -55,5 +58,5 @@ Telegram → public/webhook.php → UpdateRouter
 | `public/webhook.php` | ورود webhook |
 | `src/Routing/UpdateRouter.php` | مسیریابی local vs delegate |
 | `src/Handlers/MessageHandler.php` | منو و خرید کاربران |
-| `cron/pull-sync.php` | همگام‌سازی کش |
+| `cron/pull-sync.php` | کش کاتالوگ (revision) + **reconcile اکانت** (KYC/خرید از ایران) |
 | `ARCHITECTURE.md` | جزئیات API |

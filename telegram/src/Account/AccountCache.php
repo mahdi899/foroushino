@@ -479,6 +479,50 @@ final class AccountCache
         return $ts !== false && $ts > 0 ? max(0, time() - $ts) : PHP_INT_MAX;
     }
 
+    /**
+     * Verified accounts to refresh from Iran — prioritise KYC/purchase mismatches.
+     *
+     * @return list<int>
+     */
+    public function telegramUserIdsForReconcile(int $limit): array
+    {
+        $this->ensureVerificationLevelColumn();
+        $limit = max(1, min(200, $limit));
+
+        $stmt = $this->pdo->prepare(
+            'SELECT telegram_user_id FROM telegram_accounts_cache
+             WHERE mobile_verified_at IS NOT NULL
+             ORDER BY
+               CASE
+                 WHEN verification_level < 2
+                   AND owned_product_ids IS NOT NULL
+                   AND owned_product_ids <> :empty_json
+                   AND owned_product_ids <> :empty_array
+                 THEN 0
+                 WHEN user_id IS NULL OR user_id = 0 THEN 1
+                 WHEN snapshot_synced_at IS NULL THEN 2
+                 ELSE 3
+               END,
+               COALESCE(snapshot_synced_at, updated_at) ASC,
+               telegram_user_id ASC
+             LIMIT '.$limit,
+        );
+        $stmt->execute([
+            'empty_json' => '[]',
+            'empty_array' => '[]',
+        ]);
+
+        $ids = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $id = (int) ($row['telegram_user_id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
     public function isBotAdmin(int $telegramUserId): bool
     {
         if ($this->isPermanentBotAdmin($telegramUserId)) {

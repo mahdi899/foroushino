@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
-// Optional safety net — default OFF (see config `pull_sync_enabled`).
-// Normal updates: Iran server pushes to public/host-sync.php when data changes.
+// Host cron / manual URL: catalog revision pull + per-user account reconcile from Iran.
 //
-// If you must keep a cron, use at most once per day, e.g.:
-//   0 4 * * * /usr/local/bin/ea-php83 /path/to/telegram/cron/pull-sync.php >> /path/to/cron.log 2>&1
+// CLI:  php cron/pull-sync.php [--force]
+// Web:  https://<host>/cron/pull-sync.php?token=<webhook_secret>&force=1
+//
+// Catalog: products/seminars/messages (revision-based).
+// Accounts: KYC level, purchases, owned presents — batch account/fetch from Iran.
 
+use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountReconcileCoordinator;
 use TelegramHost\Cache\CatalogSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Db\Connection;
@@ -15,18 +19,35 @@ use TelegramHost\Http\SyncClient;
 
 $config = require __DIR__.'/../bootstrap.php';
 
+$isCli = PHP_SAPI === 'cli';
+if (! $isCli) {
+    header('Content-Type: text/plain; charset=utf-8');
+    $token = (string) ($_GET['token'] ?? '');
+    if ($token === '' || ! hash_equals((string) ($config['webhook_secret'] ?? ''), $token)) {
+        http_response_code(403);
+        echo 'Forbidden';
+        exit;
+    }
+}
+
 $enabled = (bool) ($config['pull_sync_enabled'] ?? false);
 if (! $enabled) {
-    echo '['.date('c')."] pull-sync disabled — use Iran server push to host-sync.php\n";
+    echo '['.date('c')."] pull-sync disabled — set pull_sync_enabled=true in config.php\n";
     exit(0);
 }
 
-$minInterval = max(300, (int) ($config['pull_sync_min_interval_seconds'] ?? 3600));
+$catalogInterval = max(300, (int) ($config['pull_sync_min_interval_seconds'] ?? 3600));
+$accountInterval = max(60, (int) ($config['pull_sync_account_interval_seconds'] ?? 300));
+$accountBatch = max(5, min(200, (int) ($config['pull_sync_account_batch_size'] ?? 35)));
+$accountEnabled = (bool) ($config['pull_sync_account_enabled'] ?? true);
+
+$force = in_array('--force', $argv ?? [], true)
+    || (isset($_GET['force']) && (string) $_GET['force'] === '1');
 
 $lockFile = sys_get_temp_dir().'/telegram-pull-sync.lock';
 $lock = fopen($lockFile, 'c');
 if ($lock === false) {
-    fwrite(STDERR, '['.date('c')."] cannot open lock\n");
+    echo '['.date('c')."] cannot open lock\n";
     exit(1);
 }
 if (! flock($lock, LOCK_EX | LOCK_NB)) {
@@ -34,33 +55,47 @@ if (! flock($lock, LOCK_EX | LOCK_NB)) {
     exit(0);
 }
 
-$stateFile = dirname(__DIR__).'/storage/last-pull-sync.txt';
-$lastRun = is_file($stateFile) ? (int) trim((string) file_get_contents($stateFile)) : 0;
-$force = in_array('--force', $argv ?? [], true);
+$storageDir = dirname(__DIR__).'/storage';
+$catalogStateFile = $storageDir.'/last-pull-sync.txt';
+$accountStateFile = $storageDir.'/last-account-reconcile.txt';
+$lastCatalog = is_file($catalogStateFile) ? (int) trim((string) file_get_contents($catalogStateFile)) : 0;
+$lastAccount = is_file($accountStateFile) ? (int) trim((string) file_get_contents($accountStateFile)) : 0;
 
 try {
     $pdo = Connection::get($config);
     $sync = new SyncClient($config);
     $cache = new SyncCache($pdo, $sync, $config);
+    $accounts = new AccountCache($pdo);
 
     $catalogEmpty = $cache->courses() === [] && $cache->seminars() === [];
+    $runCatalog = $force || $catalogEmpty || $lastCatalog === 0 || (time() - $lastCatalog) >= $catalogInterval;
+    $runAccounts = $accountEnabled && ($force || $lastAccount === 0 || (time() - $lastAccount) >= $accountInterval);
 
-    if (! $force && ! $catalogEmpty && $lastRun > 0 && (time() - $lastRun) < $minInterval) {
-        echo '['.date('c')."] skip: interval ({$minInterval}s)\n";
+    if (! $runCatalog && ! $runAccounts) {
+        echo '['.date('c')."] skip: catalog interval ({$catalogInterval}s), account interval ({$accountInterval}s)\n";
         exit(0);
     }
 
-    $coordinator = new CatalogSyncCoordinator($cache, $sync);
-    $coordinator->ensureFresh();
-
-    if ($catalogEmpty) {
-        $cache->refreshAll();
+    if ($runCatalog) {
+        echo '['.date('c')."] catalog reconcile\n";
+        (new CatalogSyncCoordinator($cache, $sync))->ensureFresh();
+        if ($catalogEmpty) {
+            $cache->refreshAll();
+        }
+        @file_put_contents($catalogStateFile, (string) time());
+        echo '['.date('c')."] catalog ok\n";
     }
 
-    @file_put_contents($stateFile, (string) time());
+    if ($runAccounts) {
+        echo '['.date('c')."] account reconcile (batch {$accountBatch})\n";
+        $result = (new AccountReconcileCoordinator($accounts, $sync))->reconcileBatch($accountBatch);
+        @file_put_contents($accountStateFile, (string) time());
+        echo '['.date('c')."] accounts candidates={$result['candidates']} refreshed={$result['refreshed']} failed={$result['failed']}\n";
+    }
+
     echo '['.date('c')."] pull-sync ok\n";
 } catch (\Throwable $e) {
-    fwrite(STDERR, '['.date('c').'] pull-sync failed: '.$e->getMessage()."\n");
+    echo '['.date('c').'] pull-sync failed: '.$e->getMessage()."\n";
     exit(1);
 } finally {
     flock($lock, LOCK_UN);

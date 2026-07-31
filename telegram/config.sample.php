@@ -64,6 +64,10 @@ return [
 
     'pull_sync_enabled' => false,
     'pull_sync_min_interval_seconds' => 3600,
+    // When pull_sync_enabled=true: refresh user rows (KYC, purchases) from Iran via account/fetch.
+    'pull_sync_account_enabled' => true,
+    'pull_sync_account_interval_seconds' => 300,
+    'pull_sync_account_batch_size' => 35,
     'membership_cache_ttl_seconds' => 900,
 
     // Optional override — normally synced from Iran bootstrap (گروه گزارشات پشتیبانی).
