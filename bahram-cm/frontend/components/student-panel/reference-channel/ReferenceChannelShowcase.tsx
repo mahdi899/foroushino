@@ -54,9 +54,11 @@ function ownedStatus(channel: ReferenceChannelCardModel): {
 export function ReferenceChannelShowcase({
   channel,
   detailHref,
+  isIranIp = false,
 }: {
   channel: ReferenceChannelCardModel;
   detailHref?: string;
+  isIranIp?: boolean;
 }) {
   const owned = Boolean(channel.owned);
   const coverSrc = channel.cover_image?.trim() || FALLBACK_COVER;
@@ -132,6 +134,7 @@ export function ReferenceChannelShowcase({
           <TelegramBotLaunchButton
             href={channel.bot_start_url}
             label="ورود به گروه مرجع"
+            isIranIp={isIranIp}
           />
         ) : null}
 

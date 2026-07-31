@@ -1,51 +1,18 @@
 'use client';
 
 import { ExternalLink, ShieldAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
-const TRACE_ENDPOINTS = ['/cdn-cgi/trace', 'https://www.cloudflare.com/cdn-cgi/trace'];
-
-function parseTraceLocation(body: string): string | null {
-  for (const line of body.split('\n')) {
-    const [key, value] = line.split('=');
-    if (key?.trim() === 'loc' && value) return value.trim().toUpperCase();
-  }
-  return null;
-}
-
-async function detectIranIp(signal: AbortSignal): Promise<boolean> {
-  for (const endpoint of TRACE_ENDPOINTS) {
-    try {
-      const response = await fetch(endpoint, { signal, cache: 'no-store' });
-      if (!response.ok) continue;
-      const loc = parseTraceLocation(await response.text());
-      if (loc) return loc === 'IR';
-    } catch {
-      // try next endpoint
-    }
-  }
-  return false;
-}
 
 export function TelegramBotLaunchButton({
   href,
   label = 'ورود سریع به ربات تلگرام',
   className = 'btn btn-primary w-full',
+  isIranIp = false,
 }: {
   href: string;
   label?: string;
   className?: string;
+  isIranIp?: boolean;
 }) {
-  const [isIranIp, setIsIranIp] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void detectIranIp(controller.signal).then((iran) => {
-      if (!controller.signal.aborted) setIsIranIp(iran);
-    });
-    return () => controller.abort();
-  }, []);
-
   return (
     <div className="flex w-full flex-col gap-3">
       {isIranIp ? (
