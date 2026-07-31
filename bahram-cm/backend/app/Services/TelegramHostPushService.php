@@ -85,17 +85,39 @@ class TelegramHostPushService
      *
      * @param  list<int>  $ownedProductIds
      */
-    public function pushMobileAccess(string $mobile, array $ownedProductIds, ?string $displayName = null): bool
-    {
+    /**
+     * @param  array<string, mixed>|null  $preProvision  Optional full mobile snapshot
+     *                                                   from {@see TelegramHostAccountSnapshotService::mobilePreProvisionPayload()}.
+     */
+    public function pushMobileAccess(
+        string $mobile,
+        array $ownedProductIds,
+        ?string $displayName = null,
+        ?array $preProvision = null,
+    ): bool {
         if (trim($mobile) === '' || $ownedProductIds === []) {
             return false;
         }
 
-        return $this->runAction('push_mobile_access', [
+        $payload = [
             'mobile' => $mobile,
             'owned_product_ids' => array_values($ownedProductIds),
             'display_name' => $displayName,
-        ]);
+        ];
+
+        if ($preProvision !== null) {
+            if (isset($preProvision['user_id'])) {
+                $payload['user_id'] = (int) $preProvision['user_id'];
+            }
+            if (isset($preProvision['verification_level'])) {
+                $payload['verification_level'] = max(1, (int) $preProvision['verification_level']);
+            }
+            if (is_array($preProvision['snapshot'] ?? null)) {
+                $payload['snapshot'] = $preProvision['snapshot'];
+            }
+        }
+
+        return $this->runAction('push_mobile_access', $payload);
     }
 
     /**
@@ -118,7 +140,7 @@ class TelegramHostPushService
 
     /**
      * @param  array<string, mixed>  $account
-     * @param  array{text: string, options?: array<string, mixed>}  $notification
+     * @param  array{text?: string, template_key?: string, template_vars?: array<string, scalar|null>, template_append_key?: string, options?: array<string, mixed>}  $notification
      */
     public function pushAccountWithNotification(array $account, array $notification): bool
     {
@@ -234,8 +256,9 @@ class TelegramHostPushService
 
         $timeout = match ($action) {
             'register_webhook' => 20,
-            'notify_user' => 15,
-            'push_account' => 15,
+            'notify_user' => 4,
+            'push_account' => 4,
+            'push_mobile_access' => 4,
             // Bootstrap can include messages/destinations; Imunify/WAF + host
             // MySQL store often exceeds 8s on the Iran→host hop.
             'refresh_bootstrap', 'refresh_all' => 45,

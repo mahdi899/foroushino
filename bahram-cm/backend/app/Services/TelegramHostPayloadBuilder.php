@@ -136,15 +136,14 @@ class TelegramHostPayloadBuilder
     public function catalogPayload(): array
     {
         $courses = $this->products->listPublicCourses()->map(function (Product $p) {
-            $photo = $this->catalogMedia->productPhoto($p);
-
             return [
                 'id' => $p->id,
                 'slug' => $p->slug,
                 'title' => $p->title,
                 'price' => $p->price,
                 'sale_price' => $p->sale_price,
-                'photo' => $photo,
+                'photo_source' => $this->catalogMedia->productPhotoSourceUrl($p),
+                'telegram_photo_file_id' => $this->catalogMedia->productTelegramFileId($p),
                 'product_type' => $p->type,
             ];
         })->values();
@@ -157,7 +156,8 @@ class TelegramHostPayloadBuilder
             ->get()
             ->map(function (ReferenceChannel $channel) {
                 $product = $channel->product;
-                $photo = $product ? $this->catalogMedia->productPhoto($product) : null;
+                $photoSource = $product ? $this->catalogMedia->productPhotoSourceUrl($product) : null;
+                $fileId = $product ? $this->catalogMedia->productTelegramFileId($product) : null;
 
                 return [
                     'id' => $channel->id,
@@ -166,7 +166,8 @@ class TelegramHostPayloadBuilder
                     'title' => $channel->title,
                     'price' => (int) $channel->price,
                     'sale_price' => null,
-                    'photo' => $photo,
+                    'photo_source' => $photoSource,
+                    'telegram_photo_file_id' => $fileId,
                     'description' => $channel->description,
                     'product_type' => Product::TYPE_REFERENCE_CHANNEL,
                 ];
@@ -175,7 +176,6 @@ class TelegramHostPayloadBuilder
 
         $seminars = $this->seminars->listUpcoming()->map(function (Seminar $s) {
             $s->loadMissing('product');
-            $photo = $this->catalogMedia->seminarPhoto($s);
             $product = $s->product;
             $base = (int) ($s->price ?: $product?->price ?: 0);
             $saleRaw = $s->sale_price ?? $product?->sale_price;
@@ -193,7 +193,8 @@ class TelegramHostPayloadBuilder
                 'slug' => (string) ($s->slug ?? ''),
                 'price' => $base,
                 'sale_price' => $sale,
-                'photo' => $photo,
+                'photo_source' => $this->catalogMedia->seminarPhotoSourceUrl($s),
+                'telegram_photo_file_id' => $this->catalogMedia->seminarTelegramFileId($s),
                 'reference_discount_amount' => (int) ($s->reference_discount_amount ?? 0),
             ];
         })->values();

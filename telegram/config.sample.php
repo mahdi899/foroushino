@@ -53,14 +53,16 @@ return [
         'charset' => 'utf8mb4',
     ],
 
-    // Event-driven only — Iran pushes to host-sync.php; no cPanel cron required.
-    // After each webhook, drain a few queued Iran updates (admin-panel/C2C/SAT
-    // delegates that were queued while Iran was briefly unreachable). Keep this
-    // at 2+: a value of 0 means the queue never drains and delegated updates
-    // (e.g. admin panel actions) pile up forever once even one relay fails.
-    'iran_relay_per_webhook' => 4,
+    // Event-driven only — Iran pushes to host-sync.php; optional cron drains queues.
+    // After each webhook, drain a few items per queue (heavy work also runs in cron/drain.php).
+    'webhook_drain_per_queue' => 3,
+    'cron_drain_budget_seconds' => 50,
+    'cron_drain_per_queue' => 5,
     // Admin panel: call Iran live/admin/fast instead of heavy process-update (recommended).
     'admin_fast_api' => true,
+
+    // Iran relay batch size when cron/drain.php runs (and cap inside webhook post-ACK drain).
+    'iran_relay_per_webhook' => 4,
 
     'pull_sync_enabled' => false,
     'pull_sync_min_interval_seconds' => 3600,
@@ -75,9 +77,17 @@ return [
     // Legacy hint (unused when pull_sync_enabled is false).
     'cache_ttl_seconds' => 300,
 
-    // Optional Redis L2 — enable after ticking "redis" in cPanel PHP extensions.
+    // Hybrid per-user cache on the host: hot fields (orders, licenses, KYC)
+    // refresh in the background; cold fields (family, referral, SAT) use a longer TTL.
+    'hybrid_cache' => [
+        'hot_ttl_seconds' => 120,
+        'cold_ttl_seconds' => 3600,
+        'refresh_on_start' => true,
+    ],
+
+    // Optional Redis L2 — enable when Redis is available on cPanel (recommended).
     'redis' => [
-        'enabled' => false,
+        'enabled' => true,
         'host' => '127.0.0.1',
         'port' => 6379,
         'password' => null,

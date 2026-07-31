@@ -8839,6 +8839,249 @@ html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-year-picker {
   border-color: rgba(255, 255, 255, 0.08);
 }
 
+/* Jalali wheel date picker (birth date) — year / month / day, LTR order */
+.wheel-date-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: var(--color-scrim, rgba(5, 10, 11, 0.6));
+  backdrop-filter: blur(6px);
+  animation: wheel-date-fade 160ms ease;
+}
+
+.wheel-date-sheet {
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+  border-radius: 20px 20px 0 0;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+  border-bottom: none;
+  background: var(--color-surface-soft, #ffffff);
+  color: var(--color-text, #0d1517);
+  box-shadow: 0 -18px 48px rgba(0, 32, 38, 0.28);
+  animation: wheel-date-rise 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 640px) {
+  .wheel-date-overlay {
+    align-items: center;
+    padding: 1.5rem;
+  }
+
+  .wheel-date-sheet {
+    border-radius: 20px;
+    border-bottom: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+    box-shadow: 0 24px 64px rgba(0, 32, 38, 0.26);
+  }
+}
+
+.wheel-date-sheet__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.wheel-date-sheet__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.wheel-date-sheet__preview {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary, #008c96);
+  font-variant-numeric: tabular-nums;
+}
+
+.wheel-date__labels {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 0.9fr;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #5f7f83);
+  text-align: center;
+}
+
+.wheel-date__wheels {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 0.9fr;
+  gap: 0.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+  background: var(--color-surface, #ffffff);
+  padding: 0.25rem 0.5rem;
+  overflow: hidden;
+}
+
+.wheel-date__highlight {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: 50%;
+  height: 40px;
+  transform: translateY(-50%);
+  border-radius: 12px;
+  background: var(--color-primary-soft, rgba(15, 138, 138, 0.12));
+  pointer-events: none;
+}
+
+.wheel-date__column {
+  position: relative;
+  min-width: 0;
+}
+
+.wheel-date__column::before,
+.wheel-date__column::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 44px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.wheel-date__column::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--color-surface, #ffffff), transparent);
+}
+
+.wheel-date__column::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--color-surface, #ffffff), transparent);
+}
+
+.wheel-date__list {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  outline: none;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wheel-date__list::-webkit-scrollbar {
+  display: none;
+}
+
+.wheel-date__list:focus-visible {
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px var(--color-primary, #008c96);
+}
+
+.wheel-date__spacer {
+  height: 80px;
+}
+
+.wheel-date__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted, #5f7f83);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: color 140ms ease, opacity 140ms ease, transform 140ms ease;
+}
+
+.wheel-date__item.is-selected {
+  color: var(--color-text, #0d1517);
+  opacity: 1;
+  font-weight: 700;
+  transform: scale(1.04);
+}
+
+.wheel-date-sheet__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+
+.wheel-date__hint {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #5f7f83);
+}
+
+.wheel-date__hint--error {
+  color: #e05252;
+}
+
+/* Body-portal fallback: panel CSS variables are not inherited from body */
+html:has(.panel-root[data-panel-theme='dark']) .wheel-date-sheet {
+  background: #0c1519;
+  color: #f4f8fb;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html:has(.panel-root[data-panel-theme='dark']) .wheel-date__wheels {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html:has(.panel-root[data-panel-theme='dark']) .wheel-date__column::before {
+  background: linear-gradient(to bottom, rgba(12, 21, 25, 0.96), transparent);
+}
+
+html:has(.panel-root[data-panel-theme='dark']) .wheel-date__column::after {
+  background: linear-gradient(to top, rgba(12, 21, 25, 0.96), transparent);
+}
+
+html:has(.panel-root[data-panel-theme='dark']) .wheel-date__item.is-selected {
+  color: #f4f8fb;
+}
+
+@keyframes wheel-date-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wheel-date-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel-date-overlay,
+  .wheel-date-sheet {
+    animation: none;
+  }
+}
+
 /* Transient form feedback toasts */
 .panel-feedback-toast-region {
   position: fixed;

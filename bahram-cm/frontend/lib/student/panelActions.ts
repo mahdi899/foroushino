@@ -98,7 +98,13 @@ export async function markOnboardingStepAction(step: string): Promise<void> {
   revalidatePath('/panel');
 }
 
+/** Keep in sync with SAT_APPLICATIONS_OPEN in components/sections/SatApplySection.tsx. */
+const SAT_APPLICATIONS_OPEN = false;
+
 export async function submitSatApplicationAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
+  if (!SAT_APPLICATIONS_OPEN) {
+    return { error: 'ثبت درخواست سات فعلاً غیرفعال است. به‌زودی فعال می‌شود.' };
+  }
   const firstName = String(formData.get('first_name') ?? '').trim();
   const lastName = String(formData.get('last_name') ?? '').trim();
   const payload = {

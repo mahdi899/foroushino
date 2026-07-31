@@ -53,8 +53,7 @@ class TelegramHostPushAccountCommand extends Command
         $level = (int) ($account->user?->identityProfile?->verification_level ?? 0);
         $ok = $sync->pushPaidOrderNotification(
             $account,
-            '✅ اطلاعات حساب شما در ربات به‌روز شد.',
-            [],
+            ['text' => '✅ اطلاعات حساب شما در ربات به‌روز شد.'],
         );
 
         $this->info(sprintf(

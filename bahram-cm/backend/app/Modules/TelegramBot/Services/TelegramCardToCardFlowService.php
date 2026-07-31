@@ -586,8 +586,11 @@ class TelegramCardToCardFlowService
             $bot,
             $client,
             $order,
-            TelegramCustomEmoji::tag('check')." پرداخت سفارش #{$order->id} تأیید شد.\n"
-            .TelegramCustomEmoji::tag('sparkles').' دسترسی/لایسنس به‌زودی برایتان فعال می‌شود.',
+            app(\App\Modules\TelegramBot\Support\BotMessageRenderer::class)->render(
+                $bot,
+                'c2c_payment_confirmed',
+                ['order_id' => (string) $order->id],
+            ),
         );
 
         return 'completed';

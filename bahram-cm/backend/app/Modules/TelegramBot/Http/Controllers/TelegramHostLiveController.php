@@ -34,8 +34,10 @@ use App\Services\DiscountService;
 use App\Services\Family\FamilyAccessService;
 use App\Services\Family\FamilyAssignmentService;
 use App\Services\ReferralService;
-use App\Services\TelegramHostUpdateProcessor;
+use App\Services\TelegramHostAccountSnapshotService;
 use App\Services\TelegramHostAdminFastService;
+use App\Services\TelegramHostPushService;
+use App\Services\TelegramHostUpdateProcessor;
 use App\Support\InflatedMemberCount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -76,6 +78,7 @@ class TelegramHostLiveController
         private readonly TelegramUserDestinationsService $userDestinations,
         private readonly FeedService $familyFeed,
         private readonly PostAudienceResolver $postAudience,
+        private readonly TelegramHostAccountSnapshotService $accountSnapshots,
     ) {}
 
     public function processUpdate(Request $request): JsonResponse
@@ -155,14 +158,12 @@ class TelegramHostLiveController
 
         $bot = $this->productionBot();
         $view = $this->access->present($bot, $account, $product);
-        $photo = $this->catalogMedia->productPhoto($product);
 
         return $this->jsonResponse([
             'ok' => true,
             'text' => $view['text'],
             'options' => $view['options'],
             'owns' => $this->access->owns($account, $product),
-            'photo' => $photo,
         ]);
     }
 
@@ -686,7 +687,24 @@ class TelegramHostLiveController
         }
 
         if ($this->access->owns($account, $product)) {
-            return $this->jsonResponse(['ok' => false, 'message' => 'شما قبلاً این محصول را دارید.'], 409);
+            $fresh = $account->fresh(['user', 'bot']);
+            $accountPayload = $this->accountSnapshots->accountPayload($fresh);
+            try {
+                app(TelegramHostPushService::class)->pushAccount($accountPayload);
+            } catch (Throwable $e) {
+                Log::channel('telegram')->warning('telegram.host.checkout_owned_push_failed', [
+                    'account_id' => $account->id,
+                    'product_id' => $productId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return $this->jsonResponse([
+                'ok' => false,
+                'already_owned' => true,
+                'message' => 'شما قبلاً این محصول را دارید.',
+                'account' => $accountPayload,
+            ], 409);
         }
 
         $bot = $this->productionBot();

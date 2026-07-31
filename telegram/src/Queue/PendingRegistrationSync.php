@@ -51,7 +51,7 @@ final class PendingRegistrationSync
         try {
             $stmt = $this->pdo->query(
                 'SELECT id, telegram_user_id, payload_json FROM pending_registration_sync ORDER BY updated_at ASC LIMIT '
-                .max(1, min($limit, 10)),
+                .max(1, min($limit, 20)),
             );
             $rows = $stmt->fetchAll();
         } catch (\Throwable) {
@@ -101,6 +101,16 @@ final class PendingRegistrationSync
         try {
             $this->pdo->exec('DELETE FROM pending_registration_sync WHERE attempts >= '.(int) $maxAttempts);
         } catch (\Throwable) {
+        }
+    }
+
+    public function countPending(): int
+    {
+        $this->ensureSchema();
+        try {
+            return (int) $this->pdo->query('SELECT COUNT(*) FROM pending_registration_sync')->fetchColumn();
+        } catch (\Throwable) {
+            return 0;
         }
     }
 

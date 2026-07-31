@@ -7,6 +7,9 @@ use App\Actions\Identity\EnsureIdentityProfile;
 use App\Enums\IdentityVerificationStatus;
 use App\Events\IdentityLevel2Approved;
 use App\Listeners\NotifyIdentityApprovedTelegramListener;
+use App\Listeners\SyncTelegramHostOnIdentityApproved;
+use App\Enums\IdentityArtifactType;
+use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\Product;
 use App\Models\ReferenceChannel;
@@ -22,6 +25,7 @@ use App\Services\TelegramInfrastructureService;
 use App\Support\NationalCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Mockery;
 use Tests\TestCase;
@@ -69,10 +73,10 @@ class IdentityApprovedTelegramTest extends TestCase
         $hostSync = Mockery::mock(TelegramHostAccountSync::class);
         $hostSync->shouldReceive('pushPaidOrderNotification')
             ->once()
-            ->withArgs(function (TelegramAccount $acc, string $text) use ($account, $student) {
+            ->withArgs(function (TelegramAccount $acc, array $notification) use ($account, $student) {
                 return $acc->id === $account->id
                     && $acc->user_id === $student->id
-                    && str_contains($text, 'هویت شما تأیید شد');
+                    && str_contains((string) ($notification['text'] ?? ''), 'هویت شما تأیید شد');
             })
             ->andReturn(true);
         $this->app->instance(TelegramHostAccountSync::class, $hostSync);
@@ -82,6 +86,55 @@ class IdentityApprovedTelegramTest extends TestCase
         $this->app->instance(TelegramInfrastructureService::class, $infra);
 
         app(NotifyIdentityApprovedTelegramListener::class)->handle(new IdentityLevel2Approved($student));
+    }
+
+    public function test_identity_approved_sync_listener_pushes_accounts_immediately(): void
+    {
+        [$student, , , $account] = $this->seedReferenceChannelUser();
+
+        $hostSync = Mockery::mock(TelegramHostAccountSync::class);
+        $hostSync->shouldReceive('syncDisplayNamesForUser')->once()->withArgs(
+            fn (User $user) => $user->id === $student->id,
+        );
+        $hostSync->shouldReceive('pushUserAccountsImmediate')->once()->withArgs(
+            fn (User $user) => $user->id === $student->id,
+        )->andReturn(1);
+        $this->app->instance(TelegramHostAccountSync::class, $hostSync);
+
+        $infra = Mockery::mock(TelegramInfrastructureService::class);
+        $infra->shouldReceive('usesHostBridge')->andReturn(true);
+        $this->app->instance(TelegramInfrastructureService::class, $infra);
+
+        app(SyncTelegramHostOnIdentityApproved::class)->handle(new IdentityLevel2Approved($student));
+    }
+
+    public function test_approve_purges_sensitive_artifacts_after_response(): void
+    {
+        Storage::fake('local');
+        config(['bahram.uploads.private_disk' => 'local']);
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121239999']);
+        $submission = $this->makeSubmittedIdentity($student);
+
+        $cardPath = 'identity-verifications/test/card.jpg';
+        Storage::disk('local')->put($cardPath, 'card-image');
+        IdentityVerificationArtifact::query()->create([
+            'submission_id' => $submission->id,
+            'type' => IdentityArtifactType::NationalCardFront,
+            'disk' => 'local',
+            'path' => $cardPath,
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 10,
+        ]);
+
+        app(ApproveIdentityVerification::class)($admin, $submission);
+        $this->assertDatabaseCount('identity_verification_artifacts', 1);
+
+        $this->app->terminate();
+
+        $this->assertDatabaseCount('identity_verification_artifacts', 0);
+        Storage::disk('local')->assertMissing($cardPath);
     }
 
     private function makeSubmittedIdentity(User $student): IdentityVerificationSubmission

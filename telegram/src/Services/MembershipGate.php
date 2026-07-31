@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace TelegramHost\Services;
 
+use TelegramHost\Cache\SyncCache;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
- * Mandatory channel membership — always checked live via Telegram getChatMember.
- * User account data is the only thing cached on this host ({@see AccountCache}).
+ * Mandatory channel membership — cached getChatMember with TTL; invalidated on chat_member updates.
  */
 final class MembershipGate
 {
@@ -17,8 +17,9 @@ final class MembershipGate
     private const MEMBER_STATUSES = ['member', 'administrator', 'creator', 'restricted'];
 
     public function __construct(
-        private readonly \TelegramHost\Cache\SyncCache $cache,
+        private readonly SyncCache $cache,
         private readonly BotApiClient $api,
+        private readonly MembershipCheckCache $membershipCache,
     ) {}
 
     public function isSatisfied(int $telegramUserId): bool
@@ -62,7 +63,7 @@ final class MembershipGate
     /** @param array<string, mixed> $chatMember */
     public function invalidateFromChatMemberUpdate(array $chatMember): void
     {
-        // Membership is never cached — join/leave is picked up on the next live check.
+        $this->membershipCache->invalidateFromChatMemberUpdate($chatMember);
     }
 
     /** @return array<string, mixed> */
@@ -92,6 +93,15 @@ final class MembershipGate
     }
 
     private function isMember(int $telegramUserId, string $chatId): bool
+    {
+        return $this->membershipCache->check(
+            $telegramUserId,
+            $chatId,
+            fn (): bool => $this->liveIsMember($telegramUserId, $chatId),
+        );
+    }
+
+    private function liveIsMember(int $telegramUserId, string $chatId): bool
     {
         try {
             $result = $this->api->getChatMember($chatId, $telegramUserId);

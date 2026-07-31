@@ -47,9 +47,7 @@ export default async function PanelDashboardPage() {
   const courseHref = activeCourse
     ? activeCourse.course_type === 'mini' && activeCourse.product?.slug
       ? `/panel/mini-courses/${activeCourse.product.slug}/watch`
-      : activeCourse.id
-        ? `/panel/courses/${activeCourse.id}/watch`
-        : '/panel/courses'
+      : '/panel/courses'
     : '/panel/courses';
 
   const academyUrls = data.checklist.reduce(

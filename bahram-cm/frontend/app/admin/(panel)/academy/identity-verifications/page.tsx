@@ -50,8 +50,15 @@ export default async function IdentityVerificationsPage({
       title="احراز هویت دانشجویان"
       desc="صف و داشبورد بررسی پرونده‌های تأیید هویت"
     >
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="در صف بررسی" value={pending.toLocaleString('fa-IR')} icon="ClipboardList" tone="amber" />
+        <StatCard
+          label="تأییدشده"
+          value={(stats?.approved ?? 0).toLocaleString('fa-IR')}
+          icon="ShieldCheck"
+          tone="green"
+          href="/admin/academy/identity-verifications?status=approved"
+        />
         <StatCard label="نیاز به اصلاح" value={correction.toLocaleString('fa-IR')} icon="Pencil" tone="gold" />
         <StatCard
           label="قفل تطبیق شماره"
@@ -126,7 +133,7 @@ export default async function IdentityVerificationsPage({
                     href={`/admin/academy/identity-verifications/${item.id}`}
                     className="font-medium text-accent hover:text-primary"
                   >
-                    بررسی
+                    {item.status === 'approved' || item.status === 'rejected' ? 'مشاهده' : 'بررسی'}
                   </Link>
                 </td>
               </tr>
@@ -149,8 +156,14 @@ export default async function IdentityVerificationsPage({
         </>
       ) : (
         <div className="card p-10 text-center">
-          <p className="text-h3 text-primary-dark">پرونده‌ای در صف نیست</p>
-          <p className="mt-2 text-small text-text-muted">با تغییر فیلتر می‌توانید پرونده‌های دیگر را ببینید.</p>
+          <p className="text-h3 text-primary-dark">
+            {sp.status === 'approved' ? 'پرونده تأییدشده‌ای یافت نشد' : 'پرونده‌ای در صف نیست'}
+          </p>
+          <p className="mt-2 text-small text-text-muted">
+            {sp.status === 'approved'
+              ? 'با فیلتر «تأییدشده» می‌توانید سوابق احراز هویت را ببینید (بدون نگهداری تصویر کارت و ویدیو روی سرور).'
+              : 'با تغییر فیلتر می‌توانید پرونده‌های دیگر را ببینید.'}
+          </p>
         </div>
       )}
     </AdminPage>

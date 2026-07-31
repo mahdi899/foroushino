@@ -38,6 +38,19 @@ export function ProfileExtrasBundle({
             </div>
           ) : null}
           <div className="panel-profile-field">
+            <label className="field-label" htmlFor="email">
+              ایمیل
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              defaultValue={profile?.email ?? ''}
+              className="field-input"
+              dir="ltr"
+            />
+          </div>
+          <div className="panel-profile-field">
             <label className="field-label" htmlFor="current_job">
               شغل فعلی
             </label>

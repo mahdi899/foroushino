@@ -164,4 +164,29 @@ class WebhookTest extends TestCase
             'update_id' => 3001,
         ]);
     }
+
+    public function test_webhook_still_accepts_updates_when_bot_is_inactive(): void
+    {
+        $this->bot->update(['is_active' => false]);
+
+        $response = $this->postJson(
+            '/api/v1/integrations/telegram/production/webhook',
+            [
+                'update_id' => 4001,
+                'message' => [
+                    'message_id' => 3,
+                    'from' => ['id' => 42, 'first_name' => 'Test'],
+                    'chat' => ['id' => 42, 'type' => 'private'],
+                    'text' => '/start',
+                ],
+            ],
+            $this->proxyHeaders(),
+        );
+
+        $response->assertOk()->assertJson(['ok' => true]);
+        $this->assertDatabaseHas('telegram_updates', [
+            'telegram_bot_id' => $this->bot->id,
+            'update_id' => 4001,
+        ]);
+    }
 }

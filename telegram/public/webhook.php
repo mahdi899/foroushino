@@ -15,13 +15,14 @@ use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Http\LiveClient;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Http\SyncClient;
-use TelegramHost\Queue\BackgroundIranRelay;
+use TelegramHost\Queue\BackgroundDrainCoordinator;
 use TelegramHost\Queue\IranUpdateQueue;
 use TelegramHost\Routing\DelegationDetector;
 use TelegramHost\Routing\UpdateRouter;
 use TelegramHost\Security\RateLimiter;
 use TelegramHost\Services\HostRegistrationFlow;
 use TelegramHost\Services\MainMenu;
+use TelegramHost\Services\MembershipCheckCache;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
 use TelegramHost\Services\ReferenceChannelFlow;
@@ -101,30 +102,39 @@ try {
     $adminFast = new AdminFastClient($sync, $config, $conversations);
 
     $maxRelay = max(1, (int) ($config['iran_relay_per_webhook'] ?? 2));
-    $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
     $accountSync = new AccountSyncCoordinator($accounts, $sync);
-    $ownership = new \TelegramHost\Account\OwnershipResolver($accounts, $liveClient);
+    $ownership = new \TelegramHost\Account\OwnershipResolver($accounts);
+    $hotCache = new \TelegramHost\Cache\HotCache($config);
+    $membershipCheckCache = new MembershipCheckCache($pdo, $hotCache);
 
     $mainMenu = new MainMenu($cache, $accounts);
     $pendingMobileAccess = new PendingMobileAccess($pdo);
     $registrationQueue = new \TelegramHost\Queue\PendingRegistrationSync($pdo);
-    $membership = new MembershipGate($cache, $api);
-    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess);
+    $checkoutRevokeQueue = new \TelegramHost\Queue\PendingCheckoutRevoke($pdo);
+    $membership = new MembershipGate($cache, $api, $membershipCheckCache);
+    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $registrationQueue, $membership, $pendingMobileAccess, $accountSync);
     $discountPreview = new \TelegramHost\Services\HostDiscountPreview($cache);
     $cardToCardFlow = new \TelegramHost\Services\HostCardToCardFlow($api, $cache, $live, $conversations, $accounts, $mainMenu);
-    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview, $cardToCardFlow);
+    $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu, $discountPreview, $cardToCardFlow, $accounts, $accountSync, $checkoutRevokeQueue);
     $ticketSync = new \TelegramHost\Queue\PendingTicketSync($pdo);
     $supportForward = new \TelegramHost\Queue\PendingSupportForward($pdo);
     $support = new \TelegramHost\Services\HostSupportService($api, $cache, $conversations, $accounts, $mainMenu, $pdo, $ticketSync, $supportForward);
     $subscriberEligibility = new \TelegramHost\Services\SubscriberEligibility($accounts, $cache);
-    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $accountSync, $ownership, $siteBaseUrl);
+    $catalogPhotos = new \TelegramHost\Catalog\CatalogPhotoMessenger(
+        $api,
+        new \TelegramHost\Catalog\CatalogPhotoCache($pdo),
+    );
+    $referenceChannel = new ReferenceChannelFlow($api, $cache, $accounts, $accountSync, $ownership, $catalogPhotos, $siteBaseUrl);
     $satFlow = new \TelegramHost\Services\HostSatFlow($api, $cache, $accounts, $conversations, $live, $mainMenu, $siteBaseUrl);
     $adminShell = new \TelegramHost\Services\HostAdminShell($api, $accounts, $conversations, $mainMenu);
     $groupJoinCleaner = new \TelegramHost\Services\GroupJoinMessageCleaner($api);
     $membershipSync = new \TelegramHost\Queue\PendingMembershipSync($pdo);
-    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $liveClient);
+    $destinationsFlow = new \TelegramHost\Services\HostDestinationsFlow($api, $cache, $accounts, $membershipSync, $siteBaseUrl, $liveClient, $membershipCheckCache);
+
+    $accountRefreshQueue = new \TelegramHost\Queue\PendingAccountRefresh($pdo);
+    $hybridCache = new \TelegramHost\Account\HybridAccountCache($accounts, $accountRefreshQueue, $config);
 
     $messageHandler = new MessageHandler(
         $api,
@@ -147,7 +157,9 @@ try {
         $cardToCardFlow,
         $subscriberEligibility,
         $ownership,
-        $siteBaseUrl
+        $hybridCache,
+        $siteBaseUrl,
+        $checkoutRevokeQueue,
     );
 
     $callbackHandler = new CallbackQueryHandler(
@@ -165,6 +177,7 @@ try {
         $cardToCardFlow,
         $subscriberEligibility,
         $ownership,
+        $catalogPhotos,
     );
 
     $router = new UpdateRouter(
@@ -201,34 +214,27 @@ try {
     }
 
     // Account mirror is Iran→host push only — do not pull Iran on every webhook.
-    try {
-        (new \TelegramHost\Queue\BackgroundRegistrationSync($registrationQueue, $sync, $accounts))->drain();
-    } catch (\Throwable $e) {
-        error_log('[telegram-host] registration sync: '.$e->getMessage());
-    }
-
-    try {
-        (new \TelegramHost\Queue\BackgroundSupportForward($supportForward, $support))->drain();
-    } catch (\Throwable $e) {
-        error_log('[telegram-host] support forward: '.$e->getMessage());
-    }
-
-    try {
-        $iranRelay->drain();
-    } catch (\Throwable $e) {
-        error_log('[telegram-host] iran relay: '.$e->getMessage());
-    }
-
-    try {
-        (new \TelegramHost\Queue\BackgroundTicketSync($ticketSync, $liveClient))->drain();
-    } catch (\Throwable $e) {
-        error_log('[telegram-host] ticket sync: '.$e->getMessage());
-    }
-
-    try {
-        (new \TelegramHost\Queue\BackgroundMembershipSync($membershipSync, $liveClient))->drain();
-    } catch (\Throwable $e) {
-        error_log('[telegram-host] membership sync: '.$e->getMessage());
+    $drainPerQueue = max(0, (int) ($config['webhook_drain_per_queue'] ?? 1));
+    if ($drainPerQueue > 0) {
+        try {
+            (new BackgroundDrainCoordinator(
+                $registrationQueue,
+                $supportForward,
+                $iranQueue,
+                $ticketSync,
+                $membershipSync,
+                $sync,
+                $liveClient,
+                $accounts,
+                $support,
+                $maxRelay,
+                $accountRefreshQueue,
+                $hybridCache,
+                $checkoutRevokeQueue,
+            ))->drainOnce($drainPerQueue);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] post-webhook drain: '.$e->getMessage());
+        }
     }
 } catch (\Throwable $e) {
     error_log('[telegram-host] '.$e->getMessage());

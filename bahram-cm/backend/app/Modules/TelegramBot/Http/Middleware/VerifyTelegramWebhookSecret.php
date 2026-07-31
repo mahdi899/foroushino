@@ -23,9 +23,8 @@ class VerifyTelegramWebhookSecret
             abort(404);
         }
 
-        if (! $bot->is_active) {
-            abort(404);
-        }
+        // Inactive bots still accept webhooks — MessageHandler / CallbackQueryHandler
+        // reject regular users but allow bot admins to test and configure.
 
         $expected = (string) ($bot->resolveWebhookSecret() ?? '');
 

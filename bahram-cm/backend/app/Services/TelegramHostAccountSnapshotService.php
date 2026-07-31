@@ -8,6 +8,7 @@ use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
 use App\Models\FamilyPostView;
 use App\Models\SatApplication;
+use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\TelegramAdminUserStatsService;
@@ -95,6 +96,49 @@ class TelegramHostAccountSnapshotService
     }
 
     /**
+     * Full read-model for buyers who have never started the production bot.
+     * Pushed to the foreign host keyed by mobile so /start shows licenses and
+     * profile immediately after phone share — no Iran round-trip.
+     *
+     * @return array<string, mixed>
+     */
+    public function mobilePreProvisionPayload(User $user): array
+    {
+        $user->loadMissing(['profile', 'identityProfile']);
+        $mobile = trim((string) $user->mobile);
+        if ($mobile === '') {
+            return [];
+        }
+
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+        if ($bot === null) {
+            return [];
+        }
+
+        $account = new TelegramAccount([
+            'mobile' => $mobile,
+            'user_id' => $user->id,
+            'display_name' => StudentDisplayName::fromUser($user),
+            'telegram_bot_id' => $bot->id,
+            'mobile_verified_at' => $user->mobile_verified_at ?? now(),
+        ]);
+        $account->setRelation('user', $user);
+        $account->setRelation('bot', $bot);
+
+        $verificationLevel = max(1, (int) ($user->identityProfile?->verification_level ?? 1));
+        $ownedProductIds = $this->ownership->ownedProductIdsForUser($user, $mobile);
+
+        return [
+            'mobile' => $mobile,
+            'display_name' => StudentDisplayName::fromUser($user),
+            'user_id' => $user->id,
+            'verification_level' => $verificationLevel,
+            'owned_product_ids' => $ownedProductIds,
+            'snapshot' => $this->buildSnapshot($account),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function buildRegistrationSnapshot(TelegramAccount $account): array
@@ -138,7 +182,6 @@ class TelegramHostAccountSnapshotService
             $presents[(string) $productId] = [
                 'text' => $view['text'],
                 'options' => $view['options'],
-                'photo' => $this->catalogMedia->productPhoto($product),
             ];
         }
 

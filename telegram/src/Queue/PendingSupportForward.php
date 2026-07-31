@@ -87,6 +87,16 @@ final class PendingSupportForward
         }
     }
 
+    public function countPending(): int
+    {
+        $this->ensureSchema();
+        try {
+            return (int) $this->pdo->query('SELECT COUNT(*) FROM pending_support_forward')->fetchColumn();
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
+
     private function ensureSchema(): void
     {
         if ($this->schemaReady) {

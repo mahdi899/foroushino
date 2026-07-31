@@ -17,9 +17,9 @@ class PushTelegramHostSyncJob implements ShouldQueue
     public int $tries = 6;
 
     /** @var list<int> */
-    public array $backoff = [20, 60, 120, 300, 600, 900];
+    public array $backoff = [5, 15, 60, 120, 300, 600];
 
-    public int $timeout = 120;
+    public int $timeout = 45;
 
     /** @param  array<string, mixed>  $extra */
     public function __construct(
@@ -46,6 +46,7 @@ class PushTelegramHostSyncJob implements ShouldQueue
                 (string) ($this->extra['mobile'] ?? ''),
                 array_map('intval', (array) ($this->extra['owned_product_ids'] ?? [])),
                 $this->extra['display_name'] ?? null,
+                $this->mobilePreProvisionExtra(),
             ),
             default => $push->refreshAll(),
         };
@@ -84,13 +85,12 @@ class PushTelegramHostSyncJob implements ShouldQueue
     /** @param  array<string, mixed>  $account */
     public static function account(array $account): void
     {
-        // After response: avoid host deadlock when Iran is still answering process-update.
-        self::dispatchAfterResponse('push_account', ['account' => $account]);
+        self::dispatchNow('push_account', ['account' => $account]);
     }
 
     public static function notifyUser(int $telegramUserId, string $text, array $options = []): void
     {
-        self::dispatchAfterResponse('notify_user', [
+        self::dispatchNow('notify_user', [
             'telegram_user_id' => $telegramUserId,
             'text' => $text,
             'options' => $options,
@@ -98,13 +98,10 @@ class PushTelegramHostSyncJob implements ShouldQueue
     }
 
     /** @param  list<int>  $ownedProductIds */
-    public static function mobileAccess(string $mobile, array $ownedProductIds, ?string $displayName = null): void
+    /** @param  array<string, mixed>|null  $preProvision */
+    public static function mobileAccess(string $mobile, array $ownedProductIds, ?string $displayName = null, ?array $preProvision = null): void
     {
-        self::dispatchAfterResponse('push_mobile_access', [
-            'mobile' => $mobile,
-            'owned_product_ids' => $ownedProductIds,
-            'display_name' => $displayName,
-        ]);
+        self::dispatchNow('push_mobile_access', self::mobileAccessPayload($mobile, $ownedProductIds, $displayName, $preProvision));
     }
 
     /** @param  array<string, mixed>  $extra */
@@ -120,13 +117,57 @@ class PushTelegramHostSyncJob implements ShouldQueue
     }
 
     /** @param  list<int>  $ownedProductIds */
-    public static function mobileAccessNow(string $mobile, array $ownedProductIds, ?string $displayName = null): void
+    /** @param  array<string, mixed>|null  $preProvision */
+    public static function mobileAccessNow(string $mobile, array $ownedProductIds, ?string $displayName = null, ?array $preProvision = null): void
     {
-        self::dispatchNow('push_mobile_access', [
+        self::dispatchNow('push_mobile_access', self::mobileAccessPayload($mobile, $ownedProductIds, $displayName, $preProvision));
+    }
+
+    /**
+     * @param  list<int>  $ownedProductIds
+     * @param  array<string, mixed>|null  $preProvision
+     * @return array<string, mixed>
+     */
+    private static function mobileAccessPayload(string $mobile, array $ownedProductIds, ?string $displayName, ?array $preProvision): array
+    {
+        $payload = [
             'mobile' => $mobile,
             'owned_product_ids' => $ownedProductIds,
             'display_name' => $displayName,
-        ]);
+        ];
+
+        if ($preProvision === null) {
+            return $payload;
+        }
+
+        if (isset($preProvision['user_id'])) {
+            $payload['user_id'] = (int) $preProvision['user_id'];
+        }
+        if (isset($preProvision['verification_level'])) {
+            $payload['verification_level'] = max(1, (int) $preProvision['verification_level']);
+        }
+        if (is_array($preProvision['snapshot'] ?? null)) {
+            $payload['snapshot'] = $preProvision['snapshot'];
+        }
+
+        return $payload;
+    }
+
+    /** @return array<string, mixed>|null */
+    private function mobilePreProvisionExtra(): ?array
+    {
+        $extra = [];
+        if (isset($this->extra['user_id'])) {
+            $extra['user_id'] = (int) $this->extra['user_id'];
+        }
+        if (isset($this->extra['verification_level'])) {
+            $extra['verification_level'] = max(1, (int) $this->extra['verification_level']);
+        }
+        if (is_array($this->extra['snapshot'] ?? null)) {
+            $extra['snapshot'] = $this->extra['snapshot'];
+        }
+
+        return $extra === [] ? null : $extra;
     }
 
     /** @param  array<string, mixed>  $extra */

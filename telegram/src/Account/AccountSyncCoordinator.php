@@ -26,18 +26,13 @@ final class AccountSyncCoordinator
             return false;
         }
 
-        // A local-only registration (Iran was unreachable at contact/name
-        // time) never gets picked up by the normal verified/unverified
-        // throttle above — it's already "verified" locally with a fresh
-        // snapshot-less row. Bypass the throttle (rate-limited on its own,
-        // via secondsSinceUpdate) so it actually gets reconciled once Iran
-        // is reachable again, instead of staying a host-only ghost forever.
-        $needsReconcile = $this->accounts->needsIranReconcile($telegramUserId)
-            && $this->accounts->secondsSinceUpdate($telegramUserId) >= self::RETRY_INTERVAL_UNVERIFIED_SECONDS;
+        $ghost = $this->accounts->needsIranReconcile($telegramUserId);
+        $throttleOk = $this->accounts->secondsSinceUpdate($telegramUserId) >= self::RETRY_INTERVAL_UNVERIFIED_SECONDS;
+        $shouldReconcile = $ghost && ($force || $throttleOk);
 
-        if (! $force && ! $needsReconcile) {
+        if (! $force && ! $shouldReconcile) {
             if ($this->accounts->isVerified($telegramUserId)) {
-                if ($this->accounts->hasRenderableProfile($telegramUserId)) {
+                if ($this->accounts->hasRenderableProfile($telegramUserId) && ! $ghost) {
                     return true;
                 }
             } elseif (! $this->accounts->shouldAttemptIranPull(
@@ -54,29 +49,52 @@ final class AccountSyncCoordinator
                 'telegram_user_id' => $telegramUserId,
                 'include_snapshot' => true,
             ]);
-            if (empty($response['found']) || ! is_array($response['account'] ?? null)) {
-                if ($needsReconcile) {
-                    $this->reconcileLocalRegistration($telegramUserId);
-                }
-                if (! $force) {
-                    $this->accounts->recordPullAttempt($telegramUserId);
-                }
-
-                return $this->accounts->isVerified($telegramUserId);
+            if (! empty($response['found']) && is_array($response['account'] ?? null)) {
+                $account = $response['account'];
+                $id = (int) ($account['telegram_user_id'] ?? $telegramUserId);
+                $this->accounts->store($id, $account);
+            } elseif ($shouldReconcile || $force) {
+                $this->reconcileLocalRegistration($telegramUserId);
             }
 
-            $account = $response['account'];
-            $id = (int) ($account['telegram_user_id'] ?? $telegramUserId);
-            $this->accounts->store($id, $account);
+            if ($this->accounts->needsIranReconcile($telegramUserId)
+                || ! $this->accounts->hasRenderableProfile($telegramUserId)) {
+                $this->reconcileLocalRegistration($telegramUserId);
+                $this->refetchAccount($telegramUserId);
+            }
 
-            return $this->accounts->isVerified($telegramUserId);
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] account sync: '.$e->getMessage());
             if (! $force) {
                 $this->accounts->recordPullAttempt($telegramUserId);
             }
 
             return $this->accounts->isVerified($telegramUserId);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] account sync: '.$e->getMessage());
+            if ($shouldReconcile || $force) {
+                $this->reconcileLocalRegistration($telegramUserId);
+                $this->refetchAccount($telegramUserId);
+            }
+            if (! $force) {
+                $this->accounts->recordPullAttempt($telegramUserId);
+            }
+
+            return $this->accounts->isVerified($telegramUserId);
+        }
+    }
+
+    private function refetchAccount(int $telegramUserId): void
+    {
+        try {
+            $response = $this->sync->call('account/fetch', [
+                'telegram_user_id' => $telegramUserId,
+                'include_snapshot' => true,
+            ]);
+            if (! empty($response['found']) && is_array($response['account'] ?? null)) {
+                $id = (int) ($response['account']['telegram_user_id'] ?? $telegramUserId);
+                $this->accounts->store($id, $response['account']);
+            }
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] account refetch: '.$e->getMessage());
         }
     }
 
@@ -95,9 +113,27 @@ final class AccountSyncCoordinator
         }
 
         try {
+            $response = $this->sync->call('registration/upsert', [
+                'telegram_user_id' => $telegramUserId,
+                'phone' => $pending['mobile'],
+                'display_name' => $pending['display_name'],
+                'contact_user_id' => $telegramUserId,
+            ], 12, allowRetry: true);
+
+            if (! empty($response['ok']) && is_array($response['account'] ?? null)) {
+                $this->accounts->store($telegramUserId, $response['account']);
+
+                return;
+            }
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration upsert reconcile: '.$e->getMessage());
+        }
+
+        try {
             $this->sync->call('registration/contact', [
                 'telegram_user_id' => $telegramUserId,
                 'phone' => $pending['mobile'],
+                'contact_user_id' => $telegramUserId,
             ]);
             $response = $this->sync->call('registration/name', [
                 'telegram_user_id' => $telegramUserId,

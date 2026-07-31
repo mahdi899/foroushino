@@ -85,6 +85,16 @@ final class PendingMembershipSync
         }
     }
 
+    public function countPending(): int
+    {
+        $this->ensureSchema();
+        try {
+            return (int) $this->pdo->query('SELECT COUNT(*) FROM pending_membership_sync')->fetchColumn();
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
+
     private function ensureSchema(): void
     {
         if ($this->schemaReady) {

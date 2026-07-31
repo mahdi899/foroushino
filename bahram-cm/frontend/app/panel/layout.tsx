@@ -2,18 +2,23 @@ import '@/styles/panel.css';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import { PanelThemeBoot } from './PanelThemeContext';
+import { PANEL_PWA_ENABLED } from '@/lib/panel/pwa';
 import { DEFAULT_SITE_THEME, SITE_THEME_COOKIE_KEY, parseSiteTheme } from '@/lib/site-theme';
 
 export const metadata: Metadata = {
   title: 'پنل کاربری | آکادمی بهرام رستمی',
   description: 'دوره‌ها، سمینارها، پشتیبانی و اعلان‌های آکادمی',
   robots: { index: false, follow: false },
-  manifest: '/panel-manifest.webmanifest',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'پنل آکادمی',
-  },
+  ...(PANEL_PWA_ENABLED
+    ? {
+        manifest: '/panel-manifest.webmanifest',
+        appleWebApp: {
+          capable: true,
+          statusBarStyle: 'black-translucent' as const,
+          title: 'پنل آکادمی',
+        },
+      }
+    : {}),
   icons: {
     icon: '/icon',
     apple: '/apple-icon',

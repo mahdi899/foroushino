@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS catalog_products (
     price BIGINT NULL,
     sale_price BIGINT NULL,
     photo_url VARCHAR(512) NULL,
+    telegram_photo_file_id VARCHAR(255) NULL,
     product_type VARCHAR(64) NULL,
     synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS catalog_seminars (
     price BIGINT NULL,
     sale_price BIGINT NULL,
     photo_url VARCHAR(512) NULL,
+    telegram_photo_file_id VARCHAR(255) NULL,
     reference_discount_amount BIGINT NOT NULL DEFAULT 0,
     synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -63,6 +65,8 @@ CREATE TABLE IF NOT EXISTS telegram_accounts_cache (
     owned_presents_json MEDIUMTEXT NULL,
     sat_json MEDIUMTEXT NULL,
     snapshot_synced_at DATETIME NULL,
+    hot_synced_at DATETIME NULL,
+    cold_synced_at DATETIME NULL,
     updated_at DATETIME NOT NULL,
     INDEX idx_accounts_cache_mobile (mobile)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -176,6 +180,9 @@ CREATE TABLE IF NOT EXISTS telegram_pending_access_by_mobile (
     mobile VARCHAR(20) NOT NULL PRIMARY KEY,
     owned_product_ids TEXT NULL,
     display_name VARCHAR(191) NULL,
+    user_id BIGINT UNSIGNED NULL,
+    verification_level TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    snapshot_json MEDIUMTEXT NULL,
     updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

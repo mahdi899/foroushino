@@ -331,9 +331,13 @@ final class HostCardToCardFlow
         $this->api->answerCallbackQuery($callbackId, 'تأیید نهایی و تحویل شد');
         $this->api->sendMessage(
             $buyerId,
-            TelegramCustomEmoji::tag('check')." پرداخت سفارش #{$orderId} تأیید شد.\n"
-            .TelegramCustomEmoji::tag('sparkles').' دسترسی/لایسنس به‌زودی در پنل فعال می‌شود.',
-            ['reply_markup' => $this->mainMenu->replyMarkup($buyerId)],
+            $this->cache->renderMessage(
+                'c2c_payment_confirmed',
+                ['order_id' => (string) $orderId],
+                TelegramCustomEmoji::tag('check')." پرداخت سفارش #{$orderId} تأیید شد.\n"
+                .TelegramCustomEmoji::tag('sparkles').' دسترسی/لایسنس به‌زودی در پنل فعال می‌شود.',
+            ),
+            ['reply_markup' => $this->mainMenu->replyMarkup($buyerId), 'parse_mode' => 'HTML'],
         );
     }
 

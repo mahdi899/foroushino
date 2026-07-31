@@ -52,4 +52,44 @@ class BotFeatureFlagTest extends TestCase
         $bot->setFeatureEnabled(BotFeatureFlag::IranMobileOnly, true);
         $this->assertTrue($bot->fresh()->featureEnabled(BotFeatureFlag::IranMobileOnly));
     }
+
+    public function test_card_to_card_free_text_parses_into_config(): void
+    {
+        $bot = TelegramBot::query()->create([
+            'key' => 'production',
+            'display_name' => 'Test',
+            'token_key' => 'TELEGRAM_BOT_TOKEN',
+            'webhook_secret' => 'secret',
+            'environment' => 'production',
+            'is_active' => true,
+        ]);
+
+        $bot->setCardToCardInstructions(
+            "شماره کارت: 6037-9912-3456-7890\nبه‌نام: علی رضایی\nبانک: ملی",
+        );
+
+        $config = $bot->fresh()->cardToCardConfig();
+        $this->assertSame('6037991234567890', $config['card_number']);
+        $this->assertSame('علی رضایی', $config['card_holder']);
+        $this->assertSame('ملی', $config['bank_name']);
+        $this->assertStringContainsString('6037', $config['override_text']);
+    }
+
+    public function test_card_to_card_parses_persian_digits_and_plain_card_line(): void
+    {
+        $bot = TelegramBot::query()->create([
+            'key' => 'production',
+            'display_name' => 'Test',
+            'token_key' => 'TELEGRAM_BOT_TOKEN',
+            'webhook_secret' => 'secret',
+            'environment' => 'production',
+            'is_active' => true,
+        ]);
+
+        $bot->setCardToCardInstructions("۶۰۳۷۹۹۱۲۳۴۵۶۷۸۹۰\nبه‌نام: سارا");
+
+        $config = $bot->fresh()->cardToCardConfig();
+        $this->assertSame('6037991234567890', $config['card_number']);
+        $this->assertSame('سارا', $config['card_holder']);
+    }
 }

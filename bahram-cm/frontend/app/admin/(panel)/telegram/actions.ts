@@ -9,6 +9,7 @@ function actionError(e: unknown, fallback: string): { ok: false; error: string }
     payload?: {
       error?: { message_fa?: string };
       message?: string;
+      data?: { message?: string };
       errors?: Record<string, string[]>;
     };
   };
@@ -22,7 +23,12 @@ function actionError(e: unknown, fallback: string): { ok: false; error: string }
 
   return {
     ok: false,
-    error: err.payload?.error?.message_fa ?? err.payload?.message ?? err.message ?? fallback,
+    error:
+      err.payload?.error?.message_fa
+      ?? err.payload?.data?.message
+      ?? err.payload?.message
+      ?? err.message
+      ?? fallback,
   };
 }
 
@@ -521,6 +527,44 @@ export async function regenerateTelegramHostSecretsAction(): Promise<{
     return { ok: true };
   } catch (e) {
     return actionError(e, 'رفرش کلیدها ناموفق بود.');
+  }
+}
+
+export async function pushTelegramHostSyncAction(input?: {
+  scope?: 'bootstrap' | 'catalog' | 'accounts' | 'full';
+  limit?: number;
+}): Promise<{
+  ok: boolean;
+  message?: string;
+  error?: string;
+  accounts_pushed?: number;
+  accounts_failed?: number;
+}> {
+  try {
+    const res = await adminFetch<{
+      data: {
+        ok: boolean;
+        message: string;
+        accounts_pushed?: number;
+        accounts_failed?: number;
+      };
+    }>('/panel/telegram/infrastructure/push-host-sync', {
+      method: 'POST',
+      body: input ?? { scope: 'full' },
+      timeoutMs: 120_000,
+    });
+    revalidateTelegram();
+    const data = res.data;
+    const ok = data?.ok ?? false;
+    return {
+      ok,
+      message: data?.message,
+      error: ok ? undefined : data?.message ?? 'پوش به هاست خارج ناموفق بود.',
+      accounts_pushed: data?.accounts_pushed,
+      accounts_failed: data?.accounts_failed,
+    };
+  } catch (e) {
+    return actionError(e, 'پوش به هاست خارج ناموفق بود.');
   }
 }
 

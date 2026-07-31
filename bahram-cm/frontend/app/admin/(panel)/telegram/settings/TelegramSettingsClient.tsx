@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, UploadCloud } from 'lucide-react';
 import { Badge } from '../../ui';
 import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
 import {
+  pushTelegramHostSyncAction,
   syncTelegramBotsAction,
   updateTelegramBotAction,
   updateTelegramBotProfileAction,
@@ -60,6 +61,35 @@ export function TelegramSettingsClient({
         loadError={infrastructureError}
         showRegisterWebhook={false}
       />
+
+      <AdminContentPanel
+        title="همگام‌سازی با هاست خارج"
+        action={
+          <button
+            type="button"
+            disabled={pending}
+            className="btn btn-primary text-small"
+            onClick={() =>
+              run(async () => {
+                const res = await pushTelegramHostSyncAction({ scope: 'full', limit: 120 });
+                return {
+                  ok: res.ok,
+                  error: res.error,
+                  url: res.ok ? res.message : undefined,
+                };
+              })
+            }
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+            پوش دستی (bootstrap + catalog + اکانت‌ها)
+          </button>
+        }
+      >
+        <p className="text-small text-text-muted leading-relaxed">
+          تنظیمات ربات (فعال/غیرفعال، فلگ‌ها، پیام‌ها) از ایران به هاست خارج پوش می‌شود.
+          بعد از تغییر مهم یا عیب‌یابی ثبت‌نام، «پوش دستی» را بزنید.
+        </p>
+      </AdminContentPanel>
 
       <AdminContentPanel title="کارت‌به‌کارت تلگرام">
         <p className="text-small text-text-muted leading-relaxed">
@@ -160,15 +190,22 @@ export function TelegramSettingsClient({
                     </button>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       disabled={pending}
-                      className="btn btn-secondary text-caption px-3 py-1.5"
+                      className={bot.is_active ? 'btn btn-secondary text-caption px-3 py-1.5' : 'btn btn-primary text-caption px-3 py-1.5'}
                       onClick={() => run(() => updateTelegramBotAction(bot.id, { is_active: !bot.is_active }))}
                     >
-                      {bot.is_active ? 'غیرفعال کردن' : 'فعال کردن'}
+                      {bot.is_active ? 'خاموش کردن برای کاربران' : 'روشن کردن برای کاربران'}
                     </button>
+                    <span className="text-caption text-text-muted">
+                      ادمین‌های بات (از{' '}
+                      <Link href="/admin/telegram/users" className="text-primary underline-offset-2 hover:underline">
+                        کاربران
+                      </Link>
+                      ) حتی وقتی ربات خاموش است می‌توانند تست و تنظیم کنند.
+                    </span>
                   </div>
                 </div>
               );
@@ -348,6 +385,7 @@ function BotIranMobileRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
 function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => void }) {
   const cfg = bot.card_to_card ?? {};
   const [enabled, setEnabled] = useState(Boolean(bot.card_to_card_enabled));
+  const [overrideText, setOverrideText] = useState(cfg.override_text ?? '');
   const [cardNumber, setCardNumber] = useState(cfg.card_number ?? '');
   const [cardHolder, setCardHolder] = useState(cfg.card_holder ?? '');
   const [bankName, setBankName] = useState(cfg.bank_name ?? '');
@@ -358,6 +396,7 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
   useEffect(() => {
     const next = bot.card_to_card ?? {};
     setEnabled(Boolean(bot.card_to_card_enabled));
+    setOverrideText(next.override_text ?? '');
     setCardNumber(next.card_number ?? '');
     setCardHolder(next.card_holder ?? '');
     setBankName(next.bank_name ?? '');
@@ -366,10 +405,16 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
 
   const dirty =
     enabled !== Boolean(bot.card_to_card_enabled) ||
+    overrideText.trim() !== (cfg.override_text ?? '') ||
     cardNumber.trim() !== (cfg.card_number ?? '') ||
     cardHolder.trim() !== (cfg.card_holder ?? '') ||
     bankName.trim() !== (cfg.bank_name ?? '') ||
     notes.trim() !== (cfg.notes ?? '');
+
+  const hasOverride = Boolean((cfg.override_text ?? '').trim());
+  const hasStructured = Boolean(
+    (cfg.card_number ?? '').trim() || (cfg.card_holder ?? '').trim() || (cfg.bank_name ?? '').trim(),
+  );
 
   const save = () => {
     startTransition(async () => {
@@ -381,6 +426,7 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
           card_holder: cardHolder.trim() || null,
           bank_name: bankName.trim() || null,
           notes: notes.trim() || null,
+          override_text: overrideText.trim() || null,
         },
       });
       setStatus(res.ok ? 'ذخیره شد' : res.error ?? 'خطا');
@@ -402,45 +448,67 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
           گروه گزارشات پرداخت هنوز تنظیم نشده — بدون آن فیش‌ها به ادمین نمی‌رسد.
         </p>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-2">
+      {hasOverride && !hasStructured ? (
+        <p className="mb-3 text-caption text-primary">
+          متن کارت‌به‌کارت از پنل ادمین ربات (تلگرام) ثبت شده — در باکس زیر قابل ویرایش است.
+        </p>
+      ) : null}
+      <div className="grid gap-3">
         <label className="block">
-          <span className="text-caption text-text-muted">شماره کارت</span>
-          <input
-            className="field-input mt-1 w-full"
-            dir="ltr"
-            placeholder="6037-...."
-            value={cardNumber}
-            onChange={(e) => setCardNumber(e.target.value)}
-            maxLength={64}
-          />
-        </label>
-        <label className="block">
-          <span className="text-caption text-text-muted">نام صاحب کارت</span>
-          <input
-            className="field-input mt-1 w-full"
-            value={cardHolder}
-            onChange={(e) => setCardHolder(e.target.value)}
-            maxLength={64}
-          />
-        </label>
-        <label className="block">
-          <span className="text-caption text-text-muted">نام بانک (اختیاری)</span>
-          <input
-            className="field-input mt-1 w-full"
-            value={bankName}
-            onChange={(e) => setBankName(e.target.value)}
-            maxLength={64}
-          />
-        </label>
-        <label className="block md:col-span-2">
-          <span className="text-caption text-text-muted">توضیحات اضافه / شبا / نکات (اختیاری)</span>
+          <span className="text-caption text-text-muted">
+            متن راهنمای کارت‌به‌کارت (همان «متن کارت به کارت» در پنل ربات)
+          </span>
           <textarea
-            className="field-input mt-1 min-h-20 w-full"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={500}
+            className="field-input mt-1 min-h-28 w-full"
+            value={overrideText}
+            onChange={(e) => setOverrideText(e.target.value)}
+            maxLength={1000}
+            placeholder="شماره کارت، نام صاحب حساب، بانک و توضیحات — اگر پر باشد همین متن به کاربر نشان داده می‌شود."
           />
+          <span className="mt-1 block text-caption text-text-muted">
+            اگر این باکس پر باشد، به‌جای فیلدهای جدا پایین به کاربر نمایش داده می‌شود.
+          </span>
         </label>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block">
+            <span className="text-caption text-text-muted">شماره کارت (فیلد جدا — اختیاری)</span>
+            <input
+              className="field-input mt-1 w-full"
+              dir="ltr"
+              placeholder="6037991234567890"
+              value={cardNumber}
+              onChange={(e) => setCardNumber(e.target.value)}
+              maxLength={64}
+            />
+          </label>
+          <label className="block">
+            <span className="text-caption text-text-muted">نام صاحب کارت</span>
+            <input
+              className="field-input mt-1 w-full"
+              value={cardHolder}
+              onChange={(e) => setCardHolder(e.target.value)}
+              maxLength={64}
+            />
+          </label>
+          <label className="block">
+            <span className="text-caption text-text-muted">نام بانک (اختیاری)</span>
+            <input
+              className="field-input mt-1 w-full"
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              maxLength={64}
+            />
+          </label>
+          <label className="block md:col-span-2">
+            <span className="text-caption text-text-muted">توضیحات اضافه / شبا / نکات (اختیاری)</span>
+            <textarea
+              className="field-input mt-1 min-h-20 w-full"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={500}
+            />
+          </label>
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button

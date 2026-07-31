@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
         Route::post('/infrastructure/test', [TelegramInfrastructureAdminController::class, 'test']);
         Route::post('/infrastructure/suggest-secrets', [TelegramInfrastructureAdminController::class, 'suggestSecrets']);
         Route::post('/infrastructure/regenerate-host-secrets', [TelegramInfrastructureAdminController::class, 'regenerateHostSecrets']);
+        Route::post('/infrastructure/push-host-sync', [TelegramInfrastructureAdminController::class, 'pushHostSync']);
 
         Route::get('/bots', [TelegramBotAdminController::class, 'index']);
         Route::post('/bots/sync', [TelegramBotAdminController::class, 'syncFromConfig']);

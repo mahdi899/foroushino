@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Modules\TelegramBot\Services\DisplayNameValidator;
 
 final class StudentDisplayName
 {
@@ -17,13 +18,13 @@ final class StudentDisplayName
                 $identity?->last_name,
             ])));
             if ($fromIdentity !== '') {
-                return $fromIdentity;
+                return self::safeLabel($fromIdentity);
             }
         }
 
         $displayName = trim((string) $user->name);
         if ($displayName !== '') {
-            return $displayName;
+            return self::safeLabel($displayName);
         }
 
         $fromProfile = trim(implode(' ', array_filter([
@@ -31,7 +32,7 @@ final class StudentDisplayName
             $user->profile?->last_name,
         ])));
         if ($fromProfile !== '') {
-            return $fromProfile;
+            return self::safeLabel($fromProfile);
         }
 
         return 'دانشجو';
@@ -47,6 +48,13 @@ final class StudentDisplayName
         $fromTelegram = trim((string) ($account->display_name
             ?: trim(($account->first_name ?? '').' '.($account->last_name ?? ''))));
 
-        return $fromTelegram !== '' ? $fromTelegram : '—';
+        return $fromTelegram !== '' ? self::safeLabel($fromTelegram, '—') : '—';
+    }
+
+    private static function safeLabel(string $name, string $fallback = 'دانشجو'): string
+    {
+        $sanitized = (new DisplayNameValidator())->sanitize($name);
+
+        return $sanitized ?? $fallback;
     }
 }

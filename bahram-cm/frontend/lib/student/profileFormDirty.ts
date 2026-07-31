@@ -27,7 +27,6 @@ export function buildProfileFormSnapshot(user: StudentUser): ProfileFormSnapshot
   const profile = user.profile;
 
   return {
-    name: user.name?.trim() ?? '',
     email: profile?.email?.trim() ?? '',
     age: profile?.age != null ? String(profile.age) : '',
     current_job: profile?.current_job?.trim() ?? '',
@@ -42,7 +41,6 @@ export function buildProfileFormSnapshot(user: StudentUser): ProfileFormSnapshot
 
 export function readProfileFormSnapshot(formData: FormData): ProfileFormSnapshot {
   return {
-    name: fieldValue(formData.get('name')),
     email: fieldValue(formData.get('email')),
     age: fieldValue(formData.get('age')),
     current_job: fieldValue(formData.get('current_job')),

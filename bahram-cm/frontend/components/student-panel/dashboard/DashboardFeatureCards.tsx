@@ -83,6 +83,7 @@ export function DashboardFeatureCards({
         eyebrow="باشگاه VIP"
         title={cashbackLabel}
         description="با هر معرفی موفق، پاداش نقدی دریافت کن."
+        badge={<StatusBadge variant="neutral">به زودی</StatusBadge>}
         cta={
           <>
             <Gift size={14} />
@@ -98,6 +99,7 @@ export function DashboardFeatureCards({
         eyebrow="همکاری شغلی"
         title="ثبت درخواست سات"
         description="فرصت همکاری با آکادمی را از اینجا دنبال کن."
+        badge={<StatusBadge variant="neutral">به زودی</StatusBadge>}
         cta="ثبت درخواست"
       />
     </div>

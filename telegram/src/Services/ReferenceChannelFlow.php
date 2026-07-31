@@ -8,6 +8,7 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Account\OwnershipResolver;
 use TelegramHost\Cache\SyncCache;
+use TelegramHost\Catalog\CatalogPhotoMessenger;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\TelegramCustomEmoji;
 use TelegramHost\Telegram\BotApiClient;
@@ -24,6 +25,7 @@ final class ReferenceChannelFlow
         private readonly AccountCache $accounts,
         private readonly AccountSyncCoordinator $accountSync,
         private readonly OwnershipResolver $ownership,
+        private readonly CatalogPhotoMessenger $catalogPhotos,
         private readonly string $siteBaseUrl,
     ) {}
 
@@ -49,8 +51,8 @@ final class ReferenceChannelFlow
         $photo = $this->resolvePhoto($product, null);
 
         if (! $this->accounts->hasIdentityLevel2($telegramUserId)) {
-            // Host cache can lag after Iran-side KYC approval (push missed/delayed).
-            $this->accountSync->ensureFresh($telegramUserId, force: true);
+            // Throttled heal only — blocking Iran here made «کانال مرجع» feel frozen.
+            $this->accountSync->ensureFresh($telegramUserId, force: false);
         }
 
         if (! $this->accounts->hasIdentityLevel2($telegramUserId)) {
@@ -70,7 +72,7 @@ final class ReferenceChannelFlow
             $this->deliverCaption($chatId, $caption, $photo, array_filter([
                 'parse_mode' => 'HTML',
                 'reply_markup' => $keyboard !== [] ? ['inline_keyboard' => $keyboard] : null,
-            ]));
+            ]), $productId);
 
             return;
         }
@@ -95,7 +97,7 @@ final class ReferenceChannelFlow
         }
 
         $caption = $this->appendFooter($marketing, $statusText);
-        $this->deliverCaption($chatId, $caption, $photo, $options);
+        $this->deliverCaption($chatId, $caption, $photo, $options, $productId);
     }
 
     /** @param array<string, mixed>|null $product */
@@ -125,7 +127,7 @@ final class ReferenceChannelFlow
             'reply_markup' => ['inline_keyboard' => $keyboard],
         ];
 
-        $this->deliverCaption($chatId, $caption, $this->resolvePhoto($product, null), $options);
+        $this->deliverCaption($chatId, $caption, $this->resolvePhoto($product, null), $options, $productId);
     }
 
     /**
@@ -262,9 +264,19 @@ final class ReferenceChannelFlow
      */
     private function resolvePhoto(?array $product, ?array $present): string
     {
+        if (is_array($product)) {
+            $productId = (int) ($product['id'] ?? 0);
+            if ($productId > 0) {
+                $target = $this->cache->resolvePhotoTarget($productId);
+                if ($target['photo'] !== '') {
+                    return $target['photo'];
+                }
+            }
+        }
+
         if (is_array($present)) {
             $fromPresent = trim((string) ($present['photo'] ?? ''));
-            if ($fromPresent !== '') {
+            if ($fromPresent !== '' && ! \TelegramHost\Catalog\CatalogPhotoCache::looksLikeUrl($fromPresent)) {
                 return $fromPresent;
             }
         }
@@ -323,11 +335,27 @@ final class ReferenceChannelFlow
     }
 
     /** @param  array<string, mixed>  $options */
-    private function deliverCaption(int $chatId, string $caption, string $photo, array $options): void
-    {
+    private function deliverCaption(
+        int $chatId,
+        string $caption,
+        string $photo,
+        array $options,
+        ?int $productId = null,
+    ): void {
         if ($photo !== '') {
             try {
-                $this->api->sendPhoto($chatId, $photo, $caption, $options);
+                $target = $productId !== null && $productId > 0
+                    ? $this->cache->resolvePhotoTarget($productId)
+                    : ['photo' => $photo, 'product_id' => null, 'seminar_id' => null];
+
+                $this->catalogPhotos->send(
+                    $chatId,
+                    $target['photo'] !== '' ? $target['photo'] : $photo,
+                    $caption,
+                    $options,
+                    $target['product_id'],
+                    $target['seminar_id'],
+                );
 
                 return;
             } catch (\Throwable $e) {

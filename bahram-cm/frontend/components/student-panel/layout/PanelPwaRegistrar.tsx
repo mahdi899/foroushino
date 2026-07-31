@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { PANEL_PWA_ENABLED } from '@/lib/panel/pwa';
 
 async function unregisterPanelServiceWorkers() {
   if (!('serviceWorker' in navigator)) return;
@@ -20,7 +21,7 @@ async function unregisterPanelServiceWorkers() {
 
 export function PanelPwaRegistrar() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (!PANEL_PWA_ENABLED || process.env.NODE_ENV !== 'production') {
       void unregisterPanelServiceWorkers();
       return;
     }

@@ -81,4 +81,13 @@ final class IranUpdateQueue
         } catch (\Throwable) {
         }
     }
+
+    public function countPending(): int
+    {
+        try {
+            return (int) $this->pdo->query('SELECT COUNT(*) FROM pending_iran_updates')->fetchColumn();
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
 }

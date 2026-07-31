@@ -224,7 +224,9 @@ export default async function IdentityVerificationDetailPage({
               <div className="card p-5 text-small text-text-muted">
                 {item.can_view_documents === false
                   ? 'اجازه مشاهده مدارک را ندارید.'
-                  : 'مدرکی برای نمایش ثبت نشده است.'}
+                  : item.artifacts_purged || item.status === 'approved'
+                    ? 'مدارک حساس (تصویر کارت ملی و ویدیوی سلفی) پس از تأیید از سرور حذف شده‌اند. اطلاعات هویتی و تاریخچه بررسی همچنان قابل مشاهده است.'
+                    : 'مدرکی برای نمایش ثبت نشده است.'}
               </div>
             )}
 

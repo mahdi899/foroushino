@@ -24,6 +24,7 @@ class ApproveIdentityVerification
         private readonly SmsService $sms,
         private readonly SyncIdentityToUserProfile $syncProfile,
         private readonly InAppNotificationService $notifications,
+        private readonly PurgeIdentityVerificationArtifacts $purgeArtifacts,
     ) {}
 
     /**
@@ -94,10 +95,16 @@ class ApproveIdentityVerification
             if ($student) {
                 ($this->syncProfile)($student, $profile);
 
+                $submissionId = $submission->id;
                 $firstName = $submission->first_name;
-                DB::afterCommit(function () use ($student, $firstName): void {
-                    Bus::dispatchAfterResponse(function () use ($student, $firstName): void {
-                        IdentityLevel2Approved::dispatch($student);
+                DB::afterCommit(function () use ($student, $firstName, $submissionId): void {
+                    Bus::dispatchAfterResponse(function () use ($student, $firstName, $submissionId): void {
+                        $freshSubmission = IdentityVerificationSubmission::query()->find($submissionId);
+                        if ($freshSubmission !== null) {
+                            ($this->purgeArtifacts)($freshSubmission);
+                        }
+
+                        IdentityLevel2Approved::dispatch($student->fresh());
                         $this->notifications->identityApproved($student);
 
                         if ($student->mobile) {
@@ -112,7 +119,7 @@ class ApproveIdentityVerification
                 });
             }
 
-            return $submission->fresh(['artifacts', 'reviews', 'identityProfile']);
+            return $submission->fresh(['reviews', 'identityProfile']);
         });
     }
 }

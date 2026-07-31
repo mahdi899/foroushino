@@ -5,6 +5,9 @@ import {
 } from '@/components/forms/SatPublicApplicationForm';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 
+/** Applications are temporarily paused — form stays visible but blurred/non-interactive. */
+const SAT_APPLICATIONS_OPEN = false;
+
 export function SatApplySection({
   application,
 }: {
@@ -60,7 +63,20 @@ export function SatApplySection({
           </div>
 
           <Reveal delay={0.1} className="lg:col-span-7">
-            <SatPublicApplicationForm application={application} />
+            {SAT_APPLICATIONS_OPEN ? (
+              <SatPublicApplicationForm application={application} />
+            ) : (
+              <div className="relative overflow-hidden rounded-card-lg">
+                <div aria-hidden className="pointer-events-none select-none blur-[7px]">
+                  <SatPublicApplicationForm application={application} />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center rounded-card-lg bg-charcoal/45 p-6 text-center">
+                  <p className="font-display text-xl font-bold text-gold md:text-2xl">
+                    به‌زودی فعال می‌کنیم
+                  </p>
+                </div>
+              </div>
+            )}
           </Reveal>
         </div>
       </div>

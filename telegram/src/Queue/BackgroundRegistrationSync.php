@@ -15,7 +15,7 @@ final class BackgroundRegistrationSync
         private readonly PendingRegistrationSync $queue,
         private readonly SyncClient $sync,
         private readonly AccountCache $accounts,
-        private readonly int $maxPerRun = 3,
+        private readonly int $maxPerRun = 8,
     ) {}
 
     public function drain(): void
@@ -28,14 +28,18 @@ final class BackgroundRegistrationSync
             $id = $item['id'];
             $payload = $item['payload'];
             $telegramUserId = (int) ($payload['telegram_user_id'] ?? $item['telegram_user_id']);
+            $contactUserId = (int) ($payload['contact_user_id'] ?? 0);
+            if ($contactUserId <= 0) {
+                $contactUserId = $telegramUserId;
+            }
 
             try {
                 $response = $this->sync->call('registration/upsert', [
                     'telegram_user_id' => $telegramUserId,
                     'phone' => (string) ($payload['phone'] ?? $payload['mobile'] ?? ''),
                     'display_name' => isset($payload['display_name']) ? (string) $payload['display_name'] : null,
-                    'contact_user_id' => (int) ($payload['contact_user_id'] ?? 0),
-                ], 12, allowRetry: true);
+                    'contact_user_id' => $contactUserId,
+                ], 6, allowRetry: false);
 
                 if (empty($response['ok'])) {
                     $this->queue->markFailed($id, (string) ($response['message'] ?? 'upsert_failed'));
@@ -45,14 +49,6 @@ final class BackgroundRegistrationSync
 
                 if (is_array($response['account'] ?? null)) {
                     $this->accounts->store($telegramUserId, $response['account']);
-                }
-
-                $needsName = trim((string) ($payload['display_name'] ?? '')) === '';
-                $state = (string) ($response['conversation']['state'] ?? '');
-                if ($needsName && $state === 'waiting_for_name') {
-                    $this->queue->delete($id);
-
-                    continue;
                 }
 
                 $this->queue->delete($id);

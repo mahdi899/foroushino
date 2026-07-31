@@ -205,13 +205,24 @@ class TelegramBot extends Model
      */
     public function cardToCardConfig(): array
     {
-        return [
+        $config = [
             'card_number' => trim((string) data_get($this->settings, 'card_to_card.card_number', '')),
             'card_holder' => trim((string) data_get($this->settings, 'card_to_card.card_holder', '')),
             'bank_name' => trim((string) data_get($this->settings, 'card_to_card.bank_name', '')),
             'notes' => trim((string) data_get($this->settings, 'card_to_card.notes', '')),
             'override_text' => trim((string) data_get($this->settings, 'card_to_card_text', '')),
         ];
+
+        if ($config['override_text'] !== '' && $config['card_number'] === '') {
+            $parsed = self::parseCardToCardFreeText($config['override_text']);
+            foreach (['card_number', 'card_holder', 'bank_name'] as $key) {
+                if ($config[$key] === '' && isset($parsed[$key])) {
+                    $config[$key] = $parsed[$key];
+                }
+            }
+        }
+
+        return $config;
     }
 
     public function hasCardToCardDetails(): bool
@@ -251,9 +262,69 @@ class TelegramBot extends Model
 
     public function setCardToCardInstructions(string $text): void
     {
+        $body = mb_substr(trim($text), 0, 1000);
         $settings = (array) ($this->settings ?? []);
-        $settings['card_to_card_text'] = mb_substr(trim($text), 0, 1000);
+        $settings['card_to_card_text'] = $body;
+
+        $parsed = self::parseCardToCardFreeText($body);
+        if ($parsed !== []) {
+            $settings['card_to_card'] = array_merge((array) ($settings['card_to_card'] ?? []), $parsed);
+        }
+
         $this->forceFill(['settings' => $settings])->save();
+    }
+
+    /**
+     * Best-effort parse of free-form card-to-card text (from bot admin panel)
+     * into structured fields for the web settings form.
+     *
+     * @return array{card_number?: string, card_holder?: string, bank_name?: string}
+     */
+    public static function parseCardToCardFreeText(string $text): array
+    {
+        $text = self::normalizeCardToCardInputText($text);
+        $parsed = [];
+
+        if (preg_match('/(?:شماره\s*کارت|کارت)\s*[:：]?\s*([\d][\d\s\-]{14,22}\d)/u', $text, $match) === 1
+            || preg_match('/\b(\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4})\b/u', $text, $match) === 1) {
+            $digits = preg_replace('/\D+/', '', $match[1]);
+            if (strlen($digits) === 16) {
+                $parsed['card_number'] = $digits;
+            }
+        }
+
+        if (! isset($parsed['card_number'])
+            && preg_match('/(?<!\d)(\d[\d\s\-]{14,22}\d)(?!\d)/u', $text, $match) === 1) {
+            $digits = preg_replace('/\D+/', '', $match[1]);
+            if (strlen($digits) === 16) {
+                $parsed['card_number'] = $digits;
+            }
+        }
+
+        if (preg_match('/(?:به[\s\x{200c}\-]*نام|صاحب\s*کارت|به\s*نام)\s*[:：]\s*(.+)/u', $text, $match) === 1) {
+            $holder = trim(preg_replace('/\s{2,}.*/u', '', trim($match[1])) ?? '');
+            if ($holder !== '') {
+                $parsed['card_holder'] = mb_substr($holder, 0, 64);
+            }
+        }
+
+        if (preg_match('/بانک\s*[:：]\s*(.+)/u', $text, $match) === 1) {
+            $bank = trim(preg_replace('/\s{2,}.*/u', '', trim($match[1])) ?? '');
+            if ($bank !== '') {
+                $parsed['bank_name'] = mb_substr($bank, 0, 64);
+            }
+        }
+
+        return $parsed;
+    }
+
+    private static function normalizeCardToCardInputText(string $text): string
+    {
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $latin = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+        return str_replace($persian, $latin, str_replace($arabic, $latin, $text));
     }
 
     /**
@@ -297,6 +368,11 @@ class TelegramBot extends Model
                 unset($settings['card_to_card_text']);
             } else {
                 $settings['card_to_card_text'] = mb_substr($override, 0, 1000);
+                $parsed = self::parseCardToCardFreeText($override);
+                if ($parsed !== []) {
+                    $c2c = array_merge($c2c, $parsed);
+                    $settings['card_to_card'] = $c2c;
+                }
             }
         }
 

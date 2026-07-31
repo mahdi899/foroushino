@@ -37,7 +37,9 @@ bahram-cm/deploy/deploy.env
 saat/deploy/deploy.env
 
 # Ad-hoc deploy/diag scripts and dumps (local SSH helpers — not part of the app)
+.tmp/
 .tmp_*
+*.bundle
 bahram-cm/deploy/scripts/_*
 bahram-cm/deploy/scripts/saat_probe.txt
 **/deploy/scripts/remote-*.py

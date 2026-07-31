@@ -83,20 +83,22 @@ function WapPriceCard({ price }: { price: number }) {
   return (
     <div
       data-neon-tone="gold"
-      className="neon-surface-static rounded-card-lg border border-gold/25 bg-charcoal/55 p-5 ring-1 ring-gold/10 md:p-6"
+      className="relative overflow-hidden rounded-card-lg border border-gold/25 bg-charcoal/55 p-5 ring-1 ring-gold/10 md:p-6"
     >
-      <p className="text-caption uppercase tracking-[0.25em] text-gold">هزینه شروع</p>
-      <p className="mt-2 font-display text-h3 text-bone">{priceLabel}</p>
-      <p className="mt-2 text-sm leading-relaxed text-bone-dim md:text-base">
-        آموزش، اپ سات و همراهی تیم فروش — نه فقط یک دوره. نتیجه به تلاش و عملکرد هر فرد بستگی
-        دارد.
-      </p>
-      <a
-        href="#apply"
-        className="mt-5 inline-flex h-11 items-center justify-center rounded-pill border border-gold/35 bg-gold/[0.12] px-5 text-sm font-semibold text-gold transition-colors hover:border-gold/55 hover:bg-gold/[0.18]"
-      >
-        ثبت درخواست سات
-      </a>
+      <div aria-hidden className="pointer-events-none select-none blur-[7px]">
+        <p className="text-caption uppercase tracking-[0.25em] text-gold">هزینه شروع</p>
+        <p className="mt-2 font-display text-h3 text-bone">{priceLabel}</p>
+        <p className="mt-2 text-sm leading-relaxed text-bone-dim md:text-base">
+          آموزش، اپ سات و همراهی تیم فروش — نه فقط یک دوره. نتیجه به تلاش و عملکرد هر فرد بستگی
+          دارد.
+        </p>
+        <span className="mt-5 inline-flex h-11 items-center justify-center rounded-pill border border-gold/35 bg-gold/[0.12] px-5 text-sm font-semibold text-gold">
+          ثبت درخواست سات
+        </span>
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center bg-charcoal/40 p-4 text-center">
+        <p className="font-display text-lg font-bold text-gold md:text-xl">به‌زودی فعال می‌کنیم</p>
+      </div>
     </div>
   );
 }

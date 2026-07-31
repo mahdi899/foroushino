@@ -15,7 +15,7 @@ class TelegramCatalogMediaService
 {
     public function productPhoto(Product $product): ?string
     {
-        $source = trim((string) ($product->featured_image ?? ''));
+        $source = $this->productPhotoSourcePath($product);
         if ($source === '') {
             return null;
         }
@@ -29,9 +29,49 @@ class TelegramCatalogMediaService
         return $this->publicUrl($source);
     }
 
+    public function productPhotoSourceUrl(Product $product): ?string
+    {
+        $source = $this->productPhotoSourcePath($product);
+
+        return $source !== '' ? $this->publicUrl($source) : null;
+    }
+
+    public function seminarPhotoSourceUrl(Seminar $seminar): ?string
+    {
+        $source = $this->seminarPhotoSourcePath($seminar);
+
+        return $source !== '' ? $this->publicUrl($source) : null;
+    }
+
+    public function productTelegramFileId(Product $product): ?string
+    {
+        $source = $this->productPhotoSourcePath($product);
+        if ($source === '') {
+            return null;
+        }
+
+        $cachedId = trim((string) ($product->telegram_photo_file_id ?? ''));
+        $cachedSource = trim((string) ($product->telegram_photo_source ?? ''));
+
+        return $cachedId !== '' && $cachedSource === $source ? $cachedId : null;
+    }
+
+    public function seminarTelegramFileId(Seminar $seminar): ?string
+    {
+        $source = $this->seminarPhotoSourcePath($seminar);
+        if ($source === '') {
+            return null;
+        }
+
+        $cachedId = trim((string) ($seminar->telegram_photo_file_id ?? ''));
+        $cachedSource = trim((string) ($seminar->telegram_photo_source ?? ''));
+
+        return $cachedId !== '' && $cachedSource === $source ? $cachedId : null;
+    }
+
     public function seminarPhoto(Seminar $seminar): ?string
     {
-        $source = trim((string) ($seminar->cover_image ?: $seminar->cover_image_mobile ?: ''));
+        $source = $this->seminarPhotoSourcePath($seminar);
         if ($source === '') {
             return null;
         }
@@ -114,5 +154,15 @@ class TelegramCatalogMediaService
         }
 
         return $url;
+    }
+
+    private function productPhotoSourcePath(Product $product): string
+    {
+        return trim((string) ($product->featured_image ?? ''));
+    }
+
+    private function seminarPhotoSourcePath(Seminar $seminar): string
+    {
+        return trim((string) ($seminar->cover_image ?: $seminar->cover_image_mobile ?: ''));
     }
 }

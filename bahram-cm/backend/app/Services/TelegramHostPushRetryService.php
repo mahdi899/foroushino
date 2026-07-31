@@ -35,6 +35,7 @@ class TelegramHostPushRetryService
                 (string) ($payload['mobile'] ?? ''),
                 array_map('intval', (array) ($payload['owned_product_ids'] ?? [])),
                 $payload['display_name'] ?? null,
+                $this->mobilePreProvisionFromPayload($payload),
             ),
             default => $this->push->refreshAll(),
         };
@@ -46,5 +47,22 @@ class TelegramHostPushRetryService
         }
 
         Log::channel('telegram')->warning('telegram.host.push_retry_failed', ['action' => $action]);
+    }
+
+    /** @param  array<string, mixed>  $payload */
+    private function mobilePreProvisionFromPayload(array $payload): ?array
+    {
+        $extra = [];
+        if (isset($payload['user_id'])) {
+            $extra['user_id'] = (int) $payload['user_id'];
+        }
+        if (isset($payload['verification_level'])) {
+            $extra['verification_level'] = max(1, (int) $payload['verification_level']);
+        }
+        if (is_array($payload['snapshot'] ?? null)) {
+            $extra['snapshot'] = $payload['snapshot'];
+        }
+
+        return $extra === [] ? null : $extra;
     }
 }

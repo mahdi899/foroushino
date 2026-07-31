@@ -276,6 +276,22 @@ class InAppNotificationService
 
     public function identityApproved(User $user): NotificationRecipient
     {
+        $channel = app(\App\Modules\TelegramBot\Services\TelegramReferenceChannelPresenter::class)
+            ->resolvePublishedChannel();
+        $hasReference = $channel !== null
+            && app(ReferenceChannelAccessService::class)->userHasEntitlement($user, $channel);
+
+        if ($hasReference) {
+            return $this->notifyUser(
+                $user,
+                'هویت شما تأیید شد',
+                'پرونده تأیید هویت شما تأیید شد. دسترسی شما به «'.$channel->title.'» فعال است؛ برای دریافت لینک عضویت وارد ربات تلگرام شوید.',
+                InAppNotificationType::IdentityApproved,
+                '/panel/reference-channel',
+                linkLabel: 'دریافت دسترسی کانال مرجع',
+            );
+        }
+
         return $this->notifyUser(
             $user,
             'هویت شما تأیید شد',

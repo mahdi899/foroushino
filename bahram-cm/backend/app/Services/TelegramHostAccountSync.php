@@ -12,8 +12,11 @@ use App\Support\StudentDisplayName;
 /** Queues account + snapshot push to the external Telegram host. */
 class TelegramHostAccountSync
 {
-    /** Catch any purchase whose immediate push_account failed/was skipped (circuit open, host down). */
+    /** Catch purchases whose immediate push failed; reconcile window for scheduled heal. */
     private const RECENT_PAID_WINDOW_MINUTES = 60;
+
+    /** Iran rows touched recently — event-driven push should have covered these. */
+    private const RECENT_ACCOUNT_TOUCH_MINUTES = 30;
 
     public function __construct(
         private readonly TelegramHostAccountSnapshotService $snapshots,
@@ -27,7 +30,51 @@ class TelegramHostAccountSync
             return;
         }
 
-        PushTelegramHostSyncJob::account($this->snapshots->accountPayload($account->fresh(['user', 'bot'])));
+        $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
+        $push = app(TelegramHostPushService::class);
+        if (! $push->pushAccount($payload)) {
+            PushTelegramHostSyncJob::accountNow($payload);
+        }
+    }
+
+    /** Immediate push for one account (purchase, KYC) — does not wait for the 5-minute batch. */
+    public function pushAccountImmediate(TelegramAccount $account): bool
+    {
+        $account->loadMissing('bot');
+        if ($account->bot?->key !== 'production') {
+            return false;
+        }
+
+        $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
+        $push = app(TelegramHostPushService::class);
+        $ok = $push->pushAccount($payload);
+        if (! $ok) {
+            PushTelegramHostSyncJob::accountNow($payload);
+        }
+
+        return $ok;
+    }
+
+    /** Push every production-bot Telegram row for a site user (after order / KYC). */
+    public function pushUserAccountsImmediate(User $user): int
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+        if ($bot === null) {
+            return 0;
+        }
+
+        $pushed = 0;
+        TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('user_id', $user->id)
+            ->whereNotNull('mobile_verified_at')
+            ->each(function (TelegramAccount $account) use (&$pushed): void {
+                if ($this->pushAccountImmediate($account)) {
+                    $pushed++;
+                }
+            });
+
+        return $pushed;
     }
 
     /** Keep telegram_accounts.display_name + host cache aligned with student panel / KYC. */
@@ -60,6 +107,53 @@ class TelegramHostAccountSync
     }
 
     /**
+     * Small reconcile set for the scheduled job — NOT every verified account.
+     * Event-driven push handles day-to-day; this only heals recent buyers and
+     * rows Iran touched in the last half hour (missed push / host was down).
+     *
+     * @return \Illuminate\Support\Collection<int, TelegramAccount>
+     */
+    public function accountsNeedingReconcile(int $limit = 100): \Illuminate\Support\Collection
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+        if ($bot === null) {
+            return collect();
+        }
+
+        $limit = max(1, min(500, $limit));
+        $touchSince = now()->subMinutes(self::RECENT_ACCOUNT_TOUCH_MINUTES);
+
+        $recentBuyerUserIds = Order::query()
+            ->whereIn('status', ['paid', 'fulfilled'])
+            ->where('paid_at', '>=', now()->subMinutes(self::RECENT_PAID_WINDOW_MINUTES))
+            ->pluck('user_id')
+            ->filter()
+            ->unique();
+
+        $recentBuyerAccounts = $recentBuyerUserIds->isEmpty()
+            ? collect()
+            : TelegramAccount::query()
+                ->where('telegram_bot_id', $bot->id)
+                ->whereIn('user_id', $recentBuyerUserIds)
+                ->whereNotNull('mobile_verified_at')
+                ->get();
+
+        $recentlyTouched = TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->whereNotNull('mobile_verified_at')
+            ->where('updated_at', '>=', $touchSince)
+            ->orderByDesc('updated_at')
+            ->limit($limit)
+            ->get();
+
+        return $recentBuyerAccounts
+            ->merge($recentlyTouched)
+            ->unique('id')
+            ->take($limit)
+            ->values();
+    }
+
+    /**
      * Reconcile all verified production accounts (+ recent buyers even if
      * already verified) onto the foreign host. Used by the 5-minute
      * scheduled command — event-driven push covers day-to-day changes;
@@ -71,6 +165,22 @@ class TelegramHostAccountSync
     {
         $queued = 0;
         foreach ($this->accountsToSync($limit) as $account) {
+            $this->queuePush($account);
+            $queued++;
+        }
+
+        return $queued;
+    }
+
+    /**
+     * Scheduled reconcile — only users who likely missed an event push.
+     *
+     * @return int Number of accounts queued
+     */
+    public function queueReconcileBatch(int $limit = 100): int
+    {
+        $queued = 0;
+        foreach ($this->accountsNeedingReconcile($limit) as $account) {
             $this->queuePush($account);
             $queued++;
         }
@@ -131,17 +241,7 @@ class TelegramHostAccountSync
      */
     public function queuePushMobileAccess(User $user): void
     {
-        $mobile = trim((string) $user->mobile);
-        if ($mobile === '') {
-            return;
-        }
-
-        $ownedProductIds = $this->ownedProductIdsFromOrders($user->id);
-        if ($ownedProductIds === []) {
-            return;
-        }
-
-        PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, StudentDisplayName::fromUser($user));
+        $this->pushMobileAccessImmediate($user);
     }
 
     /** @return list<int> */
@@ -205,43 +305,55 @@ class TelegramHostAccountSync
             return false;
         }
 
-        $ownedProductIds = $this->ownedProductIdsFromOrders($user->id);
-        if ($ownedProductIds === []) {
+        $preProvision = $this->snapshots->mobilePreProvisionPayload($user->fresh(['profile', 'identityProfile']));
+        if ($preProvision === [] || ($preProvision['owned_product_ids'] ?? []) === []) {
             return false;
         }
 
-        $displayName = StudentDisplayName::fromUser($user);
+        $ownedProductIds = array_map('intval', (array) $preProvision['owned_product_ids']);
+        $displayName = (string) ($preProvision['display_name'] ?? StudentDisplayName::fromUser($user));
         $push = app(TelegramHostPushService::class);
-        $ok = $push->pushMobileAccess($mobile, $ownedProductIds, $displayName);
+        $ok = $push->pushMobileAccess($mobile, $ownedProductIds, $displayName, $preProvision);
 
         if (! $ok) {
-            PushTelegramHostSyncJob::mobileAccessNow($mobile, $ownedProductIds, $displayName);
+            PushTelegramHostSyncJob::mobileAccessNow($mobile, $ownedProductIds, $displayName, $preProvision);
         }
 
         return $ok;
     }
 
-    public function pushPaidOrderNotification(TelegramAccount $account, string $text, array $options = []): bool
+    public function pushPaidOrderNotification(TelegramAccount $account, array $notification): bool
     {
         $account->loadMissing('bot');
-        if ($account->bot?->key !== 'production' || trim($text) === '') {
+        if ($account->bot?->key !== 'production') {
+            return false;
+        }
+
+        if (! $this->notificationHasContent($notification)) {
             return false;
         }
 
         $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
         $push = app(TelegramHostPushService::class);
-        $ok = $push->pushAccountWithNotification($payload, [
-            'text' => $text,
-            'options' => $options,
-        ]);
+        $ok = $push->pushAccountWithNotification($payload, $notification);
 
         if (! $ok) {
-            PushTelegramHostSyncJob::dispatch('push_account', [
+            PushTelegramHostSyncJob::dispatchNow('push_account', [
                 'account' => $payload,
-                'notification' => ['text' => $text, 'options' => $options],
+                'notification' => $notification,
             ]);
         }
 
         return $ok;
+    }
+
+    /** @param array<string, mixed> $notification */
+    private function notificationHasContent(array $notification): bool
+    {
+        if (trim((string) ($notification['text'] ?? '')) !== '') {
+            return true;
+        }
+
+        return trim((string) ($notification['template_key'] ?? '')) !== '';
     }
 }

@@ -180,18 +180,22 @@ class FulfillOrderJob implements ShouldQueue
 
         $adminTelegram->notifyOrderFulfilled($order);
 
-        $orderPaidText = '✅ پرداخت شما با موفقیت تأیید شد.'."\n"
-            .'سفارش: '.($order->order_number ?? $order->id)."\n"
-            .'محصول: '.($order->product?->title ?? '—');
+        $templateVars = [
+            'order_number' => (string) ($order->order_number ?? $order->id),
+            'product_title' => (string) ($order->product?->title ?? '—'),
+        ];
 
         $identityUrl = \App\Modules\TelegramBot\Support\TelegramSiteUrl::identityPage();
         $botStartUrl = \App\Modules\TelegramBot\Support\TelegramSiteUrl::botStartDeepLink('reference');
         $isReferencePurchase = $order->product?->isReferenceChannelProduct() ?? false;
 
+        $notification = [
+            'template_key' => 'order_paid_generic',
+            'template_vars' => $templateVars,
+            'options' => [],
+        ];
         if ($isReferencePurchase) {
-            $orderPaidText .= "\n\n"
-                .'قدم بعدی: احراز هویت سطح ۲، سپس ربات تلگرام را استارت کنید و «کانال مرجع» را بزنید.'."\n"
-                .'بعد از تأیید هویت، لینک عضویت گروه مرجع برایتان فعال می‌شود.';
+            $notification['template_append_key'] = 'order_paid_reference_extra';
         }
 
         $notifyOptions = [];
@@ -209,6 +213,13 @@ class FulfillOrderJob implements ShouldQueue
         if ($keyboard !== []) {
             $notifyOptions['reply_markup'] = ['inline_keyboard' => $keyboard];
         }
+        $notification['options'] = $notifyOptions;
+
+        $renderer = app(\App\Modules\TelegramBot\Support\BotMessageRenderer::class);
+        $orderPaidText = $renderer->renderDefault('order_paid_generic', $templateVars);
+        if ($isReferencePurchase) {
+            $orderPaidText .= $renderer->renderDefault('order_paid_reference_extra', $templateVars);
+        }
 
         $usesHost = app(TelegramInfrastructureService::class)->usesHostBridge();
 
@@ -224,7 +235,7 @@ class FulfillOrderJob implements ShouldQueue
 
             if ($usesHost) {
                 foreach ($telegramAccounts as $account) {
-                    if ($hostSync->pushPaidOrderNotification($account, $orderPaidText, $notifyOptions)) {
+                    if ($hostSync->pushPaidOrderNotification($account, $notification)) {
                         $delivered = true;
                     }
                 }
@@ -233,7 +244,14 @@ class FulfillOrderJob implements ShouldQueue
                 // their access on the host by mobile number so it's ready the
                 // instant they do /start, instead of waiting on a reconcile.
                 if ($telegramAccounts->isEmpty() && $order->user !== null) {
-                    $hostSync->queuePushMobileAccess($order->user);
+                    if ($hostSync->pushMobileAccessImmediate($order->user)) {
+                        $delivered = true;
+                    }
+                }
+
+                // Host push timed out — still land ownership on foreign cache.
+                if (! $delivered && $order->user !== null) {
+                    $hostSync->pushUserAccountsImmediate($order->user);
                 }
             }
 
@@ -268,10 +286,7 @@ class FulfillOrderJob implements ShouldQueue
                     app(\App\Modules\TelegramBot\Services\NotificationOutboxWriter::class)->write(
                         eventType: 'order_paid',
                         userId: $userId,
-                        payload: [
-                            'text' => $orderPaidText,
-                            'options' => $notifyOptions,
-                        ],
+                        payload: $notification + ['text' => $orderPaidText],
                         channels: ['telegram'],
                         idempotencyKey: 'order_paid:'.$order->id,
                     );

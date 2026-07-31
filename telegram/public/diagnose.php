@@ -10,8 +10,25 @@ declare(strict_types=1);
  * Usage: https://<host_public_url>/diagnose.php?token=<webhook_secret>
  */
 
+use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\HybridAccountCache;
+use TelegramHost\Cache\HotCache;
+use TelegramHost\Cache\SyncCache;
 use TelegramHost\Db\Connection;
+use TelegramHost\Http\LiveClient;
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Queue\BackgroundDrainCoordinator;
+use TelegramHost\Queue\IranUpdateQueue;
+use TelegramHost\Queue\PendingCheckoutRevoke;
+use TelegramHost\Queue\PendingMembershipSync;
+use TelegramHost\Queue\PendingRegistrationSync;
+use TelegramHost\Queue\PendingAccountRefresh;
+use TelegramHost\Queue\PendingSupportForward;
+use TelegramHost\Queue\PendingTicketSync;
+use TelegramHost\Services\HostSupportService;
+use TelegramHost\Conversation\ConversationRepository;
+use TelegramHost\Services\MainMenu;
+use TelegramHost\Telegram\BotApiClient;
 
 $config = require __DIR__.'/../bootstrap.php';
 
@@ -47,7 +64,7 @@ echo "Telegram host diagnostic — ".date('Y-m-d H:i:s')."\n\n";
 
 step('PHP / extensions', function () {
     echo 'PHP version: '.PHP_VERSION."\n";
-    foreach (['pdo_mysql', 'curl', 'openssl', 'mbstring', 'json'] as $ext) {
+    foreach (['pdo_mysql', 'curl', 'openssl', 'mbstring', 'json', 'redis'] as $ext) {
         echo $ext.': '.(extension_loaded($ext) ? 'OK' : 'MISSING')."\n";
     }
 });
@@ -61,7 +78,15 @@ step('Config sanity', function () use ($config) {
     $syncToken = \TelegramHost\Support\HostBridgeConfig::syncToken($config);
     echo 'host_sync_token: '.($syncToken !== '' ? 'present ('.strlen($syncToken).' chars)' : 'MISSING/EMPTY')."\n";
     $relay = (int) ($config['iran_relay_per_webhook'] ?? 2);
-    echo 'iran_relay_per_webhook: '.$relay.($relay < 1 ? '  ← BAD (queue never drains; use >= 2)' : ($relay < 2 ? '  ← low, prefer 2+' : ' OK'))."\n";
+    echo 'iran_relay_per_webhook: '.$relay."\n";
+    echo 'webhook_drain_per_queue: '.(int) ($config['webhook_drain_per_queue'] ?? 1)."\n";
+    echo 'cron_drain_budget_seconds: '.(float) ($config['cron_drain_budget_seconds'] ?? 50)."\n";
+});
+
+step('Redis / HotCache', function () use ($config) {
+    $hot = new HotCache($config);
+    echo 'redis.enabled: '.((($config['redis']['enabled'] ?? false) ? 'yes' : 'no'))."\n";
+    echo 'hot_cache_active: '.($hot->isActive() ? 'yes' : 'no')."\n";
 });
 
 step('Iran circuit breaker', function () {
@@ -76,17 +101,66 @@ step('Iran circuit breaker', function () {
 step('MySQL connection', function () use ($config) {
     $pdo = Connection::get($config);
     echo "Connected OK.\n";
-    $tables = ['telegram_accounts_cache', 'conversations', 'bot_feature_flags', 'required_chats', 'catalog_products', 'catalog_seminars', 'sync_meta', 'bot_messages'];
+    $tables = ['telegram_accounts_cache', 'conversations', 'bot_feature_flags', 'required_chats', 'catalog_products', 'catalog_seminars', 'sync_meta', 'bot_messages', 'membership_cache'];
     $existing = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);
     foreach ($tables as $t) {
         echo $t.': '.(in_array($t, $existing, true) ? 'exists' : 'MISSING — run db/schema.sql')."\n";
     }
 });
 
+step('Background queue depths', function () use ($config) {
+    $pdo = Connection::get($config);
+    $sync = new SyncClient($config);
+    $liveClient = new LiveClient($sync);
+    $cache = new SyncCache($pdo, $sync, $config);
+    $accounts = new AccountCache($pdo);
+    $api = new BotApiClient((string) $config['bot_token']);
+    $conversations = new ConversationRepository($pdo);
+    $ticketSync = new PendingTicketSync($pdo);
+    $supportForward = new PendingSupportForward($pdo);
+    $support = new HostSupportService($api, $cache, $conversations, $accounts, new MainMenu($cache, $accounts), $pdo, $ticketSync, $supportForward);
+
+    $checkoutRevokeQueue = new PendingCheckoutRevoke($pdo);
+    $accountRefreshQueue = new PendingAccountRefresh($pdo);
+    $hybridCache = new HybridAccountCache($accounts, $accountRefreshQueue, $config);
+
+    $depths = (new BackgroundDrainCoordinator(
+        new PendingRegistrationSync($pdo),
+        $supportForward,
+        new IranUpdateQueue($pdo),
+        $ticketSync,
+        new PendingMembershipSync($pdo),
+        $sync,
+        $liveClient,
+        $accounts,
+        $support,
+        max(1, (int) ($config['iran_relay_per_webhook'] ?? 4)),
+        $accountRefreshQueue,
+        $hybridCache,
+        $checkoutRevokeQueue,
+    ))->queueDepths();
+
+    foreach ($depths as $table => $count) {
+        echo $table.': '.$count."\n";
+    }
+});
+
+step('Sync API latency (account/fetch probe)', function () use ($config) {
+    echo 'sync_base_url: '.$config['sync_base_url']."\n";
+    $sync = new SyncClient($config);
+    $started = microtime(true);
+    $result = $sync->call('account/fetch', ['telegram_user_id' => 1]);
+    $ms = (int) round((microtime(true) - $started) * 1000);
+    echo "Round-trip: {$ms} ms\n";
+    echo 'ok: '.json_encode($result['ok'] ?? null)."\n";
+});
+
 step('Telegram Bot API (getMe)', function () use ($config) {
     $ch = curl_init("https://api.telegram.org/bot{$config['bot_token']}/getMe");
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10]);
+    $started = microtime(true);
     $raw = curl_exec($ch);
+    $ms = (int) round((microtime(true) - $started) * 1000);
     $err = curl_error($ch);
     curl_close($ch);
     if ($raw === false) {
@@ -94,15 +168,8 @@ step('Telegram Bot API (getMe)', function () use ($config) {
 
         return;
     }
+    echo "Round-trip: {$ms} ms\n";
     echo "Response: {$raw}\n";
-});
-
-step('Sync API reachability (main Iran server)', function () use ($config) {
-    echo 'sync_base_url: '.$config['sync_base_url']."\n";
-    $sync = new SyncClient($config);
-    $result = $sync->call('account/fetch', ['telegram_user_id' => 1]);
-    echo "Reached server OK. Decoded response:\n";
-    echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)."\n";
 });
 
 echo "Done. Delete this file (diagnose.php) once finished.\n";

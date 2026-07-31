@@ -175,6 +175,69 @@ final class HotCache
         }
     }
 
+    public function getMembership(int $telegramUserId, string $chatId): ?bool
+    {
+        if ($this->redis === null || $telegramUserId <= 0 || $chatId === '') {
+            return null;
+        }
+
+        try {
+            $raw = $this->redis->get($this->membershipKey($telegramUserId, $chatId));
+            if ($raw === false || $raw === '') {
+                return null;
+            }
+
+            return $raw === '1';
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function storeMembership(int $telegramUserId, string $chatId, bool $isMember, int $ttlSeconds): void
+    {
+        if ($this->redis === null || $telegramUserId <= 0 || $chatId === '') {
+            return;
+        }
+
+        try {
+            $this->redis->setex(
+                $this->membershipKey($telegramUserId, $chatId),
+                max(1, $ttlSeconds),
+                $isMember ? '1' : '0',
+            );
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] redis membership: '.$e->getMessage());
+        }
+    }
+
+    public function invalidateMembership(int $telegramUserId, string $chatId): void
+    {
+        if ($this->redis === null) {
+            return;
+        }
+
+        try {
+            $this->redis->del($this->membershipKey($telegramUserId, $chatId));
+        } catch (\Throwable) {
+        }
+    }
+
+    public function invalidateMembershipUser(int $telegramUserId): void
+    {
+        if ($this->redis === null || $telegramUserId <= 0) {
+            return;
+        }
+
+        try {
+            $pattern = $this->membershipKey($telegramUserId, '*');
+            $keys = $this->redis->keys($pattern);
+            if (is_array($keys) && $keys !== []) {
+                $this->redis->del(...$keys);
+            }
+        } catch (\Throwable) {
+        }
+    }
+
     /** @return list<array<string, mixed>>|null */
     private function getJsonList(string $key): ?array
     {
@@ -216,5 +279,10 @@ final class HotCache
     private function key(string $suffix): string
     {
         return $this->prefix.$suffix;
+    }
+
+    private function membershipKey(int $telegramUserId, string $chatId): string
+    {
+        return $this->key('member:'.$telegramUserId.':'.md5($chatId));
     }
 }

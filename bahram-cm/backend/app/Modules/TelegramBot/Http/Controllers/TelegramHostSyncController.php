@@ -7,6 +7,7 @@ use App\Models\DiscountCode;
 use App\Models\Seminar;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\AccountLinkService;
+use App\Modules\TelegramBot\Services\DisplayNameValidator;
 use App\Modules\TelegramBot\Services\TelegramUserSyncService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
@@ -101,6 +102,10 @@ class TelegramHostSyncController
         $code = trim((string) ($payload['code'] ?? ''));
         $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
         $displayName = trim((string) ($payload['display_name'] ?? ''));
+        if ($displayName !== '') {
+            $validator = new DisplayNameValidator();
+            $displayName = $validator->sanitize($displayName) ?? '';
+        }
 
         if ($mobile === '' || $code === '' || $telegramUserId <= 0) {
             return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
@@ -268,9 +273,16 @@ class TelegramHostSyncController
         $phone = trim((string) ($payload['phone'] ?? ''));
         $displayName = isset($payload['display_name']) ? trim((string) $payload['display_name']) : null;
         $contactUserId = (int) ($payload['contact_user_id'] ?? 0);
+        if ($contactUserId <= 0) {
+            $contactUserId = $telegramUserId;
+        }
 
         if ($telegramUserId <= 0 || $phone === '') {
             return $this->jsonResponse(['ok' => false, 'message' => 'اطلاعات ناقص است.'], 422);
+        }
+
+        if ($contactUserId <= 0) {
+            $contactUserId = $telegramUserId;
         }
 
         $result = $this->hostRegistration->upsertRegistration(

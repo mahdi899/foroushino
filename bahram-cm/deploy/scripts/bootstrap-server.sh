@@ -193,8 +193,11 @@ DEPLOY
 chmod +x /usr/local/bin/bahram-deploy
 
 echo "==> Nginx (rostami.app + rostami.club — Option B dual-domain)"
-mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
+mkdir -p /etc/nginx/snippets /etc/nginx/conf.d "${APP_ROOT}/deploy/nginx/html"
 cp "${APP_ROOT}/deploy/nginx/snippets/media-cors.conf" /etc/nginx/snippets/media-cors.conf
+if [[ -f "${APP_ROOT}/deploy/nginx/snippets/updating-page.conf" ]]; then
+  cp "${APP_ROOT}/deploy/nginx/snippets/updating-page.conf" /etc/nginx/snippets/updating-page.conf
+fi
 cp "${APP_ROOT}/deploy/nginx/conf.d/cloudflare-real-ip.conf" /etc/nginx/conf.d/cloudflare-real-ip.conf
 cp "${APP_ROOT}/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
 NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"

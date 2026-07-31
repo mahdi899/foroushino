@@ -1,10 +1,8 @@
 'use client';
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { UserRound } from 'lucide-react';
 import { ProfileAvatarField } from '@/components/student-panel/profile/ProfileAvatarField';
 import { ProfileAccountOverview } from '@/components/student-panel/profile/ProfileAccountOverview';
-import { ProfileCardHead } from '@/components/student-panel/profile/ProfileCardHead';
 import { ProfileExtrasBundle } from '@/components/student-panel/profile/ProfileExtrasBundle';
 import { VerifiedIdentitySection } from '@/components/student-panel/profile/VerifiedIdentitySection';
 import { resolveAccountTier } from '@/lib/student/accountTier';
@@ -26,7 +24,6 @@ export function ProfileForm({ user }: { user: StudentUser }) {
   const [state, action, isPending] = useActionState(updateProfileAction, INITIAL);
   const formRef = useRef<HTMLFormElement>(null);
   const [dirty, setDirty] = useState(false);
-  const profile = user.profile;
   const completion = useMemo(() => profileCompletion(user), [user]);
   const accountTier = useMemo(() => resolveAccountTier(user), [user]);
   const initialSnapshot = useMemo(() => buildProfileFormSnapshot(user), [user]);
@@ -111,37 +108,6 @@ export function ProfileForm({ user }: { user: StudentUser }) {
         <div className="panel-profile-main">
           <div className="panel-profile-sections">
           <ProfileAccountOverview user={user} />
-
-          <section className="card panel-profile-basic panel-profile-section--wide">
-            <ProfileCardHead icon={UserRound} title="اطلاعات پایه" />
-            <div className="panel-profile-card-body">
-              <div className="panel-profile-grid panel-profile-grid--wide">
-                <div className="panel-profile-field">
-                  <label className="field-label" htmlFor="name">
-                    نام نمایشی
-                  </label>
-                  <input id="name" name="name" defaultValue={user.name} className="field-input" />
-                </div>
-                <div className="panel-profile-field">
-                  <label className="field-label">شماره موبایل</label>
-                  <input value={user.mobile} disabled className="field-input opacity-70" dir="ltr" />
-                </div>
-                <div className="panel-profile-field">
-                  <label className="field-label" htmlFor="email">
-                    ایمیل
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    defaultValue={profile?.email ?? ''}
-                    className="field-input"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
 
           <VerifiedIdentitySection user={user} />
 

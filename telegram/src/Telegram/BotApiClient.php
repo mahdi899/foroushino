@@ -108,6 +108,15 @@ final class BotApiClient
     /** @param array<string, mixed> $params */
     public function sendPhoto(int|string $chatId, string $photo, string $caption, array $params = []): void
     {
+        $this->sendPhotoResult($chatId, $photo, $caption, $params);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public function sendPhotoResult(int|string $chatId, string $photo, string $caption, array $params = []): array
+    {
         $payload = array_merge([
             'chat_id' => $chatId,
             'photo' => $photo,
@@ -116,18 +125,16 @@ final class BotApiClient
         ], $params);
 
         try {
-            $this->call('sendPhoto', $payload);
+            return $this->resultOf($this->call('sendPhoto', $payload, true));
         } catch (TelegramApiException $e) {
             if ($this->shouldRetryWithoutHtml($e)) {
                 try {
-                    $this->call('sendPhoto', array_merge([
+                    return $this->resultOf($this->call('sendPhoto', array_merge([
                         'chat_id' => $chatId,
                         'photo' => $photo,
                         'caption' => TelegramCustomEmoji::sanitizeHtmlKeepCustomEmoji($caption),
                         'parse_mode' => 'HTML',
-                    ], $params));
-
-                    return;
+                    ], $params), true));
                 } catch (TelegramApiException $e2) {
                     $e = $e2;
                 }
@@ -137,13 +144,27 @@ final class BotApiClient
                 throw $e;
             }
 
-            $this->call('sendPhoto', array_merge([
+            return $this->resultOf($this->call('sendPhoto', array_merge([
                 'chat_id' => $chatId,
                 'photo' => $photo,
                 'caption' => TelegramCustomEmoji::stripHtmlTags($caption),
                 'parse_mode' => 'HTML',
-            ], TelegramCustomEmoji::degradeButtonIcons($params)));
+            ], TelegramCustomEmoji::degradeButtonIcons($params)), true));
         }
+    }
+
+    /** @param array<string, mixed> $result */
+    public static function extractPhotoFileId(array $result): ?string
+    {
+        $photos = $result['photo'] ?? null;
+        if (! is_array($photos) || $photos === []) {
+            return null;
+        }
+
+        $last = $photos[array_key_last($photos)] ?? null;
+        $fileId = is_array($last) ? trim((string) ($last['file_id'] ?? '')) : '';
+
+        return $fileId !== '' ? $fileId : null;
     }
 
     /** @param array<string, mixed> $params */

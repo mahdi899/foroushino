@@ -17,7 +17,7 @@ use TelegramHost\Telegram\BotApiClient;
  * «حساب من» destinations on the foreign host.
  *
  * Membership is decided by this host bot calling Telegram getChatMember
- * (api.telegram.org) with the bot token — never Iran. Not cached locally.
+ * (api.telegram.org) with the bot token — never Iran. Cached locally with TTL.
  */
 final class HostDestinationsFlow
 {
@@ -31,6 +31,7 @@ final class HostDestinationsFlow
         private readonly PendingMembershipSync $membershipQueue,
         private readonly string $siteBaseUrl,
         private readonly LiveClient $live,
+        private readonly MembershipCheckCache $membershipCache,
     ) {}
 
     /**
@@ -38,10 +39,7 @@ final class HostDestinationsFlow
      */
     public function sendAccount(int $chatId, int $telegramUserId): bool
     {
-        if (! $this->accounts->hasRenderableProfile($telegramUserId)) {
-            $this->hydrateProfileFromIran($telegramUserId);
-        }
-
+        // Profile arrives via Iran→host push_account; do not pull Iran inside webhook.
         $profile = $this->accounts->profileResponse($telegramUserId);
         if ($profile === null || empty($profile['ok'])) {
             return false;
@@ -191,7 +189,7 @@ final class HostDestinationsFlow
         }
 
         try {
-            $response = $this->live->userProfile($telegramUserId);
+            $response = $this->live->userProfile($telegramUserId, 3);
             if (! empty($response['ok']) && trim((string) ($response['text'] ?? '')) !== '') {
                 $this->accounts->storeProfileSnapshot($telegramUserId, $response);
             }
@@ -202,52 +200,37 @@ final class HostDestinationsFlow
         }
     }
 
-    /**
-     * Host bot → Telegram getChatMember. Source of truth for group membership.
-     */
     private function liveIsGroupMember(string $chatId, int $telegramUserId): bool
     {
         if ($chatId === '' || $telegramUserId <= 0) {
             return false;
         }
 
-        try {
-            $member = $this->api->getChatMember($chatId, $telegramUserId);
-            $status = strtolower(trim((string) ($member['status'] ?? '')));
+        return $this->membershipCache->check(
+            $telegramUserId,
+            $chatId,
+            function () use ($chatId, $telegramUserId): bool {
+                try {
+                    $member = $this->api->getChatMember($chatId, $telegramUserId);
+                    $status = strtolower(trim((string) ($member['status'] ?? '')));
 
-            // Explicit non-member statuses (user left / was removed).
-            if ($status === '' || in_array($status, ['left', 'kicked'], true)) {
-                error_log(sprintf(
-                    '[telegram-host] getChatMember chat=%s user=%d status=%s → not member',
-                    $chatId,
-                    $telegramUserId,
-                    $status === '' ? '(empty)' : $status,
-                ));
+                    if ($status === '' || in_array($status, ['left', 'kicked'], true)) {
+                        return false;
+                    }
 
-                return false;
-            }
+                    return in_array($status, self::MEMBER_STATUSES, true);
+                } catch (\Throwable $e) {
+                    error_log(sprintf(
+                        '[telegram-host] getChatMember chat=%s user=%d error=%s',
+                        $chatId,
+                        $telegramUserId,
+                        $e->getMessage(),
+                    ));
 
-            $isMember = in_array($status, self::MEMBER_STATUSES, true);
-            error_log(sprintf(
-                '[telegram-host] getChatMember chat=%s user=%d status=%s → %s',
-                $chatId,
-                $telegramUserId,
-                $status,
-                $isMember ? 'member' : 'not member',
-            ));
-
-            return $isMember;
-        } catch (\Throwable $e) {
-            // e.g. user not found in chat after leave, or bot lacks rights.
-            error_log(sprintf(
-                '[telegram-host] getChatMember chat=%s user=%d error=%s → not member',
-                $chatId,
-                $telegramUserId,
-                $e->getMessage(),
-            ));
-
-            return false;
-        }
+                    return false;
+                }
+            },
+        );
     }
 
     private function normalizeChatId(mixed $chatId): string

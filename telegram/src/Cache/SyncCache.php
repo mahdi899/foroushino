@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace TelegramHost\Cache;
 
+use TelegramHost\Catalog\CatalogPhotoCache;
 use TelegramHost\Http\SyncClient;
 use TelegramHost\Services\WebhookRegisterFromPull;
+use TelegramHost\Support\TemplateRenderer;
 
 /**
  * Reads/writes the long-lived cache tables (messages, feature flags,
@@ -369,6 +371,46 @@ final class SyncCache
         return is_string($body) && $body !== '' ? $body : $fallback;
     }
 
+    /**
+     * @param  array<string, scalar|null>  $vars
+     */
+    public function renderMessage(string $key, array $vars, string $fallback = ''): string
+    {
+        $template = $this->message($key, $fallback);
+
+        return TemplateRenderer::render($template, $vars);
+    }
+
+    /**
+     * @return array{photo: string, product_id: int|null, seminar_id: int|null}
+     */
+    public function resolvePhotoTarget(int $productId): array
+    {
+        $photoCache = new CatalogPhotoCache($this->pdo);
+
+        foreach ($this->allCatalogProducts() as $row) {
+            if ((int) ($row['id'] ?? 0) === $productId) {
+                return [
+                    'photo' => $photoCache->resolveProductPhoto($row),
+                    'product_id' => $productId,
+                    'seminar_id' => null,
+                ];
+            }
+        }
+
+        foreach ($this->seminars() as $seminar) {
+            if ((int) ($seminar['product_id'] ?? 0) === $productId) {
+                return [
+                    'photo' => $photoCache->resolveSeminarPhoto($seminar),
+                    'product_id' => null,
+                    'seminar_id' => (int) ($seminar['id'] ?? 0) ?: null,
+                ];
+            }
+        }
+
+        return ['photo' => '', 'product_id' => null, 'seminar_id' => null];
+    }
+
     public function featureEnabled(string $key): bool
     {
         $cached = $this->hotCache->getFeatureFlag($key);
@@ -713,7 +755,7 @@ final class SyncCache
     {
         foreach ($this->allCatalogProducts() as $course) {
             if ((int) $course['id'] === $productId) {
-                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+                $course['photo'] = (new CatalogPhotoCache($this->pdo))->resolveProductPhoto($course);
 
                 return $course;
             }
@@ -721,12 +763,14 @@ final class SyncCache
 
         foreach ($this->seminars() as $seminar) {
             if ((int) ($seminar['product_id'] ?? 0) === $productId) {
+                $photoCache = new CatalogPhotoCache($this->pdo);
+
                 return [
                     'id' => $productId,
                     'title' => $seminar['title'],
                     'price' => $seminar['price'] ?? 0,
                     'sale_price' => $seminar['sale_price'] ?? null,
-                    'photo' => $seminar['photo'] ?? $seminar['photo_url'] ?? null,
+                    'photo' => $photoCache->resolveSeminarPhoto($seminar),
                     'product_type' => 'seminar',
                     'is_full' => ! empty($seminar['is_full']),
                     'is_ended' => ! empty($seminar['is_ended']),
@@ -748,7 +792,7 @@ final class SyncCache
 
         foreach ($this->allCatalogProducts() as $course) {
             if ((string) ($course['slug'] ?? '') === $slug) {
-                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+                $course['photo'] = (new CatalogPhotoCache($this->pdo))->resolveProductPhoto($course);
 
                 return $course;
             }
@@ -905,37 +949,59 @@ final class SyncCache
         $this->ensureCatalogProductTypeColumn();
         $this->ensureSeminarDiscountColumn();
         $this->ensureSeminarAvailabilityColumns();
+        $this->ensureCatalogPhotoFileIdColumns();
+
+        $photoCache = new CatalogPhotoCache($this->pdo);
+        $existingProductFileIds = $photoCache->existingProductFileIds();
+        $existingProductUrls = $photoCache->existingProductPhotoUrls();
+        $existingSeminarFileIds = $photoCache->existingSeminarFileIds();
+        $existingSeminarUrls = $photoCache->existingSeminarPhotoUrls();
 
         $this->pdo->exec('DELETE FROM catalog_products');
         $this->pdo->exec('DELETE FROM catalog_seminars');
 
         $courseStmt = $this->pdo->prepare(
-            'INSERT INTO catalog_products (id, slug, title, price, sale_price, photo_url, product_type, synced_at)
-             VALUES (:id, :slug, :title, :price, :sale_price, :photo_url, :product_type, NOW())',
+            'INSERT INTO catalog_products (id, slug, title, price, sale_price, photo_url, telegram_photo_file_id, product_type, synced_at)
+             VALUES (:id, :slug, :title, :price, :sale_price, :photo_url, :telegram_photo_file_id, :product_type, NOW())',
         );
         foreach ($courses as $course) {
+            $id = (int) $course['id'];
+            $photoUrl = $this->catalogPhotoSource($course);
+            $fileId = trim((string) ($course['telegram_photo_file_id'] ?? ''));
+            if ($fileId === '' && isset($existingProductUrls[$id]) && $existingProductUrls[$id] === $photoUrl) {
+                $fileId = $existingProductFileIds[$id] ?? '';
+            }
+
             $courseStmt->execute([
-                'id' => (int) $course['id'],
+                'id' => $id,
                 'slug' => (string) $course['slug'],
                 'title' => (string) $course['title'],
                 'price' => $course['price'] ?? null,
                 'sale_price' => $course['sale_price'] ?? null,
-                'photo_url' => $course['photo'] ?? null,
+                'photo_url' => $photoUrl !== '' ? $photoUrl : null,
+                'telegram_photo_file_id' => $fileId !== '' ? $fileId : null,
                 'product_type' => (string) ($course['product_type'] ?? 'course'),
             ]);
         }
 
         $seminarStmt = $this->pdo->prepare(
-            'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, is_full, is_ended, slug, price, sale_price, photo_url, reference_discount_amount, synced_at)
-             VALUES (:id, :product_id, :title, :date, :location, :capacity_hint, :is_full, :is_ended, :slug, :price, :sale_price, :photo_url, :reference_discount_amount, NOW())',
+            'INSERT INTO catalog_seminars (id, product_id, title, seminar_date, location, capacity_hint, is_full, is_ended, slug, price, sale_price, photo_url, telegram_photo_file_id, reference_discount_amount, synced_at)
+             VALUES (:id, :product_id, :title, :date, :location, :capacity_hint, :is_full, :is_ended, :slug, :price, :sale_price, :photo_url, :telegram_photo_file_id, :reference_discount_amount, NOW())',
         );
         foreach ($seminars as $seminar) {
+            $id = (int) $seminar['id'];
             $capacityHint = $seminar['capacity_hint'] ?? null;
             $isFull = ! empty($seminar['is_full'])
                 || ($capacityHint !== null && $capacityHint !== '' && (int) $capacityHint <= 0);
             $isEnded = ! empty($seminar['is_ended']);
+            $photoUrl = $this->catalogPhotoSource($seminar);
+            $fileId = trim((string) ($seminar['telegram_photo_file_id'] ?? ''));
+            if ($fileId === '' && isset($existingSeminarUrls[$id]) && $existingSeminarUrls[$id] === $photoUrl) {
+                $fileId = $existingSeminarFileIds[$id] ?? '';
+            }
+
             $seminarStmt->execute([
-                'id' => (int) $seminar['id'],
+                'id' => $id,
                 'product_id' => $seminar['product_id'] ?? null,
                 'title' => (string) ($seminar['title']),
                 'date' => $this->toMysqlDateTime($seminar['date'] ?? null),
@@ -946,12 +1012,29 @@ final class SyncCache
                 'slug' => (string) ($seminar['slug'] ?? ''),
                 'price' => $seminar['price'] ?? null,
                 'sale_price' => $seminar['sale_price'] ?? null,
-                'photo_url' => $seminar['photo'] ?? null,
+                'photo_url' => $photoUrl !== '' ? $photoUrl : null,
+                'telegram_photo_file_id' => $fileId !== '' ? $fileId : null,
                 'reference_discount_amount' => (int) ($seminar['reference_discount_amount'] ?? 0),
             ]);
         }
 
         $this->warmCatalogHotCache();
+    }
+
+    /** @param array<string, mixed> $item */
+    private function catalogPhotoSource(array $item): string
+    {
+        $source = trim((string) ($item['photo_source'] ?? ''));
+        if ($source !== '') {
+            return $source;
+        }
+
+        $photo = trim((string) ($item['photo'] ?? $item['photo_url'] ?? ''));
+        if ($photo === '' || CatalogPhotoCache::looksLikeUrl($photo)) {
+            return $photo;
+        }
+
+        return '';
     }
 
     /** @param list<array<string, mixed>> $channels */
@@ -1019,6 +1102,26 @@ final class SyncCache
         $ready = true;
     }
 
+    private function ensureCatalogPhotoFileIdColumns(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+
+        foreach (['catalog_products', 'catalog_seminars'] as $table) {
+            try {
+                $this->pdo->exec(
+                    "ALTER TABLE {$table} ADD COLUMN telegram_photo_file_id VARCHAR(255) NULL AFTER photo_url",
+                );
+            } catch (\Throwable) {
+                // column already exists
+            }
+        }
+
+        $ready = true;
+    }
+
     /** @return array<string, mixed>|null */
     public function findReferenceChannelProduct(): ?array
     {
@@ -1032,13 +1135,13 @@ final class SyncCache
 
         foreach ($this->allCatalogProducts() as $course) {
             if ((string) ($course['product_type'] ?? '') === 'reference_channel') {
-                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+                $course['photo'] = (new CatalogPhotoCache($this->pdo))->resolveProductPhoto($course);
 
                 return $course;
             }
             $slug = (string) ($course['slug'] ?? '');
             if (str_starts_with($slug, 'reference-')) {
-                $course['photo'] = $course['photo'] ?? $course['photo_url'] ?? null;
+                $course['photo'] = (new CatalogPhotoCache($this->pdo))->resolveProductPhoto($course);
 
                 return $course;
             }

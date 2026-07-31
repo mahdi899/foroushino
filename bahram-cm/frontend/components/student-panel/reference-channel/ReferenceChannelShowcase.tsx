@@ -3,6 +3,7 @@ import { ExternalLink, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { PanelTomanAmount } from '@/components/student-panel/ui/PanelTomanAmount';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
+import { TelegramBotLaunchButton } from '@/components/student-panel/reference-channel/TelegramBotLaunchButton';
 import { formatSeminarDiscountCopy } from '@/lib/commerce/seminarDiscountCopy';
 import { sitePhotos } from '@/lib/site-photo-paths';
 
@@ -144,15 +145,7 @@ export function ReferenceChannelShowcase({
         channel.identity_ready &&
         !channel.invite_url &&
         channel.bot_start_url ? (
-          <a
-            href={channel.bot_start_url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-primary w-full"
-          >
-            <ExternalLink size={16} />
-            ورود سریع به ربات تلگرام
-          </a>
+          <TelegramBotLaunchButton href={channel.bot_start_url} />
         ) : null}
 
         {owned && channel.identity_ready && !channel.invite_url && !channel.bot_start_url ? (

@@ -11,11 +11,13 @@ use Illuminate\Console\Command;
 class TelegramHostSyncAccountsCommand extends Command
 {
     protected $signature = 'telegram:host-sync-accounts
-        {--limit=5000 : Max verified accounts to sync}
+        {--limit=100 : Max accounts to sync}
         {--sync : Push immediately (no queue) so host gets accounts now}
-        {--skip-catalog : Skip catalog/bootstrap refresh (accounts only)}';
+        {--skip-catalog : Skip catalog/bootstrap refresh (accounts only)}
+        {--reconcile-only : Only recent buyers + recently touched accounts (default for schedule)}
+        {--full : Push all verified accounts up to limit (heavy — manual backfill)}';
 
-    protected $description = 'Push all verified Telegram accounts (+ recent buyers) and refresh catalog/bootstrap on the external host — the 5-minute reconcile cycle.';
+    protected $description = 'Push Telegram accounts to the external host. Default: small reconcile batch (event-driven handles normal traffic).';
 
     public function handle(
         TelegramHostAccountSync $sync,
@@ -29,14 +31,25 @@ class TelegramHostSyncAccountsCommand extends Command
         }
 
         if ($this->option('sync')) {
-            $ok = $this->pushNow($sync, $snapshots, $push, $limit);
+            $collection = $this->option('full')
+                ? $sync->accountsToSync($limit)
+                : $sync->accountsNeedingReconcile($limit);
+            $ok = $this->pushNow($sync, $snapshots, $push, $collection);
+
             $this->info("Pushed {$ok['pushed']} account(s) to host ({$ok['failed']} failed).");
 
             return $ok['failed'] > 0 ? self::FAILURE : self::SUCCESS;
         }
 
-        $queued = $sync->queuePushAllVerified($limit);
-        $this->info("Queued {$queued} account(s) for host push.");
+        if ($this->option('full')) {
+            $queued = $sync->queuePushAllVerified($limit);
+            $this->info("Queued {$queued} verified account(s) for host push (full scan).");
+
+            return self::SUCCESS;
+        }
+
+        $queued = $sync->queueReconcileBatch($limit);
+        $this->info("Queued {$queued} account(s) for reconcile push (recent buyers / touched rows only).");
 
         return self::SUCCESS;
     }
@@ -50,18 +63,19 @@ class TelegramHostSyncAccountsCommand extends Command
     }
 
     /**
+     * @param  \Illuminate\Support\Collection<int, TelegramAccount>  $accounts
      * @return array{pushed: int, failed: int}
      */
     private function pushNow(
         TelegramHostAccountSync $sync,
         TelegramHostAccountSnapshotService $snapshots,
         TelegramHostPushService $push,
-        int $limit,
+        \Illuminate\Support\Collection $accounts,
     ): array {
         $pushed = 0;
         $failed = 0;
 
-        $sync->accountsToSync($limit)->each(function (TelegramAccount $account) use ($snapshots, $push, &$pushed, &$failed): void {
+        $accounts->each(function (TelegramAccount $account) use ($snapshots, $push, &$pushed, &$failed): void {
             $payload = $snapshots->accountPayload($account->fresh(['user', 'bot']));
             if ($push->pushAccount($payload)) {
                 $pushed++;

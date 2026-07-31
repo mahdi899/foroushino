@@ -14,7 +14,7 @@ alwaysApply: true
 یکی از این دو روش:
 
 **الف) پنل ادمین (ترجیحی)**  
-`http://localhost:3000/admin` → کتابخانه رسانه / Media Library → آپلود
+`https://rostami.app/admin` → کتابخانه رسانه / Media Library → آپلود
 
 **ب) فایل در storage (برای توسعه‌دهنده)**  
 فایل را با نام معنادار در این مسیر بگذار:

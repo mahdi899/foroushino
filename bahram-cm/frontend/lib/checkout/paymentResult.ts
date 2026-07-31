@@ -13,6 +13,8 @@ export type VerifiedPaymentResult = {
   product_slug: string | null;
   product_type?: string | null;
   is_reference_channel?: boolean;
+  identity_verified?: boolean;
+  bot_start_url?: string | null;
 };
 
 export async function getVerifiedPaymentResult(

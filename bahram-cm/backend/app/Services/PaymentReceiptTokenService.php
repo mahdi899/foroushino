@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\UserIdentityProfile;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -47,7 +49,9 @@ class PaymentReceiptTokenService
      *     order_number: ?string,
      *     product_slug: ?string,
      *     product_type: ?string,
-     *     is_reference_channel: bool
+     *     is_reference_channel: bool,
+     *     identity_verified: bool,
+     *     bot_start_url: ?string
      * }|null
      */
     public function resolve(string $token): ?array
@@ -93,6 +97,8 @@ class PaymentReceiptTokenService
                 'product_slug' => null,
                 'product_type' => null,
                 'is_reference_channel' => false,
+                'identity_verified' => false,
+                'bot_start_url' => null,
             ];
         }
 
@@ -112,12 +118,25 @@ class PaymentReceiptTokenService
         $product = $order->product;
         $isReference = $product?->isReferenceChannelProduct() ?? false;
 
+        $identityVerified = false;
+        $botStartUrl = null;
+
+        if ($isReference) {
+            $level = (int) (UserIdentityProfile::query()
+                ->where('user_id', $order->user_id)
+                ->value('verification_level') ?? 1);
+            $identityVerified = $level >= 2;
+            $botStartUrl = TelegramSiteUrl::botStartDeepLink('reference');
+        }
+
         return [
             'status' => $status,
             'order_number' => $order->order_number,
             'product_slug' => $product?->slug,
             'product_type' => $product?->type,
             'is_reference_channel' => $isReference,
+            'identity_verified' => $identityVerified,
+            'bot_start_url' => $botStartUrl,
         ];
     }
 

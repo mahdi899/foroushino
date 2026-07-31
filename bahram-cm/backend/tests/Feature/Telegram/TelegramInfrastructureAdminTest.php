@@ -2,15 +2,18 @@
 
 namespace Tests\Feature\Telegram;
 
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Enums\AdminRoleName;
 use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Services\SettingService;
+use App\Services\TelegramHostPushService;
 use App\Services\TelegramInfrastructureService;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\TelegramBotSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -108,5 +111,41 @@ class TelegramInfrastructureAdminTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.support_group_chat_id', '-1005244383790')
             ->assertJsonPath('data.0.payment_reports_chat_id', '-1005244383790');
+    }
+
+    public function test_admin_can_trigger_host_push_sync(): void
+    {
+        $this->mock(TelegramHostPushService::class, function ($mock): void {
+            $mock->shouldReceive('refreshBootstrap')->once()->andReturn(true);
+            $mock->shouldReceive('refreshCatalog')->once()->andReturn(true);
+            $mock->shouldReceive('pushAccount')->andReturn(true);
+        });
+
+        $this->postJson('/api/v1/panel/telegram/infrastructure/push-host-sync', [
+            'scope' => 'full',
+            'limit' => 5,
+        ])->assertOk()
+            ->assertJsonPath('data.ok', true)
+            ->assertJsonPath('data.bootstrap', true)
+            ->assertJsonPath('data.catalog', true);
+    }
+
+    public function test_toggling_bot_active_dispatches_bootstrap_push(): void
+    {
+        Queue::fake();
+
+        $this->mock(TelegramHostPushService::class, function ($mock): void {
+            $mock->shouldReceive('refreshBootstrap')->once()->andReturn(true);
+        });
+
+        $bot = TelegramBot::query()->where('key', 'production')->firstOrFail();
+        $next = ! $bot->is_active;
+
+        $this->patchJson("/api/v1/panel/telegram/bots/{$bot->id}", [
+            'is_active' => $next,
+        ])->assertOk()
+            ->assertJsonPath('data.is_active', $next);
+
+        Queue::assertPushed(PushTelegramHostSyncJob::class, fn (PushTelegramHostSyncJob $job) => $job->action === 'refresh_bootstrap');
     }
 }

@@ -13,13 +13,15 @@ use TelegramHost\Support\IranSyncFailureException;
  * Talks to the main Laravel server's `telegram-host` sync API over HTTPS:
  * Bearer `host_sync_token` + JSON request/response (no AES/HMAC wire format).
  *
- * Wrapped with a circuit breaker: once Iran is confirmed down, further calls
- * fail instantly instead of each burning a fresh multi-second timeout — this
- * is what previously made every webhook hang and the outage alert repeat for
- * every single update while Iran was unreachable.
+ * Reuses a single cURL handle per PHP process (keep-alive + HTTP/2) to avoid
+ * repeated TLS handshakes on the Iran↔foreign hop.
  */
 final class SyncClient
 {
+    private static ?\CurlHandle $handle = null;
+
+    private static string $lastBaseUrl = '';
+
     private readonly IranCircuitBreaker $breaker;
 
     private readonly CheckoutCircuitBreaker $checkoutBreaker;
@@ -34,11 +36,6 @@ final class SyncClient
     /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
-     */
-    /**
-     * Default is 8s (was 4s) — Iran normally answers in well under 1s, but
-     * occasional GC/load spikes pushed real responses just past a 4s cutoff,
-     * making healthy-but-slightly-slow calls look like outages.
      */
     public function call(string $path, array $payload = [], int $timeoutSeconds = 8, bool $allowRetry = true): array
     {
@@ -115,29 +112,35 @@ final class SyncClient
             throw new \RuntimeException('Host sync token is not configured.');
         }
 
-        $ch = curl_init(rtrim((string) $this->config['sync_base_url'], '/').'/'.ltrim($path, '/'));
+        $url = rtrim((string) $this->config['sync_base_url'], '/').'/'.ltrim($path, '/');
+        $ch = $this->connection($url);
+        $headers = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'Authorization: Bearer '.$token,
+            'X-Proxy-Origin: '.($this->config['proxy_origin'] ?? 'Telegram-Host-App'),
+        ];
+
         curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $json,
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
-            // Allow a bit more connect time on the Iran hop (TLS / WAF) without
-            // burning the whole request budget.
             CURLOPT_CONNECTTIMEOUT => max(2, min(5, $timeoutSeconds)),
             CURLOPT_TIMEOUT => max(1, $timeoutSeconds),
-            CURLOPT_ENCODING => '',
+            CURLOPT_ENCODING => 'gzip',
             CURLOPT_TCP_KEEPALIVE => 1,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'Accept: application/json',
-                'Authorization: Bearer '.$token,
-                'X-Proxy-Origin: '.($this->config['proxy_origin'] ?? 'Telegram-Host-App'),
-            ],
+            CURLOPT_FORBID_REUSE => false,
+            CURLOPT_FRESH_CONNECT => false,
+            CURLOPT_HTTP_VERSION => defined('CURL_HTTP_VERSION_2TLS')
+                ? CURL_HTTP_VERSION_2TLS
+                : (defined('CURL_HTTP_VERSION_2_0') ? CURL_HTTP_VERSION_2_0 : CURL_HTTP_VERSION_1_1),
         ]);
 
         $body = curl_exec($ch);
-        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
 
         if ($body === false) {
             throw new \RuntimeException('Sync request failed: '.$error);
@@ -149,9 +152,6 @@ final class SyncClient
         }
 
         if ($status >= 400) {
-            // Business replies from Iran (validation / not registered / not admin)
-            // come back as 4xx + {ok:false}. Treat them as normal responses so we
-            // do NOT trip the circuit breaker and kill checkout/admin for everyone.
             if ($status < 500 && array_key_exists('ok', $decoded)) {
                 return $decoded;
             }
@@ -162,5 +162,23 @@ final class SyncClient
         }
 
         return $decoded;
+    }
+
+    private function connection(string $url): \CurlHandle
+    {
+        $baseUrl = rtrim((string) $this->config['sync_base_url'], '/');
+        if (self::$handle !== null && self::$lastBaseUrl === $baseUrl) {
+            return self::$handle;
+        }
+
+        if (self::$handle !== null) {
+            curl_close(self::$handle);
+            self::$handle = null;
+        }
+
+        self::$handle = curl_init($url);
+        self::$lastBaseUrl = $baseUrl;
+
+        return self::$handle;
     }
 }

@@ -34,7 +34,7 @@ import {
 import { getPublicProductBySlug } from "@/lib/services/products";
 import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 
-const WAP_PRICE = 200_000_000;
+const WAP_PRICE = 50_000_000;
 
 export const metadata: Metadata = buildMetadata({
   title: "سات · سیستم عملیاتی فروش",

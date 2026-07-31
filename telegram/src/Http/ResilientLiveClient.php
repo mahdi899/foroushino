@@ -67,6 +67,18 @@ final class ResilientLiveClient
         );
     }
 
+    /** Short-timeout revoke for menu navigation — must not queue webhooks. */
+    public function checkoutRevokeOpenBestEffort(int $chatId, int $telegramUserId): array
+    {
+        return $this->invoke(
+            $chatId,
+            $telegramUserId,
+            'باطل‌سازی لینک پرداخت',
+            fn () => $this->live->checkoutRevokeOpenBestEffort($telegramUserId),
+            showTyping: false,
+        );
+    }
+
     /** @return array<string, mixed> */
     public function checkoutC2c(int $chatId, int $telegramUserId, int $productId, ?string $coupon = null): array
     {

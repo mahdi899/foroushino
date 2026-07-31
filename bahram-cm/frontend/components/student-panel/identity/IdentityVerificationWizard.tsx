@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { JalaliDateField } from '@/components/ui/JalaliDateField';
+import { JalaliWheelDateField } from '@/components/ui/JalaliWheelDateField';
 import { LiveSelfieVideoStep } from './LiveSelfieVideoStep';
 import { NationalCardUploadStep } from './NationalCardUploadStep';
 import { IdentityVerificationFeedback } from './IdentityVerificationFeedback';
@@ -22,7 +22,12 @@ import {
 } from '@/lib/student/identityVerificationErrors';
 import { SELFIE_VIDEO_MAX_BYTES, selfieVideoFileName } from '@/lib/media/recorder';
 import { optimizeSelfieVideo, pickSmallerVideoBlob } from '@/lib/media/optimizeSelfieVideo';
-import { maxBirthDateForMinAge, MIN_IDENTITY_AGE } from '@/lib/student/age';
+import {
+  MAX_IDENTITY_AGE,
+  maxBirthDateForMinAge,
+  MIN_IDENTITY_AGE,
+  minBirthDateForMaxAge,
+} from '@/lib/student/age';
 import { IdentityReviewStep } from './IdentityReviewStep';
 import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
 
@@ -80,6 +85,7 @@ export function IdentityVerificationWizard({
   const [pendingLabel, setPendingLabel] = useState('ارسال برای بررسی');
   const [pending, startTransition] = useTransition();
   const maxBirthDate = useMemo(() => maxBirthDateForMinAge(MIN_IDENTITY_AGE), []);
+  const minBirthDate = useMemo(() => minBirthDateForMaxAge(MAX_IDENTITY_AGE), []);
 
   useEffect(() => {
     const main = document.querySelector<HTMLElement>('.panel-main-content');
@@ -338,13 +344,13 @@ export function IdentityVerificationWizard({
               <label className="field-label" htmlFor="date_of_birth" id="date_of_birth-label">
                 تاریخ تولد
               </label>
-              <JalaliDateField
+              <JalaliWheelDateField
                 id="date_of_birth"
                 value={draft.date_of_birth}
                 onChange={(date_of_birth) => setDraft((d) => ({ ...d, date_of_birth }))}
-                placeholder="مثال: ۱۳۷۵/۰۳/۱۵"
+                placeholder="مثال: ۱۳۷۵ / خرداد / ۱۵"
+                minDate={minBirthDate}
                 maxDate={maxBirthDate}
-                required
               />
             </div>
             <div>

@@ -119,6 +119,8 @@ class IdentityVerificationAdminController extends Controller
                 'size_bytes' => $a->size_bytes,
                 'original_name' => $a->original_name,
             ]),
+            'artifacts_purged' => $submission->status === IdentityVerificationStatus::Approved
+                && $submission->artifacts->isEmpty(),
             'reviews' => $submission->reviews->map(fn ($r) => [
                 'id' => $r->id,
                 'action' => $r->action->value,
@@ -357,6 +359,8 @@ class IdentityVerificationAdminController extends Controller
             'ownership_locked' => $s->identityProfile?->mobile_ownership_status?->value === 'locked',
             'registry_match_status' => $s->registry_match_status,
             'mobile_match_status' => $s->mobile_match_status,
+            'verification_level' => $s->identityProfile?->verification_level,
+            'identity_verified_at' => $s->identityProfile?->identity_verified_at?->toIso8601String(),
         ];
     }
 }

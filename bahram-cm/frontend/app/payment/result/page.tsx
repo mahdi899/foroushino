@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckCircle2, Clock, RotateCcw, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Radio, RotateCcw, XCircle } from "lucide-react";
 import { ClearCartOnPurchase } from "@/components/commerce/ClearCartOnPurchase";
 import { PaymentResultCard } from "@/components/commerce/PaymentResultCard";
 import { PaymentResultPanelButton } from "@/components/commerce/PaymentResultPanelButton";
+import { ReferenceChannelIdentityGate } from "@/components/commerce/ReferenceChannelIdentityGate";
 import { Reveal } from "@/components/motion/Reveal";
 import { LinkButton } from "@/components/ui/Button";
 import { getVerifiedPaymentResult, type PaymentResultStatus } from "@/lib/checkout/paymentResult";
@@ -107,7 +108,9 @@ export default async function PaymentResultPage({
                 title={COPY[verified.status].title}
                 body={
                   verified.status === "success" && verified.is_reference_channel
-                    ? "پرداخت ثبت شد. برای عضویت در کانال مرجع، احراز هویت را کامل کنید."
+                    ? verified.identity_verified
+                      ? "پرداخت ثبت شد و احراز هویت شما تأیید شده است. برای دریافت دسترسی، وارد ربات تلگرام شوید."
+                      : "پرداخت ثبت شد؛ اما برای عضویت در کانال مرجع باید احراز هویت را کامل کنید."
                     : COPY[verified.status].body
                 }
                 icon={COPY[verified.status].icon}
@@ -115,22 +118,44 @@ export default async function PaymentResultPage({
               >
                 {verified.status === "success" ? (
                   <div className="flex w-full flex-col items-center gap-3">
-                    {verified.is_reference_channel ? (
+                    {verified.is_reference_channel && !verified.identity_verified ? (
+                      <ReferenceChannelIdentityGate
+                        receiptToken={token!}
+                        isLoggedIn={Boolean(student)}
+                      />
+                    ) : null}
+
+                    {verified.is_reference_channel && verified.identity_verified ? (
+                      <>
+                        {verified.bot_start_url ? (
+                          <a
+                            href={verified.bot_start_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="payment-result-card__primary neon-btn-primary inline-flex h-12 min-h-12 items-center justify-center gap-2 rounded-pill px-7 text-sm font-semibold md:text-body"
+                          >
+                            <Radio className="h-4 w-4" aria-hidden />
+                            ورود به ربات تلگرام
+                          </a>
+                        ) : null}
+                        <PaymentResultPanelButton
+                          receiptToken={token!}
+                          isLoggedIn={Boolean(student)}
+                          href="/panel/reference-channel"
+                          label="عضویت در مرجع"
+                          variant={verified.bot_start_url ? "secondary" : "primary"}
+                        />
+                      </>
+                    ) : null}
+                    {!verified.is_reference_channel ? (
                       <PaymentResultPanelButton
                         receiptToken={token!}
                         isLoggedIn={Boolean(student)}
-                        href="/panel/reference-channel"
-                        label="عضویت در مرجع"
+                        href="/panel"
+                        label="ورود به پنل کاربری"
                         variant="primary"
                       />
                     ) : null}
-                    <PaymentResultPanelButton
-                      receiptToken={token!}
-                      isLoggedIn={Boolean(student)}
-                      href="/panel"
-                      label="ورود به پنل کاربری"
-                      variant={verified.is_reference_channel ? "secondary" : "primary"}
-                    />
                   </div>
                 ) : verified.status === "pending" ? (
                   <>

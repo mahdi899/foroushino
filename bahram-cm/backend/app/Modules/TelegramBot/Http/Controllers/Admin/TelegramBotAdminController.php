@@ -11,6 +11,7 @@ use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
 use App\Modules\TelegramBot\Services\BotResolver;
 use App\Modules\TelegramBot\Services\HealthCheckService;
 use App\Modules\TelegramBot\Services\TelegramWebhookRegisteredNotifier;
+use App\Services\TelegramHostPushService;
 use App\Services\TelegramInfrastructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class TelegramBotAdminController
         private readonly TelegramBotClientFactory $clients,
         private readonly TelegramInfrastructureService $infrastructure,
         private readonly TelegramWebhookRegisteredNotifier $webhookRegisteredNotifier,
+        private readonly TelegramHostPushService $hostPush,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -100,6 +102,8 @@ class TelegramBotAdminController
             PushTelegramHostSyncJob::bootstrap();
         }
 
+        $isActiveTouched = array_key_exists('is_active', $data);
+
         if (array_key_exists('bot_token_input', $data)) {
             $token = trim((string) $data['bot_token_input']);
             if ($token !== '') {
@@ -110,6 +114,12 @@ class TelegramBotAdminController
 
         if ($data !== []) {
             $bot->update($data);
+        }
+
+        if ($isActiveTouched) {
+            // Push immediately so the foreign host reflects on/off without waiting for queue.
+            $this->hostPush->refreshBootstrap();
+            PushTelegramHostSyncJob::bootstrap();
         }
 
         return response()->json(['data' => $this->payload($bot->fresh(), null, detailed: true)]);

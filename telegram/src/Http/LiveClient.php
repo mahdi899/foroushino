@@ -88,6 +88,22 @@ final class LiveClient
         ], 8);
     }
 
+    /**
+     * Menu navigation — must not block the webhook on a slow Iran hop.
+     *
+     * @return array<string, mixed>
+     */
+    public function checkoutRevokeOpenBestEffort(int $telegramUserId): array
+    {
+        try {
+            return $this->live('checkout/revoke-open', [
+                'telegram_user_id' => $telegramUserId,
+            ], 2, false);
+        } catch (\Throwable) {
+            return ['ok' => false, 'offline' => true];
+        }
+    }
+
     /** @return array<string, mixed> */
     public function checkoutC2c(int $telegramUserId, int $chatId, int $productId, ?string $coupon = null): array
     {
@@ -122,9 +138,9 @@ final class LiveClient
     }
 
     /** @return array<string, mixed> */
-    public function userProfile(int $telegramUserId): array
+    public function userProfile(int $telegramUserId, int $timeoutSeconds = 8): array
     {
-        return $this->live('user/profile', ['telegram_user_id' => $telegramUserId], 8, false);
+        return $this->live('user/profile', ['telegram_user_id' => $telegramUserId], $timeoutSeconds, false);
     }
 
     /** @return array<string, mixed> */

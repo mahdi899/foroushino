@@ -51,6 +51,9 @@ class DisplayNameValidatorTest extends TestCase
             ['Ali123'],
             ['https://spam.test'],
             ['😀'],
+            ['<script>alert(1)</script>'],
+            ['علی{js}'],
+            ['onerror=alert(1)'],
         ];
     }
 }

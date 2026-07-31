@@ -70,6 +70,7 @@ export type IdentityVerificationDetail = IdentityVerificationListItem & {
   expected_video_text?: string | null;
   required_corrections?: string[] | null;
   artifacts?: IdentityArtifact[];
+  artifacts_purged?: boolean;
   reviews?: IdentityReview[];
   can_view_documents?: boolean;
   can_reveal_national_code?: boolean;

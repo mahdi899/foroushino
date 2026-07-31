@@ -94,13 +94,22 @@ echo "==> Reload php8.4-fpm"
 systemctl reload php8.4-fpm 2>/dev/null || systemctl restart php8.4-fpm 2>/dev/null || true
 
 if [[ -f "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" ]]; then
-  echo "==> Nginx media CORS"
+  echo "==> Nginx snippets + sites"
   mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
   cp "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" /etc/nginx/snippets/media-cors.conf
   cp "$APP_ROOT/deploy/nginx/snippets/media-stream.conf" /etc/nginx/snippets/media-stream.conf
+  if [[ -f "$APP_ROOT/deploy/nginx/snippets/updating-page.conf" ]]; then
+    cp "$APP_ROOT/deploy/nginx/snippets/updating-page.conf" /etc/nginx/snippets/updating-page.conf
+  fi
   cp "$APP_ROOT/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
   if [[ -f "$APP_ROOT/deploy/nginx/rostami-app.conf" && -f /etc/nginx/sites-available/rostami-app.conf ]]; then
-    cp "$APP_ROOT/deploy/nginx/rostami-app.conf" /etc/nginx/sites-available/rostami-app.conf
+    if grep -q 'listen 443' /etc/nginx/sites-available/rostami-app.conf 2>/dev/null; then
+      cp "$APP_ROOT/deploy/nginx/rostami-app.conf" /etc/nginx/sites-available/rostami-app.conf
+    elif [[ -f "$APP_ROOT/deploy/nginx/rostami-app-origin.conf" ]]; then
+      cp "$APP_ROOT/deploy/nginx/rostami-app-origin.conf" /etc/nginx/sites-available/rostami-app.conf
+    else
+      cp "$APP_ROOT/deploy/nginx/rostami-app.conf" /etc/nginx/sites-available/rostami-app.conf
+    fi
   fi
   if [[ -f "$APP_ROOT/deploy/nginx/rostami-club.conf" && -f /etc/nginx/sites-available/rostami-club.conf ]]; then
     cp "$APP_ROOT/deploy/nginx/rostami-club.conf" /etc/nginx/sites-available/rostami-club.conf

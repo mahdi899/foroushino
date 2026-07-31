@@ -200,6 +200,7 @@ return [
         'supervisor-telegram' => [
             'connection' => 'redis',
             'queue' => [
+                'telegram-host',
                 'telegram-inbound',
                 'telegram-replies',
             ],

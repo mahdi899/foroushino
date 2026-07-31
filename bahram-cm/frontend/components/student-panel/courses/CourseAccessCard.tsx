@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { Calendar, KeyRound, Play } from 'lucide-react';
 import { CopyTextButton } from '@/components/student-panel/ui/CopyTextButton';
+import { SpotPlayerTokenButton } from '@/components/student-panel/courses/SpotPlayerTokenButton';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 
@@ -53,13 +53,7 @@ export function CourseAccessCard({
   const licenseKey = course.spotplayer?.license_key;
   const spotplayerCourseId = course.spotplayer?.spotplayer_course_id ?? course.product?.spotplayer_course_id;
   const hasSpotPlayer = Boolean(spotplayerCourseId);
-  const canWatch = Boolean(course.id) && course.is_active && Boolean(licenseKey) && hasSpotPlayer;
-  const watchHref =
-    course.id && course.license_id
-      ? `/panel/courses/${course.id}/watch?license=${course.license_id}`
-      : course.id
-        ? `/panel/courses/${course.id}/watch`
-        : null;
+  const canOpenSpotPlayer = course.is_active && Boolean(licenseKey) && hasSpotPlayer;
 
   return (
     <article className="card group flex h-full flex-col overflow-hidden transition hover:border-primary/30 hover:shadow-glow">
@@ -120,11 +114,8 @@ export function CourseAccessCard({
       </div>
 
       <div className="border-t border-border p-4">
-        {canWatch && watchHref ? (
-          <Link href={watchHref} className="btn btn-primary w-full">
-            <Play size={16} className="fill-current" />
-            تماشای دوره
-          </Link>
+        {canOpenSpotPlayer && licenseKey ? (
+          <SpotPlayerTokenButton licenseKey={licenseKey} />
         ) : (
           <span className="panel-text-meta flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
             {!hasSpotPlayer

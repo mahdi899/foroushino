@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Account\PendingMobileAccess;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\SyncClient;
 use TelegramHost\Queue\PendingRegistrationSync;
+use TelegramHost\Support\DisplayNameSanitizer;
 use TelegramHost\Support\InlineButtons;
 use TelegramHost\Support\MobileNormalizer;
 use TelegramHost\Telegram\BotApiClient;
@@ -29,6 +31,7 @@ final class HostRegistrationFlow
         private readonly PendingRegistrationSync $registrationQueue,
         private readonly ?MembershipGate $membership = null,
         private readonly ?PendingMobileAccess $pendingMobileAccess = null,
+        private readonly ?AccountSyncCoordinator $accountSync = null,
     ) {}
 
     /**
@@ -94,8 +97,8 @@ final class HostRegistrationFlow
         $this->showLocalWelcome($chatId, $telegramUserId);
     }
 
-    /** @param array<string, mixed> $contact */
-    public function contact(int $chatId, int $telegramUserId, array $contact): void
+    /** @param array<string, mixed> $contact @param array<string, mixed> $from */
+    public function contact(int $chatId, int $telegramUserId, array $contact, array $from = []): void
     {
         if ($this->accounts->isVerified($telegramUserId)) {
             $this->showMainMenu($chatId, $telegramUserId);
@@ -103,6 +106,48 @@ final class HostRegistrationFlow
             return;
         }
 
+        try {
+            $this->handleContact($chatId, $telegramUserId, $contact, $from);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration contact: '.$e->getMessage());
+            $conv = $this->conversations->get($telegramUserId);
+            $phone = trim((string) ($conv['context']['mobile'] ?? ''));
+            if ($phone === '') {
+                $phone = MobileNormalizer::normalizeForRegistration(
+                    trim((string) ($contact['phone_number'] ?? '')),
+                    $this->cache->featureEnabled('iran_mobile_only'),
+                ) ?? '';
+            }
+            if ($phone !== '' && $this->attemptOfflineContactRecovery($chatId, $telegramUserId, $phone, $from)) {
+                return;
+            }
+            $this->conversations->set($telegramUserId, 'waiting_for_mobile', $phone !== '' ? ['mobile' => $phone] : []);
+            $this->sendPhoneStepMessage($chatId, $this->cache->message(
+                'registration_contact_error',
+                'خطا در پردازش شماره. لطفاً دوباره روی «ارسال شماره تماس» بزنید.',
+            ));
+        }
+    }
+
+    public function remindPhoneShare(int $chatId, int $telegramUserId, string $text): void
+    {
+        if ($this->accounts->isVerified($telegramUserId)) {
+            $this->showMainMenu($chatId, $telegramUserId);
+
+            return;
+        }
+
+        $this->conversations->set($telegramUserId, 'waiting_for_mobile', []);
+        $this->sendPhoneStepMessage($chatId, $this->cache->message(
+            'registration_use_share_button',
+            "❗️ شماره را تایپ نکنید.\n\n"
+            ."منوی پایین صفحه را باز کنید و فقط روی «ارسال شماره تماس» بزنید.",
+        ));
+    }
+
+    /** @param array<string, mixed> $contact @param array<string, mixed> $from */
+    private function handleContact(int $chatId, int $telegramUserId, array $contact, array $from = []): void
+    {
         $rawPhone = trim((string) ($contact['phone_number'] ?? ''));
         $contactUserId = (int) ($contact['user_id'] ?? 0);
 
@@ -144,18 +189,36 @@ final class HostRegistrationFlow
             return;
         }
 
+        $this->reclaimLocalRowByMobile($telegramUserId, $phone);
+
         $pending = $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
+        $this->conversations->set($telegramUserId, 'waiting_for_mobile', ['mobile' => $phone]);
+
+        $loading = $this->api->sendMessageResult($chatId, '⏳ در حال بررسی شماره...');
+        $loadingId = (int) ($loading['message_id'] ?? 0);
+
         $iranResponse = $this->trySyncContactWithIran($telegramUserId, $phone, $contactUserId);
-        if ($iranResponse !== null && ! empty($iranResponse['ok'])) {
+
+        if ($iranResponse !== null) {
+            if ($loadingId > 0) {
+                $this->api->deleteMessage($chatId, $loadingId);
+            }
             $this->apply($chatId, $telegramUserId, $iranResponse);
-            $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
+            $this->pullFullAccountSnapshot($telegramUserId);
 
-            return;
-        }
+            if ($this->contactStepResolved($telegramUserId)) {
+                return;
+            }
+        } else {
+            if ($loadingId > 0) {
+                $this->api->deleteMessage($chatId, $loadingId);
+            }
 
-        if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
-            return;
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'registration_iran_unreachable',
+                '⏳ اتصال به سرور اصلی برقرار نشد. ثبت‌نام موقت انجام می‌شود؛ دسترسی کامل پس از همگام‌سازی فعال می‌شود.',
+            ));
         }
 
         $legacy = $this->accounts->findVerifiedByMobile($phone);
@@ -166,54 +229,118 @@ final class HostRegistrationFlow
             }
         }
 
-        if ($this->accounts->isVerified($telegramUserId)) {
-            $this->showMainMenu($chatId, $telegramUserId);
+        if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
+            $this->pullFullAccountSnapshot($telegramUserId);
             $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
 
             return;
         }
 
         $knownName = $this->resolveLocalStudentName($telegramUserId, $phone, $pending);
-        if ($knownName !== '') {
-            $this->continueAfterPhoneCaptured($chatId, $telegramUserId, $phone, $contactUserId, $knownName);
-
-            return;
+        if ($knownName === '') {
+            $knownName = $this->telegramDisplayName($from);
         }
 
-        $this->continueAfterPhoneCaptured($chatId, $telegramUserId, $phone, $contactUserId);
+        $this->continueAfterPhoneCaptured($chatId, $telegramUserId, $phone, $contactUserId, $knownName !== '' ? $knownName : null, $from);
     }
 
+    private function contactStepResolved(int $telegramUserId): bool
+    {
+        if ($this->accounts->isVerified($telegramUserId)) {
+            return true;
+        }
+
+        $state = (string) ($this->conversations->get($telegramUserId)['state'] ?? 'idle');
+
+        return $state !== 'waiting_for_mobile';
+    }
+
+    /** @param array<string, mixed> $from */
     private function continueAfterPhoneCaptured(
         int $chatId,
         int $telegramUserId,
         string $phone,
         int $contactUserId,
         ?string $knownName = null,
+        array $from = [],
     ): void {
         if ($this->cache->featureEnabled('sms_otp_verification')) {
-            $this->promptForOtp($chatId, $telegramUserId, $phone, $contactUserId, $knownName);
-
-            return;
+            if ($this->promptForOtp($chatId, $telegramUserId, $phone, $contactUserId, $knownName)) {
+                return;
+            }
         }
 
-        if ($knownName !== null && $knownName !== '') {
+        $displayName = trim((string) ($knownName ?? ''));
+        if ($displayName === '') {
+            $displayName = $this->telegramDisplayName($from);
+        }
+        if ($displayName === '') {
+            $displayName = 'دانشجو';
+        }
+
+        $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $displayName);
+        $this->pullFullAccountSnapshot($telegramUserId);
+        $this->enqueueRegistrationSync($telegramUserId, $phone, $displayName, $contactUserId);
+    }
+
+    /** @param array<string, mixed> $from */
+    private function attemptOfflineContactRecovery(int $chatId, int $telegramUserId, string $phone, array $from = []): bool
+    {
+        try {
+            $this->reclaimLocalRowByMobile($telegramUserId, $phone);
+            $pending = $this->mergePendingAccessByMobile($telegramUserId, $phone);
+
+            if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
+                $this->pullFullAccountSnapshot($telegramUserId);
+                $this->enqueueRegistrationSync($telegramUserId, $phone, null, $telegramUserId);
+
+                return true;
+            }
+
+            $knownName = $this->resolveLocalStudentName($telegramUserId, $phone, $pending);
+            if ($knownName === '') {
+                $knownName = $this->telegramDisplayName($from);
+            }
+            if ($knownName === '') {
+                $knownName = 'دانشجو';
+            }
+
             $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $knownName);
-            $this->enqueueRegistrationSync($telegramUserId, $phone, $knownName, $contactUserId);
+            $this->pullFullAccountSnapshot($telegramUserId);
+            $this->enqueueRegistrationSync($telegramUserId, $phone, $knownName, $telegramUserId);
 
+            return true;
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration contact recovery: '.$e->getMessage());
+
+            return false;
+        }
+    }
+
+    private function reclaimLocalRowByMobile(int $telegramUserId, string $phone): void
+    {
+        $legacy = $this->accounts->findVerifiedByMobile($phone);
+        if ($legacy === null) {
             return;
         }
 
-        $this->accounts->storePendingContact($telegramUserId, $phone);
-        $this->conversations->set($telegramUserId, 'waiting_for_name', [
-            'mobile' => $phone,
-            'contact_user_id' => $contactUserId,
-        ]);
-        $this->api->sendMessage($chatId, $this->cache->message(
-            'registration_ask_name_offline',
-            'شماره شما ثبت شد. لطفاً نام و نام خانوادگی خود را بفرستید تا ادامه دهیم.',
-        ), ['reply_markup' => ['remove_keyboard' => true]]);
+        $oldId = (int) ($legacy['telegram_user_id'] ?? 0);
+        if ($oldId > 0 && $oldId !== $telegramUserId) {
+            $this->accounts->rekeyTelegramUserId($oldId, $telegramUserId);
+        }
+    }
 
-        $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
+    private function pullFullAccountSnapshot(int $telegramUserId): void
+    {
+        if ($this->accountSync === null || $telegramUserId <= 0) {
+            return;
+        }
+
+        try {
+            $this->accountSync->ensureFresh($telegramUserId, true);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] post-registration account sync: '.$e->getMessage());
+        }
     }
 
     private function promptForOtp(
@@ -222,19 +349,19 @@ final class HostRegistrationFlow
         string $phone,
         int $contactUserId,
         ?string $knownName = null,
-    ): void {
+    ): bool {
         try {
             $response = $this->sync->call('otp/request', ['mobile' => $phone], 3, allowRetry: false);
             if (empty($response['ok'])) {
-                $this->api->sendMessage($chatId, (string) ($response['message'] ?? 'ارسال پیامک ناموفق بود.'));
+                $this->api->sendMessage($chatId, (string) ($response['message'] ?? 'ارسال پیامک ناموفق بود. بدون کد ادامه می‌دهیم.'));
 
-                return;
+                return false;
             }
         } catch (\Throwable $e) {
             error_log('[telegram-host] otp/request: '.$e->getMessage());
-            $this->api->sendMessage($chatId, 'ارسال پیامک ناموفق بود. دوباره تلاش کنید.');
+            $this->api->sendMessage($chatId, 'ارسال پیامک ناموفق بود. بدون کد ادامه می‌دهیم.');
 
-            return;
+            return false;
         }
 
         $this->accounts->storePendingContact($telegramUserId, $phone);
@@ -252,9 +379,11 @@ final class HostRegistrationFlow
         ), ['reply_markup' => ['remove_keyboard' => true]]);
 
         $this->enqueueRegistrationSync($telegramUserId, $phone, $knownName, $contactUserId);
+
+        return true;
     }
 
-    /** @return array{owned_product_ids: list<int>, display_name: ?string}|null */
+    /** @return array<string, mixed>|null */
     private function mergePendingAccessByMobile(int $telegramUserId, string $mobile): ?array
     {
         if ($mobile === '' || $this->pendingMobileAccess === null) {
@@ -264,11 +393,16 @@ final class HostRegistrationFlow
         try {
             $pending = $this->pendingMobileAccess->get($mobile);
             if ($pending !== null) {
-                $this->accounts->mergeOwnedProductIds(
-                    $telegramUserId,
-                    $pending['owned_product_ids'],
-                    $pending['display_name'],
-                );
+                if (is_array($pending['snapshot'] ?? null)) {
+                    $this->pendingMobileAccess->applyToAccount($this->accounts, $telegramUserId, $mobile);
+                } else {
+                    $this->accounts->mergeOwnedProductIds(
+                        $telegramUserId,
+                        $pending['owned_product_ids'],
+                        $pending['display_name'],
+                    );
+                    $this->pendingMobileAccess->delete($mobile);
+                }
             }
 
             return $pending;
@@ -315,7 +449,7 @@ final class HostRegistrationFlow
         $this->conversations->set($telegramUserId, 'idle', []);
         $this->api->sendMessage($chatId, $this->cache->message(
             'registration_complete_offline',
-            'ثبت‌نام شما ثبت شد. اطلاعات حساب به‌زودی از سرور اصلی همگام می‌شود.',
+            'ثبت‌نام انجام شد. می‌توانید از منو استفاده کنید.',
         ), ['reply_markup' => ['remove_keyboard' => true]]);
         $this->showMainMenu($chatId, $telegramUserId);
     }
@@ -330,9 +464,26 @@ final class HostRegistrationFlow
                 'telegram_user_id' => $telegramUserId,
                 'phone' => $phone,
                 'contact_user_id' => $contactUserId,
-            ], 12, allowRetry: true);
+            ], 6, allowRetry: true);
         } catch (\Throwable $e) {
             error_log('[telegram-host] registration/contact: '.$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function trySyncNameWithIran(int $telegramUserId, string $name): ?array
+    {
+        try {
+            return $this->sync->call('registration/name', [
+                'telegram_user_id' => $telegramUserId,
+                'name' => $name,
+            ], 12, allowRetry: true);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration/name: '.$e->getMessage());
 
             return null;
         }
@@ -358,13 +509,41 @@ final class HostRegistrationFlow
         if ($this->membership !== null && ! $this->membership->requireMembership($chatId, $telegramUserId)) {
             return;
         }
-        $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
-            'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-        ]);
+
+        try {
+            $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
+                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+            ]);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] registration main menu: '.$e->getMessage());
+        }
     }
 
     public function name(int $chatId, int $telegramUserId, string $name): void
     {
+        $name = trim($name);
+        if ($name === '') {
+            return;
+        }
+
+        $sanitized = DisplayNameSanitizer::sanitize($name);
+        if ($sanitized === null) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'registration_invalid_name',
+                'نام وارد شده معتبر نیست. لطفاً فقط حروف فارسی یا انگلیسی وارد کنید (۲ تا ۶۰ کاراکتر).',
+            ));
+
+            return;
+        }
+        $name = $sanitized;
+
+        $iranResponse = $this->trySyncNameWithIran($telegramUserId, $name);
+        if ($iranResponse !== null && ! empty($iranResponse['ok'])) {
+            $this->apply($chatId, $telegramUserId, $iranResponse);
+
+            return;
+        }
+
         $conversation = $this->conversations->get($telegramUserId);
         $mobile = trim((string) ($conversation['context']['mobile'] ?? ''));
         if ($mobile === '') {
@@ -372,23 +551,20 @@ final class HostRegistrationFlow
             $mobile = trim((string) ($account['mobile'] ?? ''));
         }
 
-        try {
-            $response = $this->sync->call('registration/name', [
-                'telegram_user_id' => $telegramUserId,
-                'name' => $name,
-            ], 12, allowRetry: true);
-            if (! empty($response['ok'])) {
-                $this->apply($chatId, $telegramUserId, $response);
-                $this->enqueueRegistrationSync($telegramUserId, $mobile, $name, (int) ($conversation['context']['contact_user_id'] ?? 0));
-
-                return;
-            }
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] registration/name: '.$e->getMessage());
+        if ($this->accounts->isVerified($telegramUserId)) {
+            $this->accounts->storeLocalOnlyRegistration($telegramUserId, $mobile, $name);
+            $this->conversations->set($telegramUserId, 'idle', []);
+            $this->showMainMenu($chatId, $telegramUserId);
+        } else {
+            $this->finishLocalRegistration($chatId, $telegramUserId, $mobile, $name);
         }
 
-        $this->finishLocalRegistration($chatId, $telegramUserId, $mobile, $name);
-        $this->enqueueRegistrationSync($telegramUserId, $mobile, $name, (int) ($conversation['context']['contact_user_id'] ?? 0));
+        $this->enqueueRegistrationSync(
+            $telegramUserId,
+            $mobile,
+            $name,
+            (int) ($conversation['context']['contact_user_id'] ?? 0),
+        );
     }
 
     public function callback(int $chatId, int $telegramUserId, string $data): void
@@ -482,6 +658,25 @@ final class HostRegistrationFlow
 
         if (! $sentMenu && $this->accounts->isVerified($telegramUserId)) {
             $this->showMainMenu($chatId, $telegramUserId);
+
+            return;
+        }
+
+        $state = (string) ($this->conversations->get($telegramUserId)['state'] ?? 'idle');
+        if ($state === 'waiting_for_name') {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'registration_ask_name',
+                'لطفاً نام و نام خانوادگی خود را به فارسی یا انگلیسی بنویسید و ارسال کنید.',
+            ), ['reply_markup' => ['remove_keyboard' => true]]);
+
+            return;
+        }
+
+        if ($state === 'waiting_for_otp') {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'registration_ask_otp',
+                'کد تأیید پیامک‌شده را همین‌جا تایپ کنید و بفرستید.',
+            ), ['reply_markup' => ['remove_keyboard' => true]]);
         }
     }
 
@@ -517,6 +712,17 @@ final class HostRegistrationFlow
                 $this->api->editMessageReplyMarkup($chatId, $messageId, $inlineMarkup);
             }
         }
+    }
+
+    /** @param array<string, mixed> $from */
+    private function telegramDisplayName(array $from): string
+    {
+        $name = trim(((string) ($from['first_name'] ?? '')).' '.((string) ($from['last_name'] ?? '')));
+        if ($name === '') {
+            return '';
+        }
+
+        return DisplayNameSanitizer::sanitize($name) ?? '';
     }
 
     private function enqueueRegistrationSync(

@@ -44,8 +44,14 @@ final class InboundSyncHandler
         }
 
         if ($action === 'push_account') {
-            $pdo = Connection::get($this->config);
-            $stored = $this->pushAccount($pdo, $body);
+            try {
+                $pdo = Connection::get($this->config);
+                $stored = $this->pushAccount($pdo, $body);
+            } catch (\Throwable $e) {
+                error_log('[telegram-host] push_account: '.$e->getMessage());
+
+                return ['ok' => false, 'action' => 'push_account', 'error' => 'store_failed', 'defer' => false];
+            }
             if (! ($stored['ok'] ?? false)) {
                 return array_merge($stored, ['defer' => false]);
             }
@@ -55,13 +61,11 @@ final class InboundSyncHandler
             $account = (array) ($body['account'] ?? []);
             $telegramUserId = (int) ($account['telegram_user_id'] ?? 0);
             $notification = (array) ($body['notification'] ?? []);
-            $notifyText = trim((string) ($notification['text'] ?? ''));
-            if ($telegramUserId > 0 && $notifyText !== '') {
-                $this->deliverNotification([
-                    'telegram_user_id' => $telegramUserId,
-                    'text' => $notifyText,
-                    'options' => (array) ($notification['options'] ?? []),
-                ]);
+            if ($telegramUserId > 0 && $this->notificationHasContent($notification)) {
+                $this->deliverNotification(array_merge(
+                    ['telegram_user_id' => $telegramUserId],
+                    $notification,
+                ));
             }
 
             return ['ok' => true, 'action' => 'push_account', 'defer' => false];
@@ -145,9 +149,19 @@ final class InboundSyncHandler
 
         $ownedProductIds = array_values(array_map('intval', (array) ($body['owned_product_ids'] ?? [])));
         $displayName = trim((string) ($body['display_name'] ?? ''));
+        $userId = isset($body['user_id']) ? (int) $body['user_id'] : null;
+        $verificationLevel = isset($body['verification_level']) ? max(1, (int) $body['verification_level']) : null;
+        $snapshot = is_array($body['snapshot'] ?? null) ? (array) $body['snapshot'] : null;
 
         $pdo = Connection::get($this->config);
-        (new PendingMobileAccess($pdo))->store($mobile, $ownedProductIds, $displayName !== '' ? $displayName : null);
+        (new PendingMobileAccess($pdo))->store(
+            $mobile,
+            $ownedProductIds,
+            $displayName !== '' ? $displayName : null,
+            $userId,
+            $verificationLevel,
+            $snapshot,
+        );
 
         return ['ok' => true, 'action' => 'push_mobile_access', 'defer' => false];
     }
@@ -215,7 +229,7 @@ final class InboundSyncHandler
     private function deliverNotification(array $payload): array
     {
         $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
-        $text = trim((string) ($payload['text'] ?? ''));
+        $text = $this->resolveNotificationText($payload);
         if ($telegramUserId <= 0 || $text === '') {
             return ['ok' => false, 'action' => 'notify_user', 'error' => 'invalid_payload'];
         }
@@ -228,6 +242,43 @@ final class InboundSyncHandler
         $api->sendMessage($telegramUserId, $text, $options);
 
         return ['ok' => true, 'action' => 'notify_user'];
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function resolveNotificationText(array $payload): string
+    {
+        $text = trim((string) ($payload['text'] ?? ''));
+        if ($text !== '') {
+            return $text;
+        }
+
+        $templateKey = trim((string) ($payload['template_key'] ?? ''));
+        if ($templateKey === '') {
+            return '';
+        }
+
+        $pdo = Connection::get($this->config);
+        $cache = new SyncCache($pdo, new SyncClient($this->config), $this->config);
+        $vars = (array) ($payload['template_vars'] ?? $payload['vars'] ?? []);
+        $fallback = trim((string) ($payload['template_fallback'] ?? ''));
+
+        $text = $cache->renderMessage($templateKey, $vars, $fallback);
+        $appendKey = trim((string) ($payload['template_append_key'] ?? ''));
+        if ($appendKey !== '') {
+            $text .= $cache->renderMessage($appendKey, $vars);
+        }
+
+        return $text;
+    }
+
+    /** @param array<string, mixed> $notification */
+    private function notificationHasContent(array $notification): bool
+    {
+        if (trim((string) ($notification['text'] ?? '')) !== '') {
+            return true;
+        }
+
+        return trim((string) ($notification['template_key'] ?? '')) !== '';
     }
 
     /**

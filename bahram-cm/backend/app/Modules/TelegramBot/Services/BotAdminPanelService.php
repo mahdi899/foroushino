@@ -945,6 +945,7 @@ class BotAdminPanelService
         }
 
         $bot->setCardToCardInstructions($body);
+        \App\Jobs\PushTelegramHostSyncJob::bootstrap();
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
         ]);
@@ -3877,6 +3878,8 @@ class BotAdminPanelService
             .'وب‌هوک: '.($botHealth['webhook_url'] ?? '—')."\n"
             .'گروه گزارشات: '.(filled($bot->reportsGroupChatId()) ? (string) $bot->reportsGroupChatId() : 'تنظیم نشده')."\n"
             .'گزارشات پرداخت: '.(filled($bot->paymentReportsChatId()) ? (string) $bot->paymentReportsChatId() : 'تنظیم نشده')."\n"
+            .'کارت‌به‌کارت: '.($bot->featureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment) ? 'فعال ✅' : 'غیرفعال ❌')."\n"
+            .'متن کارت: '.($this->cardToCardSettingsSummary($bot))."\n"
             ."آپدیت معلق (محلی): ".($queueStats['pending_local'] ?? 0)."\n"
             .'در حال پردازش: '.($queueStats['processing_local'] ?? 0)."\n"
             .'آپدیت ناموفق: '.($queueStats['failed_local'] ?? 0)."\n"
@@ -3915,6 +3918,33 @@ class BotAdminPanelService
         }
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+    }
+
+    private function cardToCardSettingsSummary(TelegramBot $bot): string
+    {
+        if (! $bot->hasCardToCardDetails()) {
+            return 'تنظیم نشده ❌';
+        }
+
+        $config = $bot->cardToCardConfig();
+        if ($config['override_text'] !== '') {
+            $line = strtok($config['override_text'], "\n");
+
+            return $line !== false && $line !== ''
+                ? mb_substr($line, 0, 48).(mb_strlen($config['override_text']) > 48 ? '…' : '')
+                : 'تنظیم شده ✅';
+        }
+
+        if ($config['card_number'] !== '') {
+            $digits = preg_replace('/\D+/', '', $config['card_number']) ?? '';
+            if (strlen($digits) === 16) {
+                return substr($digits, 0, 4).'…'.substr($digits, -4);
+            }
+
+            return mb_substr($config['card_number'], 0, 24);
+        }
+
+        return 'تنظیم شده ✅';
     }
 
     private function handleLogsCallback(

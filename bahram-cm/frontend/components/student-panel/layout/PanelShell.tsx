@@ -11,6 +11,7 @@ import { PanelAvatarCacheProvider } from './PanelAvatarCacheContext';
 import { PanelHeader } from './PanelHeader';
 import { PanelPwaRegistrar } from './PanelPwaRegistrar';
 import { BahramUpdateBanner } from '@/components/pwa/BahramUpdateBanner';
+import { PANEL_PWA_ENABLED } from '@/lib/panel/pwa';
 import { PanelSidebar } from './PanelSidebar';
 
 const SIDEBAR_COLLAPSED_KEY = 'panel-sidebar-collapsed';
@@ -133,7 +134,7 @@ export function PanelShell({
             menuOpen={mobileOpen}
             onMenuOpen={() => setMobileOpen(true)}
           />
-          <BahramUpdateBanner variant="panel" />
+          {PANEL_PWA_ENABLED ? <BahramUpdateBanner variant="panel" /> : null}
         </div>
         </PanelNotificationProvider>
         </PanelAvatarCacheProvider>

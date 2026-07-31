@@ -16,6 +16,11 @@ export function maxBirthDateForMinAge(minAge = MIN_IDENTITY_AGE, from = new Date
   return new Date(from.getFullYear() - minAge, from.getMonth(), from.getDate());
 }
 
+/** Earliest allowed birth date so the person is at most `maxAge` years old today. */
+export function minBirthDateForMaxAge(maxAge = MAX_IDENTITY_AGE, from = new Date()): Date {
+  return new Date(from.getFullYear() - maxAge, from.getMonth(), from.getDate());
+}
+
 /** Approximate age from API date string `YYYY-MM-DD`. */
 export function ageFromDateOfBirth(dateOfBirth: string | null | undefined): number | null {
   const birth = parseDateOfBirth(dateOfBirth);

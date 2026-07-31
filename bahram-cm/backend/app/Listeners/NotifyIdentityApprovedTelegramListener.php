@@ -64,7 +64,10 @@ class NotifyIdentityApprovedTelegramListener
         foreach ($accounts as $account) {
             [$text, $notifyOptions] = $this->buildNotification($bot, $account, $channel, $hasReferenceEntitlement);
 
-            if ($usesHost && $this->hostSync->pushPaidOrderNotification($account, $text, $notifyOptions)) {
+            if ($usesHost && $this->hostSync->pushPaidOrderNotification($account, [
+                'text' => $text,
+                'options' => $notifyOptions,
+            ])) {
                 $delivered = true;
 
                 continue;

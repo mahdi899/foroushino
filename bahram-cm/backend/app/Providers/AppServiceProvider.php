@@ -8,6 +8,7 @@ use App\Events\SatMembershipActivated;
 use App\Listeners\NotifySatTelegramGroupAccessListener;
 use App\Listeners\PushSatApplicationToExternalListener;
 use App\Listeners\NotifyIdentityApprovedTelegramListener;
+use App\Listeners\SyncTelegramHostOnIdentityApproved;
 use App\Listeners\TryActivateSatMembershipListener;
 use App\Models\DiscountCode;
 use App\Models\FamilyMedia;
@@ -147,6 +148,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::listen(IdentityLevel2Approved::class, TryActivateSatMembershipListener::class);
+        Event::listen(IdentityLevel2Approved::class, SyncTelegramHostOnIdentityApproved::class);
         Event::listen(IdentityLevel2Approved::class, NotifyIdentityApprovedTelegramListener::class);
         Event::listen(SatApplicationAccepted::class, TryActivateSatMembershipListener::class);
         Event::listen(SatApplicationAccepted::class, PushSatApplicationToExternalListener::class);

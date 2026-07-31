@@ -7,6 +7,7 @@ namespace TelegramHost\Handlers;
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\OwnershipResolver;
 use TelegramHost\Cache\SyncCache;
+use TelegramHost\Catalog\CatalogPhotoMessenger;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\ResilientLiveClient;
 use TelegramHost\Services\HostCardToCardFlow;
@@ -37,6 +38,7 @@ final class CallbackQueryHandler
         private readonly HostCardToCardFlow $cardToCard,
         private readonly SubscriberEligibility $subscriberEligibility,
         private readonly OwnershipResolver $ownership,
+        private readonly CatalogPhotoMessenger $catalogPhotos,
     ) {}
 
     /** @param array<string, mixed> $callback */
@@ -303,9 +305,16 @@ final class CallbackQueryHandler
             if ($present !== null && isset($present['text'])) {
                 $text = (string) $present['text'];
                 $options = (array) ($present['options'] ?? []);
-                $photo = (string) ($present['photo'] ?? '');
-                if ($photo !== '') {
-                    $this->api->sendPhoto($chatId, $photo, $text, $options);
+                $target = $this->cache->resolvePhotoTarget($productId);
+                if ($target['photo'] !== '') {
+                    $this->catalogPhotos->send(
+                        $chatId,
+                        $target['photo'],
+                        $text,
+                        $options,
+                        $target['product_id'],
+                        $target['seminar_id'],
+                    );
                 } else {
                     $this->api->sendMessage($chatId, $text, $options);
                 }
@@ -400,13 +409,19 @@ final class CallbackQueryHandler
         }
 
         if ($present === null) {
+            $loading = $this->api->sendMessageResult($chatId, '⏳ در حال آماده‌سازی دسترسی...');
+            $loadingId = (int) ($loading['message_id'] ?? 0);
+
             $live = $this->live->productPresent($chatId, $telegramUserId, $productId);
             if (empty($live['offline']) && isset($live['text']) && trim((string) $live['text']) !== '') {
                 $present = [
                     'text' => (string) $live['text'],
                     'options' => (array) ($live['options'] ?? []),
-                    'photo' => (string) ($live['photo'] ?? ''),
                 ];
+            }
+
+            if ($loadingId > 0) {
+                $this->api->deleteMessage($chatId, $loadingId);
             }
         }
 

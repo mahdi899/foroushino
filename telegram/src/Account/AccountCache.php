@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace TelegramHost\Account;
 
+use TelegramHost\Support\DisplayNameSanitizer;
+
 /**
  * Only persistent user-data cache on the Telegram host.
  * Identity, ownership, profile, referral, family, and SAT snapshots
@@ -62,19 +64,25 @@ final class AccountCache
     /** @param array<string, mixed> $account */
     public function store(int $telegramUserId, array $account): void
     {
+        if (isset($account['display_name']) && is_string($account['display_name'])) {
+            $sanitized = DisplayNameSanitizer::sanitize($account['display_name']);
+            $account['display_name'] = $sanitized;
+        }
+
         $this->ensureSatColumn();
         $this->ensureVerificationLevelColumn();
+        $this->ensureHybridSyncColumns();
         $snapshot = is_array($account['snapshot'] ?? null) ? $account['snapshot'] : null;
 
         $stmt = $this->pdo->prepare(
             'INSERT INTO telegram_accounts_cache (
                 telegram_user_id, user_id, mobile, mobile_verified_at, display_name, verification_level, is_bot_admin,
                 snapshot_revision, owned_product_ids, profile_json, referral_json, family_json, owned_presents_json, sat_json,
-                snapshot_synced_at, updated_at
+                snapshot_synced_at, hot_synced_at, cold_synced_at, updated_at
              ) VALUES (
                 :id, :user_id, :mobile, :verified_at, :display_name, :verification_level, :is_admin,
                 :snap_rev, :owned, :profile, :referral, :family, :presents, :sat,
-                :snap_at, NOW()
+                :snap_at, :hot_at, :cold_at, NOW()
              )
              ON DUPLICATE KEY UPDATE
                 user_id = :user_id2,
@@ -91,6 +99,8 @@ final class AccountCache
                 owned_presents_json = IF(:presents2 IS NOT NULL, :presents2, owned_presents_json),
                 sat_json = IF(:sat2 IS NOT NULL, :sat2, sat_json),
                 snapshot_synced_at = COALESCE(:snap_at2, snapshot_synced_at),
+                hot_synced_at = COALESCE(:hot_at2, hot_synced_at),
+                cold_synced_at = COALESCE(:cold_at2, cold_synced_at),
                 updated_at = NOW()',
         );
 
@@ -145,6 +155,17 @@ final class AccountCache
             $snapAt = date('Y-m-d H:i:s');
         }
 
+        $hotAt = $snapAt;
+        $coldAt = $snapAt;
+        if ($snapshot !== null) {
+            if ($profileJson === null && $referralJson === null && $familyJson === null && $satJson === null && $presentsJson === null) {
+                $coldAt = null;
+            }
+            if ($ownedJson === null && $profileJson === null && $presentsJson === null) {
+                $hotAt = null;
+            }
+        }
+
         $params = [
             'id' => $telegramUserId,
             'user_id' => $account['user_id'] ?? null,
@@ -161,6 +182,8 @@ final class AccountCache
             'presents' => $presentsJson,
             'sat' => $satJson,
             'snap_at' => $snapAt,
+            'hot_at' => $hotAt,
+            'cold_at' => $coldAt,
         ];
 
         $stmt->execute(array_merge($params, [
@@ -178,6 +201,8 @@ final class AccountCache
             'presents2' => $presentsJson,
             'sat2' => $satJson,
             'snap_at2' => $snapAt,
+            'hot_at2' => $hotAt,
+            'cold_at2' => $coldAt,
         ]));
 
         unset($this->rowMemo[$telegramUserId], $this->ownedPresentsMemo[$telegramUserId]);
@@ -378,6 +403,8 @@ final class AccountCache
      */
     public function storeLocalOnlyRegistration(int $telegramUserId, string $mobile, string $displayName): void
     {
+        $displayName = DisplayNameSanitizer::sanitize($displayName) ?? 'دانشجو';
+
         $stmt = $this->pdo->prepare(
             'INSERT INTO telegram_accounts_cache (telegram_user_id, mobile, mobile_verified_at, display_name, is_bot_admin, updated_at)
              VALUES (:id, :mobile, NOW(), :name, 0, NOW())
@@ -794,21 +821,107 @@ final class AccountCache
 
     public function shouldRefreshSnapshot(int $telegramUserId, int $minAgeSeconds): bool
     {
+        return $this->needsHotRefresh($telegramUserId, $minAgeSeconds);
+    }
+
+    public function needsHotRefresh(int $telegramUserId, int $ttlSeconds): bool
+    {
+        if (! $this->isVerified($telegramUserId)) {
+            return false;
+        }
+
+        if ($this->needsIranReconcile($telegramUserId)) {
+            return true;
+        }
+
+        $account = $this->get($telegramUserId);
+        if ($account === null) {
+            return true;
+        }
+
+        $ownedIds = $this->decodeIntList((string) ($account['owned_product_ids'] ?? '[]'));
+        if ($ownedIds !== [] && ! $this->hasRenderablePresents($telegramUserId, $ownedIds)) {
+            return true;
+        }
+
+        if (! $this->hasRenderableProfile($telegramUserId) && ! empty($account['user_id'])) {
+            return true;
+        }
+
+        return $this->isSyncedFieldStale((string) ($account['hot_synced_at'] ?? $account['snapshot_synced_at'] ?? ''), $ttlSeconds);
+    }
+
+    public function needsColdRefresh(int $telegramUserId, int $ttlSeconds): bool
+    {
         if (! $this->isVerified($telegramUserId)) {
             return false;
         }
 
         $account = $this->get($telegramUserId);
-        if ($account === null || ! $this->hasRenderableProfile($telegramUserId)) {
+        if ($account === null || empty($account['user_id'])) {
+            return false;
+        }
+
+        if ($this->decodeJsonObject($account['referral_json'] ?? null) === null
+            || $this->decodeJsonObject($account['family_json'] ?? null) === null) {
             return true;
         }
 
-        $syncedAt = strtotime((string) ($account['snapshot_synced_at'] ?? ''));
-        if ($syncedAt === false || $syncedAt <= 0) {
+        return $this->isSyncedFieldStale((string) ($account['cold_synced_at'] ?? $account['snapshot_synced_at'] ?? ''), $ttlSeconds);
+    }
+
+    /** @param list<int> $ownedIds */
+    private function hasRenderablePresents(int $telegramUserId, array $ownedIds): bool
+    {
+        $account = $this->get($telegramUserId);
+        if ($account === null) {
+            return false;
+        }
+
+        $map = $this->decodeJsonObject($account['owned_presents_json'] ?? null);
+        if ($map === null) {
+            return false;
+        }
+
+        foreach ($ownedIds as $productId) {
+            $present = $map[(string) $productId] ?? null;
+            if (! is_array($present) || trim((string) ($present['text'] ?? '')) === '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isSyncedFieldStale(string $syncedAt, int $ttlSeconds): bool
+    {
+        if ($syncedAt === '') {
             return true;
         }
 
-        return (time() - $syncedAt) >= $minAgeSeconds;
+        $ts = strtotime($syncedAt);
+
+        return $ts === false || $ts <= 0 || (time() - $ts) >= $ttlSeconds;
+    }
+
+    private function ensureHybridSyncColumns(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+        try {
+            $columns = $this->pdo->query('SHOW COLUMNS FROM telegram_accounts_cache')->fetchAll(\PDO::FETCH_COLUMN);
+            $existing = is_array($columns) ? array_map('strval', $columns) : [];
+            if (! in_array('hot_synced_at', $existing, true)) {
+                $this->pdo->exec('ALTER TABLE telegram_accounts_cache ADD COLUMN hot_synced_at DATETIME NULL AFTER snapshot_synced_at');
+            }
+            if (! in_array('cold_synced_at', $existing, true)) {
+                $this->pdo->exec('ALTER TABLE telegram_accounts_cache ADD COLUMN cold_synced_at DATETIME NULL AFTER hot_synced_at');
+            }
+        } catch (\Throwable) {
+        }
+        $ready = true;
     }
 
     private function isStale(string $updatedAt, int $minAgeSeconds): bool

@@ -61,6 +61,8 @@ php artisan media:sync
 
 Admin default (if seeded): `admin@bahram.local` / `password`. OTP local: `OTP_DEV_MODE=true`, code `12345`.
 
+**پنل ادمین (تنظیمات تلگرام، رسانه، …):** `https://rostami.app/admin` — نه `app.lvh.me:3000/admin` (این مسیر وجود ندارد).
+
 ## Telegram — preferred: local `telegram/` host app
 
 Prefer running the standalone host (`telegram/`) on this machine over Laravel `telegram:poll`. Iran cannot reach `api.telegram.org` or usually Cloudflare quick tunnels; use the foreign Bot API proxy + local long-poll.

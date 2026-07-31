@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { can, getCurrentUser } from '@/lib/auth/session';
-import { loadTelegramHealth } from '@/lib/admin/telegram';
+import { loadTelegramBots, loadTelegramHealth } from '@/lib/admin/telegram';
 import { AdminPage } from '../ui';
 import { TelegramHubClient } from './TelegramHubClient';
 
@@ -12,7 +12,7 @@ export default async function TelegramAdminDashboardPage() {
     redirect('/admin');
   }
 
-  const health = await loadTelegramHealth();
+  const [health, bots] = await Promise.all([loadTelegramHealth(), loadTelegramBots()]);
 
   return (
     <AdminPage
@@ -23,6 +23,7 @@ export default async function TelegramAdminDashboardPage() {
     >
       <TelegramHubClient
         health={health}
+        bots={bots}
         permissions={user.permissions}
         isSuperAdmin={Boolean(user.is_super_admin)}
       />

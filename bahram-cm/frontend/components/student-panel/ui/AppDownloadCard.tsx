@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Download, Smartphone, X } from 'lucide-react';
+import { PANEL_PWA_ENABLED } from '@/lib/panel/pwa';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -9,6 +10,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function AppDownloadCard({ compact = false, minimal = false }: { compact?: boolean; minimal?: boolean }) {
+  if (!PANEL_PWA_ENABLED) return null;
+
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [showIosHint, setShowIosHint] = useState(false);

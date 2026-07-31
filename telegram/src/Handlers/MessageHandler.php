@@ -6,11 +6,13 @@ namespace TelegramHost\Handlers;
 
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\AccountSyncCoordinator;
+use TelegramHost\Account\HybridAccountCache;
 use TelegramHost\Account\OwnershipResolver;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\AdminFastClient;
 use TelegramHost\Http\ResilientLiveClient;
+use TelegramHost\Queue\PendingCheckoutRevoke;
 use TelegramHost\Routing\IranSyncRelay;
 use TelegramHost\Services\HostAdminShell;
 use TelegramHost\Services\HostCardToCardFlow;
@@ -30,6 +32,8 @@ use TelegramHost\Telegram\BotApiClient;
 
 final class MessageHandler
 {
+    private const FORCED_ACCOUNT_FETCH_COOLDOWN_SECONDS = 15;
+
     public function __construct(
         private readonly BotApiClient $api,
         private readonly SyncCache $cache,
@@ -51,7 +55,9 @@ final class MessageHandler
         private readonly HostCardToCardFlow $cardToCard,
         private readonly SubscriberEligibility $subscriberEligibility,
         private readonly OwnershipResolver $ownership,
+        private readonly HybridAccountCache $hybridCache,
         private readonly string $siteBaseUrl,
+        private readonly ?PendingCheckoutRevoke $checkoutRevokeQueue = null,
     ) {}
 
     /** @param array<string, mixed> $message */
@@ -66,14 +72,7 @@ final class MessageHandler
         }
 
         if (isset($message['contact'])) {
-            if ($this->userPassesVerificationGate($telegramUserId)) {
-                if ($this->membership->requireMembership($chatId, $telegramUserId)) {
-                    $this->sendMainMenu($chatId, $telegramUserId);
-                }
-
-                return;
-            }
-            $this->registration->contact($chatId, $telegramUserId, (array) $message['contact']);
+            $this->registration->contact($chatId, $telegramUserId, (array) $message['contact'], (array) ($message['from'] ?? []));
 
             return;
         }
@@ -89,6 +88,12 @@ final class MessageHandler
         if ($text === '/start' || str_starts_with($text, '/start ')) {
             $startPayload = str_starts_with($text, '/start ') ? trim(substr($text, 7)) : null;
             $this->handleStart($chatId, $telegramUserId, (array) ($message['from'] ?? []), $startPayload !== '' ? $startPayload : null);
+
+            return;
+        }
+
+        if ($conversation['state'] === 'waiting_for_mobile' && $text !== '') {
+            $this->registration->remindPhoneShare($chatId, $telegramUserId, $text);
 
             return;
         }
@@ -267,6 +272,8 @@ final class MessageHandler
     private function handleStart(int $chatId, int $telegramUserId, array $from = [], ?string $startPayload = null): void
     {
         if ($this->userPassesVerificationGate($telegramUserId)) {
+            $this->conversations->set($telegramUserId, 'idle', []);
+
             if (! $this->membership->requireMembership($chatId, $telegramUserId)) {
                 return;
             }
@@ -277,6 +284,8 @@ final class MessageHandler
             if (in_array($normalized, ['reference', 'refch', 'reference_channel'], true)) {
                 $this->referenceChannel->open($chatId, $telegramUserId);
             }
+
+            $this->hybridCache->scheduleHotRefresh($telegramUserId, 'start');
 
             return;
         }
@@ -304,8 +313,9 @@ final class MessageHandler
         if (($conversation['state'] ?? 'idle') !== 'idle') {
             $this->conversations->set($telegramUserId, 'idle', []);
         }
-        // Best-effort: kill open pay tokens when navigating away via menu.
-        $this->live->checkoutRevokeOpen($chatId, $telegramUserId);
+        // Only revoke open payment links when actually leaving checkout — not on
+        // every menu tap (each revoke was an 8s Iran round-trip and queued webhooks).
+        $this->maybeRevokeCheckout($chatId, $telegramUserId, $conversation);
 
         $action = $this->mainMenu->resolveAction($text);
         match ($action) {
@@ -505,6 +515,8 @@ final class MessageHandler
 
     private function sendFamily(int $chatId, int $telegramUserId): void
     {
+        $this->hybridCache->scheduleColdRefresh($telegramUserId, 'family_menu');
+
         $result = $this->accounts->familyResponse($telegramUserId);
         if ($result === null || empty($result['text'])) {
             $this->api->sendMessage($chatId, $this->cache->message(
@@ -554,6 +566,8 @@ final class MessageHandler
 
             return;
         }
+
+        $this->hybridCache->scheduleColdRefresh($telegramUserId, 'referral_menu');
 
         $result = $this->accounts->referralResponse($telegramUserId);
         if ($result === null) {
@@ -643,8 +657,27 @@ final class MessageHandler
 
     private function sendAccount(int $chatId, int $telegramUserId): void
     {
+        $this->hybridCache->scheduleHotRefresh($telegramUserId, 'account_menu');
+
+        // Cache-first — never block the webhook on Iran reconcile (push + drain heal ghosts).
         if ($this->destinationsFlow->sendAccount($chatId, $telegramUserId)) {
             return;
+        }
+
+        // Profile snapshot isn't renderable yet (e.g. just after a purchase, before the
+        // background refresh queue drained). Do one synchronous, forced pull from Iran
+        // right now instead of making the user tap "حساب من" repeatedly while stale.
+        if (! $this->accounts->hasRenderableProfile($telegramUserId)
+            && $this->accounts->secondsSinceUpdate($telegramUserId) >= self::FORCED_ACCOUNT_FETCH_COOLDOWN_SECONDS) {
+            try {
+                $this->accountSync->ensureFresh($telegramUserId, true);
+            } catch (\Throwable $e) {
+                error_log('[telegram-host] sendAccount forced ensureFresh: '.$e->getMessage());
+            }
+
+            if ($this->destinationsFlow->sendAccount($chatId, $telegramUserId)) {
+                return;
+            }
         }
 
         $row = $this->accounts->get($telegramUserId);
@@ -655,6 +688,20 @@ final class MessageHandler
             if (! empty($row['mobile'])) {
                 $lines[] = 'موبایل: <code>'.htmlspecialchars((string) $row['mobile'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</code>';
             }
+
+            $ownedIds = $this->decodeOwnedProductIds((string) ($row['owned_product_ids'] ?? '[]'));
+            if ($ownedIds !== []) {
+                $lines[] = '';
+                $lines[] = TelegramCustomEmoji::tag('cart').' <b>دوره‌های خریداری‌شده:</b>';
+                foreach ($ownedIds as $productId) {
+                    $product = $this->cache->findProduct($productId);
+                    $title = trim((string) ($product['title'] ?? ''));
+                    $lines[] = '• '.htmlspecialchars($title !== '' ? $title : 'محصول #'.$productId, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                }
+                $lines[] = '';
+                $lines[] = TelegramCustomEmoji::tag('point_up').' برای دسترسی کامل، دوباره روی همین محصول در منو بزنید.';
+            }
+
             $this->api->sendMessage($chatId, implode("\n", $lines), ['parse_mode' => 'HTML']);
 
             return;
@@ -664,5 +711,37 @@ final class MessageHandler
             'account_snapshot_pending',
             'اطلاعات حساب هنوز همگام نشده. چند لحظه بعد دوباره «حساب من» را بزنید.',
         ));
+    }
+
+    /** @return list<int> */
+    private function decodeOwnedProductIds(string $json): array
+    {
+        $decoded = json_decode($json, true);
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        return array_values(array_map('intval', $decoded));
+    }
+
+    /** @param array<string, mixed> $conversation */
+    private function maybeRevokeCheckout(int $chatId, int $telegramUserId, array $conversation): void
+    {
+        $state = (string) ($conversation['state'] ?? 'idle');
+        $productId = (int) ($conversation['context']['checkout']['product_id'] ?? 0);
+        $inCheckout = $productId > 0
+            || in_array($state, ['waiting_for_discount_code', 'waiting_for_card_to_card_receipt'], true);
+
+        if (! $inCheckout) {
+            return;
+        }
+
+        if ($this->checkoutRevokeQueue !== null) {
+            $this->checkoutRevokeQueue->enqueue($telegramUserId);
+
+            return;
+        }
+
+        $this->live->checkoutRevokeOpenBestEffort($chatId, $telegramUserId);
     }
 }
