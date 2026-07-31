@@ -82,38 +82,53 @@ class SeminarAttendeeRosterSyncService
                     ->count();
             }
 
-            foreach ($normalized as $mobile => $name) {
-                if ($dryRun) {
-                    $exists = User::query()->where('mobile', $mobile)->exists();
-                    $stats['users_created'] += $exists ? 0 : 1;
-                    $stats['users_updated'] += $exists ? 1 : 0;
-                    $stats['attendees_created']++;
+            // Bulk roster replace must not fire UserTelegramDisplayNameObserver
+            // (per-row Telegram host pushes make ~1k updates take many minutes).
+            User::withoutEvents(function () use ($normalized, $seminar, &$stats, $dryRun): void {
+                $attendeeRows = [];
+                $now = now();
 
-                    continue;
-                }
+                foreach ($normalized as $mobile => $name) {
+                    if ($dryRun) {
+                        $exists = User::query()->where('mobile', $mobile)->exists();
+                        $stats['users_created'] += $exists ? 0 : 1;
+                        $stats['users_updated'] += $exists ? 1 : 0;
+                        $stats['attendees_created']++;
 
-                $user = User::query()->where('mobile', $mobile)->first();
-                if ($user) {
-                    if (filled($name) && $user->name !== $name) {
-                        $user->update(['name' => $name]);
-                        $stats['users_updated']++;
+                        continue;
                     }
-                } else {
-                    $user = User::query()->create([
-                        'mobile' => $mobile,
-                        'name' => $name,
-                        'status' => 'active',
-                    ]);
-                    $stats['users_created']++;
+
+                    $user = User::query()->where('mobile', $mobile)->first();
+                    if ($user) {
+                        if (filled($name) && $user->name !== $name) {
+                            $user->update(['name' => $name]);
+                            $stats['users_updated']++;
+                        }
+                    } else {
+                        $user = User::query()->create([
+                            'mobile' => $mobile,
+                            'name' => $name,
+                            'status' => 'active',
+                        ]);
+                        $stats['users_created']++;
+                    }
+
+                    $attendeeRows[] = [
+                        'seminar_id' => $seminar->id,
+                        'user_id' => $user->id,
+                        'attendance_status' => SeminarAttendanceStatus::Registered->value,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                    $stats['attendees_created']++;
                 }
 
-                SeminarAttendee::query()->create([
-                    'seminar_id' => $seminar->id,
-                    'user_id' => $user->id,
-                    'attendance_status' => SeminarAttendanceStatus::Registered,
-                ]);
-                $stats['attendees_created']++;
-            }
+                if (! $dryRun && $attendeeRows !== []) {
+                    foreach (array_chunk($attendeeRows, 200) as $chunk) {
+                        SeminarAttendee::query()->insert($chunk);
+                    }
+                }
+            });
 
             if (! $dryRun) {
                 $final = SeminarAttendee::query()
@@ -134,6 +149,9 @@ class SeminarAttendeeRosterSyncService
             $work();
         } else {
             DB::transaction($work);
+            // Mass delete/insert skip model observers — one cache/host refresh after commit.
+            app(ContentPublishService::class)->revalidateSeminars($seminar->slug);
+            app(TelegramHostCatalogRevision::class)->bump(scope: 'catalog');
         }
 
         return $stats;
