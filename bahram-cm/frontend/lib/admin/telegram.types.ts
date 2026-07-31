@@ -76,6 +76,8 @@ export type TelegramBotView = {
   reports_topic_id?: number | null;
   payment_reports_chat_id?: string | null;
   card_to_card_enabled?: boolean;
+  card_to_card_ready?: boolean;
+  card_to_card_has_details?: boolean;
   iran_mobile_only?: boolean;
   card_to_card?: {
     card_number?: string;

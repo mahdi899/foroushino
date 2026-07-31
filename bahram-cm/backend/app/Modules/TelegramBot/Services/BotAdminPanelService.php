@@ -3835,6 +3835,19 @@ class BotAdminPanelService
                 throw new RuntimeException('تنظیم نامعتبر است.');
             }
             $bot->refresh();
+            if ($flag === \App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment
+                && ! $bot->featureEnabled($flag)
+                && ! $bot->hasCardToCardDetails()) {
+                $this->renderSettings(
+                    $bot,
+                    $client,
+                    $chatId,
+                    $messageId,
+                    '❌ برای فعال‌کردن کارت‌به‌کارت، اول از «📝 متن کارت به کارت» شماره کارت را ثبت کنید.',
+                );
+
+                return;
+            }
             $on = $bot->toggleFeature($flag);
             $this->pushBootstrapToHostNow();
             $this->renderSettings(
@@ -3872,7 +3885,11 @@ class BotAdminPanelService
             .'وب‌هوک: '.($botHealth['webhook_url'] ?? '—')."\n"
             .'گروه گزارشات: '.(filled($bot->reportsGroupChatId()) ? (string) $bot->reportsGroupChatId() : 'تنظیم نشده')."\n"
             .'گزارشات پرداخت: '.(filled($bot->paymentReportsChatId()) ? (string) $bot->paymentReportsChatId() : 'تنظیم نشده')."\n"
-            .'کارت‌به‌کارت: '.($bot->featureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment) ? 'فعال ✅' : 'غیرفعال ❌')."\n"
+            .'کارت‌به‌کارت: '.($bot->cardToCardReady()
+                ? 'فعال و آماده ✅'
+                : ($bot->featureEnabled(\App\Modules\TelegramBot\Enums\BotFeatureFlag::CardToCardPayment)
+                    ? 'روشن ولی ناقص ⚠️'
+                    : 'غیرفعال ❌'))."\n"
             .'متن کارت: '.($this->cardToCardSettingsSummary($bot))."\n"
             ."آپدیت معلق (محلی): ".($queueStats['pending_local'] ?? 0)."\n"
             .'در حال پردازش: '.($queueStats['processing_local'] ?? 0)."\n"

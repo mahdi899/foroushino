@@ -353,6 +353,42 @@ class BotMessageCatalog
     }
 
     /**
+     * Insert catalog defaults that are not yet stored for this bot.
+     * Existing rows (including admin edits) are left untouched.
+     */
+    public function seedMissingDefaults(TelegramBot $bot): int
+    {
+        $existing = TelegramBotMessage::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->pluck('message_key')
+            ->flip();
+
+        $seeded = 0;
+        foreach (self::defaults() as $key => $meta) {
+            if (isset($existing[$key])) {
+                continue;
+            }
+
+            TelegramBotMessage::query()->create([
+                'telegram_bot_id' => $bot->id,
+                'message_key' => $key,
+                'body' => $meta['body'],
+                'label_fa' => $meta['label'] ?? $key,
+                'category' => $meta['category'] ?? null,
+            ]);
+
+            Cache::forget($this->cacheKey((int) $bot->id, $key));
+            $seeded++;
+        }
+
+        if ($seeded > 0 && $bot->key === 'production') {
+            app(TelegramHostCatalogRevision::class)->bump(scope: 'bootstrap');
+        }
+
+        return $seeded;
+    }
+
+    /**
      * @return list<array{key: string, label: string, category: string, body: string, is_custom: bool}>
      */
     public function listForBot(TelegramBot $bot): array

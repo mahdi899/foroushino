@@ -125,7 +125,7 @@ class TelegramPurchaseFlowService
         ]);
 
         $zp = $this->checkout->zarinpalEnabled($bot);
-        $c2c = $this->checkout->cardToCardEnabled($bot);
+        $c2c = $this->checkout->cardToCardEnabled($bot) && $bot->hasCardToCardDetails();
 
         if (! $zp && ! $c2c) {
             $this->outbound->reply($bot, $chatId, 'در حال حاضر هیچ روش پرداختی فعال نیست. لطفاً بعداً دوباره تلاش کنید.');

@@ -14,7 +14,7 @@ use TelegramHost\Telegram\BotApiClient;
 
 /**
  * SAT open + multi-step form on the foreign host.
- * Only the final submit hits Iran (live/sat/submit).
+ * Only the final submit hits Iran (live/sat/submit) — and only when SAT is enabled locally.
  */
 final class HostSatFlow
 {
@@ -33,15 +33,8 @@ final class HostSatFlow
 
     public function open(int $chatId, int $telegramUserId): void
     {
-        if (! $this->cache->featureEnabled('sat_enabled')) {
-            $this->api->sendMessage(
-                $chatId,
-                $this->cache->message(
-                    'sat_disabled',
-                    'کالسنتر سات به زودی فعال می‌شود',
-                ),
-                ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
-            );
+        if (! $this->isSatEnabled()) {
+            $this->replySatDisabled($chatId, $telegramUserId);
 
             return;
         }
@@ -114,9 +107,8 @@ final class HostSatFlow
             return false;
         }
 
-        if (! $this->cache->featureEnabled('sat_enabled')) {
-            $this->conversations->set($telegramUserId, 'idle', []);
-            $this->open($chatId, $telegramUserId);
+        if (! $this->isSatEnabled()) {
+            $this->replySatDisabled($chatId, $telegramUserId);
 
             return true;
         }
@@ -147,6 +139,12 @@ final class HostSatFlow
     /** @param array<string, mixed> $draft */
     private function onName(int $chatId, int $telegramUserId, string $text, array $draft): bool
     {
+        if (! $this->isSatEnabled()) {
+            $this->replySatDisabled($chatId, $telegramUserId);
+
+            return true;
+        }
+
         $name = trim($text);
         if (mb_strlen($name) < 3 || mb_strlen($name) > 255) {
             $this->api->sendMessage($chatId, 'نام معتبر بفرستید (حداقل ۳ کاراکتر):');
@@ -165,6 +163,12 @@ final class HostSatFlow
     /** @param array<string, mixed> $draft */
     private function onCity(int $chatId, int $telegramUserId, string $text, array $draft): bool
     {
+        if (! $this->isSatEnabled()) {
+            $this->replySatDisabled($chatId, $telegramUserId);
+
+            return true;
+        }
+
         $city = trim($text);
         if (in_array(strtolower($city), ['/null', 'null', '-'], true)) {
             $draft['city'] = null;
@@ -187,6 +191,12 @@ final class HostSatFlow
     /** @param array<string, mixed> $draft */
     private function onAge(int $chatId, int $telegramUserId, string $text, array $draft): bool
     {
+        if (! $this->isSatEnabled()) {
+            $this->replySatDisabled($chatId, $telegramUserId);
+
+            return true;
+        }
+
         $raw = trim($text);
         $age = null;
         if (! in_array(strtolower($raw), ['/null', 'null', '-'], true)) {
@@ -225,12 +235,11 @@ final class HostSatFlow
         }
 
         if (empty($result['ok'])) {
-            $this->conversations->set($telegramUserId, 'filling_sat_application', [
-                'sat' => ['step' => 'age', 'draft' => $draft],
-            ]);
+            $message = (string) ($result['message'] ?? 'ثبت درخواست سات ناموفق بود.');
+            $this->conversations->set($telegramUserId, 'idle', []);
             $this->api->sendMessage(
                 $chatId,
-                (string) ($result['message'] ?? 'ثبت درخواست سات ناموفق بود.'),
+                $message,
                 ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
             );
 
@@ -255,6 +264,32 @@ final class HostSatFlow
         ]);
 
         return true;
+    }
+
+    private function isSatEnabled(): bool
+    {
+        $explicit = trim($this->cache->message('__sat_enabled', ''));
+        if ($explicit === '0') {
+            return false;
+        }
+        if ($explicit === '1') {
+            return true;
+        }
+
+        return $this->cache->featureEnabled('sat_enabled');
+    }
+
+    private function replySatDisabled(int $chatId, int $telegramUserId): void
+    {
+        $this->conversations->set($telegramUserId, 'idle', []);
+        $this->api->sendMessage(
+            $chatId,
+            $this->cache->message(
+                'sat_disabled',
+                'کالسنتر سات به زودی فعال می‌شود',
+            ),
+            ['reply_markup' => $this->mainMenu->replyMarkup($telegramUserId)],
+        );
     }
 
     private function resetIdle(int $telegramUserId): bool

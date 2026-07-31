@@ -232,6 +232,61 @@ class TelegramBot extends Model
         return $config['override_text'] !== '' || $config['card_number'] !== '';
     }
 
+    /**
+     * Preview card-to-card config after applying unsaved admin form fields.
+     *
+     * @param  array{
+     *     card_number?: string|null,
+     *     card_holder?: string|null,
+     *     bank_name?: string|null,
+     *     notes?: string|null,
+     *     override_text?: string|null
+     * }  $fields
+     * @return array{
+     *     card_number: string,
+     *     card_holder: string,
+     *     bank_name: string,
+     *     notes: string,
+     *     override_text: string
+     * }
+     */
+    public function previewCardToCardConfig(array $fields): array
+    {
+        $config = $this->cardToCardConfig();
+
+        foreach (['card_number', 'card_holder', 'bank_name', 'notes'] as $key) {
+            if (! array_key_exists($key, $fields)) {
+                continue;
+            }
+            $config[$key] = trim((string) ($fields[$key] ?? ''));
+        }
+
+        if (array_key_exists('override_text', $fields)) {
+            $config['override_text'] = trim((string) ($fields['override_text'] ?? ''));
+            if ($config['override_text'] !== '' && $config['card_number'] === '') {
+                $parsed = self::parseCardToCardFreeText($config['override_text']);
+                foreach (['card_number', 'card_holder', 'bank_name'] as $key) {
+                    if ($config[$key] === '' && isset($parsed[$key])) {
+                        $config[$key] = $parsed[$key];
+                    }
+                }
+            }
+        }
+
+        return $config;
+    }
+
+    public static function configHasCardToCardDetails(array $config): bool
+    {
+        return trim((string) ($config['override_text'] ?? '')) !== ''
+            || trim((string) ($config['card_number'] ?? '')) !== '';
+    }
+
+    public function cardToCardReady(): bool
+    {
+        return $this->featureEnabled(BotFeatureFlag::CardToCardPayment) && $this->hasCardToCardDetails();
+    }
+
     public function cardToCardInstructions(): string
     {
         $config = $this->cardToCardConfig();

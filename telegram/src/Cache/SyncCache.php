@@ -30,7 +30,7 @@ final class SyncCache
         'checkout_zarinpal' => true,
         'checkout_c2c' => false,
         'bot_is_active' => true,
-        'sat_enabled' => true,
+        'sat_enabled' => false,
     ];
 
     private readonly HotCache $hotCache;
@@ -111,6 +111,9 @@ final class SyncCache
         }
 
         $this->storeFeatureFlags($flags);
+        $this->storeMessages([
+            '__sat_enabled' => ! empty($flags['sat_enabled']) ? '1' : '0',
+        ]);
         $this->storeRequiredChats((array) ($bootstrap['required_chats'] ?? []));
         $this->storeSupportCategories((array) ($bootstrap['support_categories'] ?? []));
         $this->storeDestinations((array) ($bootstrap['destinations'] ?? []));

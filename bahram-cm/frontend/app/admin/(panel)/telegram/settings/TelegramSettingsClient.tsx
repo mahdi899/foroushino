@@ -393,6 +393,12 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState('');
 
+  const draftHasDetails = Boolean(
+    overrideText.trim() || cardNumber.trim() || cardHolder.trim() || bankName.trim(),
+  );
+  const savedHasDetails = Boolean(bot.card_to_card_has_details);
+  const savedReady = Boolean(bot.card_to_card_ready);
+
   useEffect(() => {
     const next = bot.card_to_card ?? {};
     setEnabled(Boolean(bot.card_to_card_enabled));
@@ -401,7 +407,7 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
     setCardHolder(next.card_holder ?? '');
     setBankName(next.bank_name ?? '');
     setNotes(next.notes ?? '');
-  }, [bot.card_to_card_enabled, bot.card_to_card]);
+  }, [bot.card_to_card_enabled, bot.card_to_card, bot.card_to_card_has_details, bot.card_to_card_ready]);
 
   const dirty =
     enabled !== Boolean(bot.card_to_card_enabled) ||
@@ -417,6 +423,11 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
   );
 
   const save = () => {
+    if (enabled && !draftHasDetails) {
+      setStatus('برای فعال‌کردن کارت‌به‌کارت، متن راهنما یا شماره کارت را وارد کنید.');
+      return;
+    }
+
     startTransition(async () => {
       setStatus('');
       const res = await updateTelegramBotAction(bot.id, {
@@ -429,7 +440,7 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
           override_text: overrideText.trim() || null,
         },
       });
-      setStatus(res.ok ? 'ذخیره شد' : res.error ?? 'خطا');
+      setStatus(res.ok ? 'ذخیره شد. اگر ربات روی هاست خارج است، «پوش دستی» را هم بزنید.' : res.error ?? 'خطا');
       if (res.ok) onSaved();
     });
   };
@@ -443,6 +454,22 @@ function BotCardToCardRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () 
           فعال برای خرید بات (سمینار / دوره / کانال مرجع)
         </label>
       </div>
+      {enabled && !savedHasDetails && !draftHasDetails ? (
+        <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-caption text-amber-800 dark:text-amber-300">
+          فلگ روشن است ولی اطلاعات کارت ثبت نشده — به همین دلیل دکمه «کارت به کارت» در ربات دیده نمی‌شود.
+          متن راهنما یا شماره کارت را پر کنید و «ذخیره کارت‌به‌کارت» را بزنید.
+        </p>
+      ) : null}
+      {enabled && savedHasDetails && !savedReady ? (
+        <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-caption text-amber-800 dark:text-amber-300">
+          اطلاعات کارت ذخیره شده؛ برای نمایش در ربات، تیک فعال‌سازی را روشن و دوباره ذخیره کنید.
+        </p>
+      ) : null}
+      {savedReady ? (
+        <p className="mb-3 text-caption text-emerald-700 dark:text-emerald-400">
+          آماده نمایش در ربات است. بعد از هر تغییر، «پوش دستی به هاست خارج» را در بالای همین صفحه بزنید.
+        </p>
+      ) : null}
       {!bot.payment_reports_chat_id ? (
         <p className="mb-3 text-caption text-amber-700 dark:text-amber-400">
           گروه گزارشات پرداخت هنوز تنظیم نشده — بدون آن فیش‌ها به ادمین نمی‌رسد.

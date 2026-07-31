@@ -88,6 +88,21 @@ class TelegramBotAdminController
 
         $c2cTouched = array_key_exists('card_to_card_enabled', $data) || array_key_exists('card_to_card', $data);
         if ($c2cTouched) {
+            $wantsEnabled = array_key_exists('card_to_card_enabled', $data)
+                ? (bool) $data['card_to_card_enabled']
+                : $bot->featureEnabled(BotFeatureFlag::CardToCardPayment);
+
+            if ($wantsEnabled && ! TelegramBot::configHasCardToCardDetails(
+                $bot->previewCardToCardConfig((array) ($data['card_to_card'] ?? [])),
+            )) {
+                return response()->json([
+                    'error' => [
+                        'code' => 'card_to_card_details_missing',
+                        'message_fa' => 'برای فعال‌کردن کارت‌به‌کارت، ابتدا متن راهنما یا شماره کارت را وارد و ذخیره کنید.',
+                    ],
+                ], 422);
+            }
+
             $bot->setCardToCardSettings(
                 array_key_exists('card_to_card_enabled', $data) ? (bool) $data['card_to_card_enabled'] : null,
                 (array) ($data['card_to_card'] ?? []),
@@ -467,6 +482,8 @@ class TelegramBotAdminController
             'reports_chat_id' => $bot->reportsGroupChatId(),
             'payment_reports_chat_id' => $bot->paymentReportsChatId(),
             'card_to_card_enabled' => $bot->featureEnabled(BotFeatureFlag::CardToCardPayment),
+            'card_to_card_ready' => $bot->cardToCardReady(),
+            'card_to_card_has_details' => $bot->hasCardToCardDetails(),
             'iran_mobile_only' => $bot->featureEnabled(BotFeatureFlag::IranMobileOnly),
             'card_to_card' => $bot->cardToCardConfig(),
         ];

@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramSupportCategory;
 use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
+use App\Modules\TelegramBot\Services\BotMessageCatalog;
 use Illuminate\Database\Seeder;
 
 class TelegramBotSeeder extends Seeder
@@ -13,9 +15,18 @@ class TelegramBotSeeder extends Seeder
         /** @var TelegramBotRepository $bots */
         $bots = app(TelegramBotRepository::class);
 
+        $seededBots = [];
         foreach ((array) config('telegram_bot.bots', []) as $configKey => $entry) {
             $key = (string) ($entry['key'] ?? $configKey);
-            $bots->upsertFromConfig($key, $entry);
+            $seededBots[] = $bots->upsertFromConfig($key, $entry);
+        }
+
+        /** @var BotMessageCatalog $messages */
+        $messages = app(BotMessageCatalog::class);
+        foreach ($seededBots as $bot) {
+            if ($bot instanceof TelegramBot) {
+                $messages->seedMissingDefaults($bot);
+            }
         }
 
         $categories = [
