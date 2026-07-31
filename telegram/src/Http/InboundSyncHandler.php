@@ -50,7 +50,13 @@ final class InboundSyncHandler
             } catch (\Throwable $e) {
                 error_log('[telegram-host] push_account: '.$e->getMessage());
 
-                return ['ok' => false, 'action' => 'push_account', 'error' => 'store_failed', 'defer' => false];
+                return [
+                    'ok' => false,
+                    'action' => 'push_account',
+                    'error' => 'store_failed',
+                    'detail' => $e->getMessage(),
+                    'defer' => false,
+                ];
             }
             if (! ($stored['ok'] ?? false)) {
                 return array_merge($stored, ['defer' => false]);

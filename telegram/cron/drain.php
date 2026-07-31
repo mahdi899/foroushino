@@ -14,6 +14,8 @@ $config = require dirname(__DIR__).'/bootstrap.php';
 use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\HybridAccountCache;
 use TelegramHost\Cache\HotCache;
+use TelegramHost\Cache\SyncCache;
+use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Db\Connection;
 use TelegramHost\Http\LiveClient;
 use TelegramHost\Http\SyncClient;
@@ -26,6 +28,7 @@ use TelegramHost\Queue\PendingRegistrationSync;
 use TelegramHost\Queue\PendingSupportForward;
 use TelegramHost\Queue\PendingTicketSync;
 use TelegramHost\Services\HostSupportService;
+use TelegramHost\Telegram\BotApiClient;
 
 $lockPath = dirname(__DIR__).'/storage/drain.lock';
 $lockFp = fopen($lockPath, 'c+');

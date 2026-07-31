@@ -30,12 +30,15 @@ $allowed = [
     'public/webhook.php',
     'public/apply-host-patch.php',
     'config.php',
+    'src/Http/InboundSyncHandler.php',
+    'src/Account/AccountCache.php',
     'src/Services/HostRegistrationFlow.php',
     'src/Cache/SyncCache.php',
     'src/Cache/HotCache.php',
     'src/Queue/PendingRegistrationSync.php',
     'src/Queue/BackgroundRegistrationSync.php',
     'cron/pull-sync.php',
+    'cron/drain.php',
 ];
 
 $root = dirname(__DIR__);
