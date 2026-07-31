@@ -205,7 +205,9 @@ final class HostRegistrationFlow
                 $this->api->deleteMessage($chatId, $loadingId);
             }
             $this->apply($chatId, $telegramUserId, $iranResponse);
-            $this->pullFullAccountSnapshot($telegramUserId);
+            // One-shot sync: registration response (+ Iran push_account) fills cache.
+            // Only pull if snapshot is still incomplete.
+            $this->pullFullAccountSnapshotIfNeeded($telegramUserId);
 
             if ($this->contactStepResolved($telegramUserId)) {
                 return;
@@ -230,10 +232,10 @@ final class HostRegistrationFlow
         }
 
         if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
-            $this->pullFullAccountSnapshot($telegramUserId);
             if (! $this->syncRegistrationWithIran($telegramUserId, $phone, null, $contactUserId)) {
                 $this->enqueueRegistrationSync($telegramUserId, $phone, null, $contactUserId);
             }
+            $this->pullFullAccountSnapshotIfNeeded($telegramUserId);
 
             return;
         }
@@ -281,10 +283,10 @@ final class HostRegistrationFlow
         }
 
         $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $displayName);
-        $this->pullFullAccountSnapshot($telegramUserId);
         if (! $this->syncRegistrationWithIran($telegramUserId, $phone, $displayName, $contactUserId)) {
             $this->enqueueRegistrationSync($telegramUserId, $phone, $displayName, $contactUserId);
         }
+        $this->pullFullAccountSnapshotIfNeeded($telegramUserId);
     }
 
     /** @param array<string, mixed> $from */
@@ -295,10 +297,10 @@ final class HostRegistrationFlow
             $pending = $this->mergePendingAccessByMobile($telegramUserId, $phone);
 
             if ($this->tryShowVerifiedLocalAccount($chatId, $telegramUserId, $phone)) {
-                $this->pullFullAccountSnapshot($telegramUserId);
                 if (! $this->syncRegistrationWithIran($telegramUserId, $phone, null, $telegramUserId)) {
                     $this->enqueueRegistrationSync($telegramUserId, $phone, null, $telegramUserId);
                 }
+                $this->pullFullAccountSnapshotIfNeeded($telegramUserId);
 
                 return true;
             }
@@ -312,10 +314,10 @@ final class HostRegistrationFlow
             }
 
             $this->finishLocalRegistration($chatId, $telegramUserId, $phone, $knownName);
-            $this->pullFullAccountSnapshot($telegramUserId);
             if (! $this->syncRegistrationWithIran($telegramUserId, $phone, $knownName, $telegramUserId)) {
                 $this->enqueueRegistrationSync($telegramUserId, $phone, $knownName, $telegramUserId);
             }
+            $this->pullFullAccountSnapshotIfNeeded($telegramUserId);
 
             return true;
         } catch (\Throwable $e) {
@@ -336,6 +338,22 @@ final class HostRegistrationFlow
         if ($oldId > 0 && $oldId !== $telegramUserId) {
             $this->accounts->rekeyTelegramUserId($oldId, $telegramUserId);
         }
+    }
+
+    private function pullFullAccountSnapshotIfNeeded(int $telegramUserId): void
+    {
+        if ($telegramUserId <= 0) {
+            return;
+        }
+
+        // Registration/contact response or syncRegistrationWithIran already stored the snapshot.
+        if ($this->accounts->isVerified($telegramUserId)
+            && $this->accounts->hasRenderableProfile($telegramUserId)
+            && ! $this->accounts->needsIranReconcile($telegramUserId)) {
+            return;
+        }
+
+        $this->pullFullAccountSnapshot($telegramUserId);
     }
 
     private function pullFullAccountSnapshot(int $telegramUserId): void
@@ -568,10 +586,10 @@ final class HostRegistrationFlow
         }
 
         $contactUserId = (int) ($conversation['context']['contact_user_id'] ?? 0);
-        $this->pullFullAccountSnapshot($telegramUserId);
         if (! $this->syncRegistrationWithIran($telegramUserId, $mobile, $name, $contactUserId)) {
             $this->enqueueRegistrationSync($telegramUserId, $mobile, $name, $contactUserId);
         }
+        $this->pullFullAccountSnapshotIfNeeded($telegramUserId);
     }
 
     public function callback(int $chatId, int $telegramUserId, string $data): void

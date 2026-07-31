@@ -35,6 +35,7 @@ $allowed = [
     'src/Cache/HotCache.php',
     'src/Queue/PendingRegistrationSync.php',
     'src/Queue/BackgroundRegistrationSync.php',
+    'cron/pull-sync.php',
 ];
 
 $root = dirname(__DIR__);

@@ -36,8 +36,8 @@ if (! $enabled) {
     exit(0);
 }
 
-$catalogInterval = max(300, (int) ($config['pull_sync_min_interval_seconds'] ?? 3600));
-$accountInterval = max(60, (int) ($config['pull_sync_account_interval_seconds'] ?? 300));
+$catalogInterval = max(3600, (int) ($config['pull_sync_min_interval_seconds'] ?? 3600));
+$accountInterval = max(3600, (int) ($config['pull_sync_account_interval_seconds'] ?? 3600));
 $accountBatch = max(5, min(200, (int) ($config['pull_sync_account_batch_size'] ?? 35)));
 $accountEnabled = (bool) ($config['pull_sync_account_enabled'] ?? true);
 

@@ -15,7 +15,8 @@ Artisan::command('inspire', function () {
 Schedule::command('telegram:cleanup')->hourly()->onOneServer();
 Schedule::command('telegram:reconcile-webhook')->everyTwoMinutes()->onOneServer();
 Schedule::command('telegram:host-push-retry')->everyThreeMinutes()->onOneServer();
-Schedule::command('telegram:host-sync-accounts --skip-catalog --reconcile-only --limit=80')->everyMinute()->onOneServer();
+// Event-driven push covers day-to-day; hourly-ish heal only for missed pushes while host was down.
+Schedule::command('telegram:host-sync-accounts --skip-catalog --reconcile-only --limit=80')->everySixHours()->onOneServer();
 // Heal host bootstrap (reports group, messages, flags) without blasting all accounts.
 Schedule::call(static fn () => \App\Jobs\PushTelegramHostSyncJob::bootstrap())
     ->name('telegram-host-push-bootstrap')
