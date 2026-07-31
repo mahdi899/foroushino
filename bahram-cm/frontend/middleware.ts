@@ -365,11 +365,19 @@ export const config = {
     "/",
     "/storage/:path*",
     "/media/:path*",
-    "/api/:path*",
+    /*
+     * Laravel `/api/*` only. Skip Next App Router handlers
+     * (admin|revalidate|cart|student|family|broadcasting|sat|spotx|captcha|chatbot|geo).
+     * Under Next 16 + Turbopack, middleware matching nested `/api/.../...`
+     * handlers makes them fall through to the HTML not-found page.
+     * One capturing group only — nested groups break path-to-regexp.
+     */
+    "/api/((?!admin|revalidate|cart|student|family|broadcasting|sat|spotx|captcha|chatbot|geo).*)",
     "/cdn/:path*",
     "/css/:path*",
     "/js/:path*",
     "/fonts/:path*",
-    "/:segment/:path*",
+    // Pages / dual-domain — never run middleware on the Next `/api` tree.
+    "/((?!api(?:/|$)|_next(?:/|$)|favicon\\.ico).*)",
   ],
 };

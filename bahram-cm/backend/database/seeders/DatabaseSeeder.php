@@ -73,6 +73,13 @@ class DatabaseSeeder extends Seeder
                     'cta_whatsapp' => true,
                     'cta_phone' => true,
                     'cta_pricing' => true,
+                    'contacts' => [
+                        'whatsapp' => ['enabled' => true, 'id' => '989120000000', 'label' => '۰۹۱۲۰۰۰۰۰۰۰'],
+                        'telegram' => ['enabled' => true, 'id' => 'rostami_sup', 'label' => '@rostami_sup'],
+                        'rubika' => ['enabled' => true, 'id' => 'rostami_sup', 'label' => '@rostami_sup'],
+                        'instagram' => ['enabled' => true, 'id' => 'live_rostami', 'label' => '@live_rostami'],
+                        'phone' => ['enabled' => true, 'id' => '+982100000000', 'label' => '۰۲۱-۰۰۰۰۰۰۰۰'],
+                    ],
                     'max_history_messages' => 8,
                     'quick_suggestions' => [
                         [

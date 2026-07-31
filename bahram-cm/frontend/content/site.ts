@@ -52,9 +52,10 @@ export const site = {
 
   nav: [
     { href: "/course/campaign-writing", label: "کمپین‌نویسی", shortLabel: "کمپین" },
+    { href: "/reference-channels/kanal-mrgf", label: "کانال مرجع", shortLabel: "مرجع" },
+    { href: "/saat", label: "سات" },
     { href: "/courses", label: "دوره‌ها", shortLabel: "دوره" },
     { href: "/seminars/smynar-zaafranyh-thran", label: "سمینار" },
-    { href: "/saat", label: "سات" },
     { href: "/transformations", label: "رضایت دانشجوها", shortLabel: "رضایت" },
     { href: "/insights", label: "بلاگ" },
     { href: "/founder", label: "درباره‌ی بهرام", shortLabel: "بهرام" },
@@ -258,7 +259,7 @@ export const site = {
 
   contactPage: {
     title: "تماس با ما",
-    description: "سؤال، پیشنهاد یا درخواست همکاری — تیم ما در کوتاه‌ترین زمان پاسخ می‌دهد.",
+    description: "پیامت را بفرست؛ زود جواب می‌دهیم.",
     channelsTitle: "راه‌های ارتباط",
     formTitle: "ارسال پیام",
     formLead: "فرم را پر کن تا به‌زودی با تو تماس بگیریم.",

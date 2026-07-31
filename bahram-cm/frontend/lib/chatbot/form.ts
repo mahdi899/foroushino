@@ -1,7 +1,13 @@
 import type { ChatbotSettingsForm, ChatbotStoredConfig } from './types';
+import { mergeChatbotContacts } from './contacts';
 import { resolveQuickSuggestions } from './quickSuggestions';
 
 export function storedToForm(stored: ChatbotStoredConfig): ChatbotSettingsForm {
+  const contacts = mergeChatbotContacts(stored.contacts, {
+    cta_whatsapp: stored.cta_whatsapp,
+    cta_phone: stored.cta_phone,
+  });
+
   return {
     enabled: stored.enabled,
     assistantName: stored.assistant_name,
@@ -16,9 +22,10 @@ export function storedToForm(stored: ChatbotStoredConfig): ChatbotSettingsForm {
     requireCaptcha: stored.require_captcha,
     honeypotEnabled: stored.honeypot_enabled,
     ctaConsultation: stored.cta_consultation,
-    ctaWhatsapp: stored.cta_whatsapp,
-    ctaPhone: stored.cta_phone,
+    ctaWhatsapp: contacts.whatsapp.enabled,
+    ctaPhone: contacts.phone.enabled,
     ctaPricing: stored.cta_pricing,
+    contacts,
     maxHistoryMessages: stored.max_history_messages,
     quickSuggestions: resolveQuickSuggestions(stored.quick_suggestions, {
       useDefaults: stored.quick_suggestions === undefined,

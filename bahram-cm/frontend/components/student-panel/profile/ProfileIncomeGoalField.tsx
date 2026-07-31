@@ -2,16 +2,40 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toPersianDigits } from '@/lib/persian';
+import { PanelOptionSheetField } from '@/components/ui/PanelOptionSheetField';
 
 function toLatinDigits(input: string): string {
   const fa = '۰۱۲۳۴۵۶۷۸۹';
   return input.replace(/[۰-۹]/g, (d) => String(fa.indexOf(d)));
 }
 
-function parseIncomeGoalMillions(value: string | null | undefined): string {
+const INCOME_OPTIONS = [
+  { value: '20', label: `${toPersianDigits(20)} میلیون تومان` },
+  { value: '30', label: `${toPersianDigits(30)} میلیون تومان` },
+  { value: '40', label: `${toPersianDigits(40)} میلیون تومان` },
+  { value: '50', label: `${toPersianDigits(50)} میلیون تومان` },
+  { value: '50+', label: `بیشتر از ${toPersianDigits(50)} میلیون تومان` },
+];
+
+function parseIncomeGoalValue(value: string | null | undefined): string {
   if (!value?.trim()) return '';
-  const match = toLatinDigits(value.trim()).match(/(\d+)/);
-  return match ? match[1] : '';
+  const text = value.trim();
+  if (/بیشتر|بیش از|فوق/.test(text) || /\+/.test(text)) return '50+';
+  const match = toLatinDigits(text).match(/(\d+)/);
+  if (!match) return '';
+  const amount = match[1];
+  if (INCOME_OPTIONS.some((o) => o.value === amount)) return amount;
+  const n = Number.parseInt(amount, 10);
+  if (n > 50) return '50+';
+  return amount;
+}
+
+function formatIncomeGoal(value: string): string {
+  if (!value) return '';
+  if (value === '50+') return `بیشتر از ${toPersianDigits(50)} میلیون تومان`;
+  const amount = Number.parseInt(value, 10);
+  if (!amount || amount <= 0) return '';
+  return `${toPersianDigits(amount)} میلیون تومان`;
 }
 
 export function ProfileIncomeGoalField({
@@ -21,18 +45,9 @@ export function ProfileIncomeGoalField({
   defaultValue: string | null | undefined;
   onChange?: () => void;
 }) {
-  const [millions, setMillions] = useState(() => parseIncomeGoalMillions(defaultValue));
+  const [selected, setSelected] = useState(() => parseIncomeGoalValue(defaultValue));
 
-  const formattedSubmit = useMemo(() => {
-    const amount = Number.parseInt(millions, 10);
-    if (!amount || amount <= 0) return '';
-    return `${toPersianDigits(amount)} میلیون تومان`;
-  }, [millions]);
-
-  function handleChange(raw: string) {
-    const latin = toLatinDigits(raw).replace(/\D/g, '');
-    setMillions(latin);
-  }
+  const formattedSubmit = useMemo(() => formatIncomeGoal(selected), [selected]);
 
   useEffect(() => {
     onChange?.();
@@ -40,25 +55,19 @@ export function ProfileIncomeGoalField({
 
   return (
     <div className="panel-profile-field">
-      <label className="field-label" htmlFor="income_goal_display">
+      <label className="field-label" htmlFor="income_goal_display" id="income_goal_display-label">
         هدف درآمدی
       </label>
       <input type="hidden" name="income_goal" value={formattedSubmit} />
-      <div className="field-input-wrap field-input-wrap--suffix">
-        <input
-          id="income_goal_display"
-          type="text"
-          inputMode="numeric"
-          value={millions ? toPersianDigits(millions) : ''}
-          onChange={(e) => handleChange(e.target.value)}
-          className="field-input"
-          placeholder="مثلاً ۵۰"
-          dir="ltr"
-        />
-        <span className="field-input-suffix" aria-hidden>
-          میلیون تومان
-        </span>
-      </div>
+      <PanelOptionSheetField
+        id="income_goal_display"
+        title="هدف درآمدی"
+        placeholder="انتخاب کنید"
+        value={selected}
+        options={INCOME_OPTIONS}
+        layout="grid"
+        onChange={setSelected}
+      />
     </div>
   );
 }

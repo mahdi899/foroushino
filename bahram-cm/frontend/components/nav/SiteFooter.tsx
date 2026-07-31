@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Instagram, Mail, Radio, Send, type LucideIcon } from "lucide-react";
 import { site } from "@/content/site";
+import { siteConfig } from "@/config/site";
 import { Divider } from "@/components/ui/Divider";
 import { FooterTrustBadges } from "@/components/nav/FooterTrustBadges";
 import { Logo } from "./Logo";
+import { siteSocialLinksFromContacts } from "@/lib/chatbot/contacts";
+import type { ChatbotPublicContacts } from "@/lib/chatbot/types";
 import { toPersianDigits } from "@/lib/persian";
 
 const mobileLegalLinks = [
@@ -17,8 +20,29 @@ const footerContactIcons: Record<string, LucideIcon> = {
   روبیکا: Radio,
   ایمیل: Mail,
 };
-export function SiteFooter() {
+
+type FooterContactLink = {
+  href: string;
+  label: string;
+  external?: boolean;
+};
+
+function buildFooterContactLinks(contacts?: ChatbotPublicContacts | null): FooterContactLink[] {
+  const social = siteSocialLinksFromContacts(contacts).map((row) => ({
+    href: row.href,
+    label: row.label,
+    external: true as const,
+  }));
+
+  return [
+    ...social,
+    { href: `mailto:${siteConfig.contact.email}`, label: "ایمیل" },
+  ];
+}
+
+export function SiteFooter({ contacts }: { contacts?: ChatbotPublicContacts | null }) {
   const year = toPersianDigits(new Date().getFullYear());
+  const contactLinks = buildFooterContactLinks(contacts);
 
   return (
     <footer className="relative border-t border-bone/5">
@@ -41,14 +65,17 @@ export function SiteFooter() {
               <div className="flex justify-center py-2">
                 <Logo size="footer-mobile" />
               </div>
-              <div className="mt-4 grid grid-cols-4 gap-2">
-                {site.footer.contact.map((link) => {
+              <div
+                className="mt-4 grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${Math.min(contactLinks.length, 4)}, minmax(0, 1fr))` }}
+              >
+                {contactLinks.map((link) => {
                   const Icon = footerContactIcons[link.label] ?? Mail;
                   return (
                     <Link
-                      key={link.href}
+                      key={`${link.label}-${link.href}`}
                       href={link.href}
-                      {...("external" in link && link.external
+                      {...(link.external
                         ? { target: "_blank", rel: "noreferrer noopener" }
                         : {})}
                       className="group flex min-w-0 flex-col items-center gap-1.5 text-center"
@@ -89,11 +116,11 @@ export function SiteFooter() {
                 {site.footer.contactTitle}
               </h3>
               <ul className="mt-5 space-y-3">
-                {site.footer.contact.map((link) => (
-                  <li key={link.href}>
+                {contactLinks.map((link) => (
+                  <li key={`${link.label}-${link.href}`}>
                     <Link
                       href={link.href}
-                      {...("external" in link && link.external
+                      {...(link.external
                         ? { target: "_blank", rel: "noreferrer noopener" }
                         : {})}
                       className="text-sm leading-snug text-bone-dim transition-colors hover:text-bone"

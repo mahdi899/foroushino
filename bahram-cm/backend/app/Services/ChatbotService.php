@@ -110,7 +110,7 @@ class ChatbotService
     {
         $stored = $this->storedConfig();
 
-        return [
+        $merged = [
             'enabled' => (bool) ($stored['enabled'] ?? false),
             'assistant_name' => trim((string) ($stored['assistant_name'] ?? 'دستیار بهرام')) ?: 'دستیار بهرام',
             'welcome_message' => trim((string) ($stored['welcome_message'] ?? ''))
@@ -128,9 +128,19 @@ class ChatbotService
             'cta_whatsapp' => (bool) ($stored['cta_whatsapp'] ?? true),
             'cta_phone' => (bool) ($stored['cta_phone'] ?? true),
             'cta_pricing' => (bool) ($stored['cta_pricing'] ?? true),
+            'contacts' => $this->normalizeContacts(
+                is_array($stored['contacts'] ?? null) ? $stored['contacts'] : null,
+                (bool) ($stored['cta_whatsapp'] ?? true),
+                (bool) ($stored['cta_phone'] ?? true),
+            ),
             'max_history_messages' => max(2, min(20, (int) ($stored['max_history_messages'] ?? 8))),
             'quick_suggestions' => $this->normalizeQuickSuggestions($stored['quick_suggestions'] ?? null, isset($stored['quick_suggestions'])),
         ];
+
+        $merged['cta_whatsapp'] = (bool) ($merged['contacts']['whatsapp']['enabled'] ?? $merged['cta_whatsapp']);
+        $merged['cta_phone'] = (bool) ($merged['contacts']['phone']['enabled'] ?? $merged['cta_phone']);
+
+        return $merged;
     }
 
     public function isEnabled(): bool
@@ -208,6 +218,133 @@ class ChatbotService
     }
 
     /**
+     * @return array<string, array{enabled: bool, id: string, label: string}>
+     */
+    private function defaultContacts(): array
+    {
+        return [
+            'whatsapp' => ['enabled' => true, 'id' => '989120000000', 'label' => '۰۹۱۲۰۰۰۰۰۰۰'],
+            'telegram' => ['enabled' => true, 'id' => 'rostami_sup', 'label' => '@rostami_sup'],
+            'rubika' => ['enabled' => true, 'id' => 'rostami_sup', 'label' => '@rostami_sup'],
+            'instagram' => ['enabled' => true, 'id' => 'live_rostami', 'label' => '@live_rostami'],
+            'phone' => ['enabled' => true, 'id' => '+982100000000', 'label' => '۰۲۱-۰۰۰۰۰۰۰۰'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $raw
+     * @return array<string, array{enabled: bool, id: string, label: string}>
+     */
+    private function normalizeContacts(?array $raw, bool $legacyWhatsapp, bool $legacyPhone): array
+    {
+        $defaults = $this->defaultContacts();
+        $out = $defaults;
+
+        foreach (array_keys($defaults) as $key) {
+            $row = is_array($raw[$key] ?? null) ? $raw[$key] : null;
+            if ($row === null) {
+                continue;
+            }
+            $id = trim((string) ($row['id'] ?? ''));
+            $label = trim((string) ($row['label'] ?? ''));
+            $out[$key] = [
+                'enabled' => array_key_exists('enabled', $row) ? (bool) $row['enabled'] : $defaults[$key]['enabled'],
+                'id' => $id !== '' ? mb_substr($id, 0, 200) : $defaults[$key]['id'],
+                'label' => $label !== '' ? mb_substr($label, 0, 120) : $defaults[$key]['label'],
+            ];
+        }
+
+        if (! is_array($raw['whatsapp'] ?? null) || ! array_key_exists('enabled', $raw['whatsapp'] ?? [])) {
+            $out['whatsapp']['enabled'] = $legacyWhatsapp;
+        }
+        if (! is_array($raw['phone'] ?? null) || ! array_key_exists('enabled', $raw['phone'] ?? [])) {
+            $out['phone']['enabled'] = $legacyPhone;
+        }
+
+        return $out;
+    }
+
+    private function contactHref(string $key, string $id): string
+    {
+        $value = trim($id);
+        if ($value === '') {
+            return '#';
+        }
+
+        if ($key === 'whatsapp') {
+            $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+            return $digits !== '' ? 'https://wa.me/'.$digits : '#';
+        }
+
+        if ($key === 'phone') {
+            if (str_starts_with($value, '+')) {
+                $tel = '+'.(preg_replace('/\D+/', '', substr($value, 1)) ?? '');
+            } else {
+                $tel = preg_replace('/[^\d+]/', '', $value) ?? '';
+            }
+
+            return $tel !== '' ? 'tel:'.$tel : '#';
+        }
+
+        if (preg_match('#^https?://#i', $value) === 1) {
+            return $value;
+        }
+
+        $handle = ltrim($value, '@');
+        if ($handle === '') {
+            return '#';
+        }
+
+        return match ($key) {
+            'telegram' => 'https://t.me/'.$handle,
+            'rubika' => 'https://rubika.ir/'.$handle,
+            'instagram' => 'https://www.instagram.com/'.$handle.'/',
+            default => '#',
+        };
+    }
+
+    private function contactLabel(string $key, string $id, string $label): string
+    {
+        $custom = trim($label);
+        if ($custom !== '') {
+            return $custom;
+        }
+
+        if ($key === 'whatsapp' || $key === 'phone') {
+            return trim($id) !== '' ? trim($id) : '—';
+        }
+
+        $handle = ltrim(trim($id), '@');
+        if ($handle === '') {
+            return '—';
+        }
+
+        return in_array($key, ['telegram', 'instagram', 'rubika'], true) ? '@'.$handle : $handle;
+    }
+
+    /**
+     * @param  array<string, array{enabled: bool, id: string, label: string}>  $contacts
+     * @return array<string, array{enabled: bool, id: string, label: string, href: string}>
+     */
+    private function publicContacts(array $contacts): array
+    {
+        $out = [];
+        foreach ($contacts as $key => $row) {
+            $id = (string) ($row['id'] ?? '');
+            $label = (string) ($row['label'] ?? '');
+            $out[$key] = [
+                'enabled' => (bool) ($row['enabled'] ?? true),
+                'id' => $id,
+                'label' => $this->contactLabel((string) $key, $id, $label),
+                'href' => $this->contactHref((string) $key, $id),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function publicConfig(): array
@@ -224,12 +361,13 @@ class ChatbotService
             'captcha' => $captcha,
             'ctas' => [
                 'consultation' => $config['cta_consultation'],
-                'whatsapp' => $config['cta_whatsapp'],
-                'phone' => $config['cta_phone'],
+                'whatsapp' => $config['contacts']['whatsapp']['enabled'] ?? $config['cta_whatsapp'],
+                'phone' => $config['contacts']['phone']['enabled'] ?? $config['cta_phone'],
                 'pricing' => $config['cta_pricing'],
             ],
+            'contacts' => $this->publicContacts($config['contacts']),
             'operator_profiles' => $this->operatorProfiles(),
-            'quick_suggestions' => $this->defaultQuickSuggestions(),
+            'quick_suggestions' => $config['quick_suggestions'],
             'ai_available' => $this->isAiAvailable(),
             'system_prompt_extra' => $config['system_prompt_extra'],
             'max_history_messages' => $config['max_history_messages'],

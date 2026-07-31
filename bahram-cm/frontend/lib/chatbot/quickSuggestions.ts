@@ -1,7 +1,7 @@
 import { SITE_QUICK_SUGGESTIONS } from '@/lib/data/siteFaqContent';
 import type { ChatbotQuickSuggestion } from './types';
 
-/** Public chatbot chips — always match `SITE_FAQ_ITEMS` (build-stable). */
+/** Defaults when admin has never saved quick suggestions. */
 export const DEFAULT_QUICK_SUGGESTIONS: ChatbotQuickSuggestion[] = SITE_QUICK_SUGGESTIONS.map(
   (s) => ({ ...s }),
 );

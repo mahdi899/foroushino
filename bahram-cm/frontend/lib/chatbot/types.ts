@@ -1,3 +1,24 @@
+export type ChatbotContactChannelKey = 'whatsapp' | 'telegram' | 'rubika' | 'instagram' | 'phone';
+
+/** Stored / form channel — id is handle, phone digits, or full URL. */
+export interface ChatbotContactChannel {
+  enabled: boolean;
+  id: string;
+  /** Optional display label (e.g. Persian phone). Falls back to id. */
+  label: string;
+}
+
+export type ChatbotContacts = Record<ChatbotContactChannelKey, ChatbotContactChannel>;
+
+export interface ChatbotPublicContactChannel {
+  enabled: boolean;
+  id: string;
+  label: string;
+  href: string;
+}
+
+export type ChatbotPublicContacts = Record<ChatbotContactChannelKey, ChatbotPublicContactChannel>;
+
 export interface ChatbotStoredConfig {
   enabled: boolean;
   assistant_name: string;
@@ -16,6 +37,8 @@ export interface ChatbotStoredConfig {
   cta_whatsapp: boolean;
   cta_phone: boolean;
   cta_pricing: boolean;
+  /** Contact tab + AI fallback channels (IDs / handles editable in /admin/chatbot). */
+  contacts: ChatbotContacts;
   max_history_messages: number;
   quick_suggestions?: ChatbotQuickSuggestion[];
 }
@@ -37,6 +60,7 @@ export interface ChatbotSettingsForm {
   ctaWhatsapp: boolean;
   ctaPhone: boolean;
   ctaPricing: boolean;
+  contacts: ChatbotContacts;
   maxHistoryMessages: number;
   quickSuggestions: ChatbotQuickSuggestion[];
 }
@@ -72,6 +96,8 @@ export interface ChatbotPublicConfig {
     phone: boolean;
     pricing: boolean;
   };
+  /** Resolved contact channels — chatbot tab, contact page, footer socials. */
+  contacts: ChatbotPublicContacts;
   operator_profiles: ChatbotOperatorProfile[];
   quick_suggestions?: ChatbotQuickSuggestion[];
   ai_available?: boolean;
@@ -248,6 +274,14 @@ export function chatbotLogRating(metadata: Record<string, unknown> | null | unde
   return typeof r === 'number' && r >= 1 && r <= 5 ? r : null;
 }
 
+export const DEFAULT_CHATBOT_CONTACTS: ChatbotContacts = {
+  whatsapp: { enabled: true, id: '989120000000', label: '۰۹۱۲۰۰۰۰۰۰۰' },
+  telegram: { enabled: true, id: 'rostami_sup', label: '@rostami_sup' },
+  rubika: { enabled: true, id: 'rostami_sup', label: '@rostami_sup' },
+  instagram: { enabled: true, id: 'live_rostami', label: '@live_rostami' },
+  phone: { enabled: true, id: '+982100000000', label: '۰۲۱-۰۰۰۰۰۰۰۰' },
+};
+
 export const DEFAULT_CHATBOT_CONFIG: ChatbotStoredConfig = {
   enabled: true,
   assistant_name: 'دستیار بهرام',
@@ -265,8 +299,44 @@ export const DEFAULT_CHATBOT_CONFIG: ChatbotStoredConfig = {
   cta_whatsapp: true,
   cta_phone: true,
   cta_pricing: true,
+  contacts: DEFAULT_CHATBOT_CONTACTS,
   max_history_messages: 8,
 };
+
+function defaultPublicContacts(): ChatbotPublicContacts {
+  return {
+    whatsapp: {
+      enabled: true,
+      id: DEFAULT_CHATBOT_CONTACTS.whatsapp.id,
+      label: DEFAULT_CHATBOT_CONTACTS.whatsapp.label,
+      href: `https://wa.me/${DEFAULT_CHATBOT_CONTACTS.whatsapp.id}`,
+    },
+    telegram: {
+      enabled: true,
+      id: DEFAULT_CHATBOT_CONTACTS.telegram.id,
+      label: DEFAULT_CHATBOT_CONTACTS.telegram.label,
+      href: `https://t.me/${DEFAULT_CHATBOT_CONTACTS.telegram.id}`,
+    },
+    rubika: {
+      enabled: true,
+      id: DEFAULT_CHATBOT_CONTACTS.rubika.id,
+      label: DEFAULT_CHATBOT_CONTACTS.rubika.label,
+      href: `https://rubika.ir/${DEFAULT_CHATBOT_CONTACTS.rubika.id}`,
+    },
+    instagram: {
+      enabled: true,
+      id: DEFAULT_CHATBOT_CONTACTS.instagram.id,
+      label: DEFAULT_CHATBOT_CONTACTS.instagram.label,
+      href: `https://www.instagram.com/${DEFAULT_CHATBOT_CONTACTS.instagram.id}/`,
+    },
+    phone: {
+      enabled: true,
+      id: DEFAULT_CHATBOT_CONTACTS.phone.id,
+      label: DEFAULT_CHATBOT_CONTACTS.phone.label,
+      href: `tel:${DEFAULT_CHATBOT_CONTACTS.phone.id}`,
+    },
+  };
+}
 
 export const EMPTY_CHATBOT_PUBLIC: ChatbotPublicConfig = {
   enabled: false,
@@ -280,6 +350,7 @@ export const EMPTY_CHATBOT_PUBLIC: ChatbotPublicConfig = {
     phone: true,
     pricing: true,
   },
+  contacts: defaultPublicContacts(),
   operator_profiles: [],
   ai_available: false,
 };

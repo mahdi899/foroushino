@@ -8,6 +8,7 @@ import {
   type ChatbotSettingsForm,
   type ChatbotStoredConfig,
 } from './types';
+import { mergeChatbotContacts, normalizeContactsForSave } from './contacts';
 import { normalizeQuickSuggestions, resolveQuickSuggestions } from './quickSuggestions';
 
 const CHATBOT_GROUP = 'chatbot';
@@ -19,6 +20,11 @@ function normalizeRateLimit(value: number): number {
 }
 
 function mergeConfig(raw: Partial<ChatbotStoredConfig> | null): ChatbotStoredConfig {
+  const contacts = mergeChatbotContacts(raw?.contacts, {
+    cta_whatsapp: raw?.cta_whatsapp,
+    cta_phone: raw?.cta_phone,
+  });
+
   return {
     enabled: raw?.enabled ?? DEFAULT_CHATBOT_CONFIG.enabled,
     assistant_name: raw?.assistant_name?.trim() || DEFAULT_CHATBOT_CONFIG.assistant_name,
@@ -35,9 +41,10 @@ function mergeConfig(raw: Partial<ChatbotStoredConfig> | null): ChatbotStoredCon
     require_captcha: raw?.require_captcha ?? DEFAULT_CHATBOT_CONFIG.require_captcha,
     honeypot_enabled: raw?.honeypot_enabled ?? DEFAULT_CHATBOT_CONFIG.honeypot_enabled,
     cta_consultation: raw?.cta_consultation ?? DEFAULT_CHATBOT_CONFIG.cta_consultation,
-    cta_whatsapp: raw?.cta_whatsapp ?? DEFAULT_CHATBOT_CONFIG.cta_whatsapp,
-    cta_phone: raw?.cta_phone ?? DEFAULT_CHATBOT_CONFIG.cta_phone,
+    cta_whatsapp: contacts.whatsapp.enabled,
+    cta_phone: contacts.phone.enabled,
     cta_pricing: raw?.cta_pricing ?? DEFAULT_CHATBOT_CONFIG.cta_pricing,
+    contacts,
     max_history_messages: raw?.max_history_messages ?? DEFAULT_CHATBOT_CONFIG.max_history_messages,
     quick_suggestions: resolveQuickSuggestions(raw?.quick_suggestions, {
       useDefaults: raw?.quick_suggestions === undefined,
@@ -51,6 +58,13 @@ export async function getStoredChatbotConfig(): Promise<ChatbotStoredConfig> {
 }
 
 export async function saveChatbotConfig(form: ChatbotSettingsForm): Promise<{ ok: boolean; error?: string }> {
+  const contacts = normalizeContactsForSave(
+    mergeChatbotContacts(form.contacts, {
+      cta_whatsapp: form.ctaWhatsapp,
+      cta_phone: form.ctaPhone,
+    }),
+  );
+
   const next: ChatbotStoredConfig = {
     enabled: form.enabled,
     assistant_name: form.assistantName.trim() || DEFAULT_CHATBOT_CONFIG.assistant_name,
@@ -65,9 +79,10 @@ export async function saveChatbotConfig(form: ChatbotSettingsForm): Promise<{ ok
     require_captcha: form.requireCaptcha,
     honeypot_enabled: form.honeypotEnabled,
     cta_consultation: form.ctaConsultation,
-    cta_whatsapp: form.ctaWhatsapp,
-    cta_phone: form.ctaPhone,
+    cta_whatsapp: contacts.whatsapp.enabled,
+    cta_phone: contacts.phone.enabled,
     cta_pricing: form.ctaPricing,
+    contacts,
     max_history_messages: Math.max(2, Math.min(20, form.maxHistoryMessages)),
     quick_suggestions: normalizeQuickSuggestions(form.quickSuggestions),
   };

@@ -8848,8 +8848,8 @@ html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-year-picker {
   align-items: flex-end;
   justify-content: center;
   padding: 0;
-  background: var(--color-scrim, rgba(5, 10, 11, 0.6));
-  backdrop-filter: blur(6px);
+  /* Solid scrim — no backdrop-filter (heavy on mobile GPUs). */
+  background: rgba(5, 10, 11, 0.58);
   animation: wheel-date-fade 160ms ease;
 }
 
@@ -9019,6 +9019,14 @@ html:has(.panel-root[data-panel-theme='dark']) .jalali-rmdp .rmdp-year-picker {
   gap: 0.625rem;
 }
 
+.wheel-date-sheet__actions--single {
+  grid-template-columns: 1fr;
+}
+
+.wheel-date-sheet__actions--single .btn {
+  width: 100%;
+}
+
 .wheel-date__hint {
   margin-top: 0.375rem;
   font-size: 0.75rem;
@@ -9080,6 +9088,153 @@ html:has(.panel-root[data-panel-theme='dark']) .wheel-date__item.is-selected {
   .wheel-date-sheet {
     animation: none;
   }
+}
+
+/* Shared option / city sheets (gender, age, city, income, …) */
+.panel-option-sheet {
+  max-height: min(85dvh, 40rem);
+}
+
+.panel-option-sheet--city {
+  max-width: 28rem;
+}
+
+.panel-option-sheet__search {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  background: var(--color-surface, #fff);
+  padding: 0.65rem 0.85rem;
+}
+
+.panel-option-sheet__search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.panel-option-sheet__search-input::placeholder {
+  color: var(--color-text-muted, #5f7f83);
+  opacity: 0.8;
+}
+
+.panel-option-sheet__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  max-height: min(48dvh, 22rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.panel-option-sheet__list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.panel-option-sheet__list--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  max-height: none;
+  overflow: visible;
+}
+
+.panel-option-sheet__list--scroll {
+  min-height: 10rem;
+}
+
+.panel-option-sheet__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  background: var(--color-surface, #fff);
+  padding: 0.8rem 0.95rem;
+  color: var(--color-text, #0d1517);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: right;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.panel-option-sheet__list--grid .panel-option-sheet__item {
+  justify-content: center;
+  text-align: center;
+  min-height: 3rem;
+}
+
+.panel-option-sheet__item:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+
+.panel-option-sheet__item.is-selected {
+  border-color: var(--color-primary, #008c96);
+  background: var(--color-primary, #008c96);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary, #008c96) 28%, transparent);
+}
+
+.panel-option-sheet__item.is-selected:hover {
+  border-color: var(--color-primary, #008c96);
+  background: color-mix(in srgb, var(--color-primary, #008c96) 92%, #000);
+  color: #fff;
+}
+
+.panel-option-sheet__item--custom {
+  border-style: dashed;
+  color: var(--color-primary, #008c96);
+}
+
+.panel-option-sheet__custom-commit {
+  width: 100%;
+  margin-top: 0.15rem;
+  justify-content: center;
+}
+
+.panel-option-sheet__empty {
+  margin: 0;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #5f7f83);
+}
+
+html:has(.panel-root[data-panel-theme='dark']) .panel-option-sheet__search,
+html:has(.panel-root[data-panel-theme='dark']) .panel-option-sheet__item {
+  background: #0c1519;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html:has(.panel-root[data-panel-theme='dark']) .panel-option-sheet__item.is-selected {
+  border-color: var(--color-primary, #008c96);
+  background: var(--color-primary, #008c96);
+  color: #fff;
+}
+
+html:has(.panel-root[data-panel-theme='dark']) .panel-option-sheet__item.is-selected:hover {
+  background: color-mix(in srgb, var(--color-primary, #008c96) 92%, #000);
+  color: #fff;
 }
 
 /* Transient form feedback toasts */
