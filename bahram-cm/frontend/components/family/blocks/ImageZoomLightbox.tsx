@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
+import { useOverlayHistoryBack } from '@/lib/family/hooks/useOverlayHistoryBack';
 import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
 const IMMERSIVE_CLASS = 'family-app--immersive';
 
@@ -69,6 +70,9 @@ export function ImageZoomLightbox({
   const activeMediaId = sourceMediaIds[index] ?? mediaId;
   const { src: displayUrl } = useFamilyImageSrc(activeUrl, activeMediaId);
   const isGallery = sources.length > 1;
+
+  // Phone/browser Back closes the lightbox (stay on family), like comments/notifications.
+  useOverlayHistoryBack(activeUrl ? 'lightbox' : null, onClose);
   const viewportRef = useRef<HTMLDivElement>(null);
   const transformLayerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
