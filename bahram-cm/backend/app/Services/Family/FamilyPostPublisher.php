@@ -65,6 +65,7 @@ class FamilyPostPublisher
     {
         return DB::transaction(function () use ($actor, $post, $payload) {
             $post->update(array_filter([
+                'type' => $payload['type'] ?? null,
                 'audience_mode' => $payload['audience_mode'] ?? null,
                 'is_important' => array_key_exists('is_important', $payload) ? (bool) $payload['is_important'] : null,
                 'comments_enabled' => array_key_exists('comments_enabled', $payload)

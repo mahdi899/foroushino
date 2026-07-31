@@ -219,10 +219,15 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
     try {
       final manager = context.read<AppState>().manager;
       final updated = post.isPinned ? await manager.unpinPost(post.id) : await manager.pinPost(post.id);
-      if (mounted) {
-        showAppSnackBar(context, updated.isPinned ? 'پست سنجاق شد.' : 'سنجاق برداشته شد.');
-        _loadFirstPage();
-      }
+      if (!mounted) return;
+      setState(() {
+        final items = _currentTab.items;
+        final index = items.indexWhere((item) => item.id == post.id);
+        if (index >= 0) {
+          items[index] = updated;
+        }
+      });
+      showAppSnackBar(context, updated.isPinned ? 'پست سنجاق شد.' : 'سنجاق برداشته شد.');
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
     }

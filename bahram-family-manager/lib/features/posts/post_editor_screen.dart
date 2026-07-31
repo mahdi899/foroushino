@@ -59,6 +59,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   FamilyMediaRef? _mediaRef;
   Uint8List? _localPreviewBytes;
   String? _localPreviewUrl;
+  /// Image / album attachments (one or many). Voice/video still use [_mediaRef].
+  final List<_AttachedImage> _images = [];
   bool _uploading = false;
   bool _mediaProcessing = false;
   double _uploadProgress = 0;
@@ -93,9 +95,20 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     final textBlock = _post?.blocks.firstWhereOrNull((b) => b.type == 'text');
     _textCtrl.text = textBlock?.textContent ?? '';
 
-    final mediaBlock = _post?.blocks.firstWhereOrNull((b) => b.media != null);
-    _mediaRef = mediaBlock?.media;
-    if (_mediaRef != null && !_mediaRef!.isReady) {
+    if (_isImagePost) {
+      for (final block in _post?.blocks ?? const <FamilyPostBlockModel>[]) {
+        if (block.type == 'image' && block.media != null) {
+          _images.add(_AttachedImage(media: block.media));
+        }
+      }
+    } else {
+      final mediaBlock = _post?.blocks.firstWhereOrNull((b) => b.media != null);
+      _mediaRef = mediaBlock?.media;
+      if (_mediaRef != null && !_mediaRef!.isReady) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _refreshPendingMedia());
+      }
+    }
+    if (_images.any((img) => img.media != null && !img.media!.isReady)) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _refreshPendingMedia());
     }
 
@@ -164,6 +177,43 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     await revokeLocalMediaUrl(url);
   }
 
+  Future<void> _clearAllMedia() async {
+    await _clearLocalPreview();
+    _mediaRef = null;
+    _images.clear();
+  }
+
+  Future<void> _changePostType(String next) async {
+    final current = _isImagePost ? 'image' : _type;
+    if (next == current) return;
+    await _clearAllMedia();
+    if (!mounted) return;
+    setState(() {
+      _type = next;
+      _uploading = false;
+      _mediaProcessing = false;
+      _uploadProgress = 0;
+    });
+  }
+
+  bool get _isImagePost => _type == 'image' || _type == 'image_album';
+
+  String get _selectorType => _isImagePost ? 'image' : _type;
+
+  String get _payloadType {
+    if (_isImagePost) {
+      final count = _images.where((img) => img.media != null).length;
+      return count >= 2 ? 'image_album' : 'image';
+    }
+    return _type;
+  }
+
+  bool get _hasRequiredMedia {
+    if (_type == 'text') return true;
+    if (_isImagePost) return _images.any((img) => img.media != null);
+    return _mediaRef != null;
+  }
+
   Future<void> _prepareLocalPreview(Uint8List bytes, String filename, String mediaType) async {
     await _clearLocalPreview();
     _localPreviewBytes = bytes;
@@ -203,11 +253,35 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   String get _blockTypeForPostType => switch (_type) {
         'voice' => 'audio',
         'video' => 'video',
-        'image' => 'image',
+        'image' || 'image_album' => 'image',
         _ => 'text',
       };
 
   Future<void> _refreshPendingMedia() async {
+    if (_isImagePost) {
+      setState(() => _mediaProcessing = true);
+      try {
+        final manager = context.read<AppState>().manager;
+        for (var i = 0; i < _images.length; i++) {
+          final media = _images[i].media;
+          if (media == null || media.isReady) continue;
+          final ready = await manager.waitForMediaReady(
+            media.id,
+            onUpdate: (updated) {
+              if (!mounted) return;
+              setState(() => _images[i].media = updated);
+            },
+          );
+          if (mounted) setState(() => _images[i].media = ready);
+        }
+      } catch (_) {
+        // Keep current refs; user can retry publish later.
+      } finally {
+        if (mounted) setState(() => _mediaProcessing = false);
+      }
+      return;
+    }
+
     final media = _mediaRef;
     if (media == null || media.isReady) return;
     setState(() => _mediaProcessing = true);
@@ -228,6 +302,11 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   Future<void> _uploadMediaBytes(Uint8List bytes, String filename) async {
+    if (_isImagePost) {
+      await _uploadImageBytes(bytes, filename);
+      return;
+    }
+
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
@@ -243,7 +322,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             bytes: bytes,
             filename: filename,
             type: _type,
-            optimizeImages: _type == 'image' ? _optimizeImages : null,
+            optimizeImages: null,
             onProgress: (p) {
               if (mounted) setState(() => _uploadProgress = p);
             },
@@ -280,15 +359,86 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
+  Future<void> _uploadImageBytes(Uint8List bytes, String filename) async {
+    final draft = _AttachedImage(localBytes: bytes);
+    setState(() {
+      _images.add(draft);
+      _uploading = true;
+      _uploadProgress = 0;
+      _mediaProcessing = false;
+    });
+
+    try {
+      final manager = context.read<AppState>().manager;
+      final media = await manager.uploadMedia(
+            bytes: bytes,
+            filename: filename,
+            type: 'image',
+            optimizeImages: _optimizeImages,
+            onProgress: (p) {
+              if (mounted) setState(() => _uploadProgress = p);
+            },
+          );
+      if (!mounted) return;
+      setState(() {
+        draft.media = media;
+        _uploading = false;
+        _mediaProcessing = !media.isReady;
+      });
+      if (media.isReady) return;
+
+      final ready = await manager.waitForMediaReady(
+        media.id,
+        onUpdate: (updated) {
+          if (!mounted) return;
+          setState(() => draft.media = updated);
+        },
+      );
+      if (mounted) setState(() => draft.media = ready);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _images.remove(draft));
+        showAppSnackBar(context, messageOf(e));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _uploading = false;
+          _mediaProcessing = false;
+        });
+      }
+    }
+  }
+
   Future<void> _uploadVoiceBytes(Uint8List bytes, String filename) {
     return _uploadMediaBytes(bytes, filename);
   }
 
   Future<void> _pickAndUploadMedia() async {
+    if (_isImagePost) {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+        withData: true,
+      );
+      final files = result?.files ?? const <PlatformFile>[];
+      if (files.isEmpty) return;
+
+      for (final picked in files) {
+        final bytes = picked.bytes;
+        if (bytes == null) {
+          if (mounted) showAppSnackBar(context, 'خواندن فایل «${picked.name}» ناموفق بود.');
+          continue;
+        }
+        await _uploadImageBytes(bytes, picked.name);
+        if (!mounted) return;
+      }
+      return;
+    }
+
     final fileType = switch (_type) {
       'voice' => FileType.audio,
       'video' => FileType.video,
-      'image' => FileType.image,
       _ => FileType.any,
     };
 
@@ -306,8 +456,33 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   Future<FamilyMediaRef?> _ensureMediaReady() async {
+    if (_type == 'text') return null;
+
+    if (_isImagePost) {
+      setState(() => _mediaProcessing = true);
+      try {
+        final manager = context.read<AppState>().manager;
+        for (var i = 0; i < _images.length; i++) {
+          final media = _images[i].media;
+          if (media == null) continue;
+          if (media.isReady) continue;
+          final ready = await manager.waitForMediaReady(
+            media.id,
+            onUpdate: (updated) {
+              if (!mounted) return;
+              setState(() => _images[i].media = updated);
+            },
+          );
+          if (mounted) setState(() => _images[i].media = ready);
+        }
+        return _images.map((e) => e.media).whereType<FamilyMediaRef>().firstOrNull;
+      } finally {
+        if (mounted) setState(() => _mediaProcessing = false);
+      }
+    }
+
     final media = _mediaRef;
-    if (media == null || _type == 'text') return media;
+    if (media == null) return null;
     if (media.isReady) return media;
 
     setState(() => _mediaProcessing = true);
@@ -331,6 +506,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
     if (_type == 'text') {
       blocks.add({'type': 'text', 'position': 0, 'text': _textCtrl.text.trim()});
+    } else if (_isImagePost) {
+      var position = 0;
+      for (final image in _images) {
+        final media = image.media;
+        if (media == null) continue;
+        blocks.add({'type': 'image', 'position': position++, 'media_id': media.id});
+      }
+      if (_textCtrl.text.trim().isNotEmpty) {
+        blocks.add({'type': 'text', 'position': position, 'text': _textCtrl.text.trim()});
+      }
     } else {
       if (_mediaRef != null) {
         blocks.add({'type': _blockTypeForPostType, 'position': 0, 'media_id': _mediaRef!.id});
@@ -341,7 +526,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
 
     final payload = <String, dynamic>{
-      'type': _type,
+      'type': _payloadType,
       'audience_mode': _audienceMode,
       'is_important': _isImportant,
       'comments_enabled': _commentsEnabled,
@@ -432,7 +617,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       showAppSnackBar(context, 'متن پست را وارد کنید.');
       return;
     }
-    if (_type != 'text' && _mediaRef == null) {
+    if (_type != 'text' && !_hasRequiredMedia) {
       showAppSnackBar(context, 'ابتدا رسانه را آپلود کنید.');
       return;
     }
@@ -459,7 +644,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       showAppSnackBar(context, 'متن پست را وارد کنید.');
       return;
     }
-    if (_type != 'text' && _mediaRef == null) {
+    if (_type != 'text' && !_hasRequiredMedia) {
       showAppSnackBar(context, 'ابتدا رسانه را آپلود کنید.');
       return;
     }
@@ -492,7 +677,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       showAppSnackBar(context, 'متن پست را وارد کنید.');
       return;
     }
-    if (_type != 'text' && _mediaRef == null) {
+    if (_type != 'text' && !_hasRequiredMedia) {
       showAppSnackBar(context, 'ابتدا رسانه را آپلود کنید.');
       return;
     }
@@ -753,15 +938,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               children: [
                 if (_post == null) ...[
                   PostTypeSelector(
-                    selected: _type,
+                    selected: _selectorType,
                     enabled: !_uploading && !_saving,
-                    onChanged: (t) => setState(() {
-                      _type = t;
-                      if (t == 'text') _mediaRef = null;
-                    }),
-                    onAttachMedia: () {
-                      if (_type != 'text' && _mediaRef == null) _pickAndUploadMedia();
-                    },
+                    onChanged: (t) => _changePostType(t),
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
@@ -787,7 +966,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 ),
                 if (_type != 'text') ...[
                   const SizedBox(height: AppSpacing.md),
-                  if (_type == 'image')
+                  if (_isImagePost)
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text('بهینه‌سازی تصویر', style: TextStyle(color: scheme.onSurface)),
@@ -800,8 +979,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                           ? null
                           : (value) => setState(() => _optimizeImages = value),
                     ),
-                  if (_type == 'image') const SizedBox(height: AppSpacing.sm),
-                  if (_mediaRef == null && _localPreviewBytes == null)
+                  if (_isImagePost) const SizedBox(height: AppSpacing.sm),
+                  if (_isImagePost)
+                    _buildImageAttachments(scheme: scheme, subtle: subtle)
+                  else if (_mediaRef == null && _localPreviewBytes == null)
                     _type == 'voice'
                         ? Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1154,5 +1335,178 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         decoration: const InputDecoration(labelText: 'پیام پیگیری — اختیاری'),
       ),
     ];
+  }
+
+  Widget _buildImageAttachments({
+    required ColorScheme scheme,
+    required Color subtle,
+  }) {
+    if (_images.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          UploadZone(
+            label: 'انتخاب عکس‌ها',
+            uploading: _uploading || _mediaProcessing,
+            progress: _uploadProgress,
+            enabled: !_saving && !_mediaProcessing,
+            onTap: _pickAndUploadMedia,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'می‌توانید چند عکس را با هم انتخاب کنید (آلبوم)',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: subtle, fontSize: 12),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_uploading || _mediaProcessing)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    _uploading
+                        ? 'در حال آپلود… ${toFaDigits((_uploadProgress * 100).round().toString())}٪'
+                        : 'در حال بهینه‌سازی و آماده‌سازی رسانه…',
+                    style: TextStyle(color: subtle, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            for (var i = 0; i < _images.length; i++)
+              _ImageThumb(
+                image: _images[i],
+                enabled: !_uploading && !_saving,
+                onRemove: () => setState(() => _images.removeAt(i)),
+              ),
+            if (!_uploading && !_saving)
+              InkWell(
+                onTap: _pickAndUploadMedia,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: 104,
+                  height: 104,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: context.appBorder),
+                    color: context.appSurfaceSoft,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_photo_alternate_outlined, color: scheme.primary),
+                      const SizedBox(height: 4),
+                      Text(
+                        'افزودن',
+                        style: TextStyle(color: scheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          _images.length >= 2
+              ? 'آلبوم ${toFaDigits(_images.length.toString())} عکسی'
+              : 'یک عکس انتخاب شده — برای آلبوم عکس‌های بیشتری اضافه کنید',
+          style: TextStyle(color: subtle, fontSize: 12),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: (_uploading || _saving)
+                ? null
+                : () => setState(() => _images.clear()),
+            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+            label: const Text('حذف همه عکس‌ها', style: TextStyle(color: AppColors.error)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AttachedImage {
+  _AttachedImage({this.media, this.localBytes});
+
+  FamilyMediaRef? media;
+  Uint8List? localBytes;
+}
+
+class _ImageThumb extends StatelessWidget {
+  const _ImageThumb({
+    required this.image,
+    required this.onRemove,
+    required this.enabled,
+  });
+
+  final _AttachedImage image;
+  final VoidCallback onRemove;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = image.media ??
+        FamilyMediaRef(
+          id: 0,
+          type: 'image',
+          status: 'uploading',
+          originalFilename: null,
+        );
+
+    return SizedBox(
+      width: 104,
+      height: 104,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: FamilyMediaView(
+              media: media,
+              height: 104,
+              previewOnly: true,
+              localBytes: image.localBytes,
+            ),
+          ),
+          PositionedDirectional(
+            top: 4,
+            end: 4,
+            child: Material(
+              color: Colors.black54,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: enabled ? onRemove : null,
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
