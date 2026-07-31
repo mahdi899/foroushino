@@ -7,6 +7,7 @@ use App\Models\DiscountCode;
 use App\Models\Seminar;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\AccountLinkService;
+use App\Modules\TelegramBot\Services\BotResolver;
 use App\Modules\TelegramBot\Services\DisplayNameValidator;
 use App\Modules\TelegramBot\Services\TelegramUserSyncService;
 use App\Services\Exceptions\OtpException;
@@ -44,6 +45,7 @@ class TelegramHostSyncController
         private readonly TelegramHostAccountSnapshotService $accountSnapshots,
         private readonly TelegramHostRegistrationService $hostRegistration,
         private readonly TelegramHostPayloadBuilder $payloadBuilder,
+        private readonly BotResolver $botResolver,
     ) {}
 
     public function bootstrap(Request $request): JsonResponse
@@ -199,7 +201,15 @@ class TelegramHostSyncController
 
         $includeSnapshot = filter_var($hostPayload['include_snapshot'] ?? false, FILTER_VALIDATE_BOOLEAN);
         if ($includeSnapshot && $account->mobile_verified_at !== null) {
-            $accountPayload['snapshot'] = $this->accountSnapshots->buildSnapshot($account);
+            try {
+                $accountPayload['snapshot'] = $this->accountSnapshots->buildSnapshot($account);
+            } catch (\Throwable $e) {
+                Log::channel('telegram')->error('telegram.host.account_fetch_snapshot_failed', [
+                    'telegram_user_id' => $telegramUserId,
+                    'user_id' => $account->user_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $this->jsonResponse([
@@ -340,15 +350,7 @@ class TelegramHostSyncController
 
     private function productionBot(): TelegramBot
     {
-        $bot = TelegramBot::query()->where('key', 'production')->first();
-
-        if ($bot === null) {
-            Log::channel('telegram')->error('Telegram host sync: production bot not found.');
-
-            abort(500, 'Bot not configured.');
-        }
-
-        return $bot;
+        return $this->botResolver->resolve('production');
     }
 
     /** @param  array<string, mixed>  $data */

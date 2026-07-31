@@ -86,4 +86,22 @@ class TelegramHostTokenAuthTest extends TestCase
         $response->assertJsonPath('found', false);
         $this->assertArrayNotHasKey('payload', $response->json());
     }
+
+    public function test_account_fetch_auto_syncs_production_bot_when_missing_from_database(): void
+    {
+        TelegramBot::query()->where('key', 'production')->delete();
+        $this->assertNull(TelegramBot::query()->where('key', 'production')->first());
+
+        $response = $this->withHeaders([
+            'X-Proxy-Origin' => 'Telegram-Host-App',
+            'Authorization' => 'Bearer '.self::SYNC_SECRET,
+        ])->postJson('/api/v1/integrations/telegram-host/account/fetch', [
+            'telegram_user_id' => 999999999,
+            'include_snapshot' => false,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('found', false);
+        $this->assertNotNull(TelegramBot::query()->where('key', 'production')->first());
+    }
 }

@@ -24,6 +24,9 @@ composer install --no-dev --optimize-autoloader --no-interaction
 echo "==> Run migrations"
 php artisan migrate --force
 
+echo "==> Sync Telegram bots from config"
+php artisan telegram:sync-bots || echo "WARN: telegram:sync-bots failed"
+
 # Re-apply durable Zaferaniyeh seminar roster (Excel + extras). Idempotent replace.
 # Frontend build does not touch DB; this keeps attendees intact across deploys/reseeds of seminar meta.
 if [[ -f "$APP_ROOT/backend/database/data/seminar_zaferaniyeh_attendees.json" ]]; then

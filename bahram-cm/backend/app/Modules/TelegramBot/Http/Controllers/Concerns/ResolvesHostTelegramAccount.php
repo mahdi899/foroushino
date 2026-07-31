@@ -4,6 +4,7 @@ namespace App\Modules\TelegramBot\Http\Controllers\Concerns;
 
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Services\BotResolver;
 use Illuminate\Http\Request;
 
 trait ResolvesHostTelegramAccount
@@ -18,10 +19,7 @@ trait ResolvesHostTelegramAccount
 
     private function productionBot(): TelegramBot
     {
-        $bot = TelegramBot::query()->where('key', 'production')->first();
-        abort_if($bot === null, 500, 'Bot not configured.');
-
-        return $bot;
+        return app(BotResolver::class)->resolve('production');
     }
 
     private function resolveAccount(Request $request): ?TelegramAccount
