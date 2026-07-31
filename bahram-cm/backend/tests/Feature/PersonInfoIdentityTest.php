@@ -397,6 +397,7 @@ class PersonInfoIdentityTest extends TestCase
 
         $admin = User::factory()->create(['is_admin' => true]);
         $approved = app(ApproveIdentityVerification::class)($admin, $submission->fresh());
+        $this->app->terminate();
 
         $profile = UserIdentityProfile::query()->where('user_id', $student->id)->firstOrFail();
         $this->assertSame('علی', $profile->first_name);

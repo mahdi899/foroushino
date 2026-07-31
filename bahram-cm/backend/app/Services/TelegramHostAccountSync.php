@@ -199,6 +199,29 @@ class TelegramHostAccountSync
         return $queued;
     }
 
+    public function pushMobileAccessImmediate(User $user): bool
+    {
+        $mobile = trim((string) $user->mobile);
+        if ($mobile === '') {
+            return false;
+        }
+
+        $ownedProductIds = $this->ownedProductIdsFromOrders($user->id);
+        if ($ownedProductIds === []) {
+            return false;
+        }
+
+        $displayName = StudentDisplayName::fromUser($user);
+        $push = app(TelegramHostPushService::class);
+        $ok = $push->pushMobileAccess($mobile, $ownedProductIds, $displayName);
+
+        if (! $ok) {
+            PushTelegramHostSyncJob::mobileAccess($mobile, $ownedProductIds, $displayName);
+        }
+
+        return $ok;
+    }
+
     public function pushPaidOrderNotification(TelegramAccount $account, string $text, array $options = []): bool
     {
         $account->loadMissing('bot');

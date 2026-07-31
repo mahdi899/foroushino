@@ -72,6 +72,7 @@ export async function reviewIdentityVerificationAction(
     await adminFetch(path, {
       method: 'POST',
       body,
+      ...(input.action === 'approve' ? { timeoutMs: 60_000 } : {}),
     });
     revalidatePath('/admin/academy/identity-verifications');
     revalidatePath(`/admin/academy/identity-verifications/${id}`);

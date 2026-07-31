@@ -13,6 +13,7 @@ use App\Models\UserIdentityProfile;
 use App\Services\AdminAuditLogger;
 use App\Services\InAppNotificationService;
 use App\Services\SmsService;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -92,17 +93,23 @@ class ApproveIdentityVerification
             $student = $submission->user()->first();
             if ($student) {
                 ($this->syncProfile)($student, $profile);
-                IdentityLevel2Approved::dispatch($student);
-                $this->notifications->identityApproved($student);
 
-                if ($student->mobile) {
-                    $this->sms->sendEvent(
-                        SmsEventKey::IdentityVerificationApproved,
-                        $student->mobile,
-                        ['{name}' => $student->name ?: $submission->first_name],
-                        $student->id,
-                    );
-                }
+                $firstName = $submission->first_name;
+                DB::afterCommit(function () use ($student, $firstName): void {
+                    Bus::dispatchAfterResponse(function () use ($student, $firstName): void {
+                        IdentityLevel2Approved::dispatch($student);
+                        $this->notifications->identityApproved($student);
+
+                        if ($student->mobile) {
+                            $this->sms->sendEvent(
+                                SmsEventKey::IdentityVerificationApproved,
+                                $student->mobile,
+                                ['{name}' => $student->name ?: $firstName],
+                                $student->id,
+                            );
+                        }
+                    });
+                });
             }
 
             return $submission->fresh(['artifacts', 'reviews', 'identityProfile']);
