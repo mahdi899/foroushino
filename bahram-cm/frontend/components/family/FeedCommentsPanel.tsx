@@ -42,7 +42,7 @@ export function FeedCommentsPanel({
     <div
       ref={panelRef}
       className={cn(
-        'family-feed-overlay family-wallpaper-surface z-50 flex min-h-0 flex-col overflow-hidden',
+        'family-feed-overlay family-wallpaper-surface z-50 overflow-hidden',
         mobile ? 'fixed inset-x-0' : 'absolute inset-0',
         className,
       )}
@@ -56,31 +56,33 @@ export function FeedCommentsPanel({
       }
     >
       <FamilyFeedWallpaper />
-      <header className="family-panel-header shrink-0 gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="بازگشت به فید"
-          title="بازگشت"
-          className="family-topbar__back"
-        >
-          <ChevronRight className="family-topbar__back-icon" aria-hidden />
-        </button>
-        <h2 className="family-panel-title">
-          <MessageCircle className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
-          نظرات
-        </h2>
-        <span className="family-topbar__back invisible" aria-hidden />
-      </header>
+      <div className="family-wallpaper-surface__content">
+        <header className="family-panel-header shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="بازگشت به فید"
+            title="بازگشت"
+            className="family-topbar__back"
+          >
+            <ChevronRight className="family-topbar__back-icon" aria-hidden />
+          </button>
+          <h2 className="family-panel-title">
+            <MessageCircle className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
+            نظرات
+          </h2>
+          <span className="family-topbar__back invisible" aria-hidden />
+        </header>
 
-      <CommentsPanel
-        postId={postId}
-        onCommentAdded={onCommentAdded}
-        variant="page"
-        hideTitle
-        className="min-h-0 flex-1"
-        keyboardInset={mobile ? viewport.keyboardInset : 0}
-      />
+        <CommentsPanel
+          postId={postId}
+          onCommentAdded={onCommentAdded}
+          variant="page"
+          hideTitle
+          className="min-h-0 flex-1"
+          keyboardInset={mobile ? viewport.keyboardInset : 0}
+        />
+      </div>
     </div>
   );
 }

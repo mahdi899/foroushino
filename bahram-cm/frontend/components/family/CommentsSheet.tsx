@@ -32,24 +32,31 @@ export function CommentsPage({
         animate={{ x: 0 }}
         exit={{ x: '-100%' }}
         transition={{ type: 'spring', damping: 32, stiffness: 340 }}
-        className="family-wallpaper-surface flex h-[100dvh] max-h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden"
+        className="family-wallpaper-surface h-[100dvh] max-h-[100dvh] w-full max-w-[680px] overflow-hidden"
       >
         <FamilyFeedWallpaper />
-        <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-3 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="بازگشت"
-            title="بازگشت"
-            className="family-topbar__back"
-          >
-            <ChevronRight className="family-topbar__back-icon" aria-hidden />
-          </button>
-          <h3 className="family-panel-title">نظرات</h3>
-          <span className="family-topbar__back invisible" aria-hidden />
-        </header>
+        <div className="family-wallpaper-surface__content">
+          <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-3 py-3">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="بازگشت"
+              title="بازگشت"
+              className="family-topbar__back"
+            >
+              <ChevronRight className="family-topbar__back-icon" aria-hidden />
+            </button>
+            <h3 className="family-panel-title">نظرات</h3>
+            <span className="family-topbar__back invisible" aria-hidden />
+          </header>
 
-        <CommentsPanel postId={postId} onCommentAdded={onCommentAdded} variant="page" className="min-h-0 flex-1" />
+          <CommentsPanel
+            postId={postId}
+            onCommentAdded={onCommentAdded}
+            variant="page"
+            className="min-h-0 flex-1"
+          />
+        </div>
       </motion.div>
     </div>
   );

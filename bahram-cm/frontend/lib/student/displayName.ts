@@ -42,3 +42,23 @@ export function splitDisplayName(name: string): { first_name: string; last_name:
 
   return { first_name: parts[0], last_name: parts.slice(1).join(' ') };
 }
+
+/** Prefill for family/panel name editors (identity → profile → display name). */
+export function getStudentNameParts(user: NameSource): { first_name: string; last_name: string } {
+  const identityFirst = user.identity?.first_name?.trim() ?? '';
+  const identityLast = user.identity?.last_name?.trim() ?? '';
+  if (identityFirst && identityLast) {
+    return { first_name: identityFirst, last_name: identityLast };
+  }
+
+  const profileFirst = user.profile?.first_name?.trim() ?? '';
+  const profileLast = user.profile?.last_name?.trim() ?? '';
+  if (profileFirst || profileLast) {
+    return { first_name: profileFirst, last_name: profileLast };
+  }
+
+  const name = user.name.trim();
+  if (name && name !== 'دانشجو') return splitDisplayName(name);
+
+  return { first_name: '', last_name: '' };
+}

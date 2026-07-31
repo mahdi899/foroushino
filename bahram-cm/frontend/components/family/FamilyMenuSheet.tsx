@@ -34,7 +34,6 @@ import {
 } from '@/lib/family/pwa-push';
 import { logoutStudentAction } from '@/lib/student/actions';
 import { updateStudentDisplayNameAction } from '@/lib/student/panelActions';
-import { studentPanelHref } from '@/lib/domains';
 import { familyHaptic } from '@/lib/family/haptics';
 
 function lockBodyScroll(lock: boolean) {
@@ -56,10 +55,14 @@ export function FamilyMenuButton({
   className,
   isLoggedIn = false,
   needsName = false,
+  initialFirstName = '',
+  initialLastName = '',
 }: {
   className?: string;
   isLoggedIn?: boolean;
   needsName?: boolean;
+  initialFirstName?: string;
+  initialLastName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -85,7 +88,13 @@ export function FamilyMenuButton({
         ) : null}
       </button>
       {open ? (
-        <FamilyMenuSheet isLoggedIn={isLoggedIn} needsName={needsName} onClose={close} />
+        <FamilyMenuSheet
+          isLoggedIn={isLoggedIn}
+          needsName={needsName}
+          initialFirstName={initialFirstName}
+          initialLastName={initialLastName}
+          onClose={close}
+        />
       ) : null}
     </>
   );
@@ -94,10 +103,14 @@ export function FamilyMenuButton({
 function FamilyMenuSheet({
   isLoggedIn,
   needsName,
+  initialFirstName,
+  initialLastName,
   onClose,
 }: {
   isLoggedIn: boolean;
   needsName: boolean;
+  initialFirstName: string;
+  initialLastName: string;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -115,8 +128,10 @@ function FamilyMenuSheet({
   const [pushHint, setPushHint] = useState<string | null>(null);
   const [view, setView] = useState<'menu' | 'profile'>('menu');
   const [nameComplete, setNameComplete] = useState(!needsName);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
+  const [savedFirstName, setSavedFirstName] = useState(initialFirstName);
+  const [savedLastName, setSavedLastName] = useState(initialLastName);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profilePending, setProfilePending] = useState(false);
   const exitTimerRef = useRef<number | null>(null);
@@ -190,6 +205,14 @@ function FamilyMenuSheet({
     };
   }, []);
 
+  const openProfileEditor = () => {
+    familyHaptic('medium');
+    setFirstName(savedFirstName);
+    setLastName(savedLastName);
+    setProfileError(null);
+    setView('profile');
+  };
+
   const setTheme = (next: SiteTheme) => {
     familyHaptic('selection');
     applyResolvedTheme(next);
@@ -259,7 +282,11 @@ function FamilyMenuSheet({
         setProfileError(result.error);
         return;
       }
+      const nextFirst = firstName.trim();
+      const nextLast = lastName.trim();
       familyHaptic('success');
+      setSavedFirstName(nextFirst);
+      setSavedLastName(nextLast);
       setNameComplete(true);
       router.refresh();
       setView('menu');
@@ -271,7 +298,9 @@ function FamilyMenuSheet({
   };
 
   const showInstall = !pwa.isInstalled;
-  const showProfileCta = isLoggedIn && !nameComplete;
+  const profileSubtitle = nameComplete
+    ? [savedFirstName, savedLastName].filter(Boolean).join(' ') || 'ویرایش نام و نام خانوادگی'
+    : 'نام و نام خانوادگی را وارد کن';
 
   return (
     <FamilyBodyPortal>
@@ -321,7 +350,7 @@ function FamilyMenuSheet({
             <div className="family-menu-sheet__body">
               <form className="family-menu-profile" onSubmit={(e) => void handleProfileSubmit(e)}>
                 <p className="family-menu-profile__hint">
-                  نام و نام خانوادگی در پنل دانشجو ذخیره می‌شود و در خانواده هم نمایش داده می‌شود.
+                  نام را همین‌جا بنویس؛ همزمان در پنل دانشجو و خانواده ذخیره می‌شود.
                 </p>
                 <label className="family-menu-profile__field">
                   <span>نام</span>
@@ -355,47 +384,23 @@ function FamilyMenuSheet({
                 >
                   {profilePending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ذخیره'}
                 </button>
-                <a
-                  href={studentPanelHref('/panel/profile')}
-                  className="family-menu-profile__panel-link"
-                  onClick={() => familyHaptic('selection')}
-                >
-                  مشاهده پروفایل در پنل دانشجو
-                </a>
               </form>
             </div>
           ) : (
             <div className="family-menu-sheet__body">
-              {showProfileCta ? (
+              {isLoggedIn ? (
                 <div className="family-menu-section">
                   <button
                     type="button"
-                    className="family-menu-item family-menu-item--accent"
-                    onClick={() => {
-                      familyHaptic('medium');
-                      setView('profile');
-                    }}
+                    className={cn('family-menu-item', !nameComplete && 'family-menu-item--accent')}
+                    onClick={openProfileEditor}
                   >
                     <UserRound size={18} strokeWidth={1.85} aria-hidden />
                     <span className="family-menu-item__text">
                       <span className="family-menu-item__title">تکمیل پروفایل</span>
-                      <span className="family-menu-item__sub">نام و نام خانوادگی را وارد کن</span>
+                      <span className="family-menu-item__sub">{profileSubtitle}</span>
                     </span>
                   </button>
-                </div>
-              ) : isLoggedIn ? (
-                <div className="family-menu-section">
-                  <a
-                    href={studentPanelHref('/panel/profile')}
-                    className="family-menu-item"
-                    onClick={() => familyHaptic('selection')}
-                  >
-                    <UserRound size={18} strokeWidth={1.85} aria-hidden />
-                    <span className="family-menu-item__text">
-                      <span className="family-menu-item__title">پروفایل دانشجو</span>
-                      <span className="family-menu-item__sub">مدیریت حساب در پنل سایت</span>
-                    </span>
-                  </a>
                 </div>
               ) : null}
 
