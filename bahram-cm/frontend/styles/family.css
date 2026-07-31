@@ -383,6 +383,31 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   z-index: 50;
 }
 
+/* Comments / notifications overlays — same chat wallpaper as the feed */
+.family-wallpaper-surface {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--family-chat-wallpaper-base);
+  background-image: var(--family-chat-wallpaper-photo);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.family-wallpaper-surface > .family-feed-wallpaper {
+  z-index: 0;
+}
+
+.family-wallpaper-surface > *:not(.family-feed-wallpaper) {
+  position: relative;
+  z-index: 1;
+}
+
+.family-wallpaper-surface > .family-panel-header {
+  position: sticky;
+  z-index: 30;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .family-feed-wallpaper__img {
     animation: none;
@@ -5688,12 +5713,15 @@ html[data-theme='light'] .family-app .family-action-number-bar {
 
 .family-menu-sheet__title {
   margin: 0;
+  flex: 1;
   font-size: 1rem;
   font-weight: 600;
   color: var(--family-text);
+  text-align: center;
 }
 
-.family-menu-sheet__close {
+.family-menu-sheet__close,
+.family-menu-sheet__back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5703,6 +5731,26 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   border-radius: 0.75rem;
   background: transparent;
   color: var(--family-text-muted);
+}
+
+.family-menu-sheet__back--spacer {
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.family-menu-trigger {
+  position: relative;
+}
+
+.family-menu-trigger__dot {
+  position: absolute;
+  top: 0.35rem;
+  inset-inline-end: 0.35rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--family-tg-pinned-accent, var(--family-accent));
+  box-shadow: 0 0 0 2px var(--family-surface-elevated, var(--family-surface));
 }
 
 .family-menu-section {
@@ -5761,6 +5809,92 @@ html[data-theme='light'] .family-app .family-action-number-bar {
 
 .family-menu-item--danger {
   color: #c9343a;
+}
+
+.family-menu-item--accent .family-menu-item__title {
+  color: var(--family-tg-pinned-accent, var(--family-accent));
+}
+
+.family-menu-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.family-menu-profile__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--family-text-muted);
+}
+
+.family-menu-profile__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--family-text-muted);
+}
+
+.family-menu-profile__input {
+  height: 2.75rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--family-border);
+  background: color-mix(in oklab, var(--family-surface-soft) 72%, transparent);
+  padding: 0 0.9rem;
+  color: var(--family-text);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.family-menu-profile__input:focus {
+  border-color: color-mix(in oklab, var(--family-accent) 55%, var(--family-border));
+}
+
+.family-menu-profile__input::placeholder {
+  color: color-mix(in oklab, var(--family-text-muted) 70%, transparent);
+}
+
+.family-menu-profile__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #c9343a;
+}
+
+.family-app[data-family-theme='dark'] .family-menu-profile__error,
+html[data-theme='dark'] .family-app .family-menu-profile__error,
+.family-body-portal[data-family-theme='dark'] .family-menu-profile__error {
+  color: #ff6b6b;
+}
+
+.family-menu-profile__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  margin-top: 0.15rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--family-accent);
+  color: var(--family-accent-contrast, #fff);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.family-menu-profile__submit:disabled {
+  opacity: 0.65;
+}
+
+.family-menu-profile__panel-link {
+  display: block;
+  padding: 0.35rem 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--family-tg-pinned-accent, var(--family-accent));
+  text-decoration: none;
 }
 
 .family-app[data-family-theme='dark'] .family-menu-item--danger,

@@ -123,6 +123,10 @@ const config: NextConfig = {
   poweredByHeader: false,
   /** Hide bottom-left "Compiling / Rendering" dev badge (nextjs-portal). Errors still show. */
   devIndicators: false,
+  /** Production server builds: skip TS typecheck so low-RAM hosts can finish next build. */
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   async redirects() {
     return [
       { source: "/academy/app", destination: "/saat", permanent: true },

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Student;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\UpdateProfileRequest;
 use App\Enums\OtpPurpose;
+use App\Modules\TelegramBot\Services\DisplayNameValidator;
 use App\Services\AdminTelegramLogService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
@@ -59,6 +60,35 @@ class ProfileController extends Controller
 
         if (array_key_exists('avatar', $profileFields) && filled($profileFields['avatar'])) {
             $profileFields['avatar'] = MediaUrl::reference((string) $profileFields['avatar']);
+        }
+
+        $updatingLegalName = array_key_exists('first_name', $data) || array_key_exists('last_name', $data);
+        if ($updatingLegalName) {
+            $user->loadMissing('identityProfile');
+            $identity = $user->identityProfile;
+            $identityLocked = (int) ($identity?->verification_level ?? 0) >= 2
+                && filled(trim((string) ($identity?->first_name ?? '')))
+                && filled(trim((string) ($identity?->last_name ?? '')));
+
+            if ($identityLocked) {
+                return ApiResponse::error(
+                    'identity_name_locked',
+                    'نام تأییدشده هویت قابل ویرایش از این مسیر نیست.',
+                    422,
+                );
+            }
+
+            $validator = new DisplayNameValidator;
+            $firstName = $validator->sanitize((string) ($data['first_name'] ?? ''));
+            $lastName = $validator->sanitize((string) ($data['last_name'] ?? ''));
+
+            if (! $firstName || ! $lastName) {
+                return ApiResponse::error('invalid_name', 'نام یا نام خانوادگی معتبر نیست.', 422);
+            }
+
+            $profileFields['first_name'] = $firstName;
+            $profileFields['last_name'] = $lastName;
+            $user->update(['name' => trim($firstName.' '.$lastName)]);
         }
 
         if (! empty($profileFields)) {

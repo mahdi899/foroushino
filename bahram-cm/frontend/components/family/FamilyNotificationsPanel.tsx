@@ -15,6 +15,7 @@ import {
   familyNotificationIcon,
   familyNotificationVariant,
 } from '@/components/family/familyNotificationMeta';
+import { FamilyFeedWallpaper } from '@/components/family/FamilyFeedWallpaper';
 
 function NotificationSkeleton({ index }: { index: number }) {
   return (
@@ -209,7 +210,13 @@ export function FamilyNotificationsPanel({
   };
 
   return (
-    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden', className)}>
+    <div
+      className={cn(
+        'family-wallpaper-surface flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden',
+        className,
+      )}
+    >
+      <FamilyFeedWallpaper />
       <header className="family-panel-header shrink-0">
         <div className="family-notif-header-inner">
           {onClose ? (

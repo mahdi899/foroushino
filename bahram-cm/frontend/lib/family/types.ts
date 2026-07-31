@@ -224,6 +224,7 @@ export interface FamilyMeResponse {
   has_active_stories?: boolean;
   member_count?: number;
   onboarding_completed?: boolean;
+  needs_name?: boolean;
   joined_at?: string;
   is_staff?: boolean;
 }

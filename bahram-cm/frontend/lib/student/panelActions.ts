@@ -4,14 +4,53 @@ import { revalidatePath } from 'next/cache';
 import { extractError, type SimpleFormState } from './panelFormUtils';
 import { studentFetch } from './session';
 
+export async function updateStudentDisplayNameAction(
+  firstName: string,
+  lastName: string,
+): Promise<SimpleFormState> {
+  const first = firstName.trim();
+  const last = lastName.trim();
+
+  if (first.length < 2) {
+    return { error: 'نام باید حداقل ۲ حرف باشد.' };
+  }
+  if (last.length < 2) {
+    return { error: 'نام خانوادگی باید حداقل ۲ حرف باشد.' };
+  }
+
+  try {
+    await studentFetch('/profile', {
+      method: 'PUT',
+      body: {
+        first_name: first,
+        last_name: last,
+        name: `${first} ${last}`.trim(),
+      },
+    });
+  } catch (err) {
+    return { error: extractError(err, 'ثبت نام انجام نشد.') };
+  }
+
+  revalidatePath('/panel/profile');
+  revalidatePath('/panel');
+  revalidatePath('/family');
+  return { success: 'نام با موفقیت ذخیره شد.' };
+}
+
 export async function updateProfileAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
   const payload: Record<string, unknown> = {};
   for (const key of [
-    'name', 'email', 'age',
+    'name', 'email', 'age', 'first_name', 'last_name',
     'current_job', 'instagram', 'telegram', 'experience_level', 'income_goal',
   ]) {
     const value = formData.get(key);
     if (value !== null) payload[key] = value === '' ? null : value;
+  }
+
+  const firstName = typeof payload.first_name === 'string' ? payload.first_name.trim() : '';
+  const lastName = typeof payload.last_name === 'string' ? payload.last_name.trim() : '';
+  if (firstName && lastName) {
+    payload.name = `${firstName} ${lastName}`.trim();
   }
 
   const password = formData.get('password');

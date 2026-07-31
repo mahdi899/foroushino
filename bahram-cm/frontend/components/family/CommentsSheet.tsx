@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { CommentsPanel } from '@/components/family/CommentsPanel';
+import { FamilyFeedWallpaper } from '@/components/family/FamilyFeedWallpaper';
 import type { FamilyComment } from '@/lib/family/types';
 
 export function CommentsPage({
@@ -31,8 +32,9 @@ export function CommentsPage({
         animate={{ x: 0 }}
         exit={{ x: '-100%' }}
         transition={{ type: 'spring', damping: 32, stiffness: 340 }}
-        className="flex h-[100dvh] max-h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden bg-[var(--family-surface-panel)]"
+        className="family-wallpaper-surface flex h-[100dvh] max-h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden"
       >
+        <FamilyFeedWallpaper />
         <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-3 py-3">
           <button
             type="button"
