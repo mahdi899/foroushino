@@ -6,7 +6,6 @@ import { cn } from '@/lib/cn';
 import { formatRelativeTimeFa } from '@/components/student-panel/utils/relativeTime';
 import { useFamilyNotifications, useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import {
-  extractFamilyNotificationPostId,
   isOffClubFamilyNotificationLink,
   resolveFamilyNotificationHref,
 } from '@/lib/family/notificationLink';
@@ -44,10 +43,12 @@ function NotificationRow({
   notification,
   index,
   onRead,
+  onNavigateAway,
 }: {
   notification: FamilyNotification;
   index: number;
   onRead: (id: number) => void;
+  onNavigateAway?: () => void;
 }) {
   const router = useRouter();
   const isUnread = !notification.read_at;
@@ -75,7 +76,11 @@ function NotificationRow({
       window.location.assign(externalTarget);
       return;
     }
-    router.push(resolvedLink);
+    // Close overlay before push so its history cleanup can finish first.
+    onNavigateAway?.();
+    window.setTimeout(() => {
+      router.push(resolvedLink);
+    }, 0);
   };
 
   const rowContent = (
@@ -268,6 +273,7 @@ export function FamilyNotificationsPanel({
                     notification={notification}
                     index={index}
                     onRead={handleMarkRead}
+                    onNavigateAway={onClose}
                   />
                 ))}
               </div>

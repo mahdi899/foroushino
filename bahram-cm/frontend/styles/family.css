@@ -383,9 +383,10 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   z-index: 50;
 }
 
-/* Comments / notifications overlays — same chat wallpaper as the feed */
+/* Comments / notifications — chat wallpaper. Avoid setting `position` on the
+   base class: it overrides Tailwind absolute/fixed on FeedCommentsPanel and
+   splits height with the feed (composer floats mid-screen on mobile). */
 .family-wallpaper-surface {
-  position: relative;
   isolation: isolate;
   display: flex;
   flex-direction: column;
@@ -397,18 +398,24 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   background-repeat: no-repeat;
 }
 
+/* In-flow panels need a containing block; overlays already have absolute/fixed. */
+.family-wallpaper-surface:not(.family-feed-overlay) {
+  position: relative;
+}
+
 .family-wallpaper-surface > .family-feed-wallpaper {
   z-index: 0;
 }
 
-/* One flex child above the absolute wallpaper — keeps composers pinned to the bottom */
+/* Fill the surface above the absolute wallpaper — pins composers to the bottom */
 .family-wallpaper-surface__content {
   position: relative;
   z-index: 1;
   display: flex;
   min-width: 0;
   min-height: 0;
-  flex: 1 1 0;
+  flex: 1 1 0%;
+  align-self: stretch;
   flex-direction: column;
   overflow: hidden;
 }

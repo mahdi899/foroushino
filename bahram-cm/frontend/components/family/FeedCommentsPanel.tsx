@@ -42,7 +42,7 @@ export function FeedCommentsPanel({
     <div
       ref={panelRef}
       className={cn(
-        'family-feed-overlay family-wallpaper-surface z-50 overflow-hidden',
+        'family-feed-overlay family-wallpaper-surface z-50 flex min-h-0 flex-col overflow-hidden',
         mobile ? 'fixed inset-x-0' : 'absolute inset-0',
         className,
       )}
