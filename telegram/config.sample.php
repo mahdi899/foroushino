@@ -64,11 +64,11 @@ return [
     // Iran relay batch size when cron/drain.php runs (and cap inside webhook post-ACK drain).
     'iran_relay_per_webhook' => 4,
 
+    // Event-driven push from Iran; hourly pull only heals missed catalog/account updates.
     'pull_sync_enabled' => true,
     'pull_sync_min_interval_seconds' => 3600,
-    // When pull_sync_enabled=true: refresh user rows (KYC, purchases) from Iran via account/fetch.
     'pull_sync_account_enabled' => true,
-    'pull_sync_account_interval_seconds' => 60,
+    'pull_sync_account_interval_seconds' => 3600,
     'pull_sync_account_batch_size' => 35,
 
     // Optional override — normally synced from Iran bootstrap (گروه گزارشات پشتیبانی).
