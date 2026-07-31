@@ -396,7 +396,7 @@ export function ImageZoomLightbox({
             }}
             disabled={index <= 0}
             aria-label="عکس قبلی"
-            className="absolute start-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/10 bg-black/45 p-2.5 text-white/90 backdrop-blur-md transition enabled:hover:bg-black/65 enabled:active:scale-95 disabled:opacity-35"
+            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/10 bg-black/45 p-2.5 text-white/90 backdrop-blur-md transition enabled:hover:bg-black/65 enabled:active:scale-95 disabled:opacity-35"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -408,7 +408,7 @@ export function ImageZoomLightbox({
             }}
             disabled={index >= sources.length - 1}
             aria-label="عکس بعدی"
-            className="absolute end-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/10 bg-black/45 p-2.5 text-white/90 backdrop-blur-md transition enabled:hover:bg-black/65 enabled:active:scale-95 disabled:opacity-35"
+            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/10 bg-black/45 p-2.5 text-white/90 backdrop-blur-md transition enabled:hover:bg-black/65 enabled:active:scale-95 disabled:opacity-35"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
