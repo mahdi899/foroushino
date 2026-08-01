@@ -35,7 +35,7 @@ import { sitePhotos } from "@/lib/site-photo-paths";
 import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 const fallbackHero = sitePhotos.referenceChannelHero;
-const fallbackHeroMobile = sitePhotos.mainPathReference;
+const fallbackHeroMobile = sitePhotos.mainPathReferenceMobile;
 
 const heroPurchaseCtaClassName =
   "h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg";

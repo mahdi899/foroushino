@@ -29,21 +29,21 @@ const pathMeta: Record<
     tone: "teal",
     image: sitePhotos.mainPathSaat,
     imageAlt: "کارت مسیر سات — انقلابی در فروش تلفنی",
-    imageClassName: "object-[center_20%]",
+    imageClassName: "object-[center_35%]",
   },
   "/saat": {
     icon: Phone,
     tone: "teal",
     image: sitePhotos.mainPathSaat,
     imageAlt: "کارت مسیر سات — انقلابی در فروش تلفنی",
-    imageClassName: "object-[center_20%]",
+    imageClassName: "object-[center_35%]",
   },
   "/reference-channels/kanal-mrgf": {
     icon: Radio,
     tone: "gold",
     image: sitePhotos.mainPathReference,
     imageAlt: "کارت کانال مرجع — محصول آماده، آموزش فروش و درآمد مستقیم",
-    imageClassName: "object-[center_22%]",
+    imageClassName: "object-[center_30%]",
   },
 };
 

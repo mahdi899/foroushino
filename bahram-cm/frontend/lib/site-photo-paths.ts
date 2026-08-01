@@ -32,7 +32,7 @@ export const sitePhotos = {
   founderLetter: siteStorageMedia('founder-letter.webp'),
   mainPathCampaign: siteStorageMedia('main-path-campaign.webp'),
   mainPathSaat: siteStorageMedia('main-path-saat.webp'),
-  /** تامبنیل کارت کانال مرجع (خانه / دوره‌ها) — عمودی قیف فروش */
+  /** تامبنیل کارت کانال مرجع (خانه / دوره‌ها) — عمودی */
   mainPathReference: siteStorageMedia('reference-channel-why.webp'),
   /** هیرو صفحه کانال مرجع — موبایل */
   mainPathReferenceMobile: siteStorageMedia('reference-channel-hero-mobile.webp'),
