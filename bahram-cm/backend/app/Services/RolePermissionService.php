@@ -184,6 +184,14 @@ class RolePermissionService
             ]);
         }
 
+        if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
+            throw ValidationException::withMessages([
+                'role' => ['فقط مدیر کل می‌تواند نقش مدیر کل را اختصاص دهد.'],
+            ]);
+        }
+
+        Role::findByName($roleName, 'web');
+
         if ($admin->id === $actor->id && $roleName !== AdminRoleName::SuperAdmin->value && $admin->isSuperAdmin()) {
             $this->assertNotLastSuperAdmin($admin, $actor);
         }
@@ -204,6 +212,8 @@ class RolePermissionService
             $admin->syncRoles([$roleName]);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
         });
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $this->audit->log($actor, 'admin.role_changed', $admin, [
             'before' => $before,

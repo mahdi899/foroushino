@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\AdminRoleName;
+use App\Models\User;
 use App\Support\FamilyPermissionCatalog;
 use App\Support\PermissionCatalog;
 use Illuminate\Database\Seeder;
@@ -31,6 +32,7 @@ class RolePermissionSeeder extends Seeder
         }
 
         $this->syncRolePermissions();
+        $this->bootstrapOrphanAdmins();
     }
 
     private function syncRolePermissions(): void
@@ -103,5 +105,22 @@ class RolePermissionSeeder extends Seeder
             'roles.view',
             'permissions.view',
         ]);
+    }
+
+    /**
+     * Only bootstrap admins that have zero roles (orphan is_admin rows).
+     * Never mass-promote every admin to super-admin — that was a production bug.
+     */
+    private function bootstrapOrphanAdmins(): void
+    {
+        User::query()
+            ->where('is_admin', true)
+            ->whereDoesntHave('roles')
+            ->orderBy('id')
+            ->chunkById(100, function ($users): void {
+                foreach ($users as $user) {
+                    $user->assignRole(AdminRoleName::SuperAdmin->value);
+                }
+            });
     }
 }

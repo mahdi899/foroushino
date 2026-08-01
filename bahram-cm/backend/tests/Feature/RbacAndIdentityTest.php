@@ -31,6 +31,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RbacAndIdentityTest extends TestCase
@@ -434,20 +435,30 @@ class RbacAndIdentityTest extends TestCase
         ])->assertForbidden();
     }
 
-    public function test_admin_cannot_create_super_admin_user(): void
+    public function test_role_permission_seeder_does_not_mass_promote_to_super_admin(): void
     {
-        $admin = $this->makeAdmin(AdminRoleName::Admin);
-        $admin->givePermissionTo('admins.create');
-        Sanctum::actingAs($admin);
+        $finance = $this->makeAdmin(AdminRoleName::Finance);
+        $support = $this->makeAdmin(AdminRoleName::Support);
 
-        $this->postJson('/api/v1/roles/admins', [
-            'name' => 'مدیر کل جدید',
-            'email' => 'blocked-super@bahram.test',
-            'mobile' => '09121234569',
-            'password' => 'password123',
-            'role' => AdminRoleName::SuperAdmin->value,
-        ])->assertUnprocessable()
-            ->assertJsonPath('error.details.role.0', 'فقط مدیر کل می‌تواند مدیر کل جدید بسازد.');
+        $this->seed(RolePermissionSeeder::class);
+
+        $this->assertFalse($finance->fresh()->hasRole(AdminRoleName::SuperAdmin->value));
+        $this->assertTrue($finance->fresh()->hasRole(AdminRoleName::Finance->value));
+        $this->assertFalse($support->fresh()->hasRole(AdminRoleName::SuperAdmin->value));
+        $this->assertTrue($support->fresh()->hasRole(AdminRoleName::Support->value));
+    }
+
+    public function test_role_permission_seeder_bootstraps_orphan_admin_only(): void
+    {
+        $orphan = User::factory()->create([
+            'email' => Str::uuid().'@bahram.test',
+            'is_admin' => true,
+        ]);
+        $this->assertSame([], $orphan->getRoleNames()->all());
+
+        $this->seed(RolePermissionSeeder::class);
+
+        $this->assertTrue($orphan->fresh()->hasRole(AdminRoleName::SuperAdmin->value));
     }
 
     public function test_root_admin_can_delete_other_super_admin(): void
