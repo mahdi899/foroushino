@@ -11,6 +11,7 @@ import {
   type OtpAuthState,
 } from '@/lib/student/actions';
 import { getIranMobileInputError, isValidIranMobile, sanitizePhoneInput } from '@/lib/chatbot/phone';
+import { formatLoginLockoutMessage, loginLockoutLabel } from '@/lib/auth/loginRateLimit';
 import { cn } from '@/lib/cn';
 import { useStudentAuthOptional } from './StudentAuthContext';
 import { OtpDigitInput } from './OtpDigitInput';
@@ -51,6 +52,7 @@ export function StudentLoginForm({
   const [otpCode, setOtpCode] = useState('');
   const [resendIn, setResendIn] = useState(0);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const [otpInfo, setOtpInfo] = useState<string | null>(null);
   const [passwordPending, startPasswordTransition] = useTransition();
   const verifyFormRef = useRef<HTMLFormElement>(null);
@@ -92,6 +94,7 @@ export function StudentLoginForm({
     setOtpCode('');
     setResendIn(0);
     setPasswordError(null);
+    setLockoutSeconds(0);
     setOtpInfo(null);
     stayHandled.current = false;
   }, []);
@@ -119,7 +122,11 @@ export function StudentLoginForm({
     if (otpState.step === 'otp' && otpState.mobile) {
       setStep('otp');
       setResendIn(RESEND_SECONDS);
+      setLockoutSeconds(0);
       if (otpState.info) setOtpInfo(otpState.info);
+    }
+    if (otpState.lockoutSeconds && otpState.lockoutSeconds > 0) {
+      setLockoutSeconds(otpState.lockoutSeconds);
     }
   }, [otpState]);
 
@@ -139,6 +146,14 @@ export function StudentLoginForm({
     const timer = window.setInterval(() => setResendIn((prev) => (prev > 0 ? prev - 1 : 0)), 1000);
     return () => window.clearInterval(timer);
   }, [active, resendIn]);
+
+  useEffect(() => {
+    if (!active || lockoutSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setLockoutSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [active, lockoutSeconds]);
 
   useEffect(() => {
     if (!active || isPage || !onClose) return;
@@ -165,6 +180,7 @@ export function StudentLoginForm({
 
   function handlePasswordSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (lockoutSeconds > 0) return;
     setPasswordError(null);
 
     const fd = new FormData(e.currentTarget);
@@ -189,6 +205,9 @@ export function StudentLoginForm({
         const result = await loginPasswordAction({}, fd);
         if (result.error) {
           setPasswordError(result.error);
+          if (result.lockoutSeconds && result.lockoutSeconds > 0) {
+            setLockoutSeconds(result.lockoutSeconds);
+          }
           return;
         }
         if (stayOnPage && result.ok) {
@@ -288,7 +307,7 @@ export function StudentLoginForm({
             action={sendOtp}
             onSubmit={(e) => {
               setPhoneTouched(true);
-              if (!phoneValid) e.preventDefault();
+              if (!phoneValid || lockoutSeconds > 0) e.preventDefault();
             }}
             className="space-y-3"
           >
@@ -329,10 +348,20 @@ export function StudentLoginForm({
                 ) : null}
               </label>
 
-              {otpState.error ? <p className="panel-text-meta text-gold">{otpState.error}</p> : null}
+              {otpState.error || lockoutSeconds > 0 ? (
+                <p className="panel-text-meta text-gold" role="alert">
+                  {lockoutSeconds > 0 ? formatLoginLockoutMessage(lockoutSeconds) : otpState.error}
+                </p>
+              ) : null}
 
-              <button type="submit" disabled={!phoneValid || sendPending} className={submitClass}>
-                {sendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دریافت کد'}
+              <button type="submit" disabled={!phoneValid || sendPending || lockoutSeconds > 0} className={submitClass}>
+                {sendPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : lockoutSeconds > 0 ? (
+                  loginLockoutLabel(lockoutSeconds)
+                ) : (
+                  'دریافت کد'
+                )}
               </button>
 
               <button
@@ -485,18 +514,29 @@ export function StudentLoginForm({
 
               {passwordSecurity.captchaField}
 
-              {passwordError ? <p className="panel-text-meta text-gold">{passwordError}</p> : null}
+              {passwordError || lockoutSeconds > 0 ? (
+                <p className="panel-text-meta text-gold" role="alert">
+                  {lockoutSeconds > 0 ? formatLoginLockoutMessage(lockoutSeconds) : passwordError}
+                </p>
+              ) : null}
 
               <button
                 type="submit"
                 disabled={
                   passwordPending ||
+                  lockoutSeconds > 0 ||
                   passwordSecurity.securityLoading ||
                   (passwordSecurity.captchaRequired && !passwordSecurity.captchaReady)
                 }
                 className={submitClass}
               >
-                {passwordPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ورود'}
+                {passwordPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : lockoutSeconds > 0 ? (
+                  loginLockoutLabel(lockoutSeconds)
+                ) : (
+                  'ورود'
+                )}
               </button>
 
               <button

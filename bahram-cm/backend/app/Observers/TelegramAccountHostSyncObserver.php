@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Services\TelegramHostAccountSync;
+use Illuminate\Support\Facades\DB;
 
 class TelegramAccountHostSyncObserver
 {
@@ -13,7 +14,17 @@ class TelegramAccountHostSyncObserver
             return;
         }
 
-        app(TelegramHostAccountSync::class)->queuePush($account);
+        $accountId = (int) $account->getKey();
+
+        // Never touch the network while the write transaction is open — the
+        // Iran→host hop can take seconds and would hold the telegram_accounts
+        // row lock for the whole call, stalling every other request.
+        DB::afterCommit(function () use ($accountId): void {
+            $fresh = TelegramAccount::query()->find($accountId);
+            if ($fresh !== null) {
+                app(TelegramHostAccountSync::class)->queuePush($fresh);
+            }
+        });
     }
 
     private function shouldSync(TelegramAccount $account): bool

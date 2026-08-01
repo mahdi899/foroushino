@@ -7,6 +7,8 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/models/upload_progress.dart';
+import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/features/settings/family_admins_screen.dart';
 import 'package:bahram_family_manager/features/debug/debug_tools_panel.dart';
@@ -39,6 +41,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _saving = false;
   bool _uploading = false;
   double _uploadProgress = 0;
+  int _uploadSentBytes = 0;
+  int _uploadTotalBytes = 0;
+  MediaUploadPhase _uploadPhase = MediaUploadPhase.idle;
   var _profileHydrated = false;
 
   @override
@@ -81,6 +86,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = picked.bytes!.length;
+      _uploadPhase = MediaUploadPhase.uploading;
     });
 
     try {
@@ -88,8 +96,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             bytes: picked!.bytes!,
             filename: picked.name,
             type: 'image',
-            onProgress: (p) {
-              if (mounted) setState(() => _uploadProgress = p);
+            onUploadState: (upload) {
+              if (mounted) {
+                setState(() {
+                  _uploadPhase = upload.phase;
+                  _uploadProgress = upload.fraction;
+                  _uploadSentBytes = upload.sentBytes;
+                  _uploadTotalBytes = upload.totalBytes;
+                });
+              }
             },
           );
       if (!mounted) return;
@@ -164,6 +179,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   uploadLabel: 'آپلود آواتار مدیر',
                   uploading: _uploading,
                   progress: _uploadProgress,
+                  sentBytes: _uploadSentBytes,
+                  totalBytes: _uploadTotalBytes,
+                  phase: _uploadPhase,
                   onUpload: () => _pickAvatar(community: false),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -173,6 +191,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   uploadLabel: 'آپلود آواتار خانواده',
                   uploading: _uploading,
                   progress: _uploadProgress,
+                  sentBytes: _uploadSentBytes,
+                  totalBytes: _uploadTotalBytes,
+                  phase: _uploadPhase,
                   onUpload: () => _pickAvatar(community: true),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -237,6 +258,9 @@ class _AvatarSection extends StatelessWidget {
     required this.uploadLabel,
     required this.uploading,
     required this.progress,
+    required this.sentBytes,
+    required this.totalBytes,
+    required this.phase,
     required this.onUpload,
   });
 
@@ -245,6 +269,9 @@ class _AvatarSection extends StatelessWidget {
   final String uploadLabel;
   final bool uploading;
   final double progress;
+  final int sentBytes;
+  final int totalBytes;
+  final MediaUploadPhase phase;
   final VoidCallback onUpload;
 
   @override
@@ -260,6 +287,9 @@ class _AvatarSection extends StatelessWidget {
             label: uploadLabel,
             uploading: uploading,
             progress: progress,
+            sentBytes: sentBytes,
+            totalBytes: totalBytes,
+            phase: phase,
             onTap: onUpload,
           ),
         ],

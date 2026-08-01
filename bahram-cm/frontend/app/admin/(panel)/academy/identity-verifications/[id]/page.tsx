@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminPage, Badge } from '../../../ui';
-import { getIdentityVerification } from '@/lib/admin/identityData';
-import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
+import { getIdentityVerification, getIdentityVerificationHistory } from '@/lib/admin/identityData';
+import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS, type IdentityVerificationListItem } from '@/lib/admin/identityTypes';
 import { formatDate } from '@/lib/admin/academyTypes';
 import { can, getCurrentUser } from '@/lib/auth/session';
 import { formatDateFa } from '@/lib/persian';
@@ -40,6 +40,7 @@ export default async function IdentityVerificationDetailPage({
 
   const user = await getCurrentUser();
   const { item, error } = await getIdentityVerification(numericId);
+  const history = item ? await getIdentityVerificationHistory(item.user_id) : { items: [], error: null };
   if (!item && !error) notFound();
 
   return (
@@ -173,9 +174,15 @@ export default async function IdentityVerificationDetailPage({
                   <dd className="font-medium">{formatGenderFa(item.gender)}</dd>
                 </div>
                 <div>
+                  <dt className="text-text-muted">کد ملی</dt>
+                  <dd className="font-medium" dir="ltr">
+                    {item.national_code ?? item.national_code_masked ?? '—'}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-text-muted">موبایل</dt>
                   <dd className="font-medium" dir="ltr">
-                    {item.user_mobile_masked ?? '—'}
+                    {item.user_mobile ?? item.user_mobile_masked ?? '—'}
                   </dd>
                 </div>
                 {item.expected_video_text ? (
@@ -254,6 +261,29 @@ export default async function IdentityVerificationDetailPage({
                 </ul>
               </div>
             ) : null}
+
+            {history.items.length > 1 ? (
+              <div className="card p-5">
+                <h2 className="mb-3 text-h3 text-primary-dark">تاریخچه نسخه‌های احراز</h2>
+                <ul className="space-y-2 text-small">
+                  {history.items.map((h: IdentityVerificationListItem) => (
+                    <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-2 last:border-0">
+                      <span>
+                        نسخه {h.version ?? '—'} ·{' '}
+                        <Badge tone={statusTone(h.status)}>{IDENTITY_STATUS_LABELS[h.status] ?? h.status}</Badge>
+                      </span>
+                      {h.id !== item.id ? (
+                        <Link href={`/admin/academy/identity-verifications/${h.id}`} className="text-accent hover:underline">
+                          مشاهده
+                        </Link>
+                      ) : (
+                        <span className="text-caption text-text-muted">همین پرونده</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-4">
@@ -263,6 +293,7 @@ export default async function IdentityVerificationDetailPage({
               canReject={can(user, 'identity.reject')}
               canCorrection={can(user, 'identity.request_correction')}
               canUnlock={can(user, 'identity.unlock_ownership_verification')}
+              canReset={can(user, 'identity.reset')}
             />
             <Link
               href="/admin/academy/identity-verifications?status=submitted"

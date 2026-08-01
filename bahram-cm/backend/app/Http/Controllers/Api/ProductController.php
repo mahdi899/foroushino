@@ -129,4 +129,47 @@ class ProductController extends Controller
             ? $response->header('Cache-Control', 'private, no-store')
             : $response->header('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
     }
+
+  /** Batch product lookup for checkout/cart — one round-trip instead of N slug fetches. */
+    public function showMany(Request $request): JsonResponse
+    {
+        $raw = $request->query('slugs', '');
+        $slugs = array_values(array_unique(array_filter(array_map(
+            static fn ($slug) => trim((string) $slug),
+            is_array($raw) ? $raw : explode(',', (string) $raw),
+        ))));
+
+        if ($slugs === []) {
+            return ApiResponse::error('invalid_slugs', 'لیست محصولات خالی است.', 422);
+        }
+
+        if (count($slugs) > 10) {
+            return ApiResponse::error('invalid_slugs', 'حداکثر ۱۰ محصول در هر درخواست مجاز است.', 422);
+        }
+
+        $items = [];
+        $personalized = false;
+
+        foreach ($slugs as $slug) {
+            $response = $this->show($slug, $request);
+            if ($response->getStatusCode() !== 200) {
+                continue;
+            }
+
+            $payload = $response->getData(true);
+            if (isset($payload['data']) && is_array($payload['data'])) {
+                $items[] = $payload['data'];
+            }
+
+            if ($response->headers->get('Cache-Control') === 'private, no-store') {
+                $personalized = true;
+            }
+        }
+
+        $response = response()->json(['data' => $items]);
+
+        return $personalized
+            ? $response->header('Cache-Control', 'private, no-store')
+            : $response->header('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
+    }
 }

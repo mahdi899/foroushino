@@ -53,6 +53,7 @@ class ApiException implements Exception {
 
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.connectionError) {
       return ApiException(message: 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.', statusCode: statusCode);
     }

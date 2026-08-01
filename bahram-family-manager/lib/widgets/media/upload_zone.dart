@@ -6,6 +6,8 @@ import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
+import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
+import 'package:bahram_family_manager/widgets/media/media_upload_progress_overlay.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 class UploadZone extends StatelessWidget {
@@ -15,6 +17,9 @@ class UploadZone extends StatelessWidget {
     required this.onTap,
     this.uploading = false,
     this.progress = 0,
+    this.sentBytes = 0,
+    this.totalBytes = 0,
+    this.phase = MediaUploadPhase.uploading,
     this.enabled = true,
   });
 
@@ -22,49 +27,50 @@ class UploadZone extends StatelessWidget {
   final VoidCallback? onTap;
   final bool uploading;
   final double progress;
+  final int sentBytes;
+  final int totalBytes;
+  final MediaUploadPhase phase;
   final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final scheme = context.appScheme;
     final muted = context.appTextMuted;
-    final border = context.appBorder;
 
     if (uploading) {
-      return GlassPanel(
-        borderRadius: AppRadius.card,
-        blur: 0,
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      return MediaUploadProgressOverlay(
+        phase: phase,
+        progress: progress,
+        sentBytes: sentBytes,
+        totalBytes: totalBytes,
+        borderRadius: AppRadius.cardBorder,
+        child: GlassPanel(
+          borderRadius: AppRadius.card,
+          blur: 0,
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
               children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: AppGradients.primary,
+                    borderRadius: AppRadius.tileBorder,
+                  ),
+                  child: const Icon(Icons.upload_file_rounded, color: Colors.white, size: 26),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Text('در حال آپلود...', style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
-                const Spacer(),
+                const SizedBox(height: AppSpacing.md),
+                Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
-                  '${toFaDigits((progress * 100).toStringAsFixed(0))}٪',
+                  phase.statusLabel((progress * 100).clamp(0, 100)),
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: LinearProgressIndicator(
-                value: progress == 0 ? null : progress,
-                minHeight: 6,
-                backgroundColor: border,
-                color: scheme.primary,
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -115,57 +121,57 @@ class MediaPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ready = media.isReady;
-    final statusColor = ready ? AppColors.success : AppColors.warning;
     final muted = context.appTextMuted;
 
-    return GlassPanel(
-      borderRadius: AppRadius.card,
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FamilyMediaView(
-            media: media,
-            height: media.isAudio ? 88 : 200,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                Icon(
-                  ready ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
-                  color: statusColor,
-                  size: 20,
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        media.originalFilename ?? 'رسانه',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: context.appScheme.onSurface),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${media.status} · ${formatBytes(media.size)}',
-                        style: TextStyle(color: muted, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                if (!readOnly && onRemove != null)
-                  IconButton(
-                    onPressed: onRemove,
-                    icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                  ),
-              ],
+    return MediaUploadProgressOverlay(
+      phase: ready ? MediaUploadPhase.ready : MediaUploadPhase.processing,
+      progress: ready ? 1 : 0,
+      sentBytes: media.size ?? 0,
+      totalBytes: media.size ?? 0,
+      borderRadius: AppRadius.cardBorder,
+      child: GlassPanel(
+        borderRadius: AppRadius.card,
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FamilyMediaView(
+              media: media,
+              height: media.isAudio ? 88 : 200,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          media.originalFilename ?? 'رسانه',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: context.appScheme.onSurface),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${media.status} · ${formatBytes(media.size)}',
+                          style: TextStyle(color: muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!readOnly && onRemove != null)
+                    IconButton(
+                      onPressed: onRemove,
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

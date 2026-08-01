@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\InAppNotificationType;
+use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
 use App\Models\Article;
 use App\Models\MiniCourse;
 use App\Models\Notification as NotificationModel;
@@ -39,7 +40,10 @@ class InAppNotificationService
             'created_by' => $createdBy,
         ]);
 
-        return $notification->recipients()->create(['user_id' => $user->id]);
+        $recipient = $notification->recipients()->create(['user_id' => $user->id]);
+        StudentNotificationController::forgetUnreadCount((int) $user->id);
+
+        return $recipient;
     }
 
     /** @param  Collection<int, User>|array<int, User>  $users */
@@ -68,6 +72,10 @@ class InAppNotificationService
                 $notification->recipients()->createMany(
                     $users->map(fn (User $user) => ['user_id' => $user->id])->all()
                 );
+
+                foreach ($users as $user) {
+                    StudentNotificationController::forgetUnreadCount((int) $user->id);
+                }
             }
 
             return $notification;

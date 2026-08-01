@@ -1,8 +1,21 @@
 import { MEDIA_HOSTS } from '@/lib/media/hosts.generated';
 
 // Base URLs for the Laravel API v1 admin layer.
-export const SERVER_API_URL =
-  process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8010/api/v1';
+function resolveServerApiUrl(): string {
+  if (process.env.API_INTERNAL_URL) {
+    return process.env.API_INTERNAL_URL.replace(/\/+$/, '');
+  }
+  const backendProxy = process.env.BACKEND_PROXY_URL?.replace(/\/+$/, '');
+  if (backendProxy) {
+    return `${backendProxy}/api/v1`;
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  return 'http://127.0.0.1:8010/api/v1';
+}
+
+export const SERVER_API_URL = resolveServerApiUrl();
 
 export const PUBLIC_API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';

@@ -5,13 +5,15 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 
-/// Gray haze fill + green success border for media thumbnails during upload pipeline.
+/// Gray haze fill + green glow halo for media thumbnails during upload pipeline.
 class MediaUploadProgressOverlay extends StatefulWidget {
   const MediaUploadProgressOverlay({
     super.key,
     required this.phase,
     required this.progress,
     required this.child,
+    this.sentBytes = 0,
+    this.totalBytes = 0,
     this.borderRadius = const BorderRadius.all(Radius.circular(14)),
     this.onRetry,
   });
@@ -19,6 +21,8 @@ class MediaUploadProgressOverlay extends StatefulWidget {
   final MediaUploadPhase phase;
   /// 0–1 transport / pipeline progress (used while [phase] is uploading or finalizing).
   final double progress;
+  final int sentBytes;
+  final int totalBytes;
   final Widget child;
   final BorderRadius borderRadius;
   final VoidCallback? onRetry;
@@ -72,10 +76,27 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
       case MediaUploadPhase.uploading:
         return widget.progress.clamp(0, 1);
       case MediaUploadPhase.finalizing:
-        return 0.95 + (widget.progress.clamp(0, 1) * 0.04);
+        return 1;
       case MediaUploadPhase.processing:
         return 0.98;
     }
+  }
+
+  String? _progressLabel() {
+    final total = widget.totalBytes;
+    if (total <= 0) {
+      if (widget.phase == MediaUploadPhase.uploading && widget.progress > 0) {
+        return '${toFaDigits((widget.progress * 100).round().toString())}٪';
+      }
+      return null;
+    }
+
+    final sent = widget.sentBytes.clamp(0, total);
+    final percent = widget.phase == MediaUploadPhase.finalizing
+        ? 100
+        : (widget.progress * 100).round().clamp(0, 100);
+
+    return '${toFaDigits(percent.toString())}٪ · ${formatBytes(sent)} / ${formatBytes(total)}';
   }
 
   @override
@@ -85,20 +106,30 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
     final showOverlay = phase.showsProgressOverlay;
     final isReady = phase == MediaUploadPhase.ready;
     final isFailed = phase == MediaUploadPhase.failed;
+    final progressLabel = _progressLabel();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         borderRadius: widget.borderRadius,
-        border: Border.all(
-          color: isReady
-              ? AppColors.success
-              : isFailed
-                  ? AppColors.error
-                  : Colors.transparent,
-          width: isReady || isFailed ? 2.5 : 0,
-        ),
+        boxShadow: isReady
+            ? [
+                BoxShadow(
+                  color: AppColors.success.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ]
+            : isFailed
+                ? [
+                    BoxShadow(
+                      color: AppColors.error.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
       ),
       child: ClipRRect(
         borderRadius: widget.borderRadius,
@@ -131,17 +162,18 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
                             ),
                           ),
                         ),
-                        if (phase == MediaUploadPhase.uploading && fill > 0.05)
+                        if (progressLabel != null && fill > 0.02)
                           Align(
                             alignment: Alignment.bottomCenter,
                             child: Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.only(bottom: 8, left: 8, right: 8),
                               child: Text(
-                                toFaDigits((fill * 100).round().toString()) + '٪',
+                                progressLabel,
+                                textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
                                 ),
                               ),
@@ -150,25 +182,6 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
                       ],
                     );
                   },
-                ),
-              ),
-            if (isReady)
-              PositionedDirectional(
-                top: 6,
-                start: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.success.withValues(alpha: 0.4),
-                        blurRadius: 6,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.check_rounded, size: 14, color: Colors.white),
                 ),
               ),
             if (isFailed && widget.onRetry != null)

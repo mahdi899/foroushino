@@ -61,7 +61,7 @@ class AdminAuthTest extends TestCase
             ->assertJsonPath('error.details.captcha.0', 'تأیید امنیتی ناموفق بود. لطفاً دوباره تلاش کنید.');
     }
 
-    public function test_admin_login_is_limited_to_three_attempts_per_hour(): void
+    public function test_admin_login_is_limited_to_six_attempts_per_ten_minutes(): void
     {
         Setting::query()->updateOrCreate(
             ['group' => 'captcha', 'key' => 'config'],
@@ -79,7 +79,7 @@ class AdminAuthTest extends TestCase
             'is_admin' => true,
         ]);
 
-        for ($i = 0; $i < 3; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             $this->postJson('/api/v1/auth/login', [
                 'email' => 'admin@bahram.local',
                 'password' => 'wrong-password',
@@ -91,10 +91,12 @@ class AdminAuthTest extends TestCase
             'password' => 'wrong-password',
         ])
             ->assertStatus(429)
+            ->assertJsonPath('error.code', 'too_many_requests')
             ->assertJsonPath(
                 'error.message_fa',
-                'حداکثر ۳ بار در هر ساعت می‌توانید وارد شوید. لطفاً بعداً دوباره تلاش کنید.',
-            );
+                'حداکثر 6 بار می‌توانید برای ورود تلاش کنید. لطفاً پس از اتمام مدت محدودیت دوباره تلاش کنید.',
+            )
+            ->assertJsonStructure(['error' => ['retry_after']]);
     }
 
     public function test_admin_login_accepts_valid_math_captcha(): void

@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\ReferralConversion;
 use App\Models\Seminar;
 use App\Models\SeminarAttendee;
+use App\Models\SpotplayerLicense;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
 use App\Services\DiscountService;
@@ -19,6 +22,8 @@ class OrderService
 {
     public function __construct(
         private readonly PurchaseGuardService $purchaseGuard,
+        private readonly AdminAuditLogger $audit,
+        private readonly TelegramHostAccountSync $telegramSync,
     ) {}
 
     /**
@@ -327,6 +332,44 @@ class OrderService
         });
 
         return ['deleted' => $deleted];
+    }
+
+    public function deleteOrder(User $actor, Order $order, bool $force = false): void
+    {
+        $paidStatuses = ['paid', 'fulfilled'];
+        if (! $force && in_array($order->status, $paidStatuses, true)) {
+            throw ValidationException::withMessages([
+                'order' => ['برای حذف سفارش پرداخت‌شده، گزینه تأیید اجباری را فعال کنید.'],
+            ]);
+        }
+
+        $userId = $order->user_id;
+        $customerPhone = $order->customer_phone;
+        $user = $userId ? User::query()->find($userId) : null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $order): void {
+            ReferralConversion::query()->where('order_id', $order->id)->delete();
+            CourseAccess::query()->where('order_id', $order->id)->delete();
+            SpotplayerLicense::query()->where('order_id', $order->id)->delete();
+            $order->items()->delete();
+            $order->payments()->delete();
+
+            $this->audit->log($actor, 'order.deleted', $order, [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'user_id' => $order->user_id,
+                'status' => $order->status,
+            ]);
+
+            $order->delete();
+        });
+
+        $this->telegramSync->syncAccessAfterDeletion(
+            $user,
+            $customerPhone,
+            [],
+            'order_deleted',
+        );
     }
 
     private function generateOrderNumber(): string

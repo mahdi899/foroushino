@@ -101,6 +101,18 @@ export async function updateStudentStatus(id: number, status: string): Promise<{
   }
 }
 
+export async function deleteStudentAction(
+  id: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await adminFetch(`/students/${id}`, { method: 'DELETE' });
+    revalidateAcademy();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'حذف حساب دانشجو ناموفق بود.');
+  }
+}
+
 export async function exportStudentsCsv(filters?: {
   search?: string;
   status?: string;
@@ -326,6 +338,17 @@ export async function fetchTicketsByUser(userId: number) {
     return { ok: true as const, items: res.data, meta: res.meta };
   } catch (e) {
     return { ok: false as const, items: [] as AdminTicket[], meta: null, error: actionError(e, 'بارگذاری تیکت‌های کاربر ناموفق بود.').error };
+  }
+}
+
+export async function fetchRecentTickets(perPage = 20) {
+  try {
+    const res = await adminFetch<{ data: AdminTicket[]; meta: PageMeta }>('/tickets', {
+      query: { per_page: perPage },
+    });
+    return { ok: true as const, items: res.data, meta: res.meta };
+  } catch (e) {
+    return { ok: false as const, items: [] as AdminTicket[], meta: null, error: actionError(e, 'بارگذاری تیکت‌ها ناموفق بود.').error };
   }
 }
 

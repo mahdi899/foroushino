@@ -169,10 +169,10 @@ Route::prefix('integrations/inbound')
 |--------------------------------------------------------------------------
 */
 Route::prefix('student')->group(function () {
-    Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp'])->middleware('throttle:student-auth');
+    Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp'])->middleware('throttle:user-login');
     Route::post('auth/send-otp-bale', [StudentAuthController::class, 'sendOtpViaBale'])->middleware('throttle:student-auth');
     Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp'])->middleware('throttle:student-auth');
-    Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword'])->middleware('throttle:student-auth');
+    Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword'])->middleware('throttle:user-login');
 
     // Cross-domain SSO handoff between rostami.app and rostami.club (see SsoBridgeController).
     Route::post('auth/sso/consume', [SsoBridgeController::class, 'consume'])->middleware('throttle:student-auth');
@@ -341,6 +341,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('orders/analytics', [OrderController::class, 'analytics']);
     Route::get('orders/{order}', [OrderController::class, 'show'])->whereNumber('order');
     Route::patch('orders/{order}', [OrderController::class, 'update'])->whereNumber('order');
+    Route::delete('orders/{order}', [OrderController::class, 'destroy'])->whereNumber('order');
     Route::post('orders/{order}/resend-sms', [OrderController::class, 'resendSms'])->whereNumber('order');
     Route::post('orders/{order}/fulfill', [OrderController::class, 'fulfill'])->whereNumber('order');
 
@@ -426,6 +427,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('students', [AdminStudentController::class, 'store']);
     Route::get('students/{student}', [AdminStudentController::class, 'show'])->whereNumber('student');
     Route::patch('students/{student}', [AdminStudentController::class, 'update'])->whereNumber('student');
+    Route::delete('students/{student}', [AdminStudentController::class, 'destroy'])->whereNumber('student');
     Route::post('students/{student}/reveal-mobile', [AdminStudentController::class, 'revealMobile'])
         ->middleware('throttle:identity-reveal')
         ->whereNumber('student');
@@ -442,6 +444,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('identity-verifications/{submission}/request-correction', [IdentityVerificationAdminController::class, 'requestCorrection'])->whereNumber('submission');
     Route::post('students/{student}/identity/unlock-ownership', [IdentityVerificationAdminController::class, 'unlockOwnership'])->whereNumber('student');
     Route::post('students/{student}/identity/override-level', [IdentityVerificationAdminController::class, 'overrideLevel'])->whereNumber('student');
+    Route::post('students/{student}/identity/reset', [IdentityVerificationAdminController::class, 'resetIdentity'])->whereNumber('student');
+    Route::get('students/{student}/identity/history', [IdentityVerificationAdminController::class, 'history'])->whereNumber('student');
     Route::get('identity-artifacts/{artifact}/stream', [IdentityArtifactController::class, 'stream'])->whereNumber('artifact');
 
     Route::get('identity-providers', [IdentityProviderAdminController::class, 'index']);
@@ -534,8 +538,8 @@ Route::post('internal/cache/verify-revalidate', [CacheController::class, 'verify
     ->middleware('throttle:120,1');
 Route::get('settings', [SettingController::class, 'publicIndex']);
 
-Route::get('captcha/config', [CaptchaController::class, 'config'])->middleware('throttle:60,1');
-Route::get('captcha/math', [CaptchaController::class, 'math'])->middleware('throttle:120,1');
+Route::get('captcha/config', [CaptchaController::class, 'config'])->middleware('throttle:captcha-public');
+Route::get('captcha/math', [CaptchaController::class, 'math'])->middleware('throttle:captcha-public');
 Route::post('captcha/math/store', [CaptchaController::class, 'storeMath']);
 
 Route::get('chatbot/config', [ChatbotController::class, 'config'])->middleware('throttle:120,1');

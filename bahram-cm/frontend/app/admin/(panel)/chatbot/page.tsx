@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Download, Loader2, MessageSquare, Save, Search, Star, Trash2 } from 'lucide-react';
 import { AdminPage, Badge, Table } from '../ui';
 import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
@@ -90,7 +90,15 @@ export default function ChatbotAdminPage() {
   const [exporting, setExporting] = useState(false);
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(() => new Set());
   const [deleting, setDeleting] = useState(false);
+  const sessionPageRef = useRef(1);
+  const logPageRef = useRef(1);
+  const logQRef = useRef(logQ);
+  logQRef.current = logQ;
   const { pendingCount, refreshPendingCount } = useOperatorQueueAlert();
+
+  const handleQueueChanged = useCallback(() => {
+    void refreshPendingCount();
+  }, [refreshPendingCount]);
 
   useEffect(() => {
     Promise.all([loadChatbotSettings(), getChatbotOperatorProfiles()])
@@ -101,35 +109,46 @@ export default function ChatbotAdminPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const loadLogs = useCallback(async (page = 1, q = logQ) => {
+  const loadLogs = useCallback(async (page?: number, q?: string) => {
+    const targetPage = page ?? logPageRef.current;
+    const targetQ = q ?? logQRef.current;
     setLogsLoading(true);
     try {
-      const res = await fetchChatbotLogs({ page, q });
+      const res = await fetchChatbotLogs({ page: targetPage, q: targetQ });
       setLogs(res.data);
       setLogMeta(res.meta);
+      logPageRef.current = res.meta.current_page;
     } catch {
       setLogs([]);
     } finally {
       setLogsLoading(false);
     }
-  }, [logQ]);
+  }, []);
 
-  const loadSessions = useCallback(async (page = 1, q = logQ) => {
+  const loadSessions = useCallback(async (page?: number, q?: string) => {
+    const targetPage = page ?? sessionPageRef.current;
+    const targetQ = q ?? logQRef.current;
     setSessionsLoading(true);
     try {
-      const res = await fetchChatbotSessions({ page, q });
+      const res = await fetchChatbotSessions({ page: targetPage, q: targetQ });
       setSessions(res.data);
       setSessionMeta(res.meta);
+      sessionPageRef.current = res.meta.current_page;
     } catch {
       setSessions([]);
     } finally {
       setSessionsLoading(false);
     }
-  }, [logQ]);
+  }, []);
 
   useEffect(() => {
-    if (tab === 'logs') void loadLogs(1);
-    if (tab === 'sessions') void loadSessions(1);
+    if (tab === 'logs') {
+      logPageRef.current = 1;
+      void loadLogs(1);
+    } else if (tab === 'sessions') {
+      sessionPageRef.current = 1;
+      void loadSessions(1);
+    }
   }, [tab, loadLogs, loadSessions]);
 
   async function toggleSessionDetail(sessionId: string) {
@@ -150,7 +169,7 @@ export default function ChatbotAdminPage() {
       await deleteChatbotSessions([...selectedSessions]);
       setSelectedSessions(new Set());
       setExpandedSession(null);
-      await loadSessions(sessionMeta.current_page);
+      await loadSessions(sessionPageRef.current);
     } catch {
       alert('حذف انجام نشد. دوباره تلاش کنید.');
     } finally {
@@ -513,7 +532,7 @@ export default function ChatbotAdminPage() {
       ) : tab === 'operator' ? (
         <OperatorQueuePanel
           operatorProfiles={operatorProfiles}
-          onQueueChanged={() => void refreshPendingCount()}
+          onQueueChanged={handleQueueChanged}
         />
       ) : tab === 'sessions' ? (
         <div>

@@ -1,6 +1,5 @@
 import { AdminPage } from '../../../ui';
-import { getOrderAnalytics } from '@/lib/admin/commerceData';
-import { OrdersAnalyticsDashboard } from '../OrdersAnalyticsDashboard';
+import { OrdersReportsClient } from './OrdersReportsClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +17,6 @@ export default async function OrdersReportsPage({
 }) {
   const sp = await searchParams;
   const periodDays = parsePeriodDays(sp.days);
-  const { data, error } = await getOrderAnalytics(periodDays);
 
   return (
     <AdminPage
@@ -27,11 +25,7 @@ export default async function OrdersReportsPage({
       icon="BarChart3"
       headerVariant="commerce"
     >
-      {error && (
-        <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">{error}</div>
-      )}
-
-      {data ? <OrdersAnalyticsDashboard data={data} periodDays={periodDays} /> : null}
+      <OrdersReportsClient periodDays={periodDays} />
     </AdminPage>
   );
 }

@@ -149,3 +149,20 @@ export async function unlockOwnershipVerificationAction(
     return actionError(e, 'رفع قفل تطبیق شماره ناموفق بود.');
   }
 }
+
+export async function resetIdentityVerificationAction(
+  studentId: number,
+  reason: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await adminFetch(`/students/${studentId}/identity/reset`, {
+      method: 'POST',
+      body: { reason },
+    });
+    revalidatePath('/admin/academy/identity-verifications');
+    revalidatePath(`/admin/academy/students/${studentId}`);
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'بازنشانی احراز هویت ناموفق بود.');
+  }
+}

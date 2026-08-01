@@ -117,7 +117,7 @@ export function ReferenceChannelShowcase({
 
       <div className="border-t border-border p-4">
         {!owned && channel.purchase_path ? (
-          <Link href={channel.purchase_path} className="btn btn-primary w-full">
+          <Link href={channel.purchase_path} prefetch={false} className="btn btn-primary w-full">
             <ShoppingCart size={16} />
             خرید و فعال‌سازی
           </Link>

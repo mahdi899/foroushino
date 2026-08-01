@@ -105,6 +105,16 @@ if [[ -f "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" ]]; then
     cp "$APP_ROOT/deploy/nginx/snippets/updating-page.conf" /etc/nginx/snippets/updating-page.conf
   fi
   cp "$APP_ROOT/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
+  if [[ -f "$APP_ROOT/deploy/nginx/conf.d/rostami-microcache.conf" ]]; then
+    install -d -o www-data -g www-data /var/cache/nginx/rostami_next
+    cp "$APP_ROOT/deploy/nginx/conf.d/rostami-microcache.conf" /etc/nginx/conf.d/rostami-microcache.conf
+  fi
+  # `include sites-enabled/*` also pulls in editor/rollback leftovers, which
+  # duplicate every server_name and make nginx pick an arbitrary vhost.
+  mkdir -p /etc/nginx/sites-disabled
+  find /etc/nginx/sites-enabled -maxdepth 1 -type f \
+    \( -name '*.bak' -o -name '*.bak.*' -o -name '*.save' -o -name '*~' \) \
+    -exec mv -t /etc/nginx/sites-disabled/ {} + 2>/dev/null || true
   if [[ -f "$APP_ROOT/deploy/nginx/rostami-app.conf" && -f /etc/nginx/sites-available/rostami-app.conf ]]; then
     if grep -q 'listen 443' /etc/nginx/sites-available/rostami-app.conf 2>/dev/null; then
       cp "$APP_ROOT/deploy/nginx/rostami-app.conf" /etc/nginx/sites-available/rostami-app.conf

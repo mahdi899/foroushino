@@ -12,7 +12,10 @@ export type IdentityVerificationListItem = {
   uuid?: string;
   user_id: number;
   user_name: string | null;
+  user_mobile?: string | null;
   user_mobile_masked?: string | null;
+  national_code?: string | null;
+  national_code_masked?: string | null;
   status: IdentityStatus | string;
   first_name: string;
   last_name: string;
@@ -64,7 +67,6 @@ export type IdentityReview = {
 };
 
 export type IdentityVerificationDetail = IdentityVerificationListItem & {
-  national_code_masked?: string | null;
   date_of_birth?: string | null;
   gender?: string | null;
   expected_video_text?: string | null;
@@ -74,6 +76,7 @@ export type IdentityVerificationDetail = IdentityVerificationListItem & {
   reviews?: IdentityReview[];
   can_view_documents?: boolean;
   can_reveal_national_code?: boolean;
+  can_reveal_mobile?: boolean;
   mobile_ownership_status?: string | null;
   ownership_failed_attempts?: number;
   ownership_locked_at?: string | null;

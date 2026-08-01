@@ -10,9 +10,16 @@ use App\Support\ApiResponse;
 use App\Support\NotificationRecipientQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationController extends Controller
 {
+    /** Panels poll this endpoint continuously; a short TTL keeps MySQL out of the hot path. */
+    protected const UNREAD_COUNT_TTL_SECONDS = 20;
+
+    /** Welcome dedupe writes to the DB, so run it at most once per user per hour. */
+    private const DEDUPE_TTL_SECONDS = 3600;
+
     public function __construct(
         private readonly InAppNotificationService $notifications,
     ) {}
@@ -20,7 +27,17 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         // Collapse historical welcome spam (same bug as repeated first-login side effects).
-        $this->notifications->dedupeWelcomeNotifications($request->user());
+        // Guarded by a cache lock: the panel polls this route every few seconds and the
+        // dedupe is a write query that does not need to run on every poll.
+        Cache::remember(
+            'notifications:welcome-dedupe:'.$request->user()->id,
+            self::DEDUPE_TTL_SECONDS,
+            function () use ($request) {
+                $this->notifications->dedupeWelcomeNotifications($request->user());
+
+                return true;
+            },
+        );
 
         $perPage = min(max((int) $request->input('per_page', 50), 1), 100);
 
@@ -45,9 +62,13 @@ class NotificationController extends Controller
 
     public function unreadCount(Request $request): JsonResponse
     {
-        $count = NotificationRecipientQuery::forUser($request->user(), 'student')
-            ->whereNull('read_at')
-            ->count();
+        $count = Cache::remember(
+            self::unreadCountCacheKey((int) $request->user()->id, 'student'),
+            self::UNREAD_COUNT_TTL_SECONDS,
+            fn () => NotificationRecipientQuery::forUser($request->user(), 'student')
+                ->whereNull('read_at')
+                ->count(),
+        );
 
         return ApiResponse::success(['unread_count' => $count]);
     }
@@ -58,6 +79,7 @@ class NotificationController extends Controller
 
         if ($notification->read_at === null) {
             $notification->update(['read_at' => now()]);
+            self::forgetUnreadCount((int) $request->user()->id);
         }
 
         return ApiResponse::success(['read_at' => $notification->read_at?->toIso8601String()]);
@@ -69,7 +91,22 @@ class NotificationController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
+        self::forgetUnreadCount((int) $request->user()->id);
+
         return ApiResponse::success(['marked_count' => $updated]);
+    }
+
+    protected static function unreadCountCacheKey(int $userId, string $scope): string
+    {
+        return "notifications:unread-count:{$scope}:{$userId}";
+    }
+
+    /** Drop both scopes — a recipient row can surface in the panel and in Club. */
+    public static function forgetUnreadCount(int $userId): void
+    {
+        foreach (['student', 'family'] as $scope) {
+            Cache::forget(self::unreadCountCacheKey($userId, $scope));
+        }
     }
 
     /** @return array<string, mixed> */

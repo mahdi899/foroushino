@@ -134,18 +134,7 @@ class OrderAnalyticsService
             ->values()
             ->all();
 
-        $byGatewayMode = (clone $paymentsQuery)
-            ->where('payments.status', 'paid')
-            ->get(['payments.authority', 'payments.verify_payload', 'payments.request_payload', 'payments.amount'])
-            ->groupBy(fn (Payment $p) => $this->paymentMode($p))
-            ->map(fn ($group, $mode) => [
-                'key' => $mode,
-                'label' => $mode === 'sandbox' ? 'زرین‌پال (تست)' : 'زرین‌پال (واقعی)',
-                'count' => $group->count(),
-                'revenue' => (int) $group->sum('amount'),
-            ])
-            ->values()
-            ->all();
+        $byGatewayMode = $this->gatewayModeBreakdown($paymentsQuery);
 
         $fulfillment = [
             'licenses_issued' => (clone $base)->whereNotNull('spotplayer_license_code')->where('spotplayer_license_code', '!=', '')->count(),
@@ -199,6 +188,43 @@ class OrderAnalyticsService
             'daily' => $daily,
             'by_product' => $byProduct,
             'recent_transactions' => $recentTransactions,
+        ];
+    }
+
+    /** @return list<array{key: string, label: string, count: int, revenue: int}> */
+    private function gatewayModeBreakdown(\Illuminate\Database\Eloquent\Builder $paymentsQuery): array
+    {
+        $paid = (clone $paymentsQuery)->where('payments.status', 'paid');
+
+        $sandboxCount = (clone $paid)->where('payments.authority', 'like', 'DEV-%')->count();
+        $sandboxRevenue = (int) (clone $paid)->where('payments.authority', 'like', 'DEV-%')->sum('payments.amount');
+
+        $liveCount = (clone $paid)
+            ->where(function ($q) {
+                $q->whereNull('payments.authority')
+                    ->orWhere('payments.authority', 'not like', 'DEV-%');
+            })
+            ->count();
+        $liveRevenue = (int) (clone $paid)
+            ->where(function ($q) {
+                $q->whereNull('payments.authority')
+                    ->orWhere('payments.authority', 'not like', 'DEV-%');
+            })
+            ->sum('payments.amount');
+
+        return [
+            [
+                'key' => 'sandbox',
+                'label' => 'زرین‌پال (تست)',
+                'count' => $sandboxCount,
+                'revenue' => $sandboxRevenue,
+            ],
+            [
+                'key' => 'live',
+                'label' => 'زرین‌پال (واقعی)',
+                'count' => $liveCount,
+                'revenue' => $liveRevenue,
+            ],
         ];
     }
 

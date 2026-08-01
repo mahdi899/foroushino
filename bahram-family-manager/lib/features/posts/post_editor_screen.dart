@@ -16,6 +16,7 @@ import 'package:bahram_family_manager/features/posts/widgets/post_schedule_sheet
 import 'package:bahram_family_manager/features/posts/widgets/post_type_selector.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/models/upload_progress.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
@@ -66,6 +67,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   final List<_AttachedImage> _images = [];
   MediaUploadPhase _mediaPhase = MediaUploadPhase.idle;
   double _uploadProgress = 0;
+  int _uploadSentBytes = 0;
+  int _uploadTotalBytes = 0;
   bool _optimizeImages = true;
   bool _optimizeDefaultLoaded = false;
 
@@ -201,7 +204,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _type = next;
       _mediaPhase = MediaUploadPhase.idle;
       _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = 0;
     });
+  }
+
+  void _applyMainUploadState(UploadProgress upload) {
+    _mediaPhase = upload.phase;
+    _uploadProgress = upload.fraction;
+    _uploadSentBytes = upload.sentBytes;
+    _uploadTotalBytes = upload.totalBytes;
   }
 
   bool get _mediaBusy => _mediaPhase.isActive || _images.any((img) => img.phase.isActive);
@@ -289,11 +301,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               if (!mounted) return;
               setState(() => _images[i].media = updated);
             },
-            onUploadState: (phase, progress) {
+            onUploadState: (upload) {
               if (!mounted) return;
               setState(() {
-                _images[i].phase = phase;
-                _images[i].progress = progress;
+                _images[i].applyUpload(upload);
               });
             },
           );
@@ -324,12 +335,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               if (!mounted) return;
               setState(() => _mediaRef = updated);
             },
-            onUploadState: (phase, progress) {
+            onUploadState: (upload) {
               if (!mounted) return;
-              setState(() {
-                _mediaPhase = phase;
-                _uploadProgress = progress;
-              });
+              setState(() => _applyMainUploadState(upload));
             },
           );
       if (mounted) {
@@ -350,13 +358,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       return;
     }
 
+    final totalBytes = bytes.length;
+    await _prepareLocalPreview(bytes, filename, _type);
+    if (!mounted) return;
+
     setState(() {
       _mediaPhase = MediaUploadPhase.uploading;
       _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = totalBytes;
     });
-
-    await _prepareLocalPreview(bytes, filename, _type);
-    if (mounted) setState(() {});
 
     try {
       final manager = context.read<AppState>().manager;
@@ -365,12 +376,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             filename: filename,
             type: _type,
             optimizeImages: null,
-            onUploadState: (phase, progress) {
+            onUploadState: (upload) {
               if (!mounted) return;
-              setState(() {
-                _mediaPhase = phase;
-                _uploadProgress = progress;
-              });
+              setState(() => _applyMainUploadState(upload));
             },
           );
       if (!mounted) return;
@@ -379,25 +387,27 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         if (media.isReady) {
           _mediaPhase = MediaUploadPhase.ready;
           _uploadProgress = 1;
+          _uploadSentBytes = totalBytes;
+          _uploadTotalBytes = totalBytes;
         } else {
           _mediaPhase = MediaUploadPhase.processing;
-          _uploadProgress = 0.96;
+          _uploadProgress = 1;
+          _uploadSentBytes = totalBytes;
+          _uploadTotalBytes = totalBytes;
         }
       });
       if (media.isReady) return;
 
       final ready = await manager.waitForMediaReady(
         media.id,
+        totalBytes: totalBytes,
         onUpdate: (updated) {
           if (!mounted) return;
           setState(() => _mediaRef = updated);
         },
-        onUploadState: (phase, progress) {
+        onUploadState: (upload) {
           if (!mounted) return;
-          setState(() {
-            _mediaPhase = phase;
-            _uploadProgress = progress;
-          });
+          setState(() => _applyMainUploadState(upload));
         },
       );
       if (mounted) {
@@ -405,15 +415,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           _mediaRef = ready;
           _mediaPhase = MediaUploadPhase.ready;
           _uploadProgress = 1;
+          _uploadSentBytes = totalBytes;
+          _uploadTotalBytes = totalBytes;
         });
       }
     } catch (e) {
-      await _clearLocalPreview();
       if (mounted) {
-        setState(() {
-          _mediaRef = null;
-          _mediaPhase = MediaUploadPhase.failed;
-        });
+        setState(() => _mediaPhase = MediaUploadPhase.failed);
         showAppSnackBar(context, messageOf(e));
       }
     }
@@ -433,12 +441,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             filename: filename,
             type: 'image',
             optimizeImages: _optimizeImages,
-            onUploadState: (phase, progress) {
+            onUploadState: (upload) {
               if (!mounted) return;
-              setState(() {
-                draft.phase = phase;
-                draft.progress = progress;
-              });
+              setState(() => draft.applyUpload(upload));
             },
           );
       if (!mounted) return;
@@ -460,12 +465,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           if (!mounted) return;
           setState(() => draft.media = updated);
         },
-        onUploadState: (phase, progress) {
+        onUploadState: (upload) {
           if (!mounted) return;
-          setState(() {
-            draft.phase = phase;
-            draft.progress = progress;
-          });
+          setState(() => draft.applyUpload(upload));
         },
       );
       if (mounted) {
@@ -478,9 +480,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _images.remove(draft);
-          showAppSnackBar(context, messageOf(e));
+          draft.phase = MediaUploadPhase.failed;
         });
+        showAppSnackBar(context, messageOf(e));
       }
     }
   }
@@ -550,11 +552,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               if (!mounted) return;
               setState(() => _images[i].media = updated);
             },
-            onUploadState: (phase, progress) {
+            onUploadState: (upload) {
               if (!mounted) return;
               setState(() {
-                _images[i].phase = phase;
-                _images[i].progress = progress;
+                _images[i].applyUpload(upload);
               });
             },
           );
@@ -586,12 +587,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             if (!mounted) return;
             setState(() => _mediaRef = updated);
           },
-          onUploadState: (phase, progress) {
+          onUploadState: (upload) {
             if (!mounted) return;
-            setState(() {
-              _mediaPhase = phase;
-              _uploadProgress = progress;
-            });
+            setState(() => _applyMainUploadState(upload));
           },
         );
     if (mounted) {
@@ -629,12 +627,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           if (!mounted) return;
           setState(() => _mediaRef = updated);
         },
-        onUploadState: (phase, progress) {
+        onUploadState: (upload) {
           if (!mounted) return;
-          setState(() {
-            _mediaPhase = phase;
-            _uploadProgress = progress;
-          });
+          setState(() => _applyMainUploadState(upload));
         },
       );
       if (mounted) {
@@ -677,12 +672,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           if (!mounted) return;
           setState(() => image.media = updated);
         },
-        onUploadState: (phase, progress) {
+        onUploadState: (upload) {
           if (!mounted) return;
-          setState(() {
-            image.phase = phase;
-            image.progress = progress;
-          });
+          setState(() => image.applyUpload(upload));
         },
       );
       if (mounted) {
@@ -1216,6 +1208,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                                   child: MediaUploadProgressOverlay(
                                     phase: _mediaPhase,
                                     progress: _uploadProgress,
+                                    sentBytes: _uploadSentBytes,
+                                    totalBytes: _uploadTotalBytes,
                                     borderRadius: BorderRadius.circular(14),
                                     child: Container(
                                       color: context.appSurfaceSoft,
@@ -1253,8 +1247,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                           )
                         : UploadZone(
                             label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
-                            uploading: _mediaPhase == MediaUploadPhase.uploading,
+                            uploading: _mediaPhase == MediaUploadPhase.uploading ||
+                                _mediaPhase == MediaUploadPhase.finalizing,
                             progress: _uploadProgress,
+                            sentBytes: _uploadSentBytes,
+                            totalBytes: _uploadTotalBytes,
+                            phase: _mediaPhase,
                             enabled: !_saving && !_mediaBusy,
                             onTap: _pickAndUploadMedia,
                           )
@@ -1273,6 +1271,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                         MediaUploadProgressOverlay(
                           phase: _mediaPhase,
                           progress: _uploadProgress,
+                          sentBytes: _uploadSentBytes,
+                          totalBytes: _uploadTotalBytes,
                           borderRadius: BorderRadius.circular(14),
                           onRetry: _mediaPhase == MediaUploadPhase.failed ? _retryMedia : null,
                           child: FamilyMediaView(
@@ -1301,6 +1301,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                                         _mediaRef = null;
                                         _mediaPhase = MediaUploadPhase.idle;
                                         _uploadProgress = 0;
+                                        _uploadSentBytes = 0;
+                                        _uploadTotalBytes = 0;
                                       });
                                     }
                                   },
@@ -1659,6 +1661,15 @@ class _AttachedImage {
   Uint8List? localBytes;
   MediaUploadPhase phase = MediaUploadPhase.idle;
   double progress = 0;
+  int sentBytes = 0;
+  int totalBytes = 0;
+
+  void applyUpload(UploadProgress upload) {
+    phase = upload.phase;
+    progress = upload.fraction;
+    sentBytes = upload.sentBytes;
+    totalBytes = upload.totalBytes;
+  }
 }
 
 class _ImageThumb extends StatelessWidget {
@@ -1696,6 +1707,8 @@ class _ImageThumb extends StatelessWidget {
           MediaUploadProgressOverlay(
             phase: phase,
             progress: image.progress,
+            sentBytes: image.sentBytes,
+            totalBytes: image.totalBytes,
             borderRadius: BorderRadius.circular(14),
             onRetry: phase == MediaUploadPhase.failed ? onRetry : null,
             child: FamilyMediaView(

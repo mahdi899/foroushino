@@ -49,6 +49,7 @@ Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 
 // Products
 Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/batch', [ProductController::class, 'showMany']);
 Route::get('/products/{slug}', [ProductController::class, 'show']);
 
 // Mini courses (free Aparat videos)

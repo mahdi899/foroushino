@@ -77,7 +77,8 @@ export default async function IdentityVerificationsPage({
           className="field-input w-full sm:max-w-xs"
         />
         <select name="status" defaultValue={sp.status ?? ''} className="field-input w-full sm:max-w-[12rem]">
-          <option value="">همه وضعیت‌ها</option>
+          <option value="">صف بررسی</option>
+          <option value="all">همه نسخه‌ها (آخرین هر کاربر)</option>
           {Object.entries(IDENTITY_STATUS_LABELS).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
@@ -114,7 +115,7 @@ export default async function IdentityVerificationsPage({
                   ) : null}
                 </td>
                 <td className="px-4 py-3" dir="ltr">
-                  {item.user_mobile_masked ?? '—'}
+                  {item.user_mobile ?? item.user_mobile_masked ?? '—'}
                 </td>
                 <td className="px-4 py-3">
                   <Badge tone={statusTone(item.status)}>

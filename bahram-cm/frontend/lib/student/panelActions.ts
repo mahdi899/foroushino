@@ -259,11 +259,29 @@ export async function fetchUnreadNotificationCount(): Promise<number> {
 }
 
 export async function fetchRecentNotifications(perPage = 15, unreadOnly = false): Promise<PanelNotificationPayload[]> {
+  return (await fetchNotificationsPage(perPage, unreadOnly)).items;
+}
+
+/**
+ * Same request as `fetchRecentNotifications`, but keeps `meta.total` so pollers can
+ * read the unread count without a second round-trip to `/notifications/unread-count`.
+ */
+export async function fetchNotificationsPage(
+  perPage = 15,
+  unreadOnly = false,
+): Promise<{ items: PanelNotificationPayload[]; total: number }> {
   try {
     const query = unreadOnly ? '&unread_only=1' : '';
-    const res = await studentFetch<{ data: PanelNotificationPayload[] }>(`/notifications?per_page=${perPage}${query}`);
-    return res.data ?? [];
+    const res = await studentFetch<{
+      data: PanelNotificationPayload[];
+      meta?: { total?: number };
+    }>(`/notifications?per_page=${perPage}${query}`);
+
+    const items = res.data ?? [];
+    const total = typeof res.meta?.total === 'number' ? res.meta.total : items.length;
+
+    return { items, total };
   } catch {
-    return [];
+    return { items: [], total: 0 };
   }
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle2, Eye, Loader2, XCircle } from 'lucide-react';
 import {
   revealStudentNationalCodeAction,
+  resetIdentityVerificationAction,
   reviewIdentityVerificationAction,
   unlockOwnershipVerificationAction,
 } from './actions';
@@ -29,12 +30,14 @@ export function IdentityReviewActions({
   canReject,
   canCorrection,
   canUnlock,
+  canReset,
 }: {
   detail: IdentityVerificationDetail;
   canApprove: boolean;
   canReject: boolean;
   canCorrection: boolean;
   canUnlock: boolean;
+  canReset?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -44,6 +47,7 @@ export function IdentityReviewActions({
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [nationalCode, setNationalCode] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
+  const [resetReason, setResetReason] = useState('');
 
   const reviewable = isReviewable(detail.status);
 
@@ -106,7 +110,14 @@ export function IdentityReviewActions({
         </div>
       ) : null}
 
-      {detail.can_reveal_national_code ? (
+      {detail.national_code ? (
+        <div>
+          <p className="mb-1 text-caption text-text-muted">کد ملی</p>
+          <span dir="ltr" className="font-mono text-small">
+            {detail.national_code}
+          </span>
+        </div>
+      ) : detail.can_reveal_national_code ? (
         <div>
           <p className="mb-1 text-caption text-text-muted">کد ملی</p>
           {nationalCode ? (
@@ -251,6 +262,46 @@ export function IdentityReviewActions({
         >
           رفع قفل تطبیق شماره
         </button>
+      ) : null}
+
+      {canReset ? (
+        <div className="border-t border-border pt-4">
+          <p className="mb-2 text-caption font-medium text-error">بازنشانی احراز هویت (مدیر کل)</p>
+          <p className="mb-2 text-caption text-text-muted leading-relaxed">
+            پرونده‌های قبلی حفظ می‌شوند؛ دانشجو می‌تواند با کد ملی یا شماره جدید دوباره احراز کند.
+          </p>
+          <textarea
+            className="field-input mb-2 min-h-[60px]"
+            placeholder="دلیل بازنشانی (الزامی)"
+            value={resetReason}
+            onChange={(e) => setResetReason(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary w-full justify-center text-error"
+            disabled={pending || resetReason.trim() === ''}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  'احراز هویت این کاربر بازنشانی شود؟ سوابق قبلی حذف نمی‌شوند اما وضعیت فعال صفر می‌شود.',
+                )
+              ) {
+                return;
+              }
+              startTransition(async () => {
+                const res = await resetIdentityVerificationAction(detail.user_id, resetReason.trim());
+                if (!res.ok) setMessage({ type: 'err', text: res.error });
+                else {
+                  setMessage({ type: 'ok', text: 'احراز هویت بازنشانی شد.' });
+                  setResetReason('');
+                  router.refresh();
+                }
+              });
+            }}
+          >
+            بازنشانی احراز هویت
+          </button>
+        </div>
       ) : null}
 
       {detail.reviews?.length ? (

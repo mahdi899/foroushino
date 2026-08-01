@@ -28,7 +28,9 @@ process.on('unhandledRejection', (reason) => {
 const frontendDir = path.resolve(__dirname, '../../frontend');
 const nextBin = path.join(frontendDir, 'node_modules/.bin/next');
 
-const child = spawn(nextBin, ['start', '-p', '3000'], {
+const port = String(process.env.PORT || '3000');
+
+const child = spawn(nextBin, ['start', '-p', port], {
   cwd: frontendDir,
   stdio: 'inherit',
   env: process.env,

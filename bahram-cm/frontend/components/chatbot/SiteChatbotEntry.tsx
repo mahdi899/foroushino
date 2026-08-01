@@ -26,6 +26,10 @@ export function SiteChatbotEntry({
   const pathname = usePathname();
   if (pathname?.startsWith('/admin')) return null;
   if (pathname?.startsWith('/panel')) return null;
+  // Checkout funnels — skip chatbot SSR/poll load during high-traffic campaigns.
+  if (pathname?.startsWith('/cart')) return null;
+  if (pathname?.startsWith('/purchase')) return null;
+  if (pathname?.startsWith('/reference-channels')) return null;
   // Root layout persists across client navigations — hide on family bare shell.
   if (pathname?.startsWith('/family')) return null;
   if (!config.enabled) return null;
