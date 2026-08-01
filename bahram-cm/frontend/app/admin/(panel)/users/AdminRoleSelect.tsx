@@ -10,16 +10,22 @@ import type { AdminUserRow } from '@/lib/admin/accessTypes';
 export function AdminRoleSelect({
   admin,
   roles,
-  canManage = false,
+  viewerIsSuperAdmin = false,
 }: {
   admin: AdminUserRow;
   roles: AdminRole[];
-  canManage?: boolean;
+  viewerIsSuperAdmin?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const current = admin.roles[0] ?? '';
+
+  const options = roles.filter((r) => {
+    if (r.name !== 'super-admin') return true;
+    // Only super/root viewers may assign مدیر کل; keep option if target already has it.
+    return viewerIsSuperAdmin || current === 'super-admin';
+  });
 
   return (
     <div className="flex flex-col gap-1">
@@ -46,7 +52,7 @@ export function AdminRoleSelect({
           });
         }}
       >
-        {roles.map((r) => (
+        {options.map((r) => (
           <option key={r.id} value={r.name}>
             {r.label}
           </option>
@@ -60,8 +66,6 @@ export function AdminRoleSelect({
       {error ? <span className="text-caption text-error">{error}</span> : null}
       {admin.is_root_admin ? (
         <span className="text-caption text-text-muted">مدیر اصلی — نقش ثابت</span>
-      ) : admin.is_super_admin ? (
-        <span className="text-caption text-text-muted">مدیر کل — نقش ثابت</span>
       ) : !admin.can_assign_role ? (
         <span className="text-caption text-text-muted">بدون دسترسی «تغییر نقش مدیر»</span>
       ) : null}

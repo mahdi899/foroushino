@@ -32,7 +32,7 @@ class RolePermissionSeeder extends Seeder
         }
 
         $this->syncRolePermissions();
-        $this->assignExistingAdmins();
+        $this->bootstrapOrphanAdmins();
     }
 
     private function syncRolePermissions(): void
@@ -107,16 +107,19 @@ class RolePermissionSeeder extends Seeder
         ]);
     }
 
-    private function assignExistingAdmins(): void
+    /**
+     * Only bootstrap admins that have zero roles (orphan is_admin rows).
+     * Never mass-promote every admin to super-admin — that was a production bug.
+     */
+    private function bootstrapOrphanAdmins(): void
     {
         User::query()
             ->where('is_admin', true)
+            ->whereDoesntHave('roles')
             ->orderBy('id')
             ->chunkById(100, function ($users): void {
                 foreach ($users as $user) {
-                    if (! $user->hasRole(AdminRoleName::SuperAdmin->value)) {
-                        $user->assignRole(AdminRoleName::SuperAdmin->value);
-                    }
+                    $user->assignRole(AdminRoleName::SuperAdmin->value);
                 }
             });
     }

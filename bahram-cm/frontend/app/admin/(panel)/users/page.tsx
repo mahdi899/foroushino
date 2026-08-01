@@ -13,7 +13,6 @@ export default async function AdminUsersPage() {
   const viewerIsSuperAdmin = isSuperAdmin(user);
   const canViewEmail = can(user, 'admins.view_email');
   const canCreate = can(user, 'admins.create');
-  const canAssignRole = can(user, 'admins.assign_role');
   const canDelete = can(user, 'admins.delete');
 
   const [{ items: admins, error }, { roles, error: rolesError }] = await Promise.all([
@@ -80,7 +79,7 @@ export default async function AdminUsersPage() {
                 </div>
               </td>
               <td className="px-4 py-3">
-                <AdminRoleSelect admin={admin} roles={roles} canManage={canAssignRole} />
+                <AdminRoleSelect admin={admin} roles={roles} viewerIsSuperAdmin={viewerIsSuperAdmin} />
               </td>
               {showDeleteColumn ? (
                 <td className="px-4 py-3">
