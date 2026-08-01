@@ -17,6 +17,15 @@ class DestinationAccessPolicy
 {
     public const REASON_REFERENCE_IDENTITY_REQUIRED = 'احراز هویت سطح ۲ لازم است تا عضو گروه مرجع شوید.';
 
+    /** @var array<int, bool> */
+    private array $identityLevel2Memo = [];
+
+    /** @var array<int, bool> */
+    private array $referenceDestinationMemo = [];
+
+    /** @var array<string, bool> */
+    private array $productAccessMemo = [];
+
     /**
      * @return array{allowed: bool, reason: string}
      */
@@ -55,9 +64,7 @@ class DestinationAccessPolicy
             return ['allowed' => true, 'reason' => 'manual_grant'];
         }
 
-        $requirements = TelegramDestinationRequirement::query()
-            ->where('telegram_destination_id', $destination->id)
-            ->get();
+        $requirements = $this->requirementsFor($destination);
 
         if ($requirements->isEmpty()) {
             return ['allowed' => false, 'reason' => 'شرایط دسترسی تعریف نشده است.'];
@@ -86,9 +93,15 @@ class DestinationAccessPolicy
 
     public function isReferenceDestination(TelegramDestination $destination): bool
     {
-        return ReferenceChannel::query()
+        if (array_key_exists($destination->id, $this->referenceDestinationMemo)) {
+            return $this->referenceDestinationMemo[$destination->id];
+        }
+
+        $this->referenceDestinationMemo[$destination->id] = ReferenceChannel::query()
             ->where('telegram_destination_id', $destination->id)
             ->exists();
+
+        return $this->referenceDestinationMemo[$destination->id];
     }
 
     public static function isIdentityRequiredReason(string $reason): bool
@@ -99,10 +112,30 @@ class DestinationAccessPolicy
 
     private function hasIdentityLevel2(int $userId): bool
     {
+        if (array_key_exists($userId, $this->identityLevel2Memo)) {
+            return $this->identityLevel2Memo[$userId];
+        }
+
         $user = User::query()->with('identityProfile')->find($userId);
         $level = (int) ($user?->identityProfile?->verification_level ?? 0);
 
-        return $level >= 2;
+        $this->identityLevel2Memo[$userId] = $level >= 2;
+
+        return $this->identityLevel2Memo[$userId];
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, TelegramDestinationRequirement>
+     */
+    private function requirementsFor(TelegramDestination $destination): \Illuminate\Support\Collection
+    {
+        if ($destination->relationLoaded('requirements')) {
+            return $destination->requirements;
+        }
+
+        return TelegramDestinationRequirement::query()
+            ->where('telegram_destination_id', $destination->id)
+            ->get();
     }
 
     /**
@@ -196,28 +229,33 @@ class DestinationAccessPolicy
             return false;
         }
 
+        $memoKey = "{$userId}:{$productId}";
+        if (array_key_exists($memoKey, $this->productAccessMemo)) {
+            return $this->productAccessMemo[$memoKey];
+        }
+
         if (CourseAccess::query()
             ->where('user_id', $userId)
             ->where('product_id', $productId)
             ->where('status', 'active')
             ->exists()) {
-            return true;
+            return $this->productAccessMemo[$memoKey] = true;
         }
 
         $channel = ReferenceChannel::query()->where('product_id', $productId)->first();
         if ($channel === null) {
             $product = Product::query()->find($productId);
             if ($product === null || ! $product->isReferenceChannelProduct()) {
-                return false;
+                return $this->productAccessMemo[$memoKey] = false;
             }
             $channel = $product->referenceChannel;
         }
 
         if ($channel === null) {
-            return false;
+            return $this->productAccessMemo[$memoKey] = false;
         }
 
-        return ReferenceChannelEntitlement::query()
+        return $this->productAccessMemo[$memoKey] = ReferenceChannelEntitlement::query()
             ->where('reference_channel_id', $channel->id)
             ->where('user_id', $userId)
             ->exists();

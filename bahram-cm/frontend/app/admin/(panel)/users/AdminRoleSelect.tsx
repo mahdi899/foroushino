@@ -19,14 +19,18 @@ export function AdminRoleSelect({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const current = admin.roles[0] ?? '';
+  const current =
+    admin.roles.length > 1
+      ? (admin.roles.find((role) => role !== 'super-admin') ?? admin.roles[0] ?? '')
+      : (admin.roles[0] ?? '');
 
   return (
     <div className="flex flex-col gap-1">
       <select
+        key={`${admin.id}:${current}`}
         className="field-input py-1.5 text-caption"
         defaultValue={current}
-        disabled={pending || !admin.can_assign_role}
+        disabled={pending || !canManage || !admin.can_assign_role}
         onChange={(e) => {
           const role = e.target.value;
           if (!role || role === current) return;
@@ -60,9 +64,7 @@ export function AdminRoleSelect({
       {error ? <span className="text-caption text-error">{error}</span> : null}
       {admin.is_root_admin ? (
         <span className="text-caption text-text-muted">مدیر اصلی — نقش ثابت</span>
-      ) : admin.is_super_admin ? (
-        <span className="text-caption text-text-muted">مدیر کل — نقش ثابت</span>
-      ) : !admin.can_assign_role ? (
+      ) : !canManage || !admin.can_assign_role ? (
         <span className="text-caption text-text-muted">بدون دسترسی «تغییر نقش مدیر»</span>
       ) : null}
     </div>

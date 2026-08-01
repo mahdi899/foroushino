@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\ReferenceChannel;
+use App\Models\ReferenceChannelEntitlement;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Modules\TelegramBot\Models\TelegramAccount;
@@ -96,6 +97,11 @@ class ReferenceChannelController extends Controller
         $user = $request->user();
         $access->syncFromPaidOrders($user);
 
+        $entitledChannelIds = ReferenceChannelEntitlement::query()
+            ->where('user_id', $user->id)
+            ->pluck('reference_channel_id')
+            ->flip();
+
         $channels = ReferenceChannel::query()
             ->where('status', 'published')
             ->where('show_in_panel', true)
@@ -103,7 +109,7 @@ class ReferenceChannelController extends Controller
             ->with('product')
             ->orderByDesc('id')
             ->get()
-            ->filter(fn (ReferenceChannel $channel) => ! $access->userHasEntitlement($user, $channel))
+            ->filter(fn (ReferenceChannel $channel) => ! $entitledChannelIds->has($channel->id))
             ->filter(fn (ReferenceChannel $channel) => filled($channel->product?->slug) && (bool) $channel->product?->is_active)
             ->values();
 

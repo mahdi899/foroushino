@@ -198,7 +198,7 @@ Worker مجزا: `deploy/supervisor/bahram-family-queue.conf` (تا رسانه�
    sudo supervisorctl status bahram-family-queue:*
    ```
 5. **Scheduler:** جاب‌های Analytics از طریق `Schedule::job()` در `routes/console.php` ثبت شده‌اند و با کرون عمومی پروژه (`php artisan schedule:run`) کار می‌کنند — چیز اضافه‌ای لازم نیست.
-6. **Seed پرمیشن:** `php artisan db:seed --class=RolePermissionSeeder` (idempotent) تا نقش `family_manager` و پرمیشن‌های `family.*` ساخته شوند.
+6. **Seed پرمیشن:** `php artisan db:seed --class=RolePermissionSeeder` (idempotent) فقط نقش‌ها و پرمیشن‌ها را همگام می‌کند — **نقش مدیران موجود را عوض نمی‌کند**. اگر همه ادمین‌ها اشتباهاً «مدیر کل» شدند: `php artisan admins:repair-super-admin-roles --dry-run` و سپس بدون `--dry-run`.
 7. **نقش بهرام:** یک اکانت ادمین موجود را نقش `super_admin` یا `family_manager` بدهید تا به `/family-manager/*` و اپ Flutter دسترسی داشته باشد.
 
 ---

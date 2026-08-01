@@ -48,7 +48,7 @@ DB_DATABASE=`$(grep -E '^DB_DATABASE=' "`$ENV" | cut -d= -f2- | tr -d '"')
 DB_USERNAME=`$(grep -E '^DB_USERNAME=' "`$ENV" | cut -d= -f2- | tr -d '"')
 DB_PASSWORD=`$(grep -E '^DB_PASSWORD=' "`$ENV" | cut -d= -f2- | tr -d '"')
 mysqldump -h"`$DB_HOST" -P"`$DB_PORT" -u"`$DB_USERNAME" -p"`$DB_PASSWORD" \
-  --single-transaction --quick --routines --triggers "`$DB_DATABASE" \
+  --single-transaction --quick --routines --triggers --events --hex-blob --column-statistics=0 --set-gtid-purged=OFF "`$DB_DATABASE" \
   | gzip > '$remoteFile'
 ls -la '$remoteFile'
 echo '$remoteFile'

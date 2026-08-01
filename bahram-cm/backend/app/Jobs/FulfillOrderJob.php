@@ -25,6 +25,7 @@ use App\Services\ReferralService;
 use App\Services\SmsService;
 use App\Services\SpotPlayerService;
 use App\Services\TelegramInfrastructureService;
+use App\Support\AccessSyncCache;
 use App\Support\Mobile;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -170,6 +171,10 @@ class FulfillOrderJob implements ShouldQueue
         // Older paid orders for the same user may have missed fulfillment.
         if ($userId && $order->product_id && $licenseReady) {
             $this->markSiblingPaidOrdersFulfilled($userId, (int) $order->product_id);
+        }
+
+        if ($userId) {
+            AccessSyncCache::forgetUserId($userId);
         }
 
         $order->loadMissing('product', 'user');

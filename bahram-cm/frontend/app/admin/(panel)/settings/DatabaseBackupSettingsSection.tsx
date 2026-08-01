@@ -167,7 +167,7 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
           <div>
             <h3 className="text-h3 text-primary-dark">بکاپ و بازیابی</h3>
             <p className="mt-1 text-caption text-text-muted">
-              دانلود دیتابیس و فایل‌های media سایت، بکاپ خودکار روزانه، ارسال DB به تلگرام ادمین، و بازیابی دستی.
+              بکاپ کامل MySQL (ساختار + داده همه جداول بهرام و کلاب)، دانلود media سایت، بکاپ خودکار روزانه، ارسال DB به تلگرام ادمین، و بازیابی دستی.
               ربات و chat_id از{' '}
               <Link href="#sms-routing" className="text-primary hover:underline">
                 تنظیمات تلگرام
@@ -211,7 +211,7 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
           />
         </label>
         <label>
-          <span className="field-label text-caption">نگهداری محلی (فایل)</span>
+          <span className="field-label text-caption">نگهداری روی سرور (روز)</span>
           <input
             className="field-input text-small"
             dir="ltr"
@@ -241,14 +241,27 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
           آخرین بکاپ: {lastAt}
           {view?.last_backup_size_bytes ? ` — ${formatBackupSize(view.last_backup_size_bytes)}` : ''}
         </p>
+        {view?.latest_dump_stats ? (
+          <p className="mt-1" dir="ltr">
+            آخرین فایل: {view.latest_dump_stats.filename} — {view.latest_dump_stats.tables_backed_up ?? view.latest_dump_stats.insert_count} جدول با داده /{' '}
+            {view.latest_dump_stats.create_count} جدول
+          </p>
+        ) : null}
+        {typeof view?.database_row_estimate === 'number' && view.database_row_estimate > 0 ? (
+          <p className="mt-1">تخمین ردیف‌های زنده در DB: {view.database_row_estimate.toLocaleString('fa-IR')}</p>
+        ) : null}
         {view?.last_backup_message ? <p className="mt-1">{view.last_backup_message}</p> : null}
       </div>
 
       <div className="mt-4 rounded-md border border-border bg-surface-soft px-3 py-2 text-caption text-text-muted">
-        <p className="font-semibold text-primary-dark">هاست دانلود (هفتگی — ۳ ماه)</p>
+        <p className="font-semibold text-primary-dark">هاست دانلود (پوشه تاریخ — ۳۰ روز)</p>
         <p className="mt-1">
-          مسیر: <span dir="ltr">backups/bahram/&lt;random&gt;/</span>
+          مسیر: <span dir="ltr">backups/bahram/YYYY-MM-DD/</span>
           {view?.download_host_configured ? '' : ' — FTP پیکربندی نشده'}
+        </p>
+        <p className="mt-1 text-text-muted">
+          هر بکاپ در پوشه جدا با نام تاریخ ذخیره می‌شود (جایگزین نمی‌شود). بکاپ‌های قدیمی‌تر از{' '}
+          {view?.offsite_retention_days ?? 30} روز حذف می‌شوند.
         </p>
         {view?.last_offsite_backup_at ? (
           <p className="mt-1">آخرین آپلود: {new Date(view.last_offsite_backup_at).toLocaleString('fa-IR')}</p>

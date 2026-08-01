@@ -9,7 +9,7 @@ class UploadDownloadHostBackupCommand extends Command
 {
     protected $signature = 'backup:upload-download-host {--force : Upload even if today is not the weekly backup day}';
 
-    protected $description = 'Upload weekly database + media backup to the download host (FTP/CDN).';
+    protected $description = 'Upload weekly site media backup to a dated folder on the download host (FTP/CDN).';
 
     public function handle(DownloadHostBackupService $backup): int
     {

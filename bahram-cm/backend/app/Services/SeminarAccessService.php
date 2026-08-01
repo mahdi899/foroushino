@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\User;
+use App\Support\AccessSyncCache;
 use App\Support\Mobile;
 use Illuminate\Support\Collection;
 
@@ -16,6 +17,11 @@ class SeminarAccessService
      * Ensure paid seminar purchases are reflected as seminar attendee rows.
      */
     public function syncFromPaidOrders(User $user): void
+    {
+        AccessSyncCache::skipSync($user, 'seminar', fn () => $this->performSyncFromPaidOrders($user));
+    }
+
+    private function performSyncFromPaidOrders(User $user): void
     {
         foreach ($this->paidSeminarOrdersForUser($user) as $order) {
             $product = $order->product;

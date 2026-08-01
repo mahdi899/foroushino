@@ -118,11 +118,16 @@ return [
     'backup' => [
         'mysqldump_path' => env('MYSQLDUMP_PATH'),
         'mysql_path' => env('MYSQL_PATH'),
+        'database_directory' => env('BACKUP_DATABASE_DIR'),
+        'dump_timeout_seconds' => (int) env('BACKUP_DUMP_TIMEOUT', 3600),
+        'retention_days' => (int) env('BACKUP_RETENTION_DAYS', 30),
+        'max_attempts' => (int) env('BACKUP_MAX_ATTEMPTS', 3),
+        'retry_sleep_seconds' => (int) env('BACKUP_RETRY_SLEEP_SECONDS', 5),
         'download_host' => [
             'base_path' => env('BACKUP_FTP_BASE', 'backups'),
             'site_slug' => env('BACKUP_SITE_SLUG', 'bahram'),
             'cdn_url' => env('BACKUP_CDN_URL', env('MEDIA_URL', '')),
-            'retention_days' => (int) env('BACKUP_FTP_RETENTION_DAYS', 90),
+            'retention_days' => (int) env('BACKUP_FTP_RETENTION_DAYS', 30),
             'weekday' => env('BACKUP_WEEKLY_WEEKDAY', '0'),
             'host' => env('BACKUP_FTP_HOST', env('MEDIA_FTP_HOST', '')),
             'username' => env('BACKUP_FTP_USERNAME', env('MEDIA_FTP_USERNAME', '')),

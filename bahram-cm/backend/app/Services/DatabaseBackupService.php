@@ -17,6 +17,8 @@ class DatabaseBackupService
 {
     private const TELEGRAM_MAX_BYTES = 50 * 1024 * 1024;
 
+    public function __construct(private readonly MysqlDatabaseDumper $dumper) {}
+
     /** @return array<string, mixed> */
     public function adminView(): array
     {
@@ -38,6 +40,8 @@ class DatabaseBackupService
             'mysqldump_available' => $this->mysqldumpBinary() !== null,
             'database_name' => $this->databaseName(),
             'site_media_available' => is_dir($this->siteMediaPath()),
+            'database_row_estimate' => $this->dumper->estimateDatabaseRowCount($this->mysqlConfig()),
+            'latest_dump_stats' => $this->latestDumpStats(),
         ];
     }
 
@@ -74,16 +78,63 @@ class DatabaseBackupService
         return $this->adminView();
     }
 
+    /** @return array{path: string, filename: string, size_bytes: int, stats: array{create_count: int, insert_count: int, tables_with_data: int, tables_backed_up: int}} */
+    public function createDumpArtifactWithRetry(): array
+    {
+        $maxAttempts = max(1, (int) config('bahram.backup.max_attempts', 3));
+        $sleepSeconds = max(1, (int) config('bahram.backup.retry_sleep_seconds', 5));
+        $lastError = null;
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return $this->createDumpArtifact();
+            } catch (Throwable $e) {
+                $lastError = $e;
+                Log::warning('Database backup attempt failed.', [
+                    'attempt' => $attempt,
+                    'max_attempts' => $maxAttempts,
+                    'message' => $e->getMessage(),
+                ]);
+
+                if ($attempt < $maxAttempts) {
+                    sleep(min(60, $sleepSeconds * $attempt));
+                }
+            }
+        }
+
+        $message = $lastError?->getMessage() ?? 'خطای نامشخص';
+        $this->notifyBackupFailureAlert($message, $maxAttempts);
+
+        throw $lastError ?? new RuntimeException('بکاپ دیتابیس ناموفق بود.');
+    }
+
     /** @return array{ok: bool, message: string, path?: string, filename?: string, size_bytes?: int} */
     public function runBackup(bool $sendToTelegram): array
     {
         $settings = DatabaseBackupSetting::current();
 
         try {
-            $artifact = $this->createDumpArtifact();
+            $artifact = $this->createDumpArtifactWithRetry();
 
-            $message = 'بکاپ دیتابیس با موفقیت ساخته شد.';
+            $message = 'بکاپ کامل دیتابیس (بهرام + کلاب) با موفقیت ساخته شد.';
+            if (isset($artifact['stats'])) {
+                $message .= sprintf(
+                    ' (%d جدول با داده، %d INSERT)',
+                    $artifact['stats']['tables_backed_up'],
+                    $artifact['stats']['insert_count'],
+                );
+            }
             $status = 'success';
+
+            $offsiteResult = $this->uploadToDownloadHostIfConfigured($artifact);
+            if ($offsiteResult !== null) {
+                if ($offsiteResult['ok']) {
+                    $message .= ' هاست دانلود: '.$offsiteResult['message'];
+                } else {
+                    $status = 'partial';
+                    $message .= ' هاست دانلود: '.$offsiteResult['message'];
+                }
+            }
 
             if ($sendToTelegram) {
                 $telegramResult = $this->sendArtifactToTelegram($artifact);
@@ -92,6 +143,9 @@ class DatabaseBackupService
                     $message = $telegramResult['message'];
                 } else {
                     $message = 'بکاپ ساخته و به تلگرام ارسال شد.';
+                    if ($offsiteResult !== null && $offsiteResult['ok']) {
+                        $message .= ' ('.$offsiteResult['message'].')';
+                    }
                 }
             }
 
@@ -152,6 +206,51 @@ class DatabaseBackupService
         return ['ok' => $result['ok'], 'message' => $result['message']];
     }
 
+    /** @param  array{path: string, filename: string, size_bytes: int}  $artifact
+     * @return array{ok: bool, message: string}|null
+     */
+    private function uploadToDownloadHostIfConfigured(array $artifact): ?array
+    {
+        try {
+            $offsite = app(DownloadHostBackupService::class);
+            if (! $offsite->isConfigured()) {
+                return null;
+            }
+
+            return $offsite->uploadDatabaseArtifact(
+                $artifact['path'],
+                (int) $artifact['size_bytes'],
+                $artifact['filename'],
+            );
+        } catch (Throwable $e) {
+            Log::warning('Download-host backup upload failed after local dump.', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    private function notifyBackupFailureAlert(string $errorMessage, int $attempts): void
+    {
+        $telegram = TelegramBotClient::fromAdminConfig();
+        $chatIds = TelegramBotClient::adminChatIds();
+
+        if (! $telegram->isConfigured() || $chatIds === []) {
+            return;
+        }
+
+        $database = $this->databaseName();
+        $text = '<b>⛔ بکاپ دیتابیس ناموفق</b>'."\n"
+            .'دیتابیس: '.config('app.name')." ({$database})\n"
+            ."پس از {$attempts} تلاش، بکاپ کامل ساخته نشد.\n"
+            .'خطا: '.$errorMessage;
+
+        foreach ($chatIds as $chatId) {
+            $telegram->sendMessage($chatId, $text);
+        }
+    }
+
     /** @return array{ok: bool, message: string} */
     public function testTelegram(): array
     {
@@ -183,7 +282,7 @@ class DatabaseBackupService
         return ['ok' => true, 'message' => "پیام تست به {$sent} چت ارسال شد."];
     }
 
-    /** @return array{path: string, filename: string, size_bytes: int} */
+    /** @return array{path: string, filename: string, size_bytes: int, stats: array{create_count: int, insert_count: int, tables_with_data: int, tables_backed_up: int}} */
     public function createDumpArtifact(): array
     {
         $this->ensureMysql();
@@ -200,48 +299,21 @@ class DatabaseBackupService
         $timestamp = now()->format('Y-m-d_His');
         $filename = "backup_{$config['database']}_{$timestamp}.sql.gz";
         $gzPath = $dir.DIRECTORY_SEPARATOR.$filename;
-        $sqlPath = $dir.DIRECTORY_SEPARATOR."backup_{$config['database']}_{$timestamp}.sql";
 
-        $command = array_merge(
-            [$binary],
+        $stats = $this->dumper->dumpDatabaseToGzip(
+            $binary,
+            $config,
+            $gzPath,
             $this->mysqlCliArguments($config),
-            [
-                '--single-transaction',
-                '--routines',
-                '--triggers',
-                '--result-file='.$sqlPath,
-                $config['database'],
-            ],
+            $this->mysqlProcessEnv($config),
+            $this->dumpTimeoutSeconds(),
         );
-
-        $env = $this->mysqlProcessEnv($config);
-
-        $process = new Process($command, null, $env, null, 300);
-        $process->run();
-
-        if (! $process->isSuccessful() || ! is_file($sqlPath)) {
-            throw new RuntimeException('ساخت dump ناموفق بود: '.trim($process->getErrorOutput() ?: $process->getOutput()));
-        }
-
-        $sql = file_get_contents($sqlPath);
-        if ($sql === false) {
-            throw new RuntimeException('خواندن فایل dump ناموفق بود.');
-        }
-
-        $gz = gzencode($sql, 9);
-        if ($gz === false) {
-            @unlink($sqlPath);
-
-            throw new RuntimeException('فشرده‌سازی dump ناموفق بود.');
-        }
-
-        file_put_contents($gzPath, $gz);
-        @unlink($sqlPath);
 
         $artifact = [
             'path' => $gzPath,
             'filename' => $filename,
             'size_bytes' => filesize($gzPath) ?: 0,
+            'stats' => $stats,
         ];
 
         $this->pruneLocalBackups();
@@ -662,33 +734,52 @@ class DatabaseBackupService
         return ['ok' => true, 'message' => "بکاپ به {$sent} چت تلگرام ارسال شد."];
     }
 
-    public function pruneLocalBackups(?int $retentionCount = null): void
+    public function pruneLocalBackups(?int $retentionDays = null): void
     {
-        $retentionCount = max(1, $retentionCount ?? (int) (DatabaseBackupSetting::current()->retention_count ?? 30));
+        $retentionDays = max(1, $retentionDays ?? $this->retentionDays());
+        $cutoff = now()->subDays($retentionDays)->getTimestamp();
 
-        $this->pruneDirectoryBySuffix($this->backupDirectory(), '.sql.gz', $retentionCount);
-        $this->pruneDirectoryBySuffix($this->mediaBackupDirectory(), '.zip', $retentionCount);
+        $this->pruneDirectoryOlderThan($this->backupDirectory(), '.sql.gz', $cutoff);
+        $this->pruneDirectoryOlderThan($this->mediaBackupDirectory(), '.zip', $cutoff);
     }
 
-    private function pruneDirectoryBySuffix(string $directory, string $suffix, int $retentionCount): void
+    private function retentionDays(): int
+    {
+        $fromSettings = (int) (DatabaseBackupSetting::current()->retention_count ?? 0);
+        if ($fromSettings > 0) {
+            return $fromSettings;
+        }
+
+        return max(1, (int) config('bahram.backup.retention_days', 30));
+    }
+
+    private function pruneDirectoryOlderThan(string $directory, string $suffix, int $cutoffTimestamp): void
     {
         if (! is_dir($directory)) {
             return;
         }
 
-        $files = collect(File::files($directory))
-            ->filter(fn ($file) => str_ends_with($file->getFilename(), $suffix))
-            ->sortByDesc(fn ($file) => $file->getMTime())
-            ->values();
+        foreach (File::files($directory) as $file) {
+            if (! str_ends_with($file->getFilename(), $suffix)) {
+                continue;
+            }
 
-        foreach ($files->slice($retentionCount) as $stale) {
-            @unlink($stale->getPathname());
+            if ($file->getMTime() < $cutoffTimestamp) {
+                @unlink($file->getPathname());
+            }
         }
     }
 
     private function backupDirectory(): string
     {
-        return storage_path('app/backups/database');
+        $configured = trim((string) config('bahram.backup.database_directory', ''));
+
+        return $configured !== '' ? $configured : storage_path('app/backups/database');
+    }
+
+    private function dumpTimeoutSeconds(): int
+    {
+        return max(60, (int) config('bahram.backup.dump_timeout_seconds', 3600));
     }
 
     private function mediaBackupDirectory(): string
@@ -800,6 +891,38 @@ class DatabaseBackupService
     private function databaseName(): string
     {
         return $this->mysqlConfig()['database'];
+    }
+
+    /** @return array{filename: string, create_count: int, insert_count: int, tables_backed_up: int, size_bytes: int}|null */
+    private function latestDumpStats(): ?array
+    {
+        $dir = $this->backupDirectory();
+        if (! is_dir($dir)) {
+            return null;
+        }
+
+        $latest = collect(File::files($dir))
+            ->filter(fn ($file) => str_ends_with($file->getFilename(), '.sql.gz'))
+            ->sortByDesc(fn ($file) => $file->getMTime())
+            ->first();
+
+        if ($latest === null) {
+            return null;
+        }
+
+        try {
+            $stats = $this->dumper->analyzeGzipDumpFile($latest->getPathname());
+        } catch (Throwable) {
+            return null;
+        }
+
+        return [
+            'filename' => $latest->getFilename(),
+            'create_count' => $stats['create_count'],
+            'insert_count' => $stats['insert_count'],
+            'tables_backed_up' => count($stats['insert_tables']),
+            'size_bytes' => $latest->getSize(),
+        ];
     }
 
     private function mysqldumpBinary(): ?string

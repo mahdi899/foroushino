@@ -141,6 +141,31 @@ class DatabaseBackupSettingsTest extends TestCase
         @unlink($mediaDir.'/artifact-test.txt');
     }
 
+    public function test_create_dump_artifact_includes_data_when_mysqldump_available(): void
+    {
+        if (config('database.default') !== 'mysql') {
+            $this->markTestSkipped('MySQL connection required for mysqldump backup tests.');
+        }
+
+        $service = app(DatabaseBackupService::class);
+        $view = $service->adminView();
+
+        if (! $view['mysqldump_available']) {
+            $this->markTestSkipped('mysqldump is not available in this environment.');
+        }
+
+        User::factory()->create();
+
+        $artifact = $service->createDumpArtifact();
+        $sql = gzdecode((string) file_get_contents($artifact['path']));
+
+        $this->assertNotFalse($sql);
+        $this->assertGreaterThan(0, substr_count((string) $sql, 'CREATE TABLE'));
+        $this->assertGreaterThan(0, substr_count((string) $sql, 'INSERT INTO'));
+
+        @unlink($artifact['path']);
+    }
+
     public function test_prune_local_backups_applies_retention_to_database_and_media_artifacts(): void
     {
         $dbDir = storage_path('app/backups/database');
@@ -152,20 +177,24 @@ class DatabaseBackupSettingsTest extends TestCase
             mkdir($mediaDir, 0777, true);
         }
 
-        $created = [];
+        foreach (glob($dbDir.'/*') ?: [] as $path) {
+            @unlink($path);
+        }
+        foreach (glob($mediaDir.'/*') ?: [] as $path) {
+            @unlink($path);
+        }
+
         for ($i = 0; $i < 4; $i++) {
             $dbPath = $dbDir.'/backup_test_'.$i.'.sql.gz';
             $mediaPath = $mediaDir.'/media_backup_test_'.$i.'.zip';
             file_put_contents($dbPath, 'db');
             file_put_contents($mediaPath, 'media');
-            touch($dbPath, now()->subDays($i)->getTimestamp());
-            touch($mediaPath, now()->subDays($i)->getTimestamp());
-            $created[] = $dbPath;
-            $created[] = $mediaPath;
+            $ageDays = [5, 15, 35, 45][$i];
+            touch($dbPath, now()->subDays($ageDays)->getTimestamp());
+            touch($mediaPath, now()->subDays($ageDays)->getTimestamp());
         }
 
-        DatabaseBackupSetting::current()->update(['retention_count' => 2]);
-        app(DatabaseBackupService::class)->pruneLocalBackups(2);
+        app(DatabaseBackupService::class)->pruneLocalBackups(30);
 
         $this->assertCount(2, glob($dbDir.'/*.sql.gz'));
         $this->assertCount(2, glob($mediaDir.'/*.zip'));

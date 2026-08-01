@@ -58,7 +58,7 @@ class DatabaseBackupSettingsController extends Controller
         $this->authorizeSuperAdmin($request);
 
         try {
-            $artifact = $this->backup->createDumpArtifact();
+            $artifact = $this->backup->createDumpArtifactWithRetry();
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

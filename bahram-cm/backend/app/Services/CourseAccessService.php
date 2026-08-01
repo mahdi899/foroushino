@@ -10,21 +10,30 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
+use App\Support\AccessSyncCache;
 use App\Support\Mobile;
 use Illuminate\Support\Collection;
 
 class CourseAccessService
 {
+    /** @var Collection<int, Order>|null */
+    private ?Collection $lastSyncedPaidOrders = null;
+
     /**
      * Ensure every paid/fulfilled order is reflected as an active course access row.
      * Older orders may have been marked paid before fulfillment ran.
      */
     public function syncFromPaidOrders(User $user): void
     {
+        AccessSyncCache::skipSync($user, 'course', fn () => $this->performSyncFromPaidOrders($user));
+    }
+
+    private function performSyncFromPaidOrders(User $user): void
+    {
         $mobile = Mobile::normalize($user->mobile);
 
         $orders = Order::query()
-            ->with('product')
+            ->with(['product', 'spotplayerLicense'])
             ->whereIn('status', ['paid', 'fulfilled'])
             ->whereNotNull('product_id')
             ->where(function ($query) use ($user, $mobile) {
@@ -36,6 +45,14 @@ class CourseAccessService
             ->orderByDesc('paid_at')
             ->orderByDesc('id')
             ->get();
+
+        $this->lastSyncedPaidOrders = $orders
+            ->filter(function (Order $order) {
+                $product = $order->product;
+
+                return ! ($product instanceof Product && ($product->isSeminarProduct() || $product->isReferenceChannelProduct()));
+            })
+            ->values();
 
         foreach ($orders as $order) {
             if (! $order->product_id) {
@@ -55,7 +72,7 @@ class CourseAccessService
         }
 
         $licenses = SpotplayerLicense::query()
-            ->with('order')
+            ->with(['product', 'order'])
             ->whereNotNull('product_id')
             ->where(function ($query) use ($user, $mobile) {
                 $query->where('user_id', $user->id);
@@ -113,6 +130,10 @@ class CourseAccessService
     /** @return Collection<int, Order> */
     public function paidOrdersForUser(User $user): Collection
     {
+        if ($this->lastSyncedPaidOrders !== null) {
+            return $this->lastSyncedPaidOrders;
+        }
+
         $mobile = Mobile::normalize($user->mobile);
 
         return Order::query()

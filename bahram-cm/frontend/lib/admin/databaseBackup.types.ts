@@ -19,6 +19,14 @@ export type DatabaseBackupView = {
   mysqldump_available: boolean;
   database_name: string;
   site_media_available: boolean;
+  database_row_estimate?: number;
+  latest_dump_stats?: {
+    filename: string;
+    create_count: number;
+    insert_count: number;
+    tables_backed_up?: number;
+    size_bytes: number;
+  } | null;
   download_host_configured?: boolean;
   download_host_cdn_url?: string;
   last_offsite_backup_at?: string | null;

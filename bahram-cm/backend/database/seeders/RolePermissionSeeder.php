@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Enums\AdminRoleName;
-use App\Models\User;
 use App\Support\FamilyPermissionCatalog;
 use App\Support\PermissionCatalog;
 use Illuminate\Database\Seeder;
@@ -32,7 +31,6 @@ class RolePermissionSeeder extends Seeder
         }
 
         $this->syncRolePermissions();
-        $this->assignExistingAdmins();
     }
 
     private function syncRolePermissions(): void
@@ -105,19 +103,5 @@ class RolePermissionSeeder extends Seeder
             'roles.view',
             'permissions.view',
         ]);
-    }
-
-    private function assignExistingAdmins(): void
-    {
-        User::query()
-            ->where('is_admin', true)
-            ->orderBy('id')
-            ->chunkById(100, function ($users): void {
-                foreach ($users as $user) {
-                    if (! $user->hasRole(AdminRoleName::SuperAdmin->value)) {
-                        $user->assignRole(AdminRoleName::SuperAdmin->value);
-                    }
-                }
-            });
     }
 }

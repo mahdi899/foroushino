@@ -192,10 +192,17 @@ class RolePermissionService
             $this->assertNotLastSuperAdmin($admin, $actor);
         }
 
+        if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
+            throw ValidationException::withMessages([
+                'role' => ['فقط مدیر کل می‌تواند نقش مدیر کل را تخصیص دهد.'],
+            ]);
+        }
+
         $before = $admin->getRoleNames()->all();
 
         DB::transaction(function () use ($admin, $roleName) {
             $admin->syncRoles([$roleName]);
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
         });
 
         $this->audit->log($actor, 'admin.role_changed', $admin, [

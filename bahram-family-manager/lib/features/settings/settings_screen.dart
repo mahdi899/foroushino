@@ -81,19 +81,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _pickAvatar({required bool community}) async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
     final picked = result?.files.singleOrNull;
-    if (picked?.bytes == null) return;
+    final bytes = picked?.bytes;
+    if (picked == null || bytes == null) return;
 
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
       _uploadSentBytes = 0;
-      _uploadTotalBytes = picked.bytes!.length;
+      _uploadTotalBytes = bytes.length;
       _uploadPhase = MediaUploadPhase.uploading;
     });
 
     try {
       final media = await context.read<AppState>().manager.uploadMedia(
-            bytes: picked!.bytes!,
+            bytes: bytes,
             filename: picked.name,
             type: 'image',
             onUploadState: (upload) {

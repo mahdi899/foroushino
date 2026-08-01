@@ -7,11 +7,17 @@ use App\Models\Product;
 use App\Models\ReferenceChannel;
 use App\Models\ReferenceChannelEntitlement;
 use App\Models\User;
+use App\Support\AccessSyncCache;
 use App\Support\Mobile;
 
 class ReferenceChannelAccessService
 {
     public function syncFromPaidOrders(User $user): void
+    {
+        AccessSyncCache::skipSync($user, 'reference_channel', fn () => $this->performSyncFromPaidOrders($user));
+    }
+
+    private function performSyncFromPaidOrders(User $user): void
     {
         $productIds = ReferenceChannel::query()
             ->whereNotNull('product_id')
@@ -55,7 +61,7 @@ class ReferenceChannelAccessService
 
     public function grant(ReferenceChannel $channel, User $user, ?Order $order = null, string $source = 'admin'): ReferenceChannelEntitlement
     {
-        return ReferenceChannelEntitlement::query()->firstOrCreate(
+        $entitlement = ReferenceChannelEntitlement::query()->firstOrCreate(
             [
                 'reference_channel_id' => $channel->id,
                 'user_id' => $user->id,
@@ -65,6 +71,10 @@ class ReferenceChannelAccessService
                 'source' => $source,
             ]
         );
+
+        AccessSyncCache::forget($user);
+
+        return $entitlement;
     }
 
     public function userHasEntitlement(User $user, ReferenceChannel $channel): bool

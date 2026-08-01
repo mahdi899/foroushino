@@ -7,12 +7,21 @@ use App\Models\User;
 
 class FamilyAccessService
 {
+    /** @var array<int, FamilyMembership|null> */
+    private array $homeMembershipMemo = [];
+
     public function homeMembership(User $user): ?FamilyMembership
     {
-        return FamilyMembership::query()
+        if (array_key_exists($user->id, $this->homeMembershipMemo)) {
+            return $this->homeMembershipMemo[$user->id];
+        }
+
+        $this->homeMembershipMemo[$user->id] = FamilyMembership::query()
             ->with('family')
             ->where('user_id', $user->id)
             ->first();
+
+        return $this->homeMembershipMemo[$user->id];
     }
 
     public function requireMembership(User $user): FamilyMembership

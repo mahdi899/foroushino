@@ -183,6 +183,9 @@ class AuthController extends Controller
     private function userPayload(User $user): array
     {
         $user->loadMissing(['profile', 'identityProfile', 'satMembership']);
+        $user->loadCount([
+            'verifiedBankAccounts as verified_bank_accounts_count' => fn ($query) => $query->whereNotNull('verified_at'),
+        ]);
 
         if (! $user->identityProfile) {
             app(\App\Actions\Identity\EnsureIdentityProfile::class)($user);
@@ -202,7 +205,7 @@ class AuthController extends Controller
             'verification_level' => (int) ($identity?->verification_level ?? 1),
             'identity_status' => $identity?->identity_status?->value ?? 'not_started',
             'mobile_ownership_status' => $identity?->mobile_ownership_status?->value ?? 'not_started',
-            'verified_bank_accounts_count' => $user->verifiedBankAccounts()->whereNotNull('verified_at')->count(),
+            'verified_bank_accounts_count' => (int) ($user->verified_bank_accounts_count ?? 0),
             'sat_membership_status' => $user->satMembership?->status?->value ?? 'inactive',
             'has_reference_channel' => $this->referenceChannelAccess->userHasAnyEntitlement($user),
             'national_code_masked' => $identity?->maskNationalCode(),

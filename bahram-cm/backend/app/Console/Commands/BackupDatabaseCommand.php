@@ -7,9 +7,11 @@ use Illuminate\Console\Command;
 
 class BackupDatabaseCommand extends Command
 {
-    protected $signature = 'backup:database {--force : Run even if schedule time does not match}';
+    protected $signature = 'backup:database
+        {--force : Run even if schedule time does not match}
+        {--no-telegram : Create dump only; do not send to Telegram}';
 
-    protected $description = 'Create a database backup and optionally send it to Telegram.';
+    protected $description = 'Create a full database backup (schema + data) and optionally send it to Telegram.';
 
     public function handle(DatabaseBackupService $backup): int
     {
@@ -17,8 +19,11 @@ class BackupDatabaseCommand extends Command
             return self::SUCCESS;
         }
 
+        $sendToTelegram = ! $this->option('no-telegram')
+            && (bool) \App\Models\DatabaseBackupSetting::current()->send_to_telegram;
+
         $result = $this->option('force')
-            ? $backup->runBackup(sendToTelegram: (bool) \App\Models\DatabaseBackupSetting::current()->send_to_telegram)
+            ? $backup->runBackup(sendToTelegram: $sendToTelegram)
             : $backup->runScheduled();
 
         if (! $result['ok']) {

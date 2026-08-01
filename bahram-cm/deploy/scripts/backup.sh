@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bahram CM — backup policy:
-#   - Database: every run (daily cron recommended)
+#   - Database: every run (daily cron recommended) — full mysqldump via Laravel
 #   - Media files: weekly (default Sunday)
 #   - Retention: 30 days for both
 #
@@ -26,16 +26,19 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-DB_HOST=$(grep -E '^DB_HOST=' "$ENV_FILE" | cut -d= -f2- | tr -d '"')
-DB_PORT=$(grep -E '^DB_PORT=' "$ENV_FILE" | cut -d= -f2- | tr -d '"')
-DB_DATABASE=$(grep -E '^DB_DATABASE=' "$ENV_FILE" | cut -d= -f2- | tr -d '"')
-DB_USERNAME=$(grep -E '^DB_USERNAME=' "$ENV_FILE" | cut -d= -f2- | tr -d '"')
-DB_PASSWORD=$(grep -E '^DB_PASSWORD=' "$ENV_FILE" | cut -d= -f2- | tr -d '"')
+if [[ ! -f "$APP_ROOT/backend/artisan" ]]; then
+  echo "ERROR: Laravel artisan not found at $APP_ROOT/backend/artisan" >&2
+  exit 1
+fi
 
-echo "==> MySQL dump (daily)"
-mysqldump -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" -p"$DB_PASSWORD" \
-  --single-transaction --quick "$DB_DATABASE" \
-  | gzip > "$BACKUP_DIR/db/bahram_${TIMESTAMP}.sql.gz"
+echo "==> MySQL full dump via Laravel (schema + data, up to 3 retries, Telegram alert on failure)"
+(
+  cd "$APP_ROOT/backend"
+  BACKUP_DATABASE_DIR="$BACKUP_DIR/db" php artisan backup:database --force --no-telegram
+)
+
+echo "==> Latest database backups:"
+ls -lt "$BACKUP_DIR/db"/*.sql.gz 2>/dev/null | head -3 || true
 
 if [[ "$TODAY_WEEKDAY" == "$FILES_BACKUP_WEEKDAY" ]]; then
   echo "==> Media archive (weekly, weekday=${FILES_BACKUP_WEEKDAY})"
@@ -49,7 +52,7 @@ echo "==> Prune backups older than ${RETENTION_DAYS} days"
 find "$BACKUP_DIR/db" -name '*.sql.gz' -mtime +"$RETENTION_DAYS" -delete
 find "$BACKUP_DIR/media" -name '*.tar.gz' -mtime +"$RETENTION_DAYS" -delete
 
-if [[ "$TODAY_WEEKDAY" == "$FILES_BACKUP_WEEKDAY" ]] && [[ -f "$APP_ROOT/backend/artisan" ]]; then
+if [[ "$TODAY_WEEKDAY" == "$FILES_BACKUP_WEEKDAY" ]]; then
   echo "==> Upload weekly backup to download host (FTP/CDN)"
   (cd "$APP_ROOT/backend" && php artisan backup:upload-download-host --force) \
     || echo "WARN: download-host upload failed" >&2
