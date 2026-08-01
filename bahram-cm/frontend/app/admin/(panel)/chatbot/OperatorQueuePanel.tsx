@@ -25,13 +25,24 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
     visitorName: string | null;
   } | null>(null);
   const currentPageRef = useRef(1);
+  const qRef = useRef(q);
+  qRef.current = q;
+  const loadRequestIdRef = useRef(0);
   const onQueueChangedRef = useRef(onQueueChanged);
   onQueueChangedRef.current = onQueueChanged;
 
-  const loadQueue = useCallback(async (page = 1, search = q) => {
+  const loadQueue = useCallback(async (page?: number, search?: string, refreshBadge = false) => {
+    const targetPage = page ?? currentPageRef.current;
+    const targetQ = search ?? qRef.current;
+    currentPageRef.current = targetPage;
+    setMeta((prev) => (prev.current_page === targetPage ? prev : { ...prev, current_page: targetPage }));
+
+    const requestId = ++loadRequestIdRef.current;
     setLoading(true);
     try {
-      const res = await fetchChatbotOperatorQueue({ page, q: search });
+      const res = await fetchChatbotOperatorQueue({ page: targetPage, q: targetQ });
+      if (requestId !== loadRequestIdRef.current) return;
+
       setItems(res.data);
       setMeta(res.meta);
       currentPageRef.current = res.meta.current_page;
@@ -40,17 +51,18 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
         const stillPending = res.data.some((item) => item.id === prev.logId);
         return stillPending ? prev : null;
       });
-      onQueueChangedRef.current?.();
+      if (refreshBadge) onQueueChangedRef.current?.();
     } catch {
+      if (requestId !== loadRequestIdRef.current) return;
       setItems([]);
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) setLoading(false);
     }
-  }, [q]);
+  }, []);
 
   useEffect(() => {
     currentPageRef.current = 1;
-    void loadQueue(1);
+    void loadQueue(1, '', true);
   }, [loadQueue]);
 
   useEffect(() => {
@@ -60,14 +72,14 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
       window.clearTimeout(timerId);
       const delay = document.hidden ? 60_000 : 30_000;
       timerId = window.setTimeout(() => {
-        if (!document.hidden) void loadQueue(currentPageRef.current);
+        if (!document.hidden) void loadQueue(currentPageRef.current, undefined, true);
         schedule();
       }, delay);
     };
 
     schedule();
     const onVisibility = () => {
-      if (!document.hidden) void loadQueue(currentPageRef.current);
+      if (!document.hidden) void loadQueue(currentPageRef.current, undefined, true);
       schedule();
     };
     document.addEventListener('visibilitychange', onVisibility);
@@ -104,7 +116,8 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
         className="mb-4 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void loadQueue(1, q);
+          currentPageRef.current = 1;
+          void loadQueue(1, q, true);
         }}
       >
         <input
@@ -190,7 +203,7 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
                           visitorName={selected.visitorName}
                           operatorProfiles={operatorProfiles}
                           initialReplyToLogId={selected.logId}
-                          onReplied={() => void loadQueue(meta.current_page)}
+                          onReplied={() => void loadQueue(currentPageRef.current, undefined, true)}
                         />
                       </td>
                     </tr>

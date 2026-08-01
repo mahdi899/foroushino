@@ -10,10 +10,10 @@ import { LiveSelfieVideoStep } from './LiveSelfieVideoStep';
 import { NationalCardUploadStep } from './NationalCardUploadStep';
 import { IdentityVerificationFeedback } from './IdentityVerificationFeedback';
 import { SelfieMobileHandoff } from './SelfieMobileHandoff';
+import { uploadIdentityArtifactClient } from '@/lib/student/identityArtifactUpload';
 import {
   saveIdentityDraftAction,
   submitIdentityVerificationAction,
-  uploadIdentityArtifactAction,
 } from '@/lib/student/identityActions';
 import { identityStatusLabel, identityCorrectionLabel } from '@/lib/student/identityLabels';
 import {
@@ -168,18 +168,15 @@ export function IdentityVerificationWizard({
     }
 
     startTransition(async () => {
-      const res = await uploadIdentityArtifactAction(fd);
-      if (res.error) {
-        setErrorTitle(res.errorTitle ?? null);
-        setError(res.error);
-        return;
-      }
-      const artifactId = res.data?.artifact_id;
-      if (typeof artifactId === 'number') {
+      try {
+        const { artifactId } = await uploadIdentityArtifactClient(fd);
         setActiveCardArtifactId(artifactId);
+        setCardReadyOnServer(true);
+        setStep(2);
+      } catch (err) {
+        setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
+        setError(err instanceof Error ? err.message : IDENTITY_CLIENT_ERRORS.cardMissing);
       }
-      setCardReadyOnServer(true);
-      setStep(2);
     });
   }
 
@@ -205,30 +202,21 @@ export function IdentityVerificationWizard({
     startTransition(async () => {
       try {
         const optimized = await optimizeSelfieVideo(videoBlob);
-        // If re-encode grew the file, keep the original (whichever is smaller).
         const toUpload = pickSmallerVideoBlob(videoBlob, optimized);
         if (toUpload.size > SELFIE_VIDEO_MAX_BYTES) {
           setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
           setError(IDENTITY_CLIENT_ERRORS.videoTooLarge);
           return;
         }
-        setVideoBlob(toUpload);
-        setPendingLabel('در حال ارسال…');
 
-        // Upload the video as a draft artifact first so the final submit stays small.
-        // Shipping the full selfie through the submit Server Action used to exceed
-        // Next.js bodySizeLimit and crash the panel page on mobile.
+        setPendingLabel('در حال ارسال ویدیو…');
         const videoFd = new FormData();
         videoFd.set('type', 'selfie_video');
         videoFd.set('file', toUpload, selfieVideoFileName(toUpload));
         videoFd.set('submission_id', String(activeDraftSubmissionId));
-        const uploadRes = await uploadIdentityArtifactAction(videoFd);
-        if (uploadRes.error) {
-          setErrorTitle(uploadRes.errorTitle ?? null);
-          setError(uploadRes.error);
-          return;
-        }
+        await uploadIdentityArtifactClient(videoFd);
 
+        setPendingLabel('در حال ثبت پرونده…');
         const fd = new FormData();
         Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
         if (videoPrompt) fd.set('expected_video_text', videoPrompt);
@@ -241,9 +229,13 @@ export function IdentityVerificationWizard({
         }
         setSubmitted(true);
         router.refresh();
-      } catch {
-        setErrorTitle('خطا در انجام درخواست');
-        setError('ارسال پرونده تأیید هویت ناموفق بود. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.');
+      } catch (err) {
+        setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : 'ارسال پرونده تأیید هویت ناموفق بود. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.',
+        );
       } finally {
         setPendingLabel('ارسال برای بررسی');
       }

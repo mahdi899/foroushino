@@ -18,6 +18,7 @@ use App\Support\ApiResponse;
 use App\Support\Mobile;
 use App\Support\StudentAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 class GuestCheckoutController extends Controller
@@ -125,7 +126,16 @@ class GuestCheckoutController extends Controller
         }
 
         try {
-            $order = $this->orders->create($checkout);
+            $lock = Cache::lock('guest_checkout_create:'.$checkoutToken, 15);
+            if (! $lock->get()) {
+                return ApiResponse::error('checkout_in_progress', 'درخواست قبلی هنوز در حال پردازش است. چند ثانیه صبر کنید.', 409);
+            }
+
+            try {
+                $order = $this->orders->create($checkout);
+            } finally {
+                $lock->release();
+            }
         } catch (ValidationException $e) {
             return ApiResponse::error(
                 'order_validation_failed',

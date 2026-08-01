@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { AdminPage, Badge } from '../../../ui';
 import { getIdentityVerification, getIdentityVerificationHistory } from '@/lib/admin/identityData';
 import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS, type IdentityVerificationListItem } from '@/lib/admin/identityTypes';
-import { formatDate } from '@/lib/admin/academyTypes';
+import { formatDate, formatDateTime } from '@/lib/admin/academyTypes';
 import { can, getCurrentUser } from '@/lib/auth/session';
 import { formatDateFa } from '@/lib/persian';
 import { IdentityDocumentViewer } from '../IdentityDocumentViewer';
@@ -41,6 +41,7 @@ export default async function IdentityVerificationDetailPage({
   const user = await getCurrentUser();
   const { item, error } = await getIdentityVerification(numericId);
   const history = item ? await getIdentityVerificationHistory(item.user_id) : { items: [], error: null };
+  const historyItems = history.items.filter((h) => h.status !== 'draft');
   if (!item && !error) notFound();
 
   return (
@@ -67,7 +68,7 @@ export default async function IdentityVerificationDetailPage({
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Badge tone={statusTone(item.status)}>{IDENTITY_STATUS_LABELS[item.status] ?? item.status}</Badge>
                 {item.submitted_at ? (
-                  <span className="text-caption text-text-muted">ارسال: {formatDate(item.submitted_at)}</span>
+                  <span className="text-caption text-text-muted">ارسال: {formatDateTime(item.submitted_at)}</span>
                 ) : null}
                 {item.reviewed_at ? (
                   <span className="text-caption text-text-muted">بررسی: {formatDate(item.reviewed_at)}</span>
@@ -175,16 +176,22 @@ export default async function IdentityVerificationDetailPage({
                 </div>
                 <div>
                   <dt className="text-text-muted">کد ملی</dt>
-                  <dd className="font-medium" dir="ltr">
+                  <dd className="font-medium text-right tabular-nums" dir="ltr">
                     {item.national_code ?? item.national_code_masked ?? '—'}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">موبایل</dt>
-                  <dd className="font-medium" dir="ltr">
+                  <dd className="font-medium text-right tabular-nums" dir="ltr">
                     {item.user_mobile ?? item.user_mobile_masked ?? '—'}
                   </dd>
                 </div>
+                {item.submitted_at ? (
+                  <div>
+                    <dt className="text-text-muted">تاریخ ارسال احراز</dt>
+                    <dd className="font-medium">{formatDateTime(item.submitted_at)}</dd>
+                  </div>
+                ) : null}
                 {item.expected_video_text ? (
                   <div className="sm:col-span-2">
                     <dt className="text-text-muted">متن مورد انتظار ویدیو</dt>
@@ -196,7 +203,12 @@ export default async function IdentityVerificationDetailPage({
 
             {item.can_view_documents !== false && item.artifacts?.length ? (
               <div className="card p-5">
-                <h2 className="mb-3 text-h3 text-primary-dark">مدارک</h2>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-h3 text-primary-dark">مدارک</h2>
+                  <span className="text-caption text-text-muted">
+                    تاریخ ارسال احراز: {formatDateTime(item.submitted_at)}
+                  </span>
+                </div>
                 <ul className="space-y-4">
                   {item.artifacts.map((art) => {
                     const mediaUrl = art.stream_url ?? art.view_url ?? null;
@@ -217,7 +229,6 @@ export default async function IdentityVerificationDetailPage({
                           src={mediaUrl}
                           label={label}
                           isVideo={isVideo}
-                          mimeType={art.mime_type}
                         />
                       ) : (
                         <p className="text-small text-text-muted">فایل مدرک در دسترس نیست.</p>
@@ -262,11 +273,11 @@ export default async function IdentityVerificationDetailPage({
               </div>
             ) : null}
 
-            {history.items.length > 1 ? (
+            {historyItems.length > 1 ? (
               <div className="card p-5">
                 <h2 className="mb-3 text-h3 text-primary-dark">تاریخچه نسخه‌های احراز</h2>
                 <ul className="space-y-2 text-small">
-                  {history.items.map((h: IdentityVerificationListItem) => (
+                  {historyItems.map((h: IdentityVerificationListItem) => (
                     <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-2 last:border-0">
                       <span>
                         نسخه {h.version ?? '—'} ·{' '}

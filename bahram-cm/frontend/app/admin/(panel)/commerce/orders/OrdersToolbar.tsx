@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { OrdersExportButton } from './OrdersExportButton';
-import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
+import { PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
+import { OrdersTableHeaderFilters } from './OrdersTableHeaderFilters';
 
 const selectClass = 'field-input w-full min-w-0 py-2 text-small';
 
@@ -30,29 +31,18 @@ export function OrdersToolbar({
         />
       </div>
 
-      <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        <select name="status" defaultValue={status ?? ''} className={selectClass} aria-label="وضعیت سفارش">
-          <option value="">همه وضعیت‌ها</option>
-          {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+      {status ? <input type="hidden" name="status" value={status} /> : null}
+      {paymentStatus ? <input type="hidden" name="payment_status" value={paymentStatus} /> : null}
 
-        <select name="payment_status" defaultValue={paymentStatus ?? ''} className={selectClass} aria-label="وضعیت پرداخت">
-          <option value="">همه پرداخت‌ها</option>
-          {Object.entries(PAYMENT_STATUS_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+      <div className="md:hidden">
+        <OrdersTableHeaderFilters status={status} paymentStatus={paymentStatus} />
+      </div>
 
+      <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-1">
         <select
           name="product_type"
           defaultValue={productType ?? ''}
-          className={`${selectClass} sm:col-span-2 xl:col-span-1`}
+          className={selectClass}
           aria-label="نوع محصول"
         >
           <option value="">همه محصولات</option>

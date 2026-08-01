@@ -4,9 +4,15 @@ import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { formatToman, getOrders } from '@/lib/admin/commerceData';
 import { OrderStatusBadge } from './OrderDetailForm';
 import { OrdersToolbar } from './OrdersToolbar';
+import { OrdersTablePaymentFilter, OrdersTableStatusFilter } from './OrdersTableHeaderFilters';
 import { PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
 
 export const dynamic = 'force-dynamic';
+
+function formatOrderDateTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' });
+}
 
 export default async function OrdersPage({
   searchParams,
@@ -71,6 +77,15 @@ export default async function OrdersPage({
         <>
           <Table
             head={['محصول', 'مشتری', 'مبلغ', 'وضعیت', 'پرداخت', 'تاریخ', 'عملیات']}
+            headCells={[
+              'محصول',
+              'مشتری',
+              'مبلغ',
+              <OrdersTableStatusFilter key="status" status={sp.status} />,
+              <OrdersTablePaymentFilter key="payment" paymentStatus={sp.payment_status} />,
+              'تاریخ',
+              'عملیات',
+            ]}
             mobile={orders.map((o) => (
               <AdminTableCard
                 key={o.id}
@@ -103,7 +118,7 @@ export default async function OrdersPage({
                   },
                   {
                     label: 'تاریخ',
-                    value: o.created_at ? new Date(o.created_at).toLocaleDateString('fa-IR') : '—',
+                    value: formatOrderDateTime(o.created_at),
                   },
                 ]}
                 footer={<EditLink href={`/admin/commerce/orders/${o.id}`} />}
@@ -138,7 +153,7 @@ export default async function OrdersPage({
                   {PAYMENT_STATUS_LABELS[o.payment_status] ?? o.payment_status}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-caption">
-                  {o.created_at ? new Date(o.created_at).toLocaleDateString('fa-IR') : '—'}
+                  {formatOrderDateTime(o.created_at)}
                 </td>
                 <td className="px-4 py-3">
                   <EditLink href={`/admin/commerce/orders/${o.id}`} />

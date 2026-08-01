@@ -10,6 +10,7 @@ use App\Enums\IdentityVerificationStatus;
 use App\Enums\MobileOwnershipStatus;
 use App\Enums\OwnershipVerificationResult;
 use App\Enums\SmsEventKey;
+use App\Jobs\ProcessIdentitySubmissionChecksJob;
 use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationAttempt;
 use App\Models\IdentityVerificationReview;
@@ -96,42 +97,49 @@ class SubmitIdentityVerification
 
             IdentitySubmissionGuard::ensureEditable($profile, $user->id);
 
-            $version = (int) IdentityVerificationSubmission::query()
-                ->where('user_id', $user->id)
-                ->max('version') + 1;
-
             $prompts = config('bahram.identity.video_prompts', []);
             $expectedText = $data['expected_video_text']
                 ?? (is_array($prompts) && $prompts !== [] ? $prompts[array_rand($prompts)] : null);
 
-            $submission = IdentityVerificationSubmission::query()->create([
-                'user_id' => $user->id,
-                'identity_profile_id' => $profile->id,
-                'version' => $version,
-                'status' => IdentityVerificationStatus::Submitted,
-                'first_name' => $data['first_name'],
-                'last_name' => $data['last_name'],
-                'national_code_encrypted' => NationalCode::encrypt($nationalCode),
-                'national_code_hash' => $hash,
-                'date_of_birth' => $data['date_of_birth'],
-                'gender' => $data['gender'],
-                'city' => $data['city'],
-                'expected_video_text' => $expectedText,
-                'provider_route' => 'IDENTITY_MANUAL_REVIEW',
-                'provider_slug' => 'manual-review',
-                'submitted_at' => now(),
-            ]);
+            $draftId = isset($data['draft_submission_id']) ? (int) $data['draft_submission_id'] : 0;
 
-            $this->attachArtifacts($submission, $profile->uuid, $data);
+            if ($draftId > 0) {
+                $submission = $this->finalizeDraftSubmission(
+                    $user,
+                    $profile,
+                    $data,
+                    $nationalCode,
+                    $hash,
+                    $expectedText,
+                    $draftId,
+                );
+            } else {
+                $version = (int) IdentityVerificationSubmission::query()
+                    ->where('user_id', $user->id)
+                    ->max('version') + 1;
 
-            $hasCard = $submission->artifacts()->where('type', IdentityArtifactType::NationalCardFront)->exists();
-            $hasVideo = $submission->artifacts()->where('type', IdentityArtifactType::SelfieVideo)->exists();
-
-            if (! $hasCard || ! $hasVideo) {
-                throw ValidationException::withMessages([
-                    'artifacts' => [IdentityVerificationMessages::ARTIFACTS_REQUIRED],
+                $submission = IdentityVerificationSubmission::query()->create([
+                    'user_id' => $user->id,
+                    'identity_profile_id' => $profile->id,
+                    'version' => $version,
+                    'status' => IdentityVerificationStatus::Submitted,
+                    'first_name' => $data['first_name'],
+                    'last_name' => $data['last_name'],
+                    'national_code_encrypted' => NationalCode::encrypt($nationalCode),
+                    'national_code_hash' => $hash,
+                    'date_of_birth' => $data['date_of_birth'],
+                    'gender' => $data['gender'],
+                    'city' => $data['city'],
+                    'expected_video_text' => $expectedText,
+                    'provider_route' => 'IDENTITY_MANUAL_REVIEW',
+                    'provider_slug' => 'manual-review',
+                    'submitted_at' => now(),
                 ]);
+
+                $this->attachArtifacts($submission, $profile->uuid, $data);
             }
+
+            $this->assertSubmissionHasArtifacts($submission);
 
             $profile->fill([
                 'first_name' => $data['first_name'],
@@ -145,38 +153,19 @@ class SubmitIdentityVerification
             ]);
             $profile->save();
 
-            // 1) ShahkarLite — real mobile + submitted national code; mismatch rejects immediately.
             $submission = $this->applyMobileOwnershipCheck($submission, $user, $profile, $nationalCode);
 
             if ($submission->status === IdentityVerificationStatus::Rejected) {
                 Cache::put($cooldownKey, true, $cooldown);
 
-                return $submission->load('artifacts');
-            }
+                $this->purgeStaleDraftSubmissions($user, $submission->id);
 
-            // 2) PersonInfo — only after successful Shahkar match; name diffs stay in expert queue.
-            if ($submission->mobile_match_status === 'matched') {
-                $submission = $this->applyRegistryLookup($submission, $nationalCode, $data);
+                return $submission->load('artifacts');
             }
 
             Cache::put($cooldownKey, true, $cooldown);
 
-            if ($submission->status === IdentityVerificationStatus::Rejected) {
-                return $submission->load('artifacts');
-            }
-
-            try {
-                $this->sms->sendEvent(
-                    SmsEventKey::IdentityVerificationSubmitted,
-                    (string) $user->mobile,
-                    ['{name}' => $user->name ?: $data['first_name']],
-                    $user->id,
-                );
-            } catch (\Throwable $e) {
-                report($e);
-            }
-
-            // Always wait for expert review — no auto-approve on PersonInfo match.
+            $this->purgeStaleDraftSubmissions($user, $submission->id);
 
             return $submission->load('artifacts');
         });
@@ -190,7 +179,131 @@ class SubmitIdentityVerification
             }
         }
 
+        if ($submission->status === IdentityVerificationStatus::Submitted) {
+            ProcessIdentitySubmissionChecksJob::dispatch($submission->id)->afterResponse();
+        }
+
         return $submission;
+    }
+
+    /**
+     * PersonInfo inquiry + submitted SMS — deferred so students get a fast submit response.
+     *
+     * @param  array{first_name: string, last_name: string, date_of_birth: string, gender: string, city: string, expected_video_text?: ?string}  $data
+     */
+    public function runPostSubmitChecks(
+        IdentityVerificationSubmission $submission,
+        User $user,
+        string $nationalCode,
+        array $data,
+    ): void {
+        $submission = $submission->fresh();
+        if (! $submission || $submission->status !== IdentityVerificationStatus::Submitted) {
+            return;
+        }
+
+        if ($submission->mobile_match_status === 'matched' && $submission->registry_checked_at === null) {
+            $submission = $this->applyRegistryLookup($submission, $nationalCode, $data);
+        }
+
+        if ($submission->status !== IdentityVerificationStatus::Submitted) {
+            return;
+        }
+
+        try {
+            $this->sms->sendEvent(
+                SmsEventKey::IdentityVerificationSubmitted,
+                (string) $user->mobile,
+                ['{name}' => $user->name ?: $data['first_name']],
+                $user->id,
+            );
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function finalizeDraftSubmission(
+        User $user,
+        UserIdentityProfile $profile,
+        array $data,
+        string $nationalCode,
+        string $hash,
+        ?string $expectedText,
+        int $draftId,
+    ): IdentityVerificationSubmission {
+        $draft = IdentityVerificationSubmission::query()
+            ->where('user_id', $user->id)
+            ->whereKey($draftId)
+            ->where('status', IdentityVerificationStatus::Draft)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $draft) {
+            throw ValidationException::withMessages([
+                'draft_submission_id' => [IdentityVerificationMessages::DRAFT_REQUIRED],
+            ]);
+        }
+
+        $this->attachUploadedFiles($draft, $profile->uuid, $data);
+
+        $draft->update([
+            'status' => IdentityVerificationStatus::Submitted,
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
+            'national_code_encrypted' => NationalCode::encrypt($nationalCode),
+            'national_code_hash' => $hash,
+            'date_of_birth' => $data['date_of_birth'],
+            'gender' => $data['gender'],
+            'city' => $data['city'],
+            'expected_video_text' => $expectedText,
+            'provider_route' => 'IDENTITY_MANUAL_REVIEW',
+            'provider_slug' => 'manual-review',
+            'submitted_at' => now(),
+        ]);
+
+        return $draft->fresh();
+    }
+
+    private function assertSubmissionHasArtifacts(IdentityVerificationSubmission $submission): void
+    {
+        $hasCard = $submission->artifacts()->where('type', IdentityArtifactType::NationalCardFront)->exists();
+        $hasVideo = $submission->artifacts()->where('type', IdentityArtifactType::SelfieVideo)->exists();
+
+        if (! $hasCard || ! $hasVideo) {
+            throw ValidationException::withMessages([
+                'artifacts' => [IdentityVerificationMessages::ARTIFACTS_REQUIRED],
+            ]);
+        }
+    }
+
+    /**
+     * Store multipart files directly on an existing submission (draft finalize).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function attachUploadedFiles(
+        IdentityVerificationSubmission $submission,
+        string $userUuid,
+        array $data,
+    ): void {
+        foreach ([
+            'national_card' => IdentityArtifactType::NationalCardFront,
+            'selfie_video' => IdentityArtifactType::SelfieVideo,
+        ] as $field => $type) {
+            $file = $data[$field] ?? null;
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $stored = $this->storage->storeUploadedFile($file, $userUuid, $submission->uuid, $type->value);
+            IdentityVerificationArtifact::query()->updateOrCreate(
+                ['submission_id' => $submission->id, 'type' => $type],
+                $stored,
+            );
+        }
     }
 
     /**
@@ -488,6 +601,25 @@ class SubmitIdentityVerification
                     ]);
                 }
             }
+        }
+    }
+
+    /** Drop abandoned step-1 drafts once a real submission exists for the student. */
+    private function purgeStaleDraftSubmissions(User $user, int $keepSubmissionId): void
+    {
+        $staleDrafts = IdentityVerificationSubmission::query()
+            ->where('user_id', $user->id)
+            ->where('status', IdentityVerificationStatus::Draft)
+            ->where('id', '!=', $keepSubmissionId)
+            ->with('artifacts')
+            ->get();
+
+        foreach ($staleDrafts as $draft) {
+            foreach ($draft->artifacts as $artifact) {
+                $this->storage->delete($artifact);
+                $artifact->delete();
+            }
+            $draft->delete();
         }
     }
 }

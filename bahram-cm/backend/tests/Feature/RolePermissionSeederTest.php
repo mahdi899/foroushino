@@ -51,6 +51,26 @@ class RolePermissionSeederTest extends TestCase
         $this->assertFalse($support->fresh()->isSuperAdmin());
     }
 
+    public function test_assign_multiple_admin_roles(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+
+        $super = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        $target = $this->makeAdmin(AdminRoleName::Admin);
+
+        $this->actingAs($super, 'sanctum')
+            ->patchJson("/api/v1/roles/admins/{$target->id}", [
+                'roles' => [AdminRoleName::Admin->value, AdminRoleName::ReadOnly->value],
+                'confirm' => true,
+            ])
+            ->assertOk();
+
+        $fresh = $target->fresh();
+        $this->assertTrue($fresh->hasRole(AdminRoleName::Admin->value));
+        $this->assertTrue($fresh->hasRole(AdminRoleName::ReadOnly->value));
+        $this->assertCount(2, $fresh->getRoleNames());
+    }
+
     private function makeAdmin(AdminRoleName $role): User
     {
         $user = User::factory()->create([

@@ -137,7 +137,9 @@ class AdminSuperAdminCrudTest extends TestCase
         $admin = $this->makeAdmin(AdminRoleName::SuperAdmin);
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09125555555']);
         app(EnsureIdentityProfile::class)($student);
+        $order = $this->makeOrder($student, 'paid', 'paid');
         $studentId = $student->id;
+        $orderId = $order->id;
 
         Sanctum::actingAs($admin, ['*']);
 
@@ -146,6 +148,17 @@ class AdminSuperAdminCrudTest extends TestCase
 
         $this->assertDatabaseMissing('users', ['id' => $studentId]);
         $this->assertDatabaseMissing('user_identity_profiles', ['user_id' => $studentId]);
+        $this->assertDatabaseMissing('orders', ['id' => $orderId]);
+
+        $this->assertDatabaseHas('student_recovery_archives', [
+            'original_user_id' => $studentId,
+            'mobile' => '09125555555',
+        ]);
+
+        $archive = \App\Models\StudentRecoveryArchive::query()->where('original_user_id', $studentId)->first();
+        $this->assertNotNull($archive);
+        $this->assertSame(1, $archive->snapshot['meta']['orders_count'] ?? null);
+        $this->assertCount(1, $archive->snapshot['orders'] ?? []);
     }
 
     public function test_identity_history_lists_all_submissions(): void

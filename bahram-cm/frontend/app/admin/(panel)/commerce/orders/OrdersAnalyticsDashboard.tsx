@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  Area,
   Bar,
-  BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Legend,
   Pie,
   PieChart,
@@ -21,6 +22,7 @@ import { formatToman, type OrderAnalytics } from '@/lib/admin/commerceTypes';
 import { toFa } from '@/lib/utils';
 
 const PERIODS = [
+  { value: '1', label: 'روزانه' },
   { value: '7', label: '۷ روز' },
   { value: '30', label: '۳۰ روز' },
   { value: '90', label: '۹۰ روز' },
@@ -33,30 +35,34 @@ function formatShortDate(date: string) {
   return `${month}/${day}`;
 }
 
-function ChartTooltip({
+function sliceRevenue(row: { amount?: number; revenue?: number }) {
+  return row.revenue ?? row.amount ?? 0;
+}
+
+function GlassTooltip({
   active,
   payload,
   label,
   valueLabel = 'تعداد',
-  colors,
 }: {
   active?: boolean;
   payload?: { name: string; value: number; payload: { fill?: string } }[];
   label?: string;
   valueLabel?: string;
-  colors: string[];
 }) {
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-caption shadow-soft">
+    <div className="admin-chart-tooltip" dir="rtl">
       {label && <p className="mb-1 font-semibold text-primary-dark">{label}</p>}
       {payload.map((entry) => (
         <p key={entry.name} className="flex items-center gap-2 text-text">
-          <span className="h-2 w-2 rounded-full" style={{ background: entry.payload.fill ?? colors[0] }} />
+          <span
+            className="admin-orders-reports__legend-dot"
+            style={{ background: entry.payload.fill ?? 'var(--color-primary)' }}
+          />
           <span>{entry.name}:</span>
-          <span className="font-semibold">{toFa(entry.value)}</span>
-          {valueLabel === 'تومان' && <span className="text-text-muted">تومان</span>}
+          <span className="font-semibold">{valueLabel === 'تومان' ? formatToman(entry.value) : toFa(entry.value)}</span>
         </p>
       ))}
     </div>
@@ -75,14 +81,12 @@ function RevenueTooltip({
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-caption shadow-soft" dir="rtl">
-      <p className="mb-1 font-semibold text-primary-dark" dir="ltr">
-        {label}
-      </p>
+    <div className="admin-chart-tooltip" dir="rtl">
+      <p className="mb-1 font-semibold text-primary-dark" dir="ltr">{label}</p>
       {payload.map((entry) => (
         <p key={entry.dataKey} className="flex items-center justify-between gap-4 text-text">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ background: entry.color }} />
+            <span className="admin-orders-reports__legend-dot" style={{ background: entry.color }} />
             {entry.name}
           </span>
           <span className="font-semibold">
@@ -111,25 +115,29 @@ function DonutChartCard({
 
   if (!total) {
     return (
-      <div className="card flex h-full min-h-[320px] flex-col p-5">
-        <h3 className="text-small font-bold text-primary-dark">{title}</h3>
-        <p className="mt-1 text-caption text-text-muted">{subtitle}</p>
+      <div className="admin-glass-chart-card flex h-full min-h-[340px] flex-col">
+        <div className="admin-glass-chart-card__head">
+          <div>
+            <h3 className="admin-glass-chart-card__title">{title}</h3>
+            <p className="admin-glass-chart-card__subtitle">{subtitle}</p>
+          </div>
+        </div>
         <div className="flex flex-1 items-center justify-center text-small text-text-muted">داده‌ای برای نمایش نیست</div>
       </div>
     );
   }
 
   return (
-    <div className="card flex h-full min-h-[320px] flex-col p-5">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="admin-glass-chart-card flex h-full min-h-[340px] flex-col">
+      <div className="admin-glass-chart-card__head">
         <div>
-          <h3 className="text-small font-bold text-primary-dark">{title}</h3>
-          <p className="mt-1 text-caption text-text-muted">{subtitle}</p>
+          <h3 className="admin-glass-chart-card__title">{title}</h3>
+          <p className="admin-glass-chart-card__subtitle">{subtitle}</p>
         </div>
         <Badge tone="accent">{toFa(total)} سفارش</Badge>
       </div>
 
-      <div className="relative min-h-[200px] flex-1" dir="ltr">
+      <div className="relative min-h-[220px] flex-1" dir="ltr">
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie
@@ -138,32 +146,33 @@ function DonutChartCard({
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={58}
-              outerRadius={88}
-              paddingAngle={3}
+              innerRadius={62}
+              outerRadius={92}
+              paddingAngle={4}
               stroke="none"
+              cornerRadius={4}
             >
               {data.map((_, index) => (
                 <Cell key={index} fill={colors[index % colors.length]} />
               ))}
             </Pie>
-            <Tooltip content={<ChartTooltip valueLabel={showAmount ? 'تومان' : 'تعداد'} colors={colors} />} />
+            <Tooltip content={<GlassTooltip valueLabel={showAmount ? 'تومان' : 'تعداد'} />} />
           </PieChart>
         </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-caption text-text-muted">مجموع</span>
-          <span className="text-h3 font-extrabold text-primary-dark">{toFa(total)}</span>
+        <div className="admin-orders-reports__donut-center">
+          <span className="admin-orders-reports__donut-center-label">مجموع</span>
+          <span className="admin-orders-reports__donut-center-value">{toFa(total)}</span>
         </div>
       </div>
 
-      <ul className="mt-3 space-y-2 border-t border-border pt-3">
+      <ul className="mt-3 space-y-2 border-t border-border/60 pt-3">
         {data.map((item, index) => {
           const pct = Math.round((item.value / total) * 100);
           return (
-            <li key={item.name} className="flex items-center justify-between gap-2 text-caption">
+            <li key={item.name} className="admin-orders-reports__legend-row">
               <span className="flex min-w-0 items-center gap-2">
                 <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  className="admin-orders-reports__legend-dot"
                   style={{ background: colors[index % colors.length] }}
                 />
                 <span className="truncate text-text">{item.name}</span>
@@ -189,13 +198,33 @@ export function OrdersAnalyticsDashboard({
 }) {
   const chartTheme = useAdminChartTheme();
   const periodValue = periodDays === 'all' ? 'all' : String(periodDays);
+  const [productFilter, setProductFilter] = useState('all');
+
+  useEffect(() => {
+    setProductFilter('all');
+  }, [periodValue, data.recent_transactions.length]);
+
+  const productFilterOptions = useMemo(
+    () =>
+      data.by_product.map((row) => ({
+        id: row.product_id,
+        title: row.title,
+      })),
+    [data.by_product],
+  );
+
+  const filteredTransactions = useMemo(() => {
+    if (productFilter === 'all') return data.recent_transactions;
+    const productId = Number(productFilter);
+    return data.recent_transactions.filter((tx) => tx.product_id === productId);
+  }, [data.recent_transactions, productFilter]);
 
   const statusChartData = useMemo(
     () =>
       data.by_status.map((row) => ({
         name: row.label,
         value: row.count,
-        amount: row.amount,
+        amount: sliceRevenue(row),
       })),
     [data.by_status],
   );
@@ -226,71 +255,93 @@ export function OrdersAnalyticsDashboard({
   );
 
   const gatewayChartData = useMemo(
-    () => data.by_gateway.map((row) => ({ name: row.label, value: row.count, amount: row.amount })),
+    () =>
+      data.by_gateway.map((row) => ({
+        name: row.label,
+        value: row.count,
+        amount: sliceRevenue(row),
+      })),
     [data.by_gateway],
   );
 
-  const gatewayModeChartData = useMemo(
-    () => data.by_gateway_mode.map((row) => ({ name: row.label, value: row.count, amount: row.amount })),
-    [data.by_gateway_mode],
+  const orderUniquenessChartData = useMemo(
+    () =>
+      data.by_order_uniqueness.map((row) => ({
+        name: row.label,
+        value: row.count,
+        amount: sliceRevenue(row),
+      })),
+    [data.by_order_uniqueness],
   );
 
   const hasData = data.summary.total_orders > 0;
+  const revenueGradientId = 'orders-revenue-gradient';
 
   return (
-    <div className="space-y-6">
-      <div className="admin-period-toolbar">
-        <div className="admin-period-segments" role="tablist" aria-label="بازه زمانی گزارش">
-          {PERIODS.map((period) => {
-            const href =
-              period.value === 'all'
-                ? '/admin/commerce/orders/reports?days=all'
-                : `/admin/commerce/orders/reports?days=${period.value}`;
-            const active = periodValue === period.value;
-            return (
-              <Link
-                key={period.value}
-                href={href}
-                role="tab"
-                aria-selected={active}
-                data-active={active ? 'true' : undefined}
-                className="admin-period-btn"
-              >
-                {period.label}
-              </Link>
-            );
-          })}
+    <div className="admin-orders-reports space-y-6">
+      <div className="admin-orders-reports__hero">
+        <div className="admin-period-toolbar !border-0 !bg-transparent !p-0 !shadow-none">
+          <div className="admin-period-segments" role="tablist" aria-label="بازه زمانی گزارش">
+            {PERIODS.map((period) => {
+              const href =
+                period.value === 'all'
+                  ? '/admin/commerce/orders/reports?days=all'
+                  : `/admin/commerce/orders/reports?days=${period.value}`;
+              const active = periodValue === period.value;
+              return (
+                <Link
+                  key={period.value}
+                  href={href}
+                  role="tab"
+                  aria-selected={active}
+                  data-active={active ? 'true' : undefined}
+                  className="admin-period-btn"
+                >
+                  {period.label}
+                </Link>
+              );
+            })}
+          </div>
+          <p className="admin-period-summary">
+            {data.period_days === 1 ? 'امروز' : data.period_days ? `${toFa(data.period_days)} روز گذشته` : 'کل دوره'}
+          </p>
         </div>
-        <p className="admin-period-summary">
-          {data.period_days ? `${toFa(data.period_days)} روز گذشته` : 'کل دوره'}
-        </p>
       </div>
 
       {!hasData ? (
-        <div className="card p-10 text-center">
+        <div className="admin-orders-reports__empty">
           <p className="text-h3 text-primary-dark">در این بازه سفارشی ثبت نشده</p>
-          <p className="mt-2 text-small text-text-muted">بازه زمانی دیگری انتخاب کنید یا پس از اولین خرید گزارش پر می‌شود.</p>
+          <p className="mt-2 text-small text-text-muted">
+            بازه زمانی دیگری انتخاب کنید یا پس از اولین خرید گزارش پر می‌شود.
+          </p>
         </div>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              label="کل سفارش‌ها"
-              value={toFa(data.summary.total_orders)}
+              label="پرداخت‌شده"
+              value={toFa(data.summary.paid_orders)}
               icon="Receipt"
-              hint={`${toFa(data.summary.paid_orders)} پرداخت‌شده`}
+              hint={
+                data.summary.cancelled_orders
+                  ? `${toFa(data.summary.total_orders)} سفارش · ${toFa(data.summary.cancelled_orders)} لغوشده`
+                  : `${toFa(data.summary.total_orders)} کل سفارش`
+              }
+              tone="teal"
             />
             <StatCard
               label="درآمد محقق‌شده"
               value={formatToman(data.summary.total_revenue)}
               icon="TrendingUp"
               hint="سفارش‌های پرداخت‌شده و تحویل‌شده"
+              tone="gold"
             />
             <StatCard
               label="میانگین سفارش"
               value={formatToman(data.summary.avg_order_value)}
               icon="ShoppingBag"
               hint="بر اساس سفارش‌های موفق"
+              tone="blue"
             />
             <StatCard
               label="نرخ تبدیل پرداخت"
@@ -301,64 +352,28 @@ export function OrdersAnalyticsDashboard({
                   ? `${formatToman(data.summary.pending_revenue)} در انتظار`
                   : 'نسبت پرداخت به کل سفارش'
               }
+              tone="green"
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="لایسنس صادرشده" value={toFa(data.fulfillment.licenses_issued)} icon="KeyRound" hint="SpotPlayer" />
-            <StatCard label="پیامک ارسال‌شده" value={toFa(data.fulfillment.sms_sent)} icon="MessageCircle" hint="پس از خرید" />
-            <StatCard
-              label="دسترسی دوره"
-              value={toFa(data.fulfillment.course_access_granted)}
-              icon="GraduationCap"
-              hint="فعال‌سازی خودکار"
-            />
-            <StatCard label="خرید با معرف" value={toFa(data.fulfillment.referral_orders)} icon="Gift" hint="کد معرف ثبت‌شده" />
-          </div>
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <DonutChartCard
-              title="درگاه پرداخت"
-              subtitle="تفکیک تراکنش‌های موفق بر اساس درگاه"
-              data={gatewayChartData}
-              showAmount
-              colors={chartTheme.colors}
-            />
-            <DonutChartCard
-              title="حالت درگاه (واقعی / تست)"
-              subtitle="تفکیک پرداخت‌های زرین‌پال سندباکس و واقعی"
-              data={gatewayModeChartData}
-              showAmount
-              colors={chartTheme.colors}
-            />
-          </div>
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <DonutChartCard
-              title="توزیع وضعیت سفارش"
-              subtitle="سهم هر وضعیت از کل سفارش‌های ثبت‌شده"
-              data={statusChartData}
-              showAmount
-              colors={chartTheme.colors}
-            />
-            <DonutChartCard
-              title="وضعیت پرداخت"
-              subtitle="تفکیک بر اساس نتیجه درگاه پرداخت"
-              data={paymentChartData}
-              colors={chartTheme.colors}
-            />
-          </div>
-
-          <div className="card p-5">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="admin-glass-chart-card">
+            <div className="admin-glass-chart-card__head">
               <div>
-                <h3 className="text-small font-bold text-primary-dark">روند روزانه سفارش و درآمد</h3>
-                <p className="mt-1 text-caption text-text-muted">تعداد سفارش‌های جدید و درآمد محقق‌شده در هر روز</p>
+                <h3 className="admin-glass-chart-card__title">روند روزانه سفارش و درآمد</h3>
+                <p className="admin-glass-chart-card__subtitle">
+                  نمودار ترکیبی — تعداد سفارش (ستون) و درآمد محقق‌شده (ناحیه)
+                </p>
               </div>
             </div>
-            <div className="h-72 w-full min-w-0" dir="ltr">
+            <div className="h-80 w-full min-w-0" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={2}>
+                <ComposedChart data={dailyChartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id={revenueGradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={chartTheme.barSecondary} stopOpacity={0.45} />
+                      <stop offset="100%" stopColor={chartTheme.barSecondary} stopOpacity={0.04} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridStroke} vertical={false} />
                   <XAxis
                     dataKey="label"
@@ -380,7 +395,7 @@ export function OrdersAnalyticsDashboard({
                     tick={{ fontSize: 11, fill: chartTheme.tick }}
                     axisLine={false}
                     tickLine={false}
-                    width={48}
+                    width={52}
                     tickFormatter={(v) => toFa(Math.round(Number(v) / 1_000_000)) + 'M'}
                   />
                   <Tooltip content={<RevenueTooltip />} />
@@ -389,47 +404,120 @@ export function OrdersAnalyticsDashboard({
                     height={36}
                     formatter={(value) => <span style={{ color: 'var(--color-text)' }}>{value}</span>}
                   />
+                  <Area
+                    yAxisId="revenue"
+                    type="monotone"
+                    dataKey="revenue"
+                    name="درآمد (تومان)"
+                    stroke={chartTheme.barSecondary}
+                    strokeWidth={2}
+                    fill={`url(#${revenueGradientId})`}
+                    fillOpacity={1}
+                  />
                   <Bar
                     yAxisId="orders"
                     dataKey="orders"
                     name="تعداد سفارش"
                     fill={chartTheme.barPrimary}
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={28}
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={24}
+                    opacity={0.92}
                   />
-                  <Bar
-                    yAxisId="revenue"
-                    dataKey="revenue"
-                    name="درآمد (تومان)"
-                    fill={chartTheme.barSecondary}
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={28}
-                  />
-                </BarChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="لایسنس صادرشده"
+              value={toFa(data.fulfillment.licenses_issued)}
+              icon="KeyRound"
+              hint="SpotPlayer"
+              tone="amber"
+            />
+            <StatCard
+              label="پیامک ارسال‌شده"
+              value={toFa(data.fulfillment.sms_sent)}
+              icon="MessageCircle"
+              hint="پس از خرید"
+              tone="teal"
+            />
+            <StatCard
+              label="دسترسی دوره"
+              value={toFa(data.fulfillment.course_access_granted)}
+              icon="GraduationCap"
+              hint="فعال‌سازی خودکار"
+              tone="blue"
+            />
+            <StatCard
+              label="خرید با معرف"
+              value={toFa(data.fulfillment.referral_orders)}
+              icon="Gift"
+              hint="کد معرف ثبت‌شده"
+              tone="gold"
+            />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <DonutChartCard
+              title="درگاه پرداخت"
+              subtitle="تفکیک تراکنش‌های موفق بر اساس درگاه"
+              data={gatewayChartData}
+              showAmount
+              colors={chartTheme.colors}
+            />
+            <DonutChartCard
+              title="سفارش یونیک / تکراری"
+              subtitle="هر خریدار و محصول یک‌بار یونیک؛ ثبت‌های اضافی تکراری"
+              data={orderUniquenessChartData}
+              showAmount
+              colors={chartTheme.colors}
+            />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <DonutChartCard
+              title="توزیع وضعیت سفارش"
+              subtitle="سهم هر وضعیت از کل سفارش‌های ثبت‌شده"
+              data={statusChartData}
+              showAmount
+              colors={chartTheme.colors}
+            />
+            <DonutChartCard
+              title="وضعیت پرداخت"
+              subtitle="تفکیک بر اساس نتیجه درگاه پرداخت"
+              data={paymentChartData}
+              colors={chartTheme.colors}
+            />
+          </div>
+
           {productChartData.length > 0 && (
-            <div className="card p-5">
-              <div className="mb-4">
-                <h3 className="text-small font-bold text-primary-dark">فروش به تفکیک محصول</h3>
-                <p className="mt-1 text-caption text-text-muted">پرتکرارترین محصولات بر اساس تعداد سفارش</p>
+            <div className="admin-glass-chart-card">
+              <div className="admin-glass-chart-card__head">
+                <div>
+                  <h3 className="admin-glass-chart-card__title">فروش به تفکیک محصول</h3>
+                  <p className="admin-glass-chart-card__subtitle">پرتکرارترین محصولات بر اساس تعداد سفارش</p>
+                </div>
               </div>
               <div className="h-80 w-full min-w-0" dir="ltr">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
+                  <ComposedChart
                     data={productChartData}
                     layout="vertical"
                     margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
-                    barCategoryGap="18%"
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridStroke} horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: chartTheme.tick }} axisLine={false} tickLine={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 11, fill: chartTheme.tick }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={120}
+                      width={124}
                       tick={{ fontSize: 11, fill: chartTheme.tickStrong }}
                       axisLine={false}
                       tickLine={false}
@@ -439,7 +527,7 @@ export function OrdersAnalyticsDashboard({
                         if (!active || !payload?.length) return null;
                         const row = payload[0].payload as (typeof productChartData)[number];
                         return (
-                          <div className="rounded-lg border border-border bg-surface px-3 py-2 text-caption shadow-soft" dir="rtl">
+                          <div className="admin-chart-tooltip" dir="rtl">
                             <p className="mb-1 font-semibold text-primary-dark">{row.fullTitle}</p>
                             <p>تعداد: {toFa(row.count)}</p>
                             <p>درآمد: {formatToman(row.revenue)}</p>
@@ -447,41 +535,74 @@ export function OrdersAnalyticsDashboard({
                         );
                       }}
                     />
-                    <Bar dataKey="count" name="تعداد سفارش" radius={[0, 6, 6, 0]} maxBarSize={22}>
+                    <Bar dataKey="count" name="تعداد سفارش" radius={[0, 8, 8, 0]} maxBarSize={22}>
                       {productChartData.map((_, index) => (
                         <Cell key={index} fill={chartTheme.colors[index % chartTheme.colors.length]} />
                       ))}
                     </Bar>
-                  </BarChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
           )}
 
           {data.recent_transactions.length > 0 && (
-            <div className="card p-4 sm:p-5">
-              <div className="mb-4">
-                <h3 className="text-small font-bold text-primary-dark">تراکنش‌های موفق اخیر</h3>
-                <p className="mt-1 text-caption text-text-muted">
-                  Authority، Ref ID، کارت ماسک‌شده و جزئیات درگاه برای هر پرداخت
-                </p>
+            <div className="admin-glass-chart-card !p-4 sm:!p-5">
+              <div className="admin-glass-chart-card__head">
+                <div>
+                  <h3 className="admin-glass-chart-card__title">تراکنش‌های موفق اخیر</h3>
+                  <p className="admin-glass-chart-card__subtitle">
+                    Authority، Ref ID، کارت ماسک‌شده و جزئیات درگاه برای هر پرداخت
+                  </p>
+                </div>
+                {productFilterOptions.length > 0 ? (
+                  <label className="flex min-w-[10rem] flex-col gap-1 sm:min-w-[12rem]">
+                    <span className="text-caption text-text-muted">فیلتر محصول</span>
+                    <select
+                      value={productFilter}
+                      onChange={(e) => setProductFilter(e.target.value)}
+                      className="field-input py-1.5 text-caption"
+                    >
+                      <option value="all">همه محصولات</option>
+                      {productFilterOptions.map((product) => (
+                        <option key={product.id} value={String(product.id)}>
+                          {product.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
               </div>
 
+              {filteredTransactions.length === 0 ? (
+                <p className="py-6 text-center text-small text-text-muted">
+                  تراکنشی برای این محصول در بازه انتخاب‌شده نیست.
+                </p>
+              ) : (
+                <>
               <div className="hidden overflow-x-auto md:block">
-                <Table head={['سفارش', 'مشتری', 'درگاه', 'حالت', 'Authority', 'Ref ID', 'کارت', 'مبلغ', 'زمان']}>
-                  {data.recent_transactions.map((tx) => (
+                <Table head={['سفارش', 'مشتری', 'محصول', 'درگاه', 'Authority', 'Ref ID', 'کارت', 'مبلغ', 'زمان']}>
+                  {filteredTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-surface-soft/40">
                       <td className="whitespace-nowrap px-3 py-2.5">
-                        <Link href={`/admin/commerce/orders/${tx.order_id}`} className="font-mono text-caption text-accent hover:underline" dir="ltr">
+                        <Link
+                          href={`/admin/commerce/orders/${tx.order_id}`}
+                          className="font-mono text-caption text-accent hover:underline"
+                          dir="ltr"
+                        >
                           {tx.order_number}
                         </Link>
                       </td>
                       <td className="px-3 py-2.5 text-caption">{tx.customer_name ?? '—'}</td>
-                      <td className="px-3 py-2.5 text-caption">{tx.gateway_label}</td>
-                      <td className="px-3 py-2.5">
-                        <Badge tone={tx.mode === 'sandbox' ? 'warning' : 'success'}>{tx.mode_label}</Badge>
+                      <td className="max-w-[10rem] truncate px-3 py-2.5 text-caption" title={tx.product_title ?? ''}>
+                        {tx.product_title ?? '—'}
                       </td>
-                      <td className="max-w-[120px] truncate px-3 py-2.5 font-mono admin-text-meta" dir="ltr" title={tx.authority ?? ''}>
+                      <td className="px-3 py-2.5 text-caption">{tx.gateway_label}</td>
+                      <td
+                        className="max-w-[120px] truncate px-3 py-2.5 font-mono admin-text-meta"
+                        dir="ltr"
+                        title={tx.authority ?? ''}
+                      >
                         {tx.authority ?? '—'}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 font-mono text-caption" dir="ltr">
@@ -492,7 +613,9 @@ export function OrdersAnalyticsDashboard({
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-caption">{formatToman(tx.amount)}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-caption">
-                        {tx.paid_at ? new Date(tx.paid_at).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                        {tx.paid_at
+                          ? new Date(tx.paid_at).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })
+                          : '—'}
                       </td>
                     </tr>
                   ))}
@@ -500,11 +623,11 @@ export function OrdersAnalyticsDashboard({
               </div>
 
               <div className="space-y-3 md:hidden">
-                {data.recent_transactions.map((tx) => (
+                {filteredTransactions.map((tx) => (
                   <Link
                     key={tx.id}
                     href={`/admin/commerce/orders/${tx.order_id}`}
-                    className="block rounded-lg border border-border bg-surface-soft/30 p-3 transition hover:border-accent/40"
+                    className="block rounded-xl border border-border/70 bg-surface-soft/30 p-3 transition hover:border-accent/40"
                   >
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -512,12 +635,12 @@ export function OrdersAnalyticsDashboard({
                           {tx.order_number}
                         </p>
                         <p className="truncate text-caption text-text-muted">{tx.customer_name}</p>
+                        <p className="truncate text-caption text-text">{tx.product_title ?? '—'}</p>
                       </div>
                       <span className="shrink-0 text-caption font-semibold">{formatToman(tx.amount)}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       <Badge tone="accent">{tx.gateway_label}</Badge>
-                      <Badge tone={tx.mode === 'sandbox' ? 'warning' : 'success'}>{tx.mode_label}</Badge>
                     </div>
                     <dl className="mt-2 grid gap-1 admin-text-meta text-text-muted">
                       <div className="flex justify-between gap-2" dir="ltr">
@@ -538,6 +661,8 @@ export function OrdersAnalyticsDashboard({
                   </Link>
                 ))}
               </div>
+                </>
+              )}
             </div>
           )}
         </>

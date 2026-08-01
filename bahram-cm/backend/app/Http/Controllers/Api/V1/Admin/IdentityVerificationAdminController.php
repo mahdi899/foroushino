@@ -296,6 +296,7 @@ class IdentityVerificationAdminController extends Controller
 
         $submissions = IdentityVerificationSubmission::query()
             ->where('user_id', $student->id)
+            ->where('status', '!=', IdentityVerificationStatus::Draft)
             ->withCount('reviews')
             ->orderByDesc('version')
             ->orderByDesc('id')

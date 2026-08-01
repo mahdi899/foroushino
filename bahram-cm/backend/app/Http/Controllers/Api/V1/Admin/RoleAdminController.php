@@ -104,13 +104,23 @@ class RoleAdminController extends Controller
         );
 
         $data = $request->validate([
-            'role' => ['required', 'string'],
+            'roles' => ['sometimes', 'array', 'min:1'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')->where('guard_name', 'web')],
+            'role' => ['sometimes', 'string', Rule::exists('roles', 'name')->where('guard_name', 'web')],
             'confirm' => ['required', 'accepted'],
         ]);
 
         abort_if(! $admin->is_admin, 404);
 
-        $updated = $this->roles->assignRoleToAdmin($request->user(), $admin, $data['role']);
+        $roleNames = $data['roles'] ?? (isset($data['role']) ? [$data['role']] : null);
+        if ($roleNames === null) {
+            return response()->json([
+                'message' => 'نقش‌ها الزامی است.',
+                'errors' => ['roles' => ['حداقل یک نقش باید انتخاب شود.']],
+            ], 422);
+        }
+
+        $updated = $this->roles->assignRolesToAdmin($request->user(), $admin, $roleNames);
 
         return response()->json(['data' => $this->adminPayload($updated, $request->user())]);
     }

@@ -115,6 +115,14 @@ return [
         'retention_days' => (int) env('CHATBOT_RETENTION_DAYS', 60),
     ],
 
+    /*
+     * Deleted student accounts: live data is removed immediately; a JSON snapshot
+     * is kept in student_recovery_archives until purge_after.
+     */
+    'students' => [
+        'recovery_retention_days' => (int) env('STUDENT_RECOVERY_RETENTION_DAYS', 30),
+    ],
+
     'backup' => [
         'mysqldump_path' => env('MYSQLDUMP_PATH'),
         'mysql_path' => env('MYSQL_PATH'),

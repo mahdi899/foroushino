@@ -104,14 +104,18 @@ export function PersistNotice() {
 
 export function Table({
   head,
+  headCells,
   children,
   mobile,
 }: {
   head: string[];
+  headCells?: React.ReactNode[];
   children: React.ReactNode;
   /** Card list for viewports below `md` — avoids horizontal scroll */
   mobile?: React.ReactNode;
 }) {
+  const cells = headCells ?? head;
+
   return (
     <>
       {mobile ? <AdminTableCardList>{mobile}</AdminTableCardList> : null}
@@ -119,9 +123,9 @@ export function Table({
         <table className="admin-table admin-text-body w-full min-w-[32rem] text-right">
           <thead>
             <tr>
-              {head.map((h) => (
-                <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">
-                  {h}
+              {cells.map((cell, index) => (
+                <th key={head[index] ?? index} className="whitespace-nowrap px-4 py-3 font-semibold">
+                  {cell}
                 </th>
               ))}
             </tr>

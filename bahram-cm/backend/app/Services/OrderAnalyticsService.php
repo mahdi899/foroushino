@@ -30,16 +30,20 @@ class OrderAnalyticsService
     /** @var list<string> */
     private const PAID_STATUSES = ['paid', 'fulfilled'];
 
+    /** @var list<string> */
+    private const CANCELLED_STATUSES = ['cancelled'];
+
     /**
      * @return array<string, mixed>
      */
     public function report(?int $days = 30): array
     {
-        $from = $days !== null && $days > 0 ? now()->subDays($days)->startOfDay() : null;
+        $from = $this->periodStart($days);
 
-        $base = Order::query()->when($from, fn ($q) => $q->where('created_at', '>=', $from));
+        $base = Order::query()->when($from, fn ($q) => $q->where('orders.created_at', '>=', $from));
 
-        $totalOrders = (clone $base)->count();
+        $totalOrders = (clone $base)->whereNotIn('status', self::CANCELLED_STATUSES)->count();
+        $cancelledOrders = (clone $base)->whereIn('status', self::CANCELLED_STATUSES)->count();
         $paidOrders = (clone $base)->whereIn('status', self::PAID_STATUSES)->count();
         $totalRevenue = (int) (clone $base)->whereIn('status', self::PAID_STATUSES)->sum('final_amount');
         $pendingRevenue = (int) (clone $base)->where('status', 'pending_payment')->sum('final_amount');
@@ -134,7 +138,7 @@ class OrderAnalyticsService
             ->values()
             ->all();
 
-        $byGatewayMode = $this->gatewayModeBreakdown($paymentsQuery);
+        $byOrderUniqueness = $this->orderUniquenessBreakdown($base);
 
         $fulfillment = [
             'licenses_issued' => (clone $base)->whereNotNull('spotplayer_license_code')->where('spotplayer_license_code', '!=', '')->count(),
@@ -156,6 +160,7 @@ class OrderAnalyticsService
                 'order_id' => $p->order_id,
                 'order_number' => $p->order?->order_number,
                 'customer_name' => $p->order?->customer_name,
+                'product_id' => $p->order?->product_id,
                 'product_title' => $p->order?->product?->title,
                 'gateway' => $p->gateway,
                 'gateway_label' => self::GATEWAY_LABELS[$p->gateway] ?? $p->gateway,
@@ -174,6 +179,7 @@ class OrderAnalyticsService
             'period_days' => $days,
             'summary' => [
                 'total_orders' => $totalOrders,
+                'cancelled_orders' => $cancelledOrders,
                 'paid_orders' => $paidOrders,
                 'total_revenue' => $totalRevenue,
                 'pending_revenue' => $pendingRevenue,
@@ -184,7 +190,7 @@ class OrderAnalyticsService
             'by_status' => $byStatus,
             'by_payment_status' => $byPaymentStatus,
             'by_gateway' => $byGateway,
-            'by_gateway_mode' => $byGatewayMode,
+            'by_order_uniqueness' => $byOrderUniqueness,
             'daily' => $daily,
             'by_product' => $byProduct,
             'recent_transactions' => $recentTransactions,
@@ -192,38 +198,49 @@ class OrderAnalyticsService
     }
 
     /** @return list<array{key: string, label: string, count: int, revenue: int}> */
-    private function gatewayModeBreakdown(\Illuminate\Database\Eloquent\Builder $paymentsQuery): array
+    private function orderUniquenessBreakdown(\Illuminate\Database\Eloquent\Builder $base): array
     {
-        $paid = (clone $paymentsQuery)->where('payments.status', 'paid');
+        $orders = (clone $base)
+            ->whereNotIn('status', self::CANCELLED_STATUSES)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get(['id', 'customer_phone', 'product_id', 'final_amount', 'status']);
 
-        $sandboxCount = (clone $paid)->where('payments.authority', 'like', 'DEV-%')->count();
-        $sandboxRevenue = (int) (clone $paid)->where('payments.authority', 'like', 'DEV-%')->sum('payments.amount');
+        $uniqueCount = 0;
+        $duplicateCount = 0;
+        $uniqueRevenue = 0;
+        $duplicateRevenue = 0;
 
-        $liveCount = (clone $paid)
-            ->where(function ($q) {
-                $q->whereNull('payments.authority')
-                    ->orWhere('payments.authority', 'not like', 'DEV-%');
-            })
-            ->count();
-        $liveRevenue = (int) (clone $paid)
-            ->where(function ($q) {
-                $q->whereNull('payments.authority')
-                    ->orWhere('payments.authority', 'not like', 'DEV-%');
-            })
-            ->sum('payments.amount');
+        foreach ($orders->groupBy(fn (Order $order) => $order->customer_phone.'|'.$order->product_id) as $group) {
+            $uniqueCount++;
+            $duplicateCount += max(0, $group->count() - 1);
+
+            $paid = $group
+                ->filter(fn (Order $order) => in_array($order->status, self::PAID_STATUSES, true))
+                ->values();
+
+            if ($paid->isEmpty()) {
+                continue;
+            }
+
+            $uniqueRevenue += (int) $paid->first()->final_amount;
+            foreach ($paid->slice(1) as $duplicatePaid) {
+                $duplicateRevenue += (int) $duplicatePaid->final_amount;
+            }
+        }
 
         return [
             [
-                'key' => 'sandbox',
-                'label' => 'زرین‌پال (تست)',
-                'count' => $sandboxCount,
-                'revenue' => $sandboxRevenue,
+                'key' => 'unique',
+                'label' => 'سفارش یونیک',
+                'count' => $uniqueCount,
+                'revenue' => $uniqueRevenue,
             ],
             [
-                'key' => 'live',
-                'label' => 'زرین‌پال (واقعی)',
-                'count' => $liveCount,
-                'revenue' => $liveRevenue,
+                'key' => 'duplicate',
+                'label' => 'سفارش تکراری',
+                'count' => $duplicateCount,
+                'revenue' => $duplicateRevenue,
             ],
         ];
     }
@@ -262,5 +279,15 @@ class OrderAnalyticsService
         }
 
         return $series;
+    }
+
+    private function periodStart(?int $days): ?\Illuminate\Support\Carbon
+    {
+        if ($days === null || $days <= 0) {
+            return null;
+        }
+
+        // Exactly N calendar days ending today (inclusive), aligned with fillDailySeries().
+        return now()->subDays($days - 1)->startOfDay();
     }
 }

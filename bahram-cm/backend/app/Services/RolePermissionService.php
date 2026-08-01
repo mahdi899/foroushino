@@ -170,7 +170,10 @@ class RolePermissionService
         return $admin->fresh();
     }
 
-    public function assignRoleToAdmin(User $actor, User $admin, string $roleName): User
+    /**
+     * @param  list<string>  $roleNames
+     */
+    public function assignRolesToAdmin(User $actor, User $admin, array $roleNames): User
     {
         $this->assertAdminPermission($actor, 'admins.assign_role');
 
@@ -180,36 +183,39 @@ class RolePermissionService
 
         if ($admin->isRootAdmin()) {
             throw ValidationException::withMessages([
-                'role' => ['نقش مدیر اصلی سیستم قابل تغییر نیست.'],
+                'roles' => ['نقش مدیر اصلی سیستم قابل تغییر نیست.'],
             ]);
         }
 
-        if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
+        $roleNames = array_values(array_unique($roleNames));
+
+        if ($roleNames === []) {
             throw ValidationException::withMessages([
-                'role' => ['فقط مدیر کل می‌تواند نقش مدیر کل را اختصاص دهد.'],
+                'roles' => ['حداقل یک نقش باید انتخاب شود.'],
             ]);
         }
 
-        Role::findByName($roleName, 'web');
-
-        if ($admin->id === $actor->id && $roleName !== AdminRoleName::SuperAdmin->value && $admin->isSuperAdmin()) {
-            $this->assertNotLastSuperAdmin($admin, $actor);
+        foreach ($roleNames as $roleName) {
+            Role::findByName($roleName, 'web');
         }
 
-        if ($admin->isSuperAdmin() && $roleName !== AdminRoleName::SuperAdmin->value) {
-            $this->assertNotLastSuperAdmin($admin, $actor);
-        }
+        $hasSuperAdmin = in_array(AdminRoleName::SuperAdmin->value, $roleNames, true);
+        $hadSuperAdmin = $admin->isSuperAdmin();
 
-        if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
+        if ($hasSuperAdmin && ! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
             throw ValidationException::withMessages([
-                'role' => ['فقط مدیر کل می‌تواند نقش مدیر کل را تخصیص دهد.'],
+                'roles' => ['فقط مدیر کل می‌تواند نقش مدیر کل را اختصاص دهد.'],
             ]);
+        }
+
+        if ($hadSuperAdmin && ! $hasSuperAdmin) {
+            $this->assertNotLastSuperAdmin($admin, $actor);
         }
 
         $before = $admin->getRoleNames()->all();
 
-        DB::transaction(function () use ($admin, $roleName) {
-            $admin->syncRoles([$roleName]);
+        DB::transaction(function () use ($admin, $roleNames) {
+            $admin->syncRoles($roleNames);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
         });
 
@@ -217,10 +223,15 @@ class RolePermissionService
 
         $this->audit->log($actor, 'admin.role_changed', $admin, [
             'before' => $before,
-            'after' => [$roleName],
+            'after' => $roleNames,
         ]);
 
         return $admin->fresh();
+    }
+
+    public function assignRoleToAdmin(User $actor, User $admin, string $roleName): User
+    {
+        return $this->assignRolesToAdmin($actor, $admin, [$roleName]);
     }
 
     public function deleteAdmin(User $actor, User $admin): void

@@ -47,18 +47,7 @@ export default async function AdminUsersPage() {
         >
           {admins.map((admin) => (
             <tr key={admin.id} className="hover:bg-surface-soft/40">
-              <td className="px-4 py-3 font-medium text-text">
-                {admin.name}
-                {admin.is_root_admin ? (
-                  <span className="mr-2 inline-block">
-                    <Badge tone="accent">مدیر اصلی</Badge>
-                  </span>
-                ) : admin.is_super_admin ? (
-                  <span className="mr-2 inline-block">
-                    <Badge tone="accent">مدیر کل</Badge>
-                  </span>
-                ) : null}
-              </td>
+              <td className="px-4 py-3 font-medium text-text">{admin.name}</td>
               <td className="px-4 py-3 text-text-muted" dir="ltr">
                 {admin.mobile ?? '—'}
               </td>
@@ -78,7 +67,7 @@ export default async function AdminUsersPage() {
                   )}
                 </div>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3 align-top">
                 <AdminRoleSelect admin={admin} roles={roles} viewerIsSuperAdmin={viewerIsSuperAdmin} />
               </td>
               {showDeleteColumn ? (

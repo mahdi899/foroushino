@@ -159,6 +159,11 @@ class User extends Authenticatable
         return $this->hasMany(ReferralConversion::class, 'referrer_user_id');
     }
 
+    public function referralConversionsAsBuyer(): HasMany
+    {
+        return $this->hasMany(ReferralConversion::class, 'buyer_user_id');
+    }
+
     public function cashbackPayouts(): HasMany
     {
         return $this->hasMany(CashbackPayout::class);

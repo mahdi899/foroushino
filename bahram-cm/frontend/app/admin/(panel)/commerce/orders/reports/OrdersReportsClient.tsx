@@ -50,15 +50,26 @@ export function OrdersReportsClient({
 
   if (loading) {
     return (
-      <div className="card p-8 text-center text-small text-text-muted">
-        در حال بارگذاری گزارش سفارشات…
+      <div className="admin-orders-reports admin-orders-reports__loading">
+        <div className="admin-orders-reports__skeleton min-h-[4.5rem]" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="admin-orders-reports__skeleton" />
+          ))}
+        </div>
+        <div className="admin-orders-reports__skeleton min-h-[20rem]" />
+        <p className="text-center text-small text-text-muted">در حال بارگذاری گزارش سفارشات…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">{error}</div>
+      <div className="admin-orders-reports">
+        <div className="rounded-xl border border-error/30 bg-error/10 px-4 py-3 text-small text-error backdrop-blur-sm">
+          {error}
+        </div>
+      </div>
     );
   }
 

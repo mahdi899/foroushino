@@ -27,6 +27,7 @@ Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServ
 Schedule::command('telegram:audit-destination-memberships')->dailyAt('04:00')->onOneServer();
 
 Schedule::command('chatbot:purge-old')->dailyAt('03:00');
+Schedule::command('students:purge-recovery-archives')->dailyAt('04:15')->onOneServer();
 Schedule::command('orders:expire-pending')->everyFifteenMinutes()->onOneServer();
 Schedule::command('telegram:remind-c2c-reviews')->dailyAt('10:00')->onOneServer();
 Schedule::command('backup:database')->everyFiveMinutes();

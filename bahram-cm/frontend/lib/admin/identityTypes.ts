@@ -127,6 +127,11 @@ export const IDENTITY_STATUS_LABELS: Record<string, string> = {
   rejected: 'ردشده',
 };
 
+/** Statuses shown in admin queue filters — excludes internal student-only states. */
+export const IDENTITY_ADMIN_FILTER_STATUSES = (
+  Object.keys(IDENTITY_STATUS_LABELS) as IdentityStatus[]
+).filter((status) => status !== 'draft' && status !== 'not_started');
+
 export const IDENTITY_GENDER_LABELS: Record<string, string> = {
   male: 'مرد',
   female: 'زن',

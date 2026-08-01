@@ -23,7 +23,7 @@ class OrderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Order::query()->with('product')->orderByDesc('id');
+        $query = Order::query()->with('product')->orderByDesc('created_at')->orderByDesc('id');
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);

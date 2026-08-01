@@ -424,7 +424,10 @@ class PersonInfoIdentityTest extends TestCase
             'selfie_video' => UploadedFile::fake()->create('selfie.mp4', 500, 'video/mp4'),
         ]);
 
-        return app(SubmitIdentityVerification::class)($student, $data);
+        $submission = app(SubmitIdentityVerification::class)($student, $data);
+        $this->app->terminate();
+
+        return $submission->fresh();
     }
 
     private function bindProviders(

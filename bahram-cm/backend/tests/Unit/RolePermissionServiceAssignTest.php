@@ -53,12 +53,40 @@ class RolePermissionServiceAssignTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertSame(
                 'فقط مدیر کل می‌تواند نقش مدیر کل را اختصاص دهد.',
-                $e->errors()['role'][0] ?? null,
+                $e->errors()['roles'][0] ?? null,
             );
         }
 
         $this->assertFalse($target->fresh()->isSuperAdmin());
         $this->assertTrue($target->fresh()->hasRole(AdminRoleName::Support->value));
+    }
+
+    public function test_assign_multiple_roles_to_admin(): void
+    {
+        $actor = User::factory()->create([
+            'email' => Str::uuid().'@bahram.test',
+            'is_admin' => true,
+        ]);
+        $actor->assignRole(AdminRoleName::SuperAdmin->value);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $actor = $actor->fresh();
+
+        $target = User::factory()->create([
+            'email' => Str::uuid().'@bahram.test',
+            'is_admin' => true,
+        ]);
+        $target->assignRole(AdminRoleName::Support->value);
+
+        app(RolePermissionService::class)->assignRolesToAdmin(
+            $actor,
+            $target,
+            [AdminRoleName::Admin->value, AdminRoleName::ReadOnly->value],
+        );
+
+        $fresh = $target->fresh();
+        $this->assertTrue($fresh->hasRole(AdminRoleName::Admin->value));
+        $this->assertTrue($fresh->hasRole(AdminRoleName::ReadOnly->value));
+        $this->assertFalse($fresh->hasRole(AdminRoleName::Support->value));
     }
 
     public function test_non_super_admin_cannot_create_super_admin(): void

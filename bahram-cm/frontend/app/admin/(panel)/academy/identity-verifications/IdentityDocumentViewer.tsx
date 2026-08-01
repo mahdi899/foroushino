@@ -1,14 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Maximize2, Minus, Plus, RotateCcw, X, ZoomIn } from 'lucide-react';
+import { Minus, Plus, RotateCcw, X, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import {
+  identityArtifactStreamErrorMessage,
+  probeIdentityArtifactStream,
+} from '@/lib/admin/identityArtifactStreamErrors';
 
 type IdentityDocumentViewerProps = {
   src: string;
   label: string;
   isVideo?: boolean;
-  mimeType?: string | null;
 };
 
 const ZOOM_MIN = 25;
@@ -26,83 +29,109 @@ function fitZoomPercent(naturalW: number, naturalH: number, viewportW: number, v
   return clampZoom(fit * 100);
 }
 
+function MediaErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex min-h-[10rem] flex-col items-center justify-center gap-3 rounded-lg border border-error/25 bg-error/5 px-4 py-6 text-center">
+      <p className="text-small text-error">{message}</p>
+      <button type="button" onClick={onRetry} className="btn btn-secondary btn-sm">
+        تلاش دوباره
+      </button>
+    </div>
+  );
+}
+
+function MediaLoadingState({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-[10rem] items-center justify-center rounded-lg border border-border bg-surface-soft px-4 py-6 text-center text-small text-text-muted">
+      در حال بارگذاری {label}…
+    </div>
+  );
+}
+
 export function IdentityDocumentViewer({ src, label, isVideo = false }: IdentityDocumentViewerProps) {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const probeIdRef = useRef(0);
+
+  const runProbe = useCallback(async () => {
+    const probeId = ++probeIdRef.current;
+    setLoading(true);
+    setError(null);
+
+    const result = await probeIdentityArtifactStream(src);
+    if (probeId !== probeIdRef.current) return;
+
+    if (!result.ok) {
+      setError(identityArtifactStreamErrorMessage(result.status));
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+  }, [src]);
+
+  useEffect(() => {
+    runProbe();
+  }, [runProbe]);
+
+  const onMediaError = useCallback(() => {
+    setError(identityArtifactStreamErrorMessage());
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return <MediaLoadingState label={label} />;
+  }
+
+  if (error) {
+    return <MediaErrorState message={error} onRetry={runProbe} />;
+  }
+
+  if (isVideo) {
+    return (
+      <div className="flex justify-center rounded-lg bg-surface-soft p-2">
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          className="max-h-[min(24rem,70vh)] max-w-full rounded-lg bg-black object-contain"
+          src={src}
+          onError={onMediaError}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="relative">
-        {isVideo ? (
-          <video controls className="max-h-80 w-full rounded-lg bg-black" src={src} />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="block w-full cursor-zoom-in rounded-lg text-start"
-            aria-label={`بزرگ‌نمایی ${label}`}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={label} className="max-h-80 max-w-full rounded-lg object-contain" />
-          </button>
-        )}
+      <div className="relative flex justify-center rounded-lg bg-surface-soft p-2">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="cursor-zoom-in rounded-lg text-start"
+          aria-label={`بزرگ‌نمایی ${label}`}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={label}
+            className="max-h-[min(24rem,70vh)] max-w-full rounded-lg object-contain"
+            onError={onMediaError}
+          />
+        </button>
         <button
           type="button"
           onClick={() => setOpen(true)}
           className="absolute bottom-3 start-3 inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/65 px-3 py-1.5 text-caption font-medium text-white shadow-soft backdrop-blur-sm hover:bg-black/80"
         >
-          {isVideo ? <Maximize2 className="h-3.5 w-3.5" /> : <ZoomIn className="h-3.5 w-3.5" />}
-          {isVideo ? 'تمام‌صفحه' : 'بزرگ‌نمایی'}
+          <ZoomIn className="h-3.5 w-3.5" />
+          بزرگ‌نمایی
         </button>
       </div>
 
-      {open ? (
-        isVideo ? (
-          <VideoLightbox src={src} label={label} onClose={() => setOpen(false)} />
-        ) : (
-          <ImageZoomLightbox src={src} label={label} onClose={() => setOpen(false)} />
-        )
-      ) : null}
+      {open ? <ImageZoomLightbox src={src} label={label} onClose={() => setOpen(false)} /> : null}
     </>
-  );
-}
-
-function VideoLightbox({ src, label, onClose }: { src: string; label: string; onClose: () => void }) {
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black/92" onClick={onClose} role="presentation">
-      <div
-        className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <p className="text-small font-medium text-white/90">{label}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
-          aria-label="بستن"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-      <div
-        className="flex min-h-0 flex-1 items-center justify-center p-4 sm:p-6"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <video
-          controls
-          autoPlay
-          className="max-h-[min(85vh,900px)] w-full max-w-5xl rounded-lg bg-black object-contain"
-          src={src}
-        />
-      </div>
-    </div>
   );
 }
 

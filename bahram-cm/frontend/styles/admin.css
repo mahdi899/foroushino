@@ -4483,3 +4483,218 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   }
 }
 
+/* ── Orders reports — glass analytics dashboard ── */
+.admin-root .admin-orders-reports {
+  --orders-glass-bg: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  --orders-glass-border: color-mix(in srgb, var(--color-primary) 14%, var(--color-border));
+  --orders-glass-highlight: color-mix(in srgb, white 72%, transparent);
+}
+
+.admin-root[data-admin-theme='dark'] .admin-orders-reports {
+  --orders-glass-bg: var(--admin-glass-bg);
+  --orders-glass-border: var(--admin-glass-border);
+  --orders-glass-highlight: var(--admin-glass-highlight);
+}
+
+.admin-root .admin-orders-reports__hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid var(--orders-glass-border);
+  background:
+    radial-gradient(ellipse 90% 80% at 100% 0%, color-mix(in srgb, var(--color-accent) 18%, transparent) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 60% at 0% 100%, color-mix(in srgb, var(--color-primary) 14%, transparent) 0%, transparent 55%),
+    var(--orders-glass-bg);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 1px 0 var(--orders-glass-highlight);
+  padding: 1rem 1.125rem;
+}
+
+.admin-root[data-admin-theme='dark'] .admin-orders-reports__hero {
+  box-shadow:
+    0 14px 44px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 var(--orders-glass-highlight);
+}
+
+.admin-root .admin-orders-reports .admin-period-toolbar {
+  border-color: var(--orders-glass-border);
+  background: color-mix(in srgb, var(--orders-glass-bg) 92%, transparent);
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  box-shadow: inset 0 1px 0 var(--orders-glass-highlight);
+}
+
+.admin-root .admin-orders-reports .admin-glass-chart-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.125rem;
+  border: 1px solid var(--orders-glass-border);
+  background: var(--orders-glass-bg);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 1px 0 var(--orders-glass-highlight);
+  padding: 1.125rem 1.25rem;
+}
+
+.admin-root[data-admin-theme='dark'] .admin-orders-reports .admin-glass-chart-card {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 var(--orders-glass-highlight);
+}
+
+.admin-root .admin-orders-reports .admin-glass-chart-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-primary) 0%, transparent) 0%,
+    color-mix(in srgb, var(--color-primary) 55%, transparent) 35%,
+    color-mix(in srgb, var(--color-accent) 50%, transparent) 68%,
+    color-mix(in srgb, var(--color-gold) 40%, transparent) 100%
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.admin-root .admin-orders-reports .admin-glass-chart-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.admin-root .admin-orders-reports .admin-glass-chart-card__title {
+  font-size: var(--admin-text-body-lg);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.admin-root .admin-orders-reports .admin-glass-chart-card__subtitle {
+  margin-top: 0.25rem;
+  font-size: var(--admin-text-caption);
+  line-height: var(--admin-line-height-caption);
+  color: var(--color-text-muted);
+}
+
+.admin-root .admin-orders-reports .admin-chart-tooltip {
+  border-radius: 0.75rem;
+  border: 1px solid var(--orders-glass-border);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  padding: 0.625rem 0.75rem;
+  font-size: var(--admin-text-caption);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 var(--orders-glass-highlight);
+}
+
+.admin-root[data-admin-theme='dark'] .admin-orders-reports .admin-chart-tooltip {
+  background: color-mix(in srgb, var(--admin-glass-bg-strong) 92%, transparent);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 var(--orders-glass-highlight);
+}
+
+.admin-root .admin-orders-reports .admin-stat-card {
+  border-color: var(--orders-glass-border);
+  background: var(--orders-glass-bg);
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 1px 0 var(--orders-glass-highlight);
+}
+
+.admin-root[data-admin-theme='dark'] .admin-orders-reports .admin-stat-card {
+  box-shadow:
+    0 10px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 var(--orders-glass-highlight);
+}
+
+.admin-root .admin-orders-reports__loading {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-root .admin-orders-reports__skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.125rem;
+  border: 1px solid var(--orders-glass-border);
+  background: var(--orders-glass-bg);
+  min-height: 5.5rem;
+}
+
+.admin-root .admin-orders-reports__skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-primary) 8%, transparent) 45%,
+    transparent 100%
+  );
+  animation: admin-panel-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.admin-root .admin-orders-reports__donut-center {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+}
+
+.admin-root .admin-orders-reports__donut-center-label {
+  font-size: var(--admin-text-meta);
+  color: var(--color-text-muted);
+}
+
+.admin-root .admin-orders-reports__donut-center-value {
+  font-size: var(--admin-text-title-lg);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+.admin-root .admin-orders-reports__legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: var(--admin-text-caption);
+  line-height: 1.45;
+}
+
+.admin-root .admin-orders-reports__legend-dot {
+  height: 0.625rem;
+  width: 0.625rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.admin-root .admin-orders-reports__empty {
+  border-radius: 1.25rem;
+  border: 1px dashed var(--orders-glass-border);
+  background: color-mix(in srgb, var(--orders-glass-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+

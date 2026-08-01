@@ -11,10 +11,12 @@ use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
+use App\Modules\TelegramBot\Models\TelegramPaymentLink;
 use App\Services\AdminTelegramLogService;
 use App\Services\DiscountService;
 use App\Services\PurchaseGuardService;
 use App\Support\Mobile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -88,25 +90,42 @@ class OrderService
 
         $discountAmount = $saleDiscount + $couponDiscount;
 
-        $order = Order::create([
-            'user_id' => $userId,
-            'order_number' => $this->generateOrderNumber(),
-            'product_id' => $product->id,
-            'customer_name' => $name,
-            'customer_phone' => $phone,
-            'customer_email' => $data['customer_email'] ?? null,
-            'customer_national_code' => $data['customer_national_code'] ?? null,
-            'customer_extra_data' => $data['customer_extra_data'] ?? null,
-            'referral_code' => $validatedReferralCode,
-            'discount_code_id' => $discountCodeId,
-            'coupon_code' => $couponCode,
-            'amount' => $amount,
-            'discount_amount' => $discountAmount,
-            'coupon_discount_amount' => $couponDiscount,
-            'final_amount' => $finalAmount,
-            'status' => 'pending_payment',
-            'payment_status' => 'pending',
-        ]);
+        $order = DB::transaction(function () use (
+            $userId,
+            $product,
+            $name,
+            $phone,
+            $data,
+            $validatedReferralCode,
+            $discountCodeId,
+            $couponCode,
+            $amount,
+            $discountAmount,
+            $couponDiscount,
+            $finalAmount,
+        ) {
+            $this->cancelOpenPendingOrders($product->id, $userId, $phone);
+
+            return Order::create([
+                'user_id' => $userId,
+                'order_number' => $this->generateOrderNumber(),
+                'product_id' => $product->id,
+                'customer_name' => $name,
+                'customer_phone' => $phone,
+                'customer_email' => $data['customer_email'] ?? null,
+                'customer_national_code' => $data['customer_national_code'] ?? null,
+                'customer_extra_data' => $data['customer_extra_data'] ?? null,
+                'referral_code' => $validatedReferralCode,
+                'discount_code_id' => $discountCodeId,
+                'coupon_code' => $couponCode,
+                'amount' => $amount,
+                'discount_amount' => $discountAmount,
+                'coupon_discount_amount' => $couponDiscount,
+                'final_amount' => $finalAmount,
+                'status' => 'pending_payment',
+                'payment_status' => 'pending',
+            ]);
+        });
 
         app(AdminTelegramLogService::class)->notifyOrderCreated($order->load('product'));
 
@@ -379,6 +398,52 @@ class OrderService
         } while (Order::query()->where('order_number', $number)->exists());
 
         return $number;
+    }
+
+  /**
+     * Cancel unpaid pending orders for the same buyer + product before opening a new checkout.
+     */
+    private function cancelOpenPendingOrders(int $productId, ?int $userId, string $phone): void
+    {
+        $orders = Order::query()
+            ->where('product_id', $productId)
+            ->where('status', 'pending_payment')
+            ->whereNull('paid_at')
+            ->where(function ($query) use ($userId, $phone): void {
+                $query->where('customer_phone', $phone);
+                if ($userId !== null) {
+                    $query->orWhere('user_id', $userId);
+                }
+            })
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($orders as $order) {
+            if ($order->isPaid()) {
+                continue;
+            }
+
+            $this->cancelPendingOrder($order);
+        }
+    }
+
+    private function cancelPendingOrder(Order $order): void
+    {
+        $order->update([
+            'status' => 'cancelled',
+            'payment_status' => 'canceled',
+        ]);
+
+        Payment::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'canceled']);
+
+        TelegramPaymentLink::query()
+            ->where('order_id', $order->id)
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => now()]);
     }
 
     private function assertSeminarPurchaseAllowed(Product $product, ?int $userId, string $phone): void

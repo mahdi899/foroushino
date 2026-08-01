@@ -77,6 +77,7 @@ export function IdentityReviewStep({
   }, [videoPreviewUrl]);
 
   const cardReady = Boolean(cardFile || cardReadyOnServer);
+  const videoReady = Boolean(videoBlob);
 
   const identityFields = [
     { key: 'name', label: 'نام و نام خانوادگی', value: `${draft.first_name} ${draft.last_name}`.trim() },
@@ -99,7 +100,7 @@ export function IdentityReviewStep({
         <div>
           <h3 className="panel-identity-review__title">بازبینی نهایی</h3>
           <p className="panel-identity-review__lead">
-            قبل از ارسال، اطلاعات و مدارک را یک‌بار دیگر بررسی کنید. پس از ارسال، پرونده در صف بررسی قرار می‌گیرد.
+            قبل از ارسال، اطلاعات و مدارک را بررسی کنید. اگر ویدیو یا تصویر مناسب نیست، با «قبلی» برگردید و دوباره ضبط یا انتخاب کنید.
           </p>
         </div>
       </div>
@@ -157,7 +158,7 @@ export function IdentityReviewStep({
               <p className="panel-identity-review__artifact-title">ویدیوی سلفی زنده</p>
               <p className="panel-identity-review__artifact-status panel-identity-review__artifact-status--ok">
                 <CheckCircle2 size={14} aria-hidden />
-                آماده ارسال
+                {videoReady ? 'آماده ارسال' : 'ضبط نشده'}
               </p>
             </div>
           </article>
@@ -168,7 +169,12 @@ export function IdentityReviewStep({
         <button type="button" className="btn btn-secondary" onClick={onBack}>
           قبلی
         </button>
-        <button type="button" className="btn btn-primary" disabled={pending || !cardReady || !videoBlob} onClick={onSubmit}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={pending || !cardReady || !videoBlob}
+          onClick={onSubmit}
+        >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {pending ? pendingLabel : 'ارسال برای بررسی'}
         </button>

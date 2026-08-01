@@ -289,6 +289,7 @@ export type OrderAnalytics = {
   period_days: number | null;
   summary: {
     total_orders: number;
+    cancelled_orders?: number;
     paid_orders: number;
     total_revenue: number;
     pending_revenue: number;
@@ -304,7 +305,7 @@ export type OrderAnalytics = {
   by_status: OrderAnalyticsSlice[];
   by_payment_status: OrderAnalyticsSlice[];
   by_gateway: OrderAnalyticsSlice[];
-  by_gateway_mode: OrderAnalyticsSlice[];
+  by_order_uniqueness: OrderAnalyticsSlice[];
   daily: OrderAnalyticsDaily[];
   by_product: OrderAnalyticsProduct[];
   recent_transactions: {
@@ -312,6 +313,7 @@ export type OrderAnalytics = {
     order_id: number;
     order_number: string | null;
     customer_name: string | null;
+    product_id: number | null;
     product_title: string | null;
     gateway: string;
     gateway_label: string;

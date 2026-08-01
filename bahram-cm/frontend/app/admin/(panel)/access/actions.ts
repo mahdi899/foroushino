@@ -16,17 +16,21 @@ function actionError(e: unknown, fallback: string): { ok: false; error: string }
 
 export async function assignAdminRoleAction(
   adminId: number,
-  role: string,
+  roles: string[],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await getCurrentUser();
   if (!can(user, 'admins.assign_role')) {
     return { ok: false, error: 'دسترسی تغییر نقش مدیران را ندارید.' };
   }
 
+  if (roles.length === 0) {
+    return { ok: false, error: 'حداقل یک نقش باید انتخاب شود.' };
+  }
+
   try {
     await adminFetch(`/roles/admins/${adminId}`, {
       method: 'PATCH',
-      body: { role, confirm: true },
+      body: { roles, confirm: true },
     });
     revalidatePath('/admin/users');
     revalidatePath('/admin/access/roles');

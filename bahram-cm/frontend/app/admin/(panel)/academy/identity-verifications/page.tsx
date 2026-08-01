@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { AdminPage, Badge, StatCard, Table } from '../../ui';
 import { getIdentityVerifications } from '@/lib/admin/identityData';
-import { IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
+import { IDENTITY_ADMIN_FILTER_STATUSES, IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
 import { formatDate } from '@/lib/admin/academyTypes';
 
 export const dynamic = 'force-dynamic';
@@ -79,9 +79,9 @@ export default async function IdentityVerificationsPage({
         <select name="status" defaultValue={sp.status ?? ''} className="field-input w-full sm:max-w-[12rem]">
           <option value="">صف بررسی</option>
           <option value="all">همه نسخه‌ها (آخرین هر کاربر)</option>
-          {Object.entries(IDENTITY_STATUS_LABELS).map(([k, v]) => (
+          {IDENTITY_ADMIN_FILTER_STATUSES.map((k) => (
             <option key={k} value={k}>
-              {v}
+              {IDENTITY_STATUS_LABELS[k]}
             </option>
           ))}
         </select>
