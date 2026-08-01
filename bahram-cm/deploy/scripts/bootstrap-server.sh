@@ -129,9 +129,22 @@ composer install --no-dev --optimize-autoloader --no-interaction
 echo "==> Laravel setup"
 php artisan key:generate --force
 php artisan migrate --force
+# Safe, idempotent settings only. StaffAdminSeeder runs only when no admin exists
+# (first bootstrap). Prefer: php artisan app:create-admin
 php artisan db:seed --class=CacheIntegrationsSeeder --force || true
 php artisan db:seed --class=TelegramBotSeeder --force || true
-php artisan db:seed --class=StaffAdminSeeder --force || true
+ADMIN_COUNT="$(php -r "
+require 'vendor/autoload.php';
+\$app = require 'bootstrap/app.php';
+\$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+echo (int) App\Models\User::query()->where('is_admin', true)->count();
+" 2>/dev/null || echo 0)"
+if [[ "${ADMIN_COUNT}" -eq 0 ]]; then
+  echo "==> No admin user yet — seeding StaffAdminSeeder (first bootstrap only)"
+  php artisan db:seed --class=StaffAdminSeeder --force || true
+else
+  echo "==> Admin user(s) already present (${ADMIN_COUNT}) — skipping StaffAdminSeeder"
+fi
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache

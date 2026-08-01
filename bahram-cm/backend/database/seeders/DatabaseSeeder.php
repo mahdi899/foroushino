@@ -21,6 +21,13 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        if (app()->environment('production')) {
+            throw new \RuntimeException(
+                'DatabaseSeeder must not run in production — it seeds demo commerce/family data. '
+                .'Use CacheIntegrationsSeeder / TelegramBotSeeder only, or app:create-admin.'
+            );
+        }
+
         // Admin user for the dashboard.
         $admin = User::query()->updateOrCreate(
             ['email' => 'admin@bahram.local'],

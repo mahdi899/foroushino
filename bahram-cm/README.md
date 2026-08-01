@@ -82,6 +82,20 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 صفحه `/companion` به API اصلی Academy (اپ موبایل) وابسته است. اگر فقط سایت مارکتینگ را deploy می‌کنید، `NEXT_PUBLIC_API_BASE_URL` را به همان API اصلی تنظیم کنید یا این صفحه را غیرفعال نگه دارید.
 
+## دیتابیس production → لوکال (بدون تصاویر)
+
+```powershell
+# با SSH host bahram-prod:
+pwsh scripts/db-pull-from-prod.ps1
+
+# یا از فایل dump آماده:
+pwsh scripts/db-pull-from-prod.ps1 -DumpPath "C:\path\to\bahram.sql"
+```
+
+فقط جداول MySQL import می‌شوند؛ `storage/app/public/media/` دست نخورده می‌ماند.
+
+**دیپلوی آنلاین:** `deploy/scripts/deploy.sh` فقط `migrate` می‌زند و DB را seed/ریست نمی‌کند. بعد از go-live هرگز `db:seed` کامل یا `finish-deploy.sh` را تکرار نکنید — جزئیات در [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ## همگام‌سازی کتابخانه رسانه (تیم)
 
 فایل‌های تصویر در `backend/storage/app/public/media/` داخل git track می‌شوند. متادیتا (alt، دسته‌بندی، …) در `backend/database/data/media_library.json` نگه‌داری می‌شود.

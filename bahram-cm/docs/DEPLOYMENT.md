@@ -97,7 +97,15 @@ php artisan event:cache
 
 ### ⚠️ هرگز `DatabaseSeeder` کامل را در Production اجرا نکنید
 
-`db:seed --class=DatabaseSeeder` یک ادمین با ایمیل/رمز شناخته‌شده (`admin@bahram.local` / `password`) و داده‌های آزمایشی (سفارش، سمینار، خانواده با رمز `12345`) می‌سازد — فقط برای local/staging. در production فقط `CacheIntegrationsSeeder` را اجرا کنید (بالا) و اولین ادمین واقعی را بسازید:
+`db:seed` بدون `--class` (یا `--class=DatabaseSeeder`) داده‌های آزمایشی (سفارش، سمینار، خانواده) را روی داده واقعی می‌نویسد — فقط برای local/staging. در production خودِ `DatabaseSeeder` با exception متوقف می‌شود.
+
+دیپلوی عادی (`deploy/scripts/deploy.sh`) فقط `migrate --force` می‌زند و **دیتابیس را ریست/seed نمی‌کند**. این‌ها را بعد از go-live تکرار نکنید:
+
+- `finish-deploy.sh` / `bootstrap-server.sh` / `resume-bootstrap.sh` (فقط راه‌اندازی اولیه)
+- `php artisan db:seed` کامل
+- `php artisan migrate:fresh`
+
+اولین ادمین واقعی:
 
 ```bash
 php artisan app:create-admin
@@ -251,6 +259,9 @@ cd /var/www/bahram-cm
 chmod +x deploy/scripts/deploy.sh deploy/scripts/backup.sh
 ./deploy/scripts/deploy.sh
 ```
+
+این اسکریپت: `git pull` → `migrate` → کش Laravel → بیلد Next → reload PM2.  
+**دیتابیس آنلاین با بیلد ریفرش نمی‌شود.** اگر محتوا «عوض» به نظر رسید، معمولاً ISR/revalidate یا اجرای اشتباه seed است، نه خودِ `npm run build`.
 
 ---
 

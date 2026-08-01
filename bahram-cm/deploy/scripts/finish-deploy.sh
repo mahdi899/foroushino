@@ -57,11 +57,12 @@ composer install --no-dev --optimize-autoloader --no-interaction
 php artisan key:generate --force
 php artisan migrate --force
 # NOTE: intentionally NOT the full DatabaseSeeder — it seeds demo commerce,
-# seminars, mini-courses, and a Family with hardcoded weak passwords
-# (`password`, `12345`). CacheIntegrationsSeeder only wires real settings.
+# seminars, mini-courses, and a Family with hardcoded weak passwords.
+# CacheIntegrationsSeeder / TelegramBotSeeder only wire settings (idempotent).
+# Do NOT re-run StaffAdminSeeder here — it belongs to one-time bootstrap only;
+# create the first admin with: php artisan app:create-admin
 php artisan db:seed --class=CacheIntegrationsSeeder --force || true
 php artisan db:seed --class=TelegramBotSeeder --force || true
-php artisan db:seed --class=StaffAdminSeeder --force || true
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache

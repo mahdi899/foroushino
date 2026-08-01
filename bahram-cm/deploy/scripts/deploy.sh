@@ -21,8 +21,10 @@ echo "==> Backend dependencies"
 cd "$APP_ROOT/backend"
 composer install --no-dev --optimize-autoloader --no-interaction
 
-echo "==> Run migrations"
+echo "==> Run migrations (schema only — does NOT seed or wipe data)"
 php artisan migrate --force
+# SAFETY: never run DatabaseSeeder / db:seed / migrate:fresh / finish-deploy.sh
+# on a live site. This script only migrates. Content stays intact across deploys.
 
 echo "==> Sync Telegram bots from config"
 php artisan telegram:sync-bots || echo "WARN: telegram:sync-bots failed"

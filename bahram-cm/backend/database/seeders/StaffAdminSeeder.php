@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 /**
  * Persistent staff super-admin accounts that must survive deploy/seed.
- * Safe to re-run: updateOrCreate by email.
+ * Safe to re-run: creates missing accounts; never overwrites an existing password.
  */
 class StaffAdminSeeder extends Seeder
 {
@@ -33,20 +33,33 @@ class StaffAdminSeeder extends Seeder
 
         foreach ($accounts as $account) {
             $email = strtolower($account['email']);
+            $existing = User::query()->where('email', $email)->first();
 
-            $admin = User::query()->updateOrCreate(
-                ['email' => $email],
-                [
+            if ($existing) {
+                $existing->fill([
                     'name' => $account['name'],
                     'mobile' => $account['mobile'],
-                    'mobile_verified_at' => now(),
-                    'password' => Hash::make($account['password']),
+                    'mobile_verified_at' => $existing->mobile_verified_at ?? now(),
                     'is_admin' => true,
-                    'admin_login_otp_exempt' => false,
-                    'remember_token' => Str::random(60),
                     'status' => 'active',
-                ],
-            );
+                ]);
+                $existing->save();
+                $existing->syncRoles([AdminRoleName::SuperAdmin->value]);
+
+                continue;
+            }
+
+            $admin = User::query()->create([
+                'email' => $email,
+                'name' => $account['name'],
+                'mobile' => $account['mobile'],
+                'mobile_verified_at' => now(),
+                'password' => Hash::make($account['password']),
+                'is_admin' => true,
+                'admin_login_otp_exempt' => false,
+                'remember_token' => Str::random(60),
+                'status' => 'active',
+            ]);
 
             $admin->syncRoles([AdminRoleName::SuperAdmin->value]);
         }
