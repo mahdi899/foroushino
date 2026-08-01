@@ -19,6 +19,7 @@ final class PermissionCatalog
                 'students.search_by_mobile',
                 'students.export',
                 'students.export_sensitive_data',
+                'students.delete',
             ],
             'Identity Verification' => [
                 'identity.view',
@@ -30,6 +31,7 @@ final class PermissionCatalog
                 'identity.view_sensitive_documents',
                 'identity.override_level',
                 'identity.unlock_ownership_verification',
+                'identity.reset',
             ],
             'Identity Providers' => [
                 'identity_provider.view',
@@ -76,6 +78,7 @@ final class PermissionCatalog
             'Orders' => [
                 'orders.view',
                 'orders.manage',
+                'orders.delete',
             ],
             'Settings' => [
                 'settings.view',
@@ -118,7 +121,10 @@ final class PermissionCatalog
         return [
             'students.export',
             'students.export_sensitive_data',
+            'students.delete',
             'identity.override_level',
+            'identity.reset',
+            'orders.delete',
             'roles.manage',
             'permissions.manage',
             'identity_provider.manage',
@@ -148,6 +154,7 @@ final class PermissionCatalog
             'students.search_by_mobile' => 'جستجو با شماره موبایل',
             'students.export' => 'خروجی لیست دانشجویان',
             'students.export_sensitive_data' => 'خروجی داده‌های حساس دانشجویان',
+            'students.delete' => 'حذف حساب دانشجو',
             'identity.view' => 'مشاهده پرونده‌های احراز هویت',
             'identity.review' => 'بررسی پرونده احراز هویت',
             'identity.approve' => 'تأیید احراز هویت',
@@ -157,6 +164,7 @@ final class PermissionCatalog
             'identity.view_sensitive_documents' => 'مشاهده مدارک احراز هویت',
             'identity.override_level' => 'تغییر دستی سطح تأیید حساب',
             'identity.unlock_ownership_verification' => 'رفع قفل تطبیق شماره',
+            'identity.reset' => 'بازنشانی احراز هویت',
             'identity_provider.view' => 'مشاهده سرویس‌های احراز هویت',
             'identity_provider.manage' => 'مدیریت سرویس‌های احراز هویت',
             'identity_provider.test' => 'تست اتصال سرویس احراز هویت',
@@ -188,6 +196,7 @@ final class PermissionCatalog
             'tickets.manage' => 'مدیریت تیکت‌ها',
             'orders.view' => 'مشاهده سفارش‌ها',
             'orders.manage' => 'مدیریت سفارش‌ها',
+            'orders.delete' => 'حذف سفارش',
             'settings.view' => 'مشاهده تنظیمات',
             'settings.manage' => 'مدیریت تنظیمات',
             'telegram.view' => 'مشاهده ربات تلگرام',

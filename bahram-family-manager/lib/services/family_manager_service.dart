@@ -6,6 +6,7 @@ import 'package:bahram_family_manager/core/utils/file_download.dart';
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/models/upload_progress.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 
 /// All calls under `/api/v1/family-manager/*` — the Bahram + authorized-admin
@@ -406,29 +407,88 @@ class FamilyManagerService {
     );
   }
 
+  static const _chunkRetryAttempts = 3;
+  static const _chunkRetryDelay = Duration(seconds: 2);
+
   void _reportUploadState(
     MediaUploadStateCallback? onUploadState,
     void Function(double progress)? onProgress,
     MediaUploadPhase phase,
-    double progress,
+    int sentBytes,
+    int totalBytes,
   ) {
-    onUploadState?.call(phase, progress);
+    final upload = UploadProgress(
+      phase: phase,
+      sentBytes: sentBytes,
+      totalBytes: totalBytes,
+    );
+    onUploadState?.call(upload);
     if (phase == MediaUploadPhase.uploading || phase == MediaUploadPhase.finalizing) {
-      onProgress?.call(progress);
+      onProgress?.call(upload.fraction);
     }
   }
 
   void _reportMediaPipelineState(
     FamilyMediaRef media,
     MediaUploadStateCallback? onUploadState,
+    int totalBytes,
   ) {
     if (media.isReady) {
-      onUploadState?.call(MediaUploadPhase.ready, 1);
+      onUploadState?.call(UploadProgress(
+        phase: MediaUploadPhase.ready,
+        sentBytes: totalBytes,
+        totalBytes: totalBytes,
+      ));
     } else if (media.status == 'failed') {
-      onUploadState?.call(MediaUploadPhase.failed, 0);
+      onUploadState?.call(UploadProgress(
+        phase: MediaUploadPhase.failed,
+        sentBytes: 0,
+        totalBytes: totalBytes,
+      ));
     } else {
-      onUploadState?.call(MediaUploadPhase.processing, 0.96);
+      onUploadState?.call(UploadProgress(
+        phase: MediaUploadPhase.processing,
+        sentBytes: totalBytes,
+        totalBytes: totalBytes,
+      ));
     }
+  }
+
+  Future<void> _postChunkWithRetry(
+    String path,
+    FormData form, {
+    required int baseBytes,
+    required int totalBytes,
+    MediaUploadStateCallback? onUploadState,
+    void Function(double progress)? onProgress,
+  }) async {
+    Object? lastError;
+    for (var attempt = 0; attempt < _chunkRetryAttempts; attempt++) {
+      try {
+        await api.postForm(
+          path,
+          form,
+          onSendProgress: (sent, total) {
+            if (total <= 0) return;
+            final overallSent = baseBytes + sent;
+            _reportUploadState(
+              onUploadState,
+              onProgress,
+              MediaUploadPhase.uploading,
+              overallSent,
+              totalBytes,
+            );
+          },
+        );
+        return;
+      } catch (e) {
+        lastError = e;
+        if (attempt < _chunkRetryAttempts - 1) {
+          await Future<void>.delayed(_chunkRetryDelay);
+        }
+      }
+    }
+    throw lastError!;
   }
 
   Future<FamilyMediaRef> _uploadSimple(
@@ -439,7 +499,8 @@ class FamilyManagerService {
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
   }) async {
-    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0);
+    final totalBytes = bytes.length;
+    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0, totalBytes);
 
     final form = FormData.fromMap({
       'type': type,
@@ -452,13 +513,18 @@ class FamilyManagerService {
       form,
       onSendProgress: (sent, total) {
         if (total > 0) {
-          final p = (sent / total) * 0.95;
-          _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, p);
+          _reportUploadState(
+            onUploadState,
+            onProgress,
+            MediaUploadPhase.uploading,
+            sent,
+            total,
+          );
         }
       },
     );
     final media = FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
-    _reportMediaPipelineState(media, onUploadState);
+    _reportMediaPipelineState(media, onUploadState, totalBytes);
     return media;
   }
 
@@ -472,7 +538,7 @@ class FamilyManagerService {
   }) async {
     final totalSize = bytes.length;
 
-    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0);
+    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0, totalSize);
 
     final sessionRes = await api.post('$_base/media/sessions', data: {
       'type': type,
@@ -494,15 +560,20 @@ class FamilyManagerService {
         'index': index,
         'chunk': MultipartFile.fromBytes(chunk, filename: 'chunk_$index'),
       });
-      await api.postForm('$_base/media/sessions/$ulid/chunk', form);
-      final p = ((index + 1) / totalChunks) * 0.90;
-      _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, p);
+      await _postChunkWithRetry(
+        '$_base/media/sessions/$ulid/chunk',
+        form,
+        baseBytes: start,
+        totalBytes: totalSize,
+        onUploadState: onUploadState,
+        onProgress: onProgress,
+      );
     }
 
-    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.finalizing, 0.92);
+    _reportUploadState(onUploadState, onProgress, MediaUploadPhase.finalizing, totalSize, totalSize);
     final completeRes = await api.post('$_base/media/sessions/$ulid/complete');
     final media = FamilyMediaRef.fromJson((completeRes['data'] as Map).cast<String, dynamic>());
-    _reportMediaPipelineState(media, onUploadState);
+    _reportMediaPipelineState(media, onUploadState, totalSize);
     return media;
   }
 
@@ -518,26 +589,44 @@ class FamilyManagerService {
     Duration interval = const Duration(seconds: 2),
     void Function(FamilyMediaRef media)? onUpdate,
     MediaUploadStateCallback? onUploadState,
+    int totalBytes = 0,
   }) async {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       final media = await showMedia(id);
       onUpdate?.call(media);
+      final bytes = totalBytes > 0 ? totalBytes : (media.size ?? 0);
       if (media.isReady) {
-        onUploadState?.call(MediaUploadPhase.ready, 1);
+        onUploadState?.call(UploadProgress(
+          phase: MediaUploadPhase.ready,
+          sentBytes: bytes,
+          totalBytes: bytes,
+        ));
         return media;
       }
       if (media.status == 'failed') {
-        onUploadState?.call(MediaUploadPhase.failed, 0);
+        onUploadState?.call(UploadProgress(
+          phase: MediaUploadPhase.failed,
+          sentBytes: 0,
+          totalBytes: bytes,
+        ));
         throw ApiException(
           message: media.failureReason ?? 'پردازش رسانه ناموفق بود.',
           code: 'media_failed',
         );
       }
-      onUploadState?.call(MediaUploadPhase.processing, 0.96);
+      onUploadState?.call(UploadProgress(
+        phase: MediaUploadPhase.processing,
+        sentBytes: bytes,
+        totalBytes: bytes,
+      ));
       await Future<void>.delayed(interval);
     }
-    onUploadState?.call(MediaUploadPhase.failed, 0);
+    onUploadState?.call(UploadProgress(
+      phase: MediaUploadPhase.failed,
+      sentBytes: 0,
+      totalBytes: totalBytes,
+    ));
     throw ApiException(
       message: 'فایل روی هاست هنوز آماده نیست. چند لحظه صبر کنید و دوباره تلاش کنید.',
       code: 'media_timeout',

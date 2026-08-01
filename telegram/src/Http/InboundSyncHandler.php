@@ -153,14 +153,38 @@ final class InboundSyncHandler
             return ['ok' => false, 'action' => 'push_mobile_access', 'defer' => false];
         }
 
+        $pdo = Connection::get($this->config);
+        $pending = new PendingMobileAccess($pdo);
+
+        if (! empty($body['revoke'])) {
+            $pending->delete($mobile);
+            $cache = new AccountCache($pdo);
+            $existing = $cache->findVerifiedByMobile($mobile);
+            if ($existing !== null) {
+                $telegramUserId = (int) ($existing['telegram_user_id'] ?? 0);
+                if ($telegramUserId > 0) {
+                    $cache->store($telegramUserId, [
+                        'user_id' => null,
+                        'verification_level' => 1,
+                        'snapshot' => [
+                            'revision' => (string) time(),
+                            'owned_product_ids' => [],
+                            'replace_owned_product_ids' => true,
+                        ],
+                    ]);
+                }
+            }
+
+            return ['ok' => true, 'action' => 'push_mobile_access', 'defer' => false];
+        }
+
         $ownedProductIds = array_values(array_map('intval', (array) ($body['owned_product_ids'] ?? [])));
         $displayName = trim((string) ($body['display_name'] ?? ''));
         $userId = isset($body['user_id']) ? (int) $body['user_id'] : null;
         $verificationLevel = isset($body['verification_level']) ? max(1, (int) $body['verification_level']) : null;
         $snapshot = is_array($body['snapshot'] ?? null) ? (array) $body['snapshot'] : null;
 
-        $pdo = Connection::get($this->config);
-        (new PendingMobileAccess($pdo))->store(
+        $pending->store(
             $mobile,
             $ownedProductIds,
             $displayName !== '' ? $displayName : null,

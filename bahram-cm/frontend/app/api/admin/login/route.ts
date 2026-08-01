@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ADMIN_TOKEN_COOKIE } from '@/lib/auth/session';
+import { extractLoginRetryAfter } from '@/lib/auth/loginRateLimit';
 import { SERVER_API_URL } from '@/lib/api/config';
 import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { extractValidationMessage } from '@/lib/services/api';
@@ -103,7 +104,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: backendMsg || 'ایمیل یا رمز عبور نادرست است.' },
+      {
+        error: backendMsg || 'ایمیل یا رمز عبور نادرست است.',
+        retry_after: extractLoginRetryAfter(payload),
+      },
       { status: result.status === 422 ? 422 : result.status === 429 ? 429 : 401 },
     );
   }

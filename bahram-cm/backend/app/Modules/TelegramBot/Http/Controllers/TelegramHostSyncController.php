@@ -125,7 +125,21 @@ class TelegramHostSyncController
 
         $sync = DB::transaction(function () use ($bot, $telegramUserId, $mobile, $displayName) {
             $account = $this->accountLinks->findOrCreateAccount($bot, $telegramUserId, firstName: $displayName ?: null);
-            $account->update(['mobile' => $mobile, 'display_name' => $displayName ?: $account->display_name, 'mobile_verified_at' => now()]);
+            // Re-stamping mobile_verified_at on an already-verified row makes every
+            // retry dirty the record, which serialises concurrent host syncs on the
+            // same row lock. Only write what actually changed.
+            $account->fill([
+                'mobile' => $mobile,
+                'display_name' => $displayName ?: $account->display_name,
+            ]);
+            // Stamp verification only when it is actually new — either the row was
+            // never verified, or the OTP just verified a different number.
+            if ($account->mobile_verified_at === null || $account->isDirty('mobile')) {
+                $account->mobile_verified_at = now();
+            }
+            if ($account->isDirty()) {
+                $account->save();
+            }
 
             $result = $this->userSync->syncAfterMobileVerification($account->fresh());
             $account = $this->accountLinks->linkToUser($account->fresh(), $result['user']);

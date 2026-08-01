@@ -53,7 +53,7 @@ class TelegramHostAccountSnapshotService
     /**
      * @return array<string, mixed>
      */
-    public function accountPayload(TelegramAccount $account): array
+    public function accountPayload(TelegramAccount $account, bool $replaceOwnedProductIds = false): array
     {
         $account->loadMissing(['user', 'bot']);
 
@@ -67,7 +67,7 @@ class TelegramHostAccountSnapshotService
             'display_name' => StudentDisplayName::forTelegramAccount($account),
             'is_bot_admin' => $account->isBotAdmin(),
             'verification_level' => $verificationLevel,
-            'snapshot' => $this->buildSnapshot($account),
+            'snapshot' => $this->buildSnapshot($account, $replaceOwnedProductIds),
         ];
     }
 
@@ -154,10 +154,10 @@ class TelegramHostAccountSnapshotService
     /**
      * @return array<string, mixed>
      */
-    public function buildSnapshot(TelegramAccount $account): array
+    public function buildSnapshot(TelegramAccount $account, bool $replaceOwnedProductIds = false): array
     {
         try {
-            return $this->buildSnapshotCore($account);
+            return $this->buildSnapshotCore($account, $replaceOwnedProductIds);
         } catch (Throwable $e) {
             Log::channel('telegram')->error('telegram.host.build_snapshot_failed', [
                 'telegram_user_id' => $account->telegram_user_id,
@@ -176,11 +176,14 @@ class TelegramHostAccountSnapshotService
     /**
      * @return array<string, mixed>
      */
-    private function buildSnapshotCore(TelegramAccount $account): array
+    private function buildSnapshotCore(TelegramAccount $account, bool $replaceOwnedProductIds = false): array
     {
         $bot = $this->productionBotFor($account);
         if ($bot === null) {
-            return ['revision' => $this->newRevision()];
+            return [
+                'revision' => $this->newRevision(),
+                'replace_owned_product_ids' => $replaceOwnedProductIds,
+            ];
         }
 
         $ownedIds = $this->ownership->ownedProductIdsForAccount($account);
@@ -212,6 +215,7 @@ class TelegramHostAccountSnapshotService
         return [
             'revision' => $this->newRevision(),
             'owned_product_ids' => $ownedIds,
+            'replace_owned_product_ids' => $replaceOwnedProductIds,
             'profile' => $this->profilePayload($bot, $account),
             'referral' => $this->referralPayload($account),
             'family' => $this->familyPayload($account),

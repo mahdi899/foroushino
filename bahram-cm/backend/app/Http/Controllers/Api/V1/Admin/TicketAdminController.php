@@ -17,7 +17,10 @@ class TicketAdminController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Ticket::query()->with('user')->orderByDesc('id');
+        $query = Ticket::query()
+            ->with('user')
+            ->orderByRaw("CASE status WHEN 'open' THEN 0 WHEN 'answered' THEN 1 WHEN 'waiting_user' THEN 2 WHEN 'closed' THEN 3 ELSE 4 END")
+            ->orderByDesc('id');
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -133,10 +136,11 @@ class TicketAdminController extends Controller
                 'users.name',
                 'users.mobile',
                 DB::raw('COUNT(tickets.id) as tickets_count'),
-                DB::raw("SUM(CASE WHEN tickets.status IN ('open','waiting_user') THEN 1 ELSE 0 END) as open_count"),
+                DB::raw("SUM(CASE WHEN tickets.status = 'open' THEN 1 ELSE 0 END) as open_count"),
                 DB::raw('MAX(tickets.created_at) as last_ticket_at')
             )
             ->groupBy('users.id', 'users.name', 'users.mobile')
+            ->orderByDesc('open_count')
             ->orderByDesc('last_ticket_at');
 
         if ($search !== '') {
@@ -149,7 +153,14 @@ class TicketAdminController extends Controller
         $users = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $users->getCollection(),
+            'data' => $users->getCollection()->map(fn ($row) => [
+                'user_id' => (int) $row->user_id,
+                'name' => $row->name,
+                'mobile' => $row->mobile,
+                'tickets_count' => (int) $row->tickets_count,
+                'open_count' => (int) $row->open_count,
+                'last_ticket_at' => $row->last_ticket_at,
+            ]),
             'meta' => ['current_page' => $users->currentPage(), 'last_page' => $users->lastPage(), 'total' => $users->total()],
         ]);
     }

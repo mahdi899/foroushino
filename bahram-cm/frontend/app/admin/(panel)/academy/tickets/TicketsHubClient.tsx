@@ -14,7 +14,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
-import { fetchTicketDetail, fetchTicketUsers, fetchTicketsByUser } from '../actions';
+import { fetchRecentTickets, fetchTicketDetail, fetchTicketUsers, fetchTicketsByUser } from '../actions';
 import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { Badge, Table } from '../../ui';
 import { CreateTicketForStudentForm } from './CreateTicketForStudentForm';
@@ -45,6 +45,20 @@ const STATUS_TONE: Record<string, 'default' | 'success' | 'warning'> = {
   waiting_user: 'warning',
 };
 
+type TicketRowVariant = 'closed' | 'answered' | 'pending';
+
+function ticketRowVariant(status: AdminTicket['status']): TicketRowVariant | null {
+  if (status === 'closed') return 'closed';
+  if (status === 'answered' || status === 'waiting_user') return 'answered';
+  if (status === 'open') return 'pending';
+  return null;
+}
+
+function ticketRowClass(status: AdminTicket['status']): string {
+  const variant = ticketRowVariant(status);
+  return variant ? `admin-tickets-hub__ticket-row--${variant}` : '';
+}
+
 function HubEmptyState({
   icon,
   title,
@@ -71,7 +85,7 @@ function HubLoading() {
   );
 }
 
-export function TicketsHubClient({ initialTickets }: { initialTickets: AdminTicket[] }) {
+export function TicketsHubClient() {
   const [tab, setTab] = useState<TabId>('users');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -81,6 +95,8 @@ export function TicketsHubClient({ initialTickets }: { initialTickets: AdminTick
   const [selectedUser, setSelectedUser] = useState<AdminTicketUserGroup | null>(null);
   const [tickets, setTickets] = useState<AdminTicket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [recentTickets, setRecentTickets] = useState<AdminTicket[]>([]);
+  const [recentTicketsLoading, setRecentTicketsLoading] = useState(false);
   const [activeTicket, setActiveTicket] = useState<AdminTicketDetail | null>(null);
   const [ticketLoading, setTicketLoading] = useState(false);
 
@@ -103,6 +119,23 @@ export function TicketsHubClient({ initialTickets }: { initialTickets: AdminTick
     if (tab === 'users') void loadUsers(1, debouncedQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, debouncedQuery]);
+
+  useEffect(() => {
+    if (tab !== 'send' || recentTickets.length > 0 || recentTicketsLoading) return;
+    let cancelled = false;
+    async function loadRecent() {
+      setRecentTicketsLoading(true);
+      const res = await fetchRecentTickets(20);
+      setRecentTicketsLoading(false);
+      if (cancelled) return;
+      if (res.ok) setRecentTickets(res.items);
+    }
+    void loadRecent();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   function switchTab(next: TabId) {
     setTab(next);
@@ -161,16 +194,18 @@ export function TicketsHubClient({ initialTickets }: { initialTickets: AdminTick
       {tab === 'send' && (
         <div className="admin-tickets-hub__send">
           <CreateTicketForStudentForm defaultOpen />
-          {initialTickets.length > 0 && (
+          {recentTicketsLoading ? (
+            <HubLoading />
+          ) : recentTickets.length > 0 ? (
             <div className="admin-dashboard-panel">
               <div className="admin-dashboard-panel__head">
                 <h2 className="admin-dashboard-panel__title">آخرین تیکت‌ها</h2>
               </div>
               <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded">
-                <TicketTable tickets={initialTickets.slice(0, 20)} />
+                <TicketTable tickets={recentTickets} />
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -216,6 +251,7 @@ export function TicketsHubClient({ initialTickets }: { initialTickets: AdminTick
                         className={cn(
                           'admin-tickets-hub__user',
                           selectedUser?.user_id === user.user_id && 'admin-tickets-hub__user--active',
+                          user.open_count > 0 && 'admin-tickets-hub__user--pending',
                         )}
                       >
                         <span className="admin-tickets-hub__user-avatar">
@@ -359,6 +395,7 @@ function TicketTable({ tickets, onSelect }: { tickets: AdminTicket[]; onSelect?:
         <AdminTableCard
           key={ticket.id}
           title={ticket.subject}
+          className={ticketRowClass(ticket.status)}
           fields={[
             {
               label: 'وضعیت',
@@ -393,7 +430,7 @@ function TicketTable({ tickets, onSelect }: { tickets: AdminTicket[]; onSelect?:
       ))}
     >
       {tickets.map((ticket) => (
-        <tr key={ticket.id} className="hover:bg-surface-soft/40">
+        <tr key={ticket.id} className={cn('hover:bg-surface-soft/40', ticketRowClass(ticket.status))}>
           <td className="px-4 py-3 font-medium text-text">{ticket.subject}</td>
           <td className="px-4 py-3">
             <Badge tone={STATUS_TONE[ticket.status] ?? 'default'}>

@@ -84,26 +84,41 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if ($e instanceof HttpExceptionInterface) {
                 $status = $e->getStatusCode();
+                $headers = $e->getHeaders();
+                $retryAfter = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 0);
+                $isCredentialLogin = $request->is(
+                    'api/v1/auth/login',
+                    'api/v1/student/auth/login-password',
+                    'api/v1/student/auth/send-otp',
+                );
+                $maxLoginAttempts = max(1, (int) config('bahram.login.max_attempts', 6));
 
-                return response()->json([
-                    'error' => [
-                        'code' => match ($status) {
-                            404 => 'not_found',
-                            403 => 'forbidden',
-                            429 => 'too_many_requests',
-                            default => 'http_error',
-                        },
-                        'message_fa' => match ($status) {
-                            404 => 'موردی یافت نشد.',
-                            403 => 'اجازه دسترسی ندارید.',
-                            405 => 'این عملیات روی سرور پشتیبانی نمی‌شود.',
-                            429 => $request->is('api/v1/auth/login')
-                                ? 'حداکثر ۳ بار در هر ساعت می‌توانید وارد شوید. لطفاً بعداً دوباره تلاش کنید.'
-                                : 'تعداد درخواست‌ها بیش از حد مجاز است. کمی بعد دوباره تلاش کنید.',
-                            default => 'خطایی رخ داد.',
-                        },
-                    ],
-                ], $status);
+                $error = [
+                    'code' => match ($status) {
+                        404 => 'not_found',
+                        403 => 'forbidden',
+                        429 => 'too_many_requests',
+                        default => 'http_error',
+                    },
+                    'message_fa' => match ($status) {
+                        404 => 'موردی یافت نشد.',
+                        403 => 'اجازه دسترسی ندارید.',
+                        405 => 'این عملیات روی سرور پشتیبانی نمی‌شود.',
+                        429 => $isCredentialLogin
+                            ? sprintf(
+                                'حداکثر %d بار می‌توانید برای ورود تلاش کنید. لطفاً پس از اتمام مدت محدودیت دوباره تلاش کنید.',
+                                $maxLoginAttempts,
+                            )
+                            : 'تعداد درخواست‌ها بیش از حد مجاز است. کمی بعد دوباره تلاش کنید.',
+                        default => 'خطایی رخ داد.',
+                    },
+                ];
+
+                if ($status === 429 && $retryAfter > 0) {
+                    $error['retry_after'] = $retryAfter;
+                }
+
+                return response()->json(['error' => $error], $status, $headers);
             }
 
             // Never leak file paths, DB structure, or stack traces to API clients —

@@ -127,7 +127,12 @@ final class AccountCache
                     ? $this->decodeIntList((string) ($existing['owned_product_ids'] ?? '[]'))
                     : [];
                 if ($incoming === []) {
-                    $ownedJson = $current !== [] ? json_encode($current, JSON_UNESCAPED_UNICODE) : null;
+                    $replaceOwned = (bool) ($snapshot['replace_owned_product_ids'] ?? false);
+                    if ($replaceOwned) {
+                        $ownedJson = json_encode([], JSON_UNESCAPED_UNICODE);
+                    } else {
+                        $ownedJson = $current !== [] ? json_encode($current, JSON_UNESCAPED_UNICODE) : null;
+                    }
                 } else {
                     $merged = array_values(array_unique(array_merge($current, $incoming)));
                     $ownedJson = json_encode($merged, JSON_UNESCAPED_UNICODE);

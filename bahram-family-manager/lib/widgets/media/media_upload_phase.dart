@@ -41,5 +41,3 @@ extension MediaUploadPhaseX on MediaUploadPhase {
     return MediaUploadPhase.processing;
   }
 }
-
-typedef MediaUploadStateCallback = void Function(MediaUploadPhase phase, double progress);

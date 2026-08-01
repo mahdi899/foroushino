@@ -14,6 +14,8 @@ import 'package:bahram_family_manager/core/utils/story_aspect.dart';
 import 'package:bahram_family_manager/core/utils/story_media_dimensions.dart';
 import 'package:bahram_family_manager/features/posts/widgets/family_picker_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/models/upload_progress.dart';
+import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
@@ -47,6 +49,9 @@ class _StoriesScreenState extends State<StoriesScreen> {
   bool _saving = false;
   bool _uploading = false;
   double _uploadProgress = 0;
+  int _uploadSentBytes = 0;
+  int _uploadTotalBytes = 0;
+  MediaUploadPhase _uploadPhase = MediaUploadPhase.idle;
 
   @override
   void initState() {
@@ -122,6 +127,9 @@ class _StoriesScreenState extends State<StoriesScreen> {
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = bytes.length;
+      _uploadPhase = MediaUploadPhase.uploading;
       _storyMedia = null;
     });
 
@@ -131,8 +139,14 @@ class _StoriesScreenState extends State<StoriesScreen> {
             filename: picked.name,
             type: isVideo ? 'video' : 'image',
             optimizeImages: false,
-            onProgress: (p) {
-              if (mounted) setState(() => _uploadProgress = p);
+            onUploadState: (upload) {
+              if (!mounted) return;
+              setState(() {
+                _uploadPhase = upload.phase;
+                _uploadProgress = upload.fraction;
+                _uploadSentBytes = upload.sentBytes;
+                _uploadTotalBytes = upload.totalBytes;
+              });
             },
           );
       if (!mounted) return;
@@ -258,6 +272,9 @@ class _StoriesScreenState extends State<StoriesScreen> {
                         label: 'انتخاب تصویر/ویدیو استوری (۹:۱۶ عمودی)',
                         uploading: _uploading,
                         progress: _uploadProgress,
+                        sentBytes: _uploadSentBytes,
+                        totalBytes: _uploadTotalBytes,
+                        phase: _uploadPhase,
                         onTap: _pickStoryMedia,
                       ),
                       const SizedBox(height: AppSpacing.sm),

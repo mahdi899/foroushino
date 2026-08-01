@@ -67,22 +67,37 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         }
 
         $storagePath = FamilyMediaPath::objectKey($type, $extension);
-        $remoteDisk = $settings->uploadDisk();
+        $ftpEnabled = $settings->ftpUploadEnabled();
+        $remoteDisk = $ftpEnabled ? $settings->uploadDisk() : 'public';
 
         if ($remoteDisk !== 'public') {
-            try {
-                $this->storeOnDisk($media, $remoteDisk, $uploadAbsolute, $storagePath, $meta, $type, $tempDisk);
+            $this->storeOnDisk($media, $remoteDisk, $uploadAbsolute, $storagePath, $meta, $type, $tempDisk);
 
-                return;
-            } catch (\Throwable $e) {
-                Log::warning('Family FTP transfer failed, falling back to public disk', [
-                    'media_id' => $media->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            return;
         }
 
         $this->storeOnDisk($media, 'public', $uploadAbsolute, $storagePath, $meta, $type, $tempDisk);
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        $media = FamilyMedia::query()->find($this->mediaId);
+        if (! $media) {
+            return;
+        }
+
+        Log::error('Family media FTP transfer exhausted retries', [
+            'media_id' => $media->id,
+            'temp_path' => $media->temp_path,
+            'error' => $exception?->getMessage(),
+        ]);
+
+        if ($media->status !== FamilyMediaStatus::Ready) {
+            $media->update([
+                'status' => FamilyMediaStatus::Failed,
+                'failure_reason' => $exception?->getMessage() ?? 'FTP transfer failed after retries',
+            ]);
+        }
     }
 
   /**

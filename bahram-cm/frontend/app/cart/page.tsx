@@ -12,7 +12,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
 import { getServerCartSlugs } from "@/lib/cart/server";
-import { getProductBySlug, type ProductDetail } from "@/lib/services/products";
+import { loadCartProductsForPage, type ProductDetail } from "@/lib/services/products";
 import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 import { buildMetadata } from "@/lib/seo";
 import { resolveProductFeaturedImage } from "@/lib/catalog/productFeaturedImage";
@@ -34,11 +34,6 @@ export const metadata: Metadata = buildMetadata({
   path: "/cart",
   noIndex: true,
 });
-
-async function loadCartProducts(slugs: string[]): Promise<ProductDetail[]> {
-  const results = await Promise.all(slugs.map((slug) => getProductBySlug(slug)));
-  return results.filter((result): result is { ok: true; data: ProductDetail } => result.ok).map((r) => r.data);
-}
 
 function CartProductCard({ product, className }: { product: ProductDetail; className?: string }) {
   return (
@@ -89,7 +84,7 @@ export default async function CartPage({
         .catch(() => null)
     : null;
   const slugs = [...new Set([...cookieSlugs, ...(add ? [add] : [])])];
-  const loadedProducts = await loadCartProducts(slugs);
+  const loadedProducts = await loadCartProductsForPage(slugs);
   const products = loadedProducts.filter((product) => !product.already_purchased);
   const ownedProducts = loadedProducts.filter((product) => product.already_purchased);
   const backHref = products[0]?.landing_href ?? "/course/campaign-writing";

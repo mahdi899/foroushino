@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
+  fetchNotificationsPage,
   fetchRecentNotifications,
   fetchUnreadNotificationCount,
   type PanelNotificationPayload,
@@ -10,8 +11,13 @@ import {
 import { NotificationToastStack } from '@/components/student-panel/notifications/NotificationToastStack';
 import { shouldShowNotificationToast } from '@/components/student-panel/notifications/notificationMeta';
 
-const POLL_ACTIVE_MS = 8_000;
-const POLL_IDLE_MS = 30_000;
+// Every logged-in panel tab hits the API on this cadence, so the interval is the
+// single biggest driver of backend load. Poll slowly by default and back off
+// further while nothing new arrives; a real notification still lands within ~30s.
+const POLL_ACTIVE_MS = 30_000;
+const POLL_IDLE_MS = 180_000;
+const POLL_BACKOFF_MAX_MS = 120_000;
+const POLL_BACKOFF_STEP = 1.5;
 const BASELINE_STORAGE_KEY = 'panel-notification-toast-baseline-v3';
 
 interface PanelNotificationContextValue {
@@ -66,6 +72,7 @@ export function PanelNotificationProvider({
   const lastUnreadCountRef = useRef(initialUnreadCount);
   const toastedIdsRef = useRef<Set<number>>(new Set());
   const bootstrappedRef = useRef(false);
+  const activeDelayRef = useRef(POLL_ACTIVE_MS);
 
   const dismissToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -97,10 +104,18 @@ export function PanelNotificationProvider({
     if (!bootstrappedRef.current || pathname === '/panel/notifications') return;
 
     try {
-      const [count, notifications] = await Promise.all([
-        fetchUnreadNotificationCount(),
-        fetchRecentNotifications(30, true),
-      ]);
+      // One request per poll: the unread-only page already reports the total, so the
+      // separate unread-count call was doubling panel traffic for no new data.
+      const { items: notifications, total: count } = await fetchNotificationsPage(30, true);
+
+      if (count === lastUnreadCountRef.current) {
+        activeDelayRef.current = Math.min(
+          POLL_BACKOFF_MAX_MS,
+          Math.round(activeDelayRef.current * POLL_BACKOFF_STEP),
+        );
+      } else {
+        activeDelayRef.current = POLL_ACTIVE_MS;
+      }
 
       updateUnreadCount(count);
 
@@ -192,7 +207,7 @@ export function PanelNotificationProvider({
 
     const schedule = () => {
       window.clearTimeout(timerId);
-      const delay = document.hidden ? POLL_IDLE_MS : POLL_ACTIVE_MS;
+      const delay = document.hidden ? POLL_IDLE_MS : activeDelayRef.current;
       timerId = window.setTimeout(async () => {
         if (!cancelled) await pollNotifications();
         if (!cancelled) schedule();
@@ -209,7 +224,10 @@ export function PanelNotificationProvider({
     void start();
 
     const onVisibility = () => {
-      if (!document.hidden) void pollNotifications();
+      if (!document.hidden) {
+        activeDelayRef.current = POLL_ACTIVE_MS;
+        void pollNotifications();
+      }
       schedule();
     };
     document.addEventListener('visibilitychange', onVisibility);

@@ -166,8 +166,8 @@ class MediaController extends Controller
 
         throw ValidationException::withMessages([
             $field => [
-                'فایل به سرور نرسید. احتمالاً حجم آن از محدودیت آپلود PHP (upload_max_filesize='
-                .ini_get('upload_max_filesize').') بیشتر است.',
+                'فایل به سرور نرسید. احتمالاً حجم آن از محدودیت آپلود PHP بیشتر است ('
+                .$this->phpUploadLimitsSummary().').',
             ],
         ]);
     }
@@ -188,12 +188,19 @@ class MediaController extends Controller
     private function uploadErrorMessage(int $errorCode): string
     {
         return match ($errorCode) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'حجم فایل از محدودیت سرور بیشتر است (upload_max_filesize='.ini_get('upload_max_filesize').').',
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'حجم فایل از محدودیت سرور بیشتر است ('.$this->phpUploadLimitsSummary().').',
             UPLOAD_ERR_PARTIAL => 'آپلود ناقص بود. دوباره تلاش کنید.',
             UPLOAD_ERR_NO_FILE => 'فایلی انتخاب نشده است.',
             UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'خطای سرور هنگام دریافت فایل. با پشتیبانی تماس بگیرید.',
             default => 'آپلود فایل ناموفق بود.',
         };
+    }
+
+    private function phpUploadLimitsSummary(): string
+    {
+        return 'upload_max_filesize='.ini_get('upload_max_filesize')
+            .', post_max_size='.ini_get('post_max_size')
+            .', max_input_time='.ini_get('max_input_time');
     }
 
     private function parseIniSizeBytes(string $value): int

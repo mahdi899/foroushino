@@ -23,6 +23,11 @@ class TelegramHostAccountSync
         private readonly TelegramHostOwnershipResolver $ownership,
     ) {}
 
+    /**
+     * Model-observer entry point. Always hands the push to the queue: a blocking
+     * Iran→host HTTP call here would run inside the caller's request (and often
+     * its DB transaction), which is what stalls the site under load.
+     */
     public function queuePush(TelegramAccount $account): void
     {
         $account->loadMissing('bot');
@@ -31,21 +36,18 @@ class TelegramHostAccountSync
         }
 
         $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
-        $push = app(TelegramHostPushService::class);
-        if (! $push->pushAccount($payload)) {
-            PushTelegramHostSyncJob::accountNow($payload);
-        }
+        PushTelegramHostSyncJob::account($payload);
     }
 
     /** Immediate push for one account (purchase, KYC) — does not wait for the 5-minute batch. */
-    public function pushAccountImmediate(TelegramAccount $account): bool
+    public function pushAccountImmediate(TelegramAccount $account, bool $replaceOwnedProductIds = false): bool
     {
         $account->loadMissing('bot');
         if ($account->bot?->key !== 'production') {
             return false;
         }
 
-        $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
+        $payload = $this->snapshots->accountPayload($account->fresh(['user', 'bot']), $replaceOwnedProductIds);
         $push = app(TelegramHostPushService::class);
         $ok = $push->pushAccount($payload);
         if (! $ok) {
@@ -56,7 +58,7 @@ class TelegramHostAccountSync
     }
 
     /** Push every production-bot Telegram row for a site user (after order / KYC). */
-    public function pushUserAccountsImmediate(User $user): int
+    public function pushUserAccountsImmediate(User $user, bool $replaceOwnedProductIds = false): int
     {
         $bot = TelegramBot::query()->where('key', 'production')->first();
         if ($bot === null) {
@@ -68,13 +70,47 @@ class TelegramHostAccountSync
             ->where('telegram_bot_id', $bot->id)
             ->where('user_id', $user->id)
             ->whereNotNull('mobile_verified_at')
-            ->each(function (TelegramAccount $account) use (&$pushed): void {
-                if ($this->pushAccountImmediate($account)) {
+            ->each(function (TelegramAccount $account) use (&$pushed, $replaceOwnedProductIds): void {
+                if ($this->pushAccountImmediate($account, $replaceOwnedProductIds)) {
                     $pushed++;
                 }
             });
 
         return $pushed;
+    }
+
+    /**
+     * After admin deletion/reset — push authoritative ownership snapshot and revoke
+     * any mobile-only pre-provision rows on the foreign host.
+     *
+     * @param  list<int>  $telegramUserIds
+     */
+    public function syncAccessAfterDeletion(
+        ?User $user,
+        ?string $mobile = null,
+        array $telegramUserIds = [],
+        string $reason = 'admin_delete',
+    ): void {
+        if ($user !== null) {
+            $this->pushUserAccountsImmediate($user->fresh(['profile', 'identityProfile']), true);
+        }
+
+        if ($telegramUserIds !== []) {
+            $bot = TelegramBot::query()->where('key', 'production')->first();
+            if ($bot !== null) {
+                TelegramAccount::query()
+                    ->where('telegram_bot_id', $bot->id)
+                    ->whereIn('telegram_user_id', $telegramUserIds)
+                    ->each(function (TelegramAccount $account): void {
+                        $this->pushAccountImmediate($account->fresh(['user', 'bot']), true);
+                    });
+            }
+        }
+
+        $normalizedMobile = trim((string) $mobile);
+        if ($normalizedMobile !== '') {
+            app(TelegramHostPushService::class)->revokeMobileAccess($normalizedMobile);
+        }
     }
 
     /** Keep telegram_accounts.display_name + host cache aligned with student panel / KYC. */

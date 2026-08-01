@@ -3,6 +3,7 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { extractLoginRetryAfter, formatLoginLockoutMessage } from '@/lib/auth/loginRateLimit';
 import { isFamilyHost, resolveFamilyLoginRedirect, resolveStudentLogoutRedirect } from '@/lib/domains';
 import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { extractValidationMessage } from '@/lib/services/api';
@@ -14,6 +15,7 @@ export interface OtpAuthState {
   error?: string;
   info?: string;
   displayName?: string;
+  lockoutSeconds?: number;
 }
 
 type StudentAuthPayload = {
@@ -38,7 +40,16 @@ function displayNameFromAuthPayload(data?: StudentAuthPayload): string | undefin
   return undefined;
 }
 
-async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boolean; data?: StudentAuthPayload; message?: string }> {
+async function callStudentAuth(
+  path: string,
+  body: unknown,
+): Promise<{
+  ok: boolean;
+  data?: StudentAuthPayload;
+  message?: string;
+  status?: number;
+  retryAfter?: number;
+}> {
   try {
     const res = await fetch(`${SERVER_API_URL}/student${path}`, {
       method: 'POST',
@@ -52,8 +63,14 @@ async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boole
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const retryAfter = extractLoginRetryAfter(json, res.headers.get('Retry-After')) ?? undefined;
       const captchaMsg = extractValidationMessage(json, 'captcha');
-      return { ok: false, message: captchaMsg ?? json?.error?.message_fa ?? 'خطایی رخ داد. دوباره تلاش کنید.' };
+      const message =
+        res.status === 429 && retryAfter
+          ? formatLoginLockoutMessage(retryAfter)
+          : captchaMsg ?? json?.error?.message_fa ?? 'خطایی رخ داد. دوباره تلاش کنید.';
+
+      return { ok: false, message, status: res.status, retryAfter };
     }
     return { ok: true, data: json?.data };
   } catch {
@@ -77,7 +94,14 @@ export async function sendOtpAction(_prev: OtpAuthState, formData: FormData): Pr
   if (!mobile) return { step: 'mobile', error: 'شماره موبایل را وارد کنید.' };
 
   const result = await callStudentAuth('/auth/send-otp', { mobile });
-  if (!result.ok) return { step: 'mobile', mobile, error: result.message };
+  if (!result.ok) {
+    return {
+      step: 'mobile',
+      mobile,
+      error: result.message,
+      lockoutSeconds: result.status === 429 ? result.retryAfter : undefined,
+    };
+  }
 
   return { step: 'otp', mobile, info: 'کد تایید برای شما پیامک شد.' };
 }
@@ -155,6 +179,7 @@ export interface PasswordAuthState {
   error?: string;
   ok?: boolean;
   displayName?: string;
+  lockoutSeconds?: number;
 }
 
 export async function loginPasswordAction(_prev: PasswordAuthState, formData: FormData): Promise<PasswordAuthState> {
@@ -173,7 +198,12 @@ export async function loginPasswordAction(_prev: PasswordAuthState, formData: Fo
     captcha_answer: formData.get('captcha_answer') ?? undefined,
     website: formData.get('website') || undefined,
   });
-  if (!result.ok) return { error: result.message };
+  if (!result.ok) {
+    return {
+      error: result.message,
+      lockoutSeconds: result.status === 429 ? result.retryAfter : undefined,
+    };
+  }
 
   const token = result.data?.token;
   if (!token) return { error: 'پاسخ سرور نامعتبر بود.' };

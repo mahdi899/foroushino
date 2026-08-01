@@ -10,6 +10,7 @@ use App\Support\FamilySiteUrl;
 use App\Support\NotificationRecipientQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationController extends StudentNotificationController
 {
@@ -38,9 +39,13 @@ class NotificationController extends StudentNotificationController
 
     public function unreadCount(Request $request): JsonResponse
     {
-        $count = NotificationRecipientQuery::forUser($request->user(), 'family')
-            ->whereNull('read_at')
-            ->count();
+        $count = Cache::remember(
+            self::unreadCountCacheKey((int) $request->user()->id, 'family'),
+            self::UNREAD_COUNT_TTL_SECONDS,
+            fn () => NotificationRecipientQuery::forUser($request->user(), 'family')
+                ->whereNull('read_at')
+                ->count(),
+        );
 
         return ApiResponse::success(['unread_count' => $count]);
     }
@@ -62,6 +67,8 @@ class NotificationController extends StudentNotificationController
         $updated = NotificationRecipientQuery::forUser($request->user(), 'family')
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
+
+        self::forgetUnreadCount((int) $request->user()->id);
 
         return ApiResponse::success(['marked_count' => $updated]);
     }

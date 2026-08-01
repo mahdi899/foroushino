@@ -32,6 +32,7 @@ use App\Observers\SeminarObserver;
 use App\Observers\UserIdentityProfileTelegramSyncObserver;
 use App\Observers\UserTelegramDisplayNameObserver;
 use App\Support\MediaFtpConnection;
+use App\Support\Mobile;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
@@ -71,8 +72,20 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api', function (Request $request) {
             $perMinute = max(1, (int) config('bahram.api_rate_limit_per_minute', 120));
+            $ip = $request->ip();
 
-            return Limit::perMinute($perMinute)->by($request->ip());
+            // Next.js / nginx proxy Laravel on loopback — bucket per path so SSR routes
+            // do not starve each other under campaign traffic.
+            if ($this->isLoopbackIp($ip)) {
+                $perMinute = max(
+                    $perMinute,
+                    (int) config('bahram.internal_loopback_rate_limit_per_minute', 6000),
+                );
+
+                return Limit::perMinute($perMinute)->by('loopback:'.$request->path());
+            }
+
+            return Limit::perMinute($perMinute)->by($ip);
         });
 
         RateLimiter::for('student-auth', function (Request $request) {
@@ -89,15 +102,33 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('chatbot', function (Request $request) {
+            if ($this->isLoopbackIp($request->ip())) {
+                return Limit::perMinute(3000)->by('loopback:chatbot');
+            }
+
             return Limit::perMinute(20)->by($request->ip());
+        });
+
+        RateLimiter::for('captcha-public', function (Request $request) {
+            if ($this->isLoopbackIp($request->ip())) {
+                return Limit::perMinute(3000)->by('loopback:captcha');
+            }
+
+            return Limit::perMinute(120)->by($request->ip());
         });
 
         RateLimiter::for('admin-login', function (Request $request) {
             $email = strtolower(trim((string) $request->input('email', '')));
             $key = $email !== '' ? 'admin-login:'.sha1($email) : 'admin-login:ip:'.$request->ip();
 
-            return Limit::perHour((int) config('bahram.admin_login.max_per_hour', 3))
-                ->by($key);
+            return $this->loginAttemptLimit()->by($key);
+        });
+
+        RateLimiter::for('user-login', function (Request $request) {
+            $mobile = Mobile::normalize((string) $request->input('mobile', ''));
+            $key = $mobile ? 'user-login:'.sha1($mobile) : 'user-login:ip:'.$request->ip();
+
+            return $this->loginAttemptLimit()->by($key);
         });
 
         RateLimiter::for('identity-reveal', function (Request $request) {
@@ -188,5 +219,18 @@ class AppServiceProvider extends ServiceProvider
             // DB not reachable yet at this point in the boot cycle — the
             // static env-based disk config (if any) remains in effect.
         }
+    }
+
+    private function isLoopbackIp(string $ip): bool
+    {
+        return in_array($ip, ['127.0.0.1', '::1'], true);
+    }
+
+    private function loginAttemptLimit(): Limit
+    {
+        $maxAttempts = max(1, (int) config('bahram.login.max_attempts', 6));
+        $decayMinutes = max(1, (int) config('bahram.login.decay_minutes', 10));
+
+        return Limit::perMinutes($decayMinutes, $maxAttempts);
     }
 }

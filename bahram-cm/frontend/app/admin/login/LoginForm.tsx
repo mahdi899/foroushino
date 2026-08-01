@@ -7,6 +7,7 @@ import { BrandMark } from '@/components/layout/Header';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
 import { captchaToRequestFields } from '@/lib/captcha/types';
 import { bootstrapAdminDevDefaults } from '@/lib/auth/bootstrapAdmin';
+import { formatLoginLockoutMessage, loginLockoutLabel } from '@/lib/auth/loginRateLimit';
 import { resolveLoginOtpStep } from '@/lib/auth/loginOtpResponse';
 
 type Props = {
@@ -28,6 +29,7 @@ export function AdminLoginForm({ redirectFrom }: Props) {
   const [pending, setPending] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const [email, setEmail] = useState(() => bootstrapAdminDevDefaults()?.email ?? '');
   const [password, setPassword] = useState(() => bootstrapAdminDevDefaults()?.password ?? '');
   const {
@@ -50,10 +52,25 @@ export function AdminLoginForm({ redirectFrom }: Props) {
     return () => window.clearInterval(timer);
   }, [resendIn]);
 
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setLockoutSeconds((seconds) => {
+        const next = Math.max(0, seconds - 1);
+        if (next > 0) {
+          setError(formatLoginLockoutMessage(next));
+        }
+        return next;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [lockoutSeconds]);
+
   const securityPending = mounted && (securityLoading || (captchaRequired && !captchaReady));
 
   async function submitCredentials(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (lockoutSeconds > 0) return;
     setPending(true);
     setError('');
     setInfo('');
@@ -87,6 +104,16 @@ export function AdminLoginForm({ redirectFrom }: Props) {
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (res.status === 429) {
+        const retryAfter = Number(json.retry_after);
+        if (Number.isFinite(retryAfter) && retryAfter > 0) {
+          setLockoutSeconds(Math.ceil(retryAfter));
+          setError(formatLoginLockoutMessage(retryAfter));
+          setPending(false);
+          return;
+        }
+      }
+
       const message = json.error || 'ایمیل یا رمز عبور نادرست است.';
       setError(message);
       if (/تأیید امنیتی|کپچا/i.test(message)) {
@@ -309,11 +336,18 @@ export function AdminLoginForm({ redirectFrom }: Props) {
 
       <button
         type="submit"
-        disabled={pending || (step === 'credentials' && securityPending) || (step === 'otp' && code.length < 5)}
+        disabled={
+          pending ||
+          lockoutSeconds > 0 ||
+          (step === 'credentials' && securityPending) ||
+          (step === 'otp' && code.length < 5)
+        }
         className="btn btn-primary mt-5 min-h-11 w-full sm:mt-6"
       >
         {pending ? (
           <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+        ) : lockoutSeconds > 0 && step === 'credentials' ? (
+          loginLockoutLabel(lockoutSeconds)
         ) : step === 'credentials' ? (
           'ادامه و دریافت کد'
         ) : (

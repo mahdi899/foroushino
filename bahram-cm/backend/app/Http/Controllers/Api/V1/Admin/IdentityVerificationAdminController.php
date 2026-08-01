@@ -6,6 +6,7 @@ use App\Actions\Identity\ApproveIdentityVerification;
 use App\Actions\Identity\OverrideVerificationLevel;
 use App\Actions\Identity\RejectIdentityVerification;
 use App\Actions\Identity\RequestIdentityCorrection;
+use App\Actions\Identity\ResetIdentityVerification;
 use App\Actions\Identity\UnlockMobileOwnershipVerification;
 use App\Enums\IdentityReasonCode;
 use App\Enums\IdentityVerificationStatus;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
+use Illuminate\Contracts\Auth\Authenticatable;
 use App\Support\NationalCode;
 use App\Support\SensitiveData;
 use Illuminate\Http\JsonResponse;
@@ -36,7 +38,7 @@ class IdentityVerificationAdminController extends Controller
 
         $query = IdentityVerificationSubmission::query()
             ->with(['user:id,name,mobile', 'identityProfile'])
-            ->whereIn('id', $this->latestSubmissionIdsSubquery($status ?: null))
+            ->whereIn('id', $this->latestSubmissionIdsSubquery($status !== '' ? $status : null))
             ->orderByDesc('submitted_at')
             ->orderByDesc('id');
 
@@ -60,7 +62,7 @@ class IdentityVerificationAdminController extends Controller
         $page = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $page->getCollection()->map(fn (IdentityVerificationSubmission $s) => $this->listPayload($s)),
+            'data' => $page->getCollection()->map(fn (IdentityVerificationSubmission $s) => $this->listPayload($s, $request->user())),
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'last_page' => $page->lastPage(),
@@ -85,14 +87,11 @@ class IdentityVerificationAdminController extends Controller
             $submission->refresh();
         }
 
-        $national = NationalCode::decrypt($submission->national_code_encrypted);
-
         return response()->json(['data' => [
-            ...$this->listPayload($submission),
+            ...$this->listPayload($submission, $request->user()),
             'date_of_birth' => $submission->date_of_birth?->toDateString(),
             'gender' => $submission->gender,
             'city' => $submission->city,
-            'national_code_masked' => NationalCode::mask($national),
             'expected_video_text' => $submission->expected_video_text,
             'required_corrections' => $submission->required_corrections,
             'registry' => [
@@ -140,8 +139,13 @@ class IdentityVerificationAdminController extends Controller
             'user' => [
                 'id' => $submission->user?->id,
                 'name' => $submission->user?->name,
+                'mobile' => $this->canViewFullMobileInIdentity($request->user())
+                    ? $submission->user?->mobile
+                    : null,
                 'mobile_masked' => SensitiveData::maskMobile($submission->user?->mobile),
             ],
+            'can_reveal_national_code' => $this->canViewFullNationalCodeInIdentity($request->user()),
+            'can_reveal_mobile' => $this->canViewFullMobileInIdentity($request->user()),
             'can_approve' => $request->user()->hasPermission('identity.approve'),
             'can_reject' => $request->user()->hasPermission('identity.reject'),
             'can_request_correction' => $request->user()->hasPermission('identity.request_correction'),
@@ -164,7 +168,7 @@ class IdentityVerificationAdminController extends Controller
             return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
         }
 
-        return response()->json(['data' => $this->listPayload($result)]);
+        return response()->json(['data' => $this->listPayload($result, $request->user())]);
     }
 
     public function reject(
@@ -187,7 +191,7 @@ class IdentityVerificationAdminController extends Controller
             return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
         }
 
-        return response()->json(['data' => $this->listPayload($result)]);
+        return response()->json(['data' => $this->listPayload($result, $request->user())]);
     }
 
     public function requestCorrection(
@@ -218,7 +222,7 @@ class IdentityVerificationAdminController extends Controller
             return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
         }
 
-        return response()->json(['data' => $this->listPayload($result)]);
+        return response()->json(['data' => $this->listPayload($result, $request->user())]);
     }
 
     public function next(Request $request): JsonResponse
@@ -285,6 +289,51 @@ class IdentityVerificationAdminController extends Controller
         ]]);
     }
 
+    public function history(Request $request, User $student): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('identity.view'), 403);
+        abort_if($student->is_admin, 404);
+
+        $submissions = IdentityVerificationSubmission::query()
+            ->where('user_id', $student->id)
+            ->withCount('reviews')
+            ->orderByDesc('version')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (IdentityVerificationSubmission $s) => [
+                ...$this->listPayload($s, $request->user()),
+                'reviews_count' => $s->reviews_count,
+            ]);
+
+        return response()->json(['data' => $submissions]);
+    }
+
+    public function resetIdentity(
+        Request $request,
+        User $student,
+        ResetIdentityVerification $reset,
+    ): JsonResponse {
+        abort_unless($request->user()->hasPermission('identity.reset'), 403);
+        abort_if($student->is_admin, 404);
+
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        try {
+            $profile = $reset($request->user(), $student, $data['reason']);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
+        }
+
+        return response()->json(['data' => [
+            'student_id' => $student->id,
+            'verification_level' => $profile->verification_level,
+            'identity_status' => $profile->identity_status->value,
+            'mobile_ownership_status' => $profile->mobile_ownership_status->value,
+        ]]);
+    }
+
     /** @return array<string, int> */
     private function dashboardStats(): array
     {
@@ -329,19 +378,28 @@ class IdentityVerificationAdminController extends Controller
         return IdentityVerificationSubmission::query()
             ->selectRaw('max(id) as id')
             ->when(
-                $status,
-                fn ($q) => $q->where('status', $status),
-                fn ($q) => $q->whereIn('status', [
-                    IdentityVerificationStatus::Submitted,
-                    IdentityVerificationStatus::UnderReview,
-                ]),
+                $status === 'all',
+                fn ($q) => $q,
+                fn ($q) => $q->when(
+                    $status,
+                    fn ($inner) => $inner->where('status', $status),
+                    fn ($inner) => $inner->whereIn('status', [
+                        IdentityVerificationStatus::Submitted,
+                        IdentityVerificationStatus::UnderReview,
+                    ]),
+                ),
             )
             ->groupBy('user_id');
     }
 
     /** @return array<string, mixed> */
-    private function listPayload(IdentityVerificationSubmission $s): array
+    private function listPayload(IdentityVerificationSubmission $s, ?Authenticatable $actor = null): array
     {
+        $mobile = $s->user?->mobile;
+        $national = NationalCode::decrypt($s->national_code_encrypted);
+        $canViewMobile = $actor instanceof User && $this->canViewFullMobileInIdentity($actor);
+        $canViewNational = $actor instanceof User && $this->canViewFullNationalCodeInIdentity($actor);
+
         return [
             'id' => $s->id,
             'uuid' => $s->uuid,
@@ -354,13 +412,36 @@ class IdentityVerificationAdminController extends Controller
             'submitted_at' => $s->submitted_at?->toIso8601String(),
             'reviewed_at' => $s->reviewed_at?->toIso8601String(),
             'user_name' => $s->user?->name,
-            'mobile_masked' => SensitiveData::maskMobile($s->user?->mobile),
-            'user_mobile_masked' => SensitiveData::maskMobile($s->user?->mobile),
+            'mobile_masked' => SensitiveData::maskMobile($mobile),
+            'user_mobile_masked' => SensitiveData::maskMobile($mobile),
+            'user_mobile' => $canViewMobile ? $mobile : null,
+            'national_code_masked' => NationalCode::mask($national),
+            'national_code' => $canViewNational ? $national : null,
             'ownership_locked' => $s->identityProfile?->mobile_ownership_status?->value === 'locked',
             'registry_match_status' => $s->registry_match_status,
             'mobile_match_status' => $s->mobile_match_status,
             'verification_level' => $s->identityProfile?->verification_level,
             'identity_verified_at' => $s->identityProfile?->identity_verified_at?->toIso8601String(),
         ];
+    }
+
+    private function canViewFullMobileInIdentity(User $user): bool
+    {
+        return $user->hasPermission('students.view_full_mobile')
+            || $this->hasIdentityReviewAccess($user);
+    }
+
+    private function canViewFullNationalCodeInIdentity(User $user): bool
+    {
+        return $user->hasPermission('identity.view_national_code')
+            || $this->hasIdentityReviewAccess($user);
+    }
+
+    private function hasIdentityReviewAccess(User $user): bool
+    {
+        return $user->hasPermission('identity.review')
+            || $user->hasPermission('identity.approve')
+            || $user->hasPermission('identity.reject')
+            || $user->hasPermission('identity.request_correction');
     }
 }

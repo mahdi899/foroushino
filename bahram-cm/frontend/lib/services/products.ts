@@ -111,6 +111,43 @@ export const getProductBySlug = cache(async (
   }
 });
 
+function internalApiBase(): string {
+  return (process.env.BACKEND_PROXY_URL ?? "http://127.0.0.1:8010").replace(/\/+$/, "");
+}
+
+/**
+ * Cart/checkout — ISR-cached public reads for guests; one batch API call when logged in.
+ */
+export async function loadCartProductsForPage(slugs: string[]): Promise<ProductDetail[]> {
+  const unique = [...new Set(slugs.filter((slug) => slug.trim() !== ""))];
+  if (unique.length === 0) return [];
+
+  const token = await getStudentToken().catch(() => undefined);
+
+  if (!token) {
+    const results = await Promise.all(unique.map((slug) => getPublicProductBySlug(slug)));
+    return results
+      .filter((result): result is { ok: true; data: ProductDetail } => result.ok)
+      .map((result) => result.data);
+  }
+
+  const url = `${internalApiBase()}/api/products/batch?slugs=${encodeURIComponent(unique.join(","))}`;
+  const headers: HeadersInit = {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  try {
+    const res = await fetch(url, { headers, cache: "no-store" });
+    if (!res.ok) return [];
+
+    const json = (await res.json()) as { data?: ProductDetail[] };
+    return Array.isArray(json.data) ? json.data : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Guest pricing / ownership seed for ProductPurchaseProvider. */
 export function productPurchaseInitial(product: ProductDetail) {
   const pricing = product.reference_pricing;

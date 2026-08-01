@@ -151,6 +151,24 @@ export async function updateOrder(
   }
 }
 
+export async function deleteOrder(
+  id: number,
+  force = false,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch(`/orders/${id}`, { method: 'DELETE', body: { force } });
+    revalidateCommerce();
+    revalidatePath(`/admin/commerce/orders/${id}`);
+    return { ok: true };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string; error?: { message_fa?: string } } };
+    return {
+      ok: false,
+      error: err.payload?.error?.message_fa ?? err.payload?.message ?? err.message ?? 'حذف سفارش ناموفق بود.',
+    };
+  }
+}
+
 export async function resendOrderSms(id: number): Promise<{ ok: boolean; message?: string; error?: string }> {
   try {
     const res = await adminFetch<{ ok: boolean; message: string }>(`/orders/${id}/resend-sms`, { method: 'POST' });

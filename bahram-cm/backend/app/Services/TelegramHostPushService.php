@@ -120,6 +120,20 @@ class TelegramHostPushService
         return $this->runAction('push_mobile_access', $payload);
     }
 
+    public function revokeMobileAccess(string $mobile): bool
+    {
+        $mobile = trim($mobile);
+        if ($mobile === '') {
+            return false;
+        }
+
+        return $this->runAction('push_mobile_access', [
+            'mobile' => $mobile,
+            'owned_product_ids' => [],
+            'revoke' => true,
+        ]);
+    }
+
     /**
      * Instant user message on the external host (Bot API from host — no cron).
      *

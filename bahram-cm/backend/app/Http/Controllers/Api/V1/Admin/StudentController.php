@@ -8,12 +8,14 @@ use App\Models\User;
 use App\Actions\Identity\RevealNationalCode;
 use App\Actions\Identity\RevealStudentMobile;
 use App\Services\CourseAccessService;
+use App\Services\StudentDeletionService;
 use App\Support\MediaUrl;
 use App\Support\Mobile;
 use App\Support\SensitiveData;
 use App\Support\StudentAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class StudentController extends Controller
 {
@@ -216,6 +218,19 @@ class StudentController extends Controller
         $student->update($data);
 
         return response()->json(['data' => $this->listPayload($student->fresh(['profile', 'identityProfile']), $request->user())]);
+    }
+
+    public function destroy(Request $request, User $student, StudentDeletionService $deletion): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('students.delete'), 403);
+
+        try {
+            $deletion->delete($request->user(), $student);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     /** @return array<string, mixed> */

@@ -497,7 +497,9 @@ class TelegramHostRegistrationService
                     );
                 }
 
-                $account->update(['mobile_verified_at' => now()]);
+                if ($account->mobile_verified_at === null) {
+                    $account->update(['mobile_verified_at' => now()]);
+                }
 
                 $sync = $this->userSync->syncAfterMobileVerification($account->fresh());
                 $this->accountLinks->linkToUser($account->fresh(), $sync['user']);

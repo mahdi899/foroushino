@@ -24,7 +24,7 @@ fi
 export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
 
 # Stop crash-loop while .next is missing
-pm2 stop bahram-frontend 2>/dev/null || true
+pm2 stop bahram-frontend bahram-frontend-3000 bahram-frontend-3001 bahram-frontend-3002 2>/dev/null || true
 pkill -f 'next build' 2>/dev/null || true
 pkill -f 'npm run build' 2>/dev/null || true
 rm -f "${FRONTEND}/.next/lock" 2>/dev/null || true
@@ -51,7 +51,8 @@ PM2_CONFIG="${APP_ROOT}/deploy/pm2/ecosystem.config.cjs"
 if [[ -f "$PM2_CONFIG" ]]; then
   pm2 reload "$PM2_CONFIG" --update-env || pm2 start "$PM2_CONFIG"
 else
-  pm2 restart bahram-frontend
+  pm2 restart bahram-frontend-3000 bahram-frontend-3001 bahram-frontend-3002 2>/dev/null \
+    || pm2 restart bahram-frontend
 fi
 
 sleep 4

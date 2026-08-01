@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Loader2, MessageSquare, Search } from 'lucide-react';
 import { fetchChatbotOperatorQueue } from './actions';
 import type { ChatbotOperatorProfile, ChatbotOperatorQueueEntry } from '@/lib/chatbot/types';
@@ -24,6 +24,9 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
     visitorPhone: string | null;
     visitorName: string | null;
   } | null>(null);
+  const currentPageRef = useRef(1);
+  const onQueueChangedRef = useRef(onQueueChanged);
+  onQueueChangedRef.current = onQueueChanged;
 
   const loadQueue = useCallback(async (page = 1, search = q) => {
     setLoading(true);
@@ -31,35 +34,40 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
       const res = await fetchChatbotOperatorQueue({ page, q: search });
       setItems(res.data);
       setMeta(res.meta);
+      currentPageRef.current = res.meta.current_page;
       setSelected((prev) => {
         if (!prev) return prev;
         const stillPending = res.data.some((item) => item.id === prev.logId);
         return stillPending ? prev : null;
       });
-      onQueueChanged?.();
+      onQueueChangedRef.current?.();
     } catch {
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [q, onQueueChanged]);
+  }, [q]);
 
   useEffect(() => {
+    currentPageRef.current = 1;
     void loadQueue(1);
+  }, [loadQueue]);
+
+  useEffect(() => {
     let timerId = 0;
 
     const schedule = () => {
       window.clearTimeout(timerId);
       const delay = document.hidden ? 60_000 : 30_000;
       timerId = window.setTimeout(() => {
-        if (!document.hidden) void loadQueue(meta.current_page);
+        if (!document.hidden) void loadQueue(currentPageRef.current);
         schedule();
       }, delay);
     };
 
     schedule();
     const onVisibility = () => {
-      if (!document.hidden) void loadQueue(meta.current_page);
+      if (!document.hidden) void loadQueue(currentPageRef.current);
       schedule();
     };
     document.addEventListener('visibilitychange', onVisibility);
@@ -68,7 +76,7 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
       window.clearTimeout(timerId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [loadQueue, meta.current_page]);
+  }, [loadQueue]);
 
   function openItem(item: ChatbotOperatorQueueEntry) {
     if (selected?.logId === item.id) {

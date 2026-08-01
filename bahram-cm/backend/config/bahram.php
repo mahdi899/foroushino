@@ -22,6 +22,12 @@ return [
         env('APP_ENV') === 'local' ? 2000 : 120,
     ),
 
+    // Loopback bucket for Next→Laravel (all visitors share 127.0.0.1).
+    'internal_loopback_rate_limit_per_minute' => (int) env(
+        'INTERNAL_LOOPBACK_RATE_LIMIT_PER_MINUTE',
+        6000,
+    ),
+
     'student_auth_rate_limit_per_minute' => (int) env(
         'STUDENT_AUTH_RATE_LIMIT_PER_MINUTE',
         env('APP_ENV') === 'local' ? 60 : 30,
@@ -65,12 +71,13 @@ return [
         'skip_admin' => filter_var(env('OTP_SKIP_ADMIN', false), FILTER_VALIDATE_BOOL),
     ],
 
-    'admin_login' => [
-        // Production default: 3/hour per IP. Local dev gets a higher ceiling for UI testing.
-        'max_per_hour' => (int) env(
-            'ADMIN_LOGIN_MAX_PER_HOUR',
-            env('APP_ENV') === 'local' ? 60 : 3,
-        ),
+    /*
+    | Credential login throttling (admin email/password + student mobile login).
+    | Six failed attempts per ten-minute window; the seventh request returns 429.
+    */
+    'login' => [
+        'max_attempts' => (int) env('LOGIN_MAX_ATTEMPTS', 6),
+        'decay_minutes' => (int) env('LOGIN_DECAY_MINUTES', 10),
     ],
 
     'payment' => [

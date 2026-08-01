@@ -48,6 +48,10 @@ Schedule::job(new CalculateFamilyDnaSnapshotJob(), config('family.queues.analyti
 
 Schedule::command('family:publish-scheduled')->everyMinute()->onOneServer();
 
+Schedule::command('family:retry-failed-media-transfers')
+    ->everyFiveMinutes()
+    ->onOneServer();
+
 // Family PWA — hourly unread digest (only if member has unseen posts).
 Schedule::job(new SendFamilyDailyUnreadPushJob(), config('family.queues.notifications', 'family-notifications'))
     ->hourly()

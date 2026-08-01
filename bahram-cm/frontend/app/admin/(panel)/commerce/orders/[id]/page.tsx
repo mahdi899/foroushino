@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AdminPage } from '../../../ui';
 import { getOrder } from '@/lib/admin/commerceData';
+import { can, getCurrentUser } from '@/lib/auth/session';
 import { OrderDetailForm, OrderStatusBadge } from '../OrderDetailForm';
 import { PAYMENT_STATUS_LABELS } from '@/lib/admin/commerceTypes';
 
@@ -10,6 +11,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const order = await getOrder(Number(id));
   if (!order) notFound();
+
+  const user = await getCurrentUser();
 
   return (
     <AdminPage
@@ -25,7 +28,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       }
     >
-      <OrderDetailForm order={order} />
+      <OrderDetailForm order={order} canDelete={can(user, 'orders.delete')} />
     </AdminPage>
   );
 }

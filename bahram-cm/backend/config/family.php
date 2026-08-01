@@ -37,7 +37,7 @@ return [
             'password' => env('FAMILY_MEDIA_FTP_PASSWORD'),
             'root' => env('FAMILY_MEDIA_FTP_ROOT', '/'),
             'passive' => filter_var(env('FAMILY_MEDIA_FTP_PASSIVE', true), FILTER_VALIDATE_BOOL),
-            'timeout' => (int) env('FAMILY_MEDIA_FTP_TIMEOUT', 60),
+            'timeout' => (int) env('FAMILY_MEDIA_FTP_TIMEOUT', 180),
         ],
         'cdn_url' => rtrim((string) env('FAMILY_MEDIA_CDN_URL', ''), '/'),
         // Local dev without FTP credentials defaults to public disk (media/family/…).
@@ -49,7 +49,7 @@ return [
         'temp_path' => 'family-ingest',
         'max_voice_mb' => (int) env('FAMILY_MEDIA_MAX_VOICE_MB', 50),
         'max_video_mb' => (int) env('FAMILY_MEDIA_MAX_VIDEO_MB', 500),
-        'max_image_mb' => (int) env('FAMILY_MEDIA_MAX_IMAGE_MB', 15),
+        'max_image_mb' => (int) env('FAMILY_MEDIA_MAX_IMAGE_MB', 50),
         'chunk_size_mb' => (int) env('FAMILY_MEDIA_CHUNK_SIZE_MB', 5),
         'ffmpeg_bin' => env('FAMILY_FFMPEG_BIN', 'ffmpeg'),
         'ffprobe_bin' => env('FAMILY_FFPROBE_BIN', 'ffprobe'),

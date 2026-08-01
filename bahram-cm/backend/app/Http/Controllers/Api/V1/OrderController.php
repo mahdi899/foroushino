@@ -8,10 +8,13 @@ use App\Jobs\SendSmsJob;
 use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\AdminTelegramLogService;
 use App\Services\OrderAnalyticsService;
+use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
@@ -167,6 +170,23 @@ class OrderController extends Controller
                 : 'تحویل اجرا شد اما لایسنس صادر نشد — تنظیمات SpotPlayer یا لاگ سرور را بررسی کنید.',
             'data' => $this->detailedPayload($order),
         ]);
+    }
+
+    public function destroy(Request $request, Order $order, OrderService $orders): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('orders.delete'), 403);
+
+        $data = $request->validate([
+            'force' => ['sometimes', 'boolean'],
+        ]);
+
+        try {
+            $orders->deleteOrder($request->user(), $order, (bool) ($data['force'] ?? false));
+        } catch (ValidationException $e) {
+            return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     /** @return array<string, mixed> */

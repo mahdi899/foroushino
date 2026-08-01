@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Check, Copy, ExternalLink, KeyRound, Loader2, Save, Send } from 'lucide-react';
-import { fulfillOrder, resendOrderSms, updateOrder } from '../actions';
+import { Check, Copy, ExternalLink, KeyRound, Loader2, Save, Send, Trash2 } from 'lucide-react';
+import { deleteOrder, fulfillOrder, resendOrderSms, updateOrder } from '../actions';
 import { AdminTomanAmount } from '@/components/admin/layout/AdminTomanAmount';
 import {
   COURSE_ACCESS_SOURCE_LABELS,
@@ -143,13 +143,20 @@ function PaymentRow({ payment }: { payment: AdminOrderPayment }) {
   );
 }
 
-export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
+export function OrderDetailForm({
+  order,
+  canDelete = false,
+}: {
+  order: AdminOrderDetail;
+  canDelete?: boolean;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState(order.status);
   const [paymentStatus, setPaymentStatus] = useState(order.payment_status);
   const [pending, setPending] = useState(false);
   const [smsPending, setSmsPending] = useState(false);
   const [fulfillPending, setFulfillPending] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -184,6 +191,19 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
     setFulfillPending(false);
     if (res.ok) {
       setMessage(res.message ?? 'تحویل انجام شد.');
+      router.refresh();
+    } else {
+      setError(res.error ?? 'خطا');
+    }
+  }
+
+  async function onDelete(force: boolean) {
+    setDeletePending(true);
+    setError('');
+    const res = await deleteOrder(order.id, force);
+    setDeletePending(false);
+    if (res.ok) {
+      router.push('/admin/commerce/orders');
       router.refresh();
     } else {
       setError(res.error ?? 'خطا');
@@ -479,6 +499,48 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
           گزارش سفارشات
         </Link>
       </div>
+
+      {canDelete ? (
+        <div className="rounded-xl border border-error/30 bg-error/5 p-4">
+          <p className="mb-2 text-small font-medium text-error">حذف سفارش (مدیر کل)</p>
+          <p className="mb-3 text-caption text-text-muted">
+            سفارش‌های پرداخت‌شده نیاز به تأیید اجباری دارند. دسترسی تلگرام به‌روز می‌شود.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              disabled={deletePending || paid}
+              className="btn btn-secondary inline-flex items-center gap-2 text-error"
+              onClick={() => {
+                if (!window.confirm('این سفارش حذف شود؟')) return;
+                void onDelete(false);
+              }}
+            >
+              {deletePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              حذف سفارش
+            </button>
+            {paid ? (
+              <button
+                type="button"
+                disabled={deletePending}
+                className="btn btn-secondary inline-flex items-center gap-2 text-error"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      'این سفارش پرداخت‌شده است. حذف آن دسترسی دوره را از تلگرام لغو می‌کند. ادامه می‌دهید؟',
+                    )
+                  ) {
+                    return;
+                  }
+                  void onDelete(true);
+                }}
+              >
+                حذف اجباری (پرداخت‌شده)
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

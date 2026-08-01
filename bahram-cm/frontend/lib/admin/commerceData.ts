@@ -28,7 +28,13 @@ function commerceErrorMessage(error: unknown): string {
   if (err.status === 401) {
     return 'نشست شما منقضی شده. از پنل خارج شوید و دوباره وارد شوید.';
   }
-  return 'اتصال به API برقرار نشد. مطمئن شوید سرور لاراول روی پورت ۸۰۱۰ در حال اجراست.';
+  if (err.message && err.message !== 'Admin API undefined') {
+    return err.message;
+  }
+  if (process.env.NODE_ENV === 'development') {
+    return 'اتصال به API برقرار نشد. مطمئن شوید سرور لاراول روی پورت ۸۰۱۰ در حال اجراست.';
+  }
+  return 'بارگذاری داده‌های فروش ناموفق بود. لطفاً دوباره تلاش کنید.';
 }
 
 export async function getProducts(): Promise<{ items: AdminProduct[]; error: string | null }> {
@@ -97,6 +103,7 @@ export async function getOrderAnalytics(days: number | 'all' = 30): Promise<{
   try {
     const res = await adminFetch<{ data: OrderAnalytics }>('/orders/analytics', {
       query: { days: days === 'all' ? 'all' : days },
+      timeoutMs: 60_000,
     });
     return { data: res.data, error: null };
   } catch (e) {

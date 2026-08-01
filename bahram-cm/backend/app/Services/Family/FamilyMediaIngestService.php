@@ -24,7 +24,16 @@ class FamilyMediaIngestService
         $this->assertSize($file, $mediaType);
 
         $tempPath = config('family.media.temp_path', 'family-ingest').'/'.(string) Str::ulid().'.'.$file->getClientOriginalExtension();
-        Storage::disk(config('family.media.temp_disk', 'local'))->put($tempPath, file_get_contents($file->getRealPath()));
+        $tempDisk = Storage::disk(config('family.media.temp_disk', 'local'));
+        $source = fopen($file->getRealPath(), 'rb');
+        abort_unless($source !== false, 500, 'Cannot read uploaded file.');
+        try {
+            $tempDisk->writeStream($tempPath, $source);
+        } finally {
+            if (is_resource($source)) {
+                fclose($source);
+            }
+        }
 
         $media = FamilyMedia::query()->create([
             'type' => $mediaType,
@@ -53,6 +62,7 @@ class FamilyMediaIngestService
         ?bool $optimizeImages = null,
     ): FamilyMediaUploadSession {
         $mediaType = FamilyMediaType::from($type);
+        $this->assertTotalSize($totalSize, $mediaType);
         $ulid = (string) Str::ulid();
         $tempPath = config('family.media.temp_path', 'family-ingest')."/sessions/{$ulid}.part";
         $totalChunks = (int) ceil($totalSize / max(1, $chunkSize));
@@ -106,6 +116,17 @@ class FamilyMediaIngestService
     public function completeSession(FamilyMediaUploadSession $session): FamilyMedia
     {
         abort_unless((int) $session->received_chunks === (int) $session->total_chunks, 422, 'Upload incomplete.');
+
+        $tempDisk = Storage::disk(config('family.media.temp_disk', 'local'));
+        $absolute = $tempDisk->path($session->temp_path);
+        abort_unless(is_string($absolute) && is_file($absolute), 422, 'Assembled upload file is missing.');
+
+        $assembledSize = filesize($absolute) ?: 0;
+        abort_unless(
+            $assembledSize === (int) $session->total_size,
+            422,
+            'Assembled file size does not match declared total_size.',
+        );
 
         $media = FamilyMedia::query()->create([
             'type' => $session->type,
@@ -163,11 +184,16 @@ class FamilyMediaIngestService
 
     private function assertSize(UploadedFile $file, FamilyMediaType $type): void
     {
-        $mb = $file->getSize() / 1024 / 1024;
+        $this->assertTotalSize((int) $file->getSize(), $type);
+    }
+
+    private function assertTotalSize(int $bytes, FamilyMediaType $type): void
+    {
+        $mb = $bytes / 1024 / 1024;
         $max = match ($type) {
             FamilyMediaType::Voice => (int) config('family.media.max_voice_mb', 50),
             FamilyMediaType::Video => (int) config('family.media.max_video_mb', 500),
-            FamilyMediaType::Image => (int) config('family.media.max_image_mb', 15),
+            FamilyMediaType::Image => (int) config('family.media.max_image_mb', 50),
         };
 
         abort_if($mb > $max, 422, "حجم فایل بیش از {$max} مگابایت است.");

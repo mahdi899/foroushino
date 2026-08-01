@@ -10,6 +10,8 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/models/upload_progress.dart';
+import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/comments/comment_card.dart';
@@ -396,6 +398,10 @@ class _ReplySheetState extends State<ReplySheet> {
   final _textCtrl = TextEditingController();
   FamilyMediaRef? _voice;
   var _uploading = false;
+  double _uploadProgress = 0;
+  int _uploadSentBytes = 0;
+  int _uploadTotalBytes = 0;
+  MediaUploadPhase _uploadPhase = MediaUploadPhase.idle;
   var _sending = false;
 
   @override
@@ -415,12 +421,27 @@ class _ReplySheetState extends State<ReplySheet> {
       return;
     }
 
-    setState(() => _uploading = true);
+    setState(() {
+      _uploading = true;
+      _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = bytes.length;
+      _uploadPhase = MediaUploadPhase.uploading;
+    });
     try {
       final media = await context.read<AppState>().manager.uploadMedia(
             bytes: bytes,
             filename: picked.name,
             type: 'voice',
+            onUploadState: (upload) {
+              if (!mounted) return;
+              setState(() {
+                _uploadPhase = upload.phase;
+                _uploadProgress = upload.fraction;
+                _uploadSentBytes = upload.sentBytes;
+                _uploadTotalBytes = upload.totalBytes;
+              });
+            },
           );
       setState(() => _voice = media);
     } catch (e) {
@@ -492,6 +513,10 @@ class _ReplySheetState extends State<ReplySheet> {
             UploadZone(
               label: 'انتخاب و آپلود فایل صوتی',
               uploading: _uploading,
+              progress: _uploadProgress,
+              sentBytes: _uploadSentBytes,
+              totalBytes: _uploadTotalBytes,
+              phase: _uploadPhase,
               onTap: _pickVoice,
             )
           else

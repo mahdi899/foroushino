@@ -116,6 +116,19 @@ export async function getIdentityVerification(
   }
 }
 
+export async function getIdentityVerificationHistory(
+  studentId: number,
+): Promise<{ items: IdentityVerificationListItem[]; error: string | null }> {
+  try {
+    const res = await adminFetch<{ data: IdentityVerificationListItem[] }>(
+      `/students/${studentId}/identity/history`,
+    );
+    return { items: res.data ?? [], error: null };
+  } catch (e) {
+    return { items: [], error: errorMessage(e) };
+  }
+}
+
 type IdentityProviderSettingsResponse = {
   data: {
     providers?: IdentityProviderConfig[];
