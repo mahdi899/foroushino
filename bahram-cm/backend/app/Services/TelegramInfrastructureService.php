@@ -648,7 +648,8 @@ class TelegramInfrastructureService
 
         try {
             $me = $clients->forBot($bot)->getMe();
-            $username = (string) ($me['username'] ?? '?');
+            $bot->syncIdentityFromTelegramApi();
+            $username = (string) ($me['username'] ?? $bot->username ?? '?');
             $mode = $this->usesWorkerBridge() ? 'Worker' : 'مستقیم';
 
             return ['ok' => true, 'message' => "اتصال برقرار (@{$username}) — {$mode}"];
@@ -707,6 +708,8 @@ class TelegramInfrastructureService
         $mode = $this->usesHostBridge()
             ? 'هاست خارج'
             : ($this->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم');
+        $bot->refresh();
+        $bot->syncIdentityFromTelegramApi();
         app(TelegramWebhookRegisteredNotifier::class)->notify($bot, $url, $mode);
 
         return ['ok' => true, 'message' => 'وب‌هوک در تلگرام ثبت شد.', 'url' => $url];

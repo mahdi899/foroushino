@@ -124,6 +124,8 @@ class TelegramBotAdminController
             $token = trim((string) $data['bot_token_input']);
             if ($token !== '') {
                 $bot->setPanelToken($token);
+                $bot->refresh();
+                $bot->syncIdentityFromTelegramApi();
             }
             unset($data['bot_token_input']);
         }

@@ -180,6 +180,7 @@ final class HostCardToCardFlow
             return;
         }
 
+        $checkout['order_id'] = $orderId;
         $checkout['c2c_status'] = 'awaiting_review';
         $checkout['amount'] = $amountValue;
         $checkout['product_title'] = $productTitle;
@@ -189,6 +190,7 @@ final class HostCardToCardFlow
         $checkout['required_approvals'] = 2;
         $checkout['buyer_telegram_user_id'] = $telegramUserId;
 
+        $this->cache->rememberC2cReview($orderId, $checkout);
         $this->conversations->set($telegramUserId, 'idle', [
             'checkout' => $checkout,
             'c2c_review' => $checkout,
@@ -232,9 +234,8 @@ final class HostCardToCardFlow
             return;
         }
 
-        $conversation = $this->conversations->get($buyerId);
-        $review = (array) ($conversation['context']['c2c_review'] ?? $conversation['context']['checkout'] ?? []);
-        if ((int) ($review['order_id'] ?? 0) !== $orderId) {
+        $review = $this->resolveC2cReview($buyerId, $orderId);
+        if ($review === []) {
             $this->api->answerCallbackQuery($callbackId, 'این سفارش دیگر در انتظار بررسی نیست', true);
 
             return;
@@ -246,6 +247,7 @@ final class HostCardToCardFlow
                 $productId = (int) ($this->cache->c2cOrderMeta($orderId)['product_id'] ?? 0);
             }
             $this->live->checkoutC2cCancel($chatId, $actorTelegramUserId, $orderId, 'admin_reject');
+            $this->cache->forgetC2cReview($orderId);
             $this->conversations->set($buyerId, 'idle', []);
             $this->editGroupResult($chatId, $messageId, TelegramCustomEmoji::tag('cross')." رد شد — سفارش #{$orderId} لغو شد.");
             $this->api->answerCallbackQuery($callbackId, 'رد شد — سفارش لغو شد');
@@ -292,6 +294,7 @@ final class HostCardToCardFlow
         $review['approvals'] = $approvals;
 
         if (count($approvals) < $required) {
+            $this->cache->rememberC2cReview($orderId, $review);
             $this->conversations->set($buyerId, 'idle', [
                 'checkout' => $review,
                 'c2c_review' => $review,
@@ -321,6 +324,7 @@ final class HostCardToCardFlow
             return;
         }
 
+        $this->cache->forgetC2cReview($orderId);
         $this->conversations->set($buyerId, 'idle', []);
         $names = implode('، ', array_map(static fn ($a) => (string) ($a['name'] ?? ''), $approvals));
         $this->editGroupResult(
@@ -391,6 +395,23 @@ final class HostCardToCardFlow
         }
 
         return null;
+    }
+
+    /** @return array<string, mixed> */
+    private function resolveC2cReview(int $buyerId, int $orderId): array
+    {
+        $cached = $this->cache->c2cReview($orderId);
+        if ($cached !== []) {
+            return $cached;
+        }
+
+        $conversation = $this->conversations->get($buyerId);
+        $review = (array) ($conversation['context']['c2c_review'] ?? $conversation['context']['checkout'] ?? []);
+        if ((int) ($review['order_id'] ?? 0) !== $orderId) {
+            return [];
+        }
+
+        return $review;
     }
 
     /** @param array<string, mixed>|null $replyMarkup */

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Setting;
 use App\Models\User;
+use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -126,10 +128,18 @@ class StudentOnboardingService
     /** @return array<string, ?string> */
     private function academyLinks(): array
     {
-        return Setting::query()
+        $links = Setting::query()
             ->where('group', 'links')
             ->get()
             ->mapWithKeys(fn (Setting $s) => [$s->key => $s->value['url'] ?? null])
             ->all();
+
+        if (blank($links['telegram_bot'] ?? null)) {
+            $bot = TelegramBot::query()->where('key', 'production')->first();
+            $links['telegram_bot'] = $bot?->publicDeepLink()
+                ?? TelegramSiteUrl::botStartDeepLink();
+        }
+
+        return $links;
     }
 }

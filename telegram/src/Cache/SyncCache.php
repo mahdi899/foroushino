@@ -733,6 +733,43 @@ final class SyncCache
         ];
     }
 
+    /** @param array<string, mixed> $review */
+    public function rememberC2cReview(int $orderId, array $review): void
+    {
+        if ($orderId <= 0) {
+            return;
+        }
+
+        $this->storeMessages([
+            '__c2c_review_'.$orderId => json_encode($review, JSON_UNESCAPED_UNICODE),
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    public function c2cReview(int $orderId): array
+    {
+        if ($orderId <= 0) {
+            return [];
+        }
+
+        $raw = trim($this->message('__c2c_review_'.$orderId, ''));
+        $decoded = $raw !== '' ? json_decode($raw, true) : [];
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        return $decoded;
+    }
+
+    public function forgetC2cReview(int $orderId): void
+    {
+        if ($orderId <= 0) {
+            return;
+        }
+
+        $this->storeMessages(['__c2c_review_'.$orderId => '']);
+    }
+
     public function siteUrl(string $key, string $fallback = ''): string
     {
         return $this->message('site_url_'.$key, $fallback);

@@ -112,6 +112,58 @@ class TelegramBot extends Model
         $this->forceFill(['settings' => $settings])->save();
     }
 
+    /**
+     * Resolve @username from Telegram API (getMe) and persist it for deep links.
+     */
+    public function syncIdentityFromTelegramApi(): bool
+    {
+        if (! filled($this->resolveToken())) {
+            return false;
+        }
+
+        try {
+            $client = app(\App\Modules\TelegramBot\Clients\TelegramBotClientFactory::class)->forBot($this);
+            $me = $client->getMe();
+            $username = ltrim((string) ($me['username'] ?? ''), '@');
+            $updates = [];
+            if ($username !== '' && $this->username !== $username) {
+                $updates['username'] = $username;
+            }
+            $firstName = trim((string) ($me['first_name'] ?? ''));
+            if ($firstName !== '' && blank($this->display_name)) {
+                $updates['display_name'] = $firstName;
+            }
+            if ($updates !== []) {
+                $this->update($updates);
+            }
+
+            return $username !== '';
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public function publicDeepLink(?string $startPayload = null): ?string
+    {
+        $username = ltrim(trim((string) $this->username), '@');
+        if ($username === '' && filled($this->resolveToken())) {
+            $this->syncIdentityFromTelegramApi();
+            $this->refresh();
+            $username = ltrim(trim((string) $this->username), '@');
+        }
+        if ($username === '') {
+            return \App\Modules\TelegramBot\Support\TelegramSiteUrl::botStartDeepLink($startPayload);
+        }
+
+        $url = 'https://t.me/'.$username;
+        $payload = trim((string) $startPayload);
+        if ($payload !== '') {
+            $url .= '?start='.rawurlencode($payload);
+        }
+
+        return $url;
+    }
+
     public function panelTokenPreview(): ?string
     {
         $token = $this->panelToken();

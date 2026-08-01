@@ -57,6 +57,7 @@ class TelegramWebhookReconcileService
 
         try {
             $client->getMe();
+            $bot->syncIdentityFromTelegramApi();
             $actions[] = 'api_probe_ok';
         } catch (\Throwable $e) {
             Log::channel('telegram')->warning('telegram.reconcile.api_probe_failed', [

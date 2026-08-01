@@ -217,15 +217,24 @@ class TelegramUserDestinationsService
 
     private function resolveBotUrl(TelegramBot $bot): ?string
     {
-        if (filled($bot->username)) {
-            return 'https://t.me/'.ltrim((string) $bot->username, '@');
-        }
-
-        return $this->academyBotUrl();
+        return $bot->publicDeepLink() ?? $this->academyBotUrl();
     }
 
     private function academyBotUrl(): ?string
     {
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+        if ($bot !== null) {
+            $fromBot = $bot->publicDeepLink();
+            if (filled($fromBot)) {
+                return $fromBot;
+            }
+        }
+
+        $fromSite = TelegramSiteUrl::botStartDeepLink();
+        if (filled($fromSite)) {
+            return $fromSite;
+        }
+
         $setting = Setting::query()
             ->where('group', 'links')
             ->where('key', 'telegram_bot')

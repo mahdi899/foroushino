@@ -100,6 +100,15 @@ final class UpdateRouter
             }
         }
 
+        if (isset($update['callback_query']) && is_array($update['callback_query'])) {
+            $callbackData = (string) ($update['callback_query']['data'] ?? '');
+            if (str_starts_with($callbackData, 'c2c:ok:') || str_starts_with($callbackData, 'c2c:no:')) {
+                $this->callbacks->handle($update['callback_query']);
+
+                return;
+            }
+        }
+
         if (! $this->delegation->isPrivateUserFacing($update)) {
             return;
         }
