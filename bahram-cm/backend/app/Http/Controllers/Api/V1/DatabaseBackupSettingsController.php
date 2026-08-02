@@ -83,6 +83,21 @@ class DatabaseBackupSettingsController extends Controller
         ])->deleteFileAfterSend(false);
     }
 
+    public function exportPrivateMedia(Request $request): BinaryFileResponse|JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        try {
+            $artifact = $this->backup->createPrivateMediaArtifact();
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->download($artifact['path'], $artifact['filename'], [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(false);
+    }
+
     public function import(Request $request): JsonResponse
     {
         $this->authorizeSuperAdmin($request);

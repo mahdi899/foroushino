@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminPage, Badge } from '../../../ui';
-import { getIdentityVerification, getIdentityVerificationHistory } from '@/lib/admin/identityData';
-import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS, type IdentityVerificationListItem } from '@/lib/admin/identityTypes';
+import { getIdentityVerification } from '@/lib/admin/identityData';
+import { IDENTITY_GENDER_LABELS, IDENTITY_STATUS_LABELS } from '@/lib/admin/identityTypes';
 import { formatDate, formatDateTime } from '@/lib/admin/academyTypes';
 import { can, getCurrentUser } from '@/lib/auth/session';
 import { formatDateFa } from '@/lib/persian';
@@ -40,8 +40,6 @@ export default async function IdentityVerificationDetailPage({
 
   const user = await getCurrentUser();
   const { item, error } = await getIdentityVerification(numericId);
-  const history = item ? await getIdentityVerificationHistory(item.user_id) : { items: [], error: null };
-  const historyItems = history.items.filter((h) => h.status !== 'draft');
   if (!item && !error) notFound();
 
   return (
@@ -221,7 +219,8 @@ export default async function IdentityVerificationDetailPage({
                 </div>
                 <ul className="space-y-4">
                   {item.artifacts.map((art) => {
-                    const mediaUrl = art.stream_url ?? art.view_url ?? null;
+                    const fileAvailable = art.file_exists !== false;
+                    const mediaUrl = fileAvailable ? (art.stream_url ?? art.view_url ?? null) : null;
                     const isVideo =
                       art.mime_type?.startsWith('video/') || art.type === 'selfie_video';
                     const label =
@@ -277,29 +276,6 @@ export default async function IdentityVerificationDetailPage({
                       <p className="text-caption text-text-muted">
                         {r.reviewer_name ?? '—'} · {formatDate(r.created_at)}
                       </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {historyItems.length > 1 ? (
-              <div className="card p-5">
-                <h2 className="mb-3 text-h3 text-primary-dark">تاریخچه نسخه‌های احراز</h2>
-                <ul className="space-y-2 text-small">
-                  {historyItems.map((h: IdentityVerificationListItem) => (
-                    <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-2 last:border-0">
-                      <span>
-                        نسخه {h.version ?? '—'} ·{' '}
-                        <Badge tone={statusTone(h.status)}>{IDENTITY_STATUS_LABELS[h.status] ?? h.status}</Badge>
-                      </span>
-                      {h.id !== item.id ? (
-                        <Link href={`/admin/academy/identity-verifications/${h.id}`} className="text-accent hover:underline">
-                          مشاهده
-                        </Link>
-                      ) : (
-                        <span className="text-caption text-text-muted">همین پرونده</span>
-                      )}
                     </li>
                   ))}
                 </ul>

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\IdentityArtifactType;
 use App\Actions\Identity\ApproveIdentityVerification;
 use App\Actions\Identity\EnsureIdentityProfile;
 use App\Actions\Identity\TryActivateSatMembership;
@@ -14,6 +15,7 @@ use App\Enums\OwnershipVerificationResult;
 use App\Enums\SatApplicationStatus;
 use App\Enums\SatMembershipStatus;
 use App\Models\AdminAuditLog;
+use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationRoute;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\SatApplication;
@@ -28,7 +30,9 @@ use App\Support\NationalCode;
 use App\Support\PermissionCatalog;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
@@ -252,6 +256,114 @@ class RbacAndIdentityTest extends TestCase
         $this->getJson('/api/v1/student/identity-verification')
             ->assertOk()
             ->assertJsonPath('data.can_submit', false);
+    }
+
+    public function test_needs_correction_submission_can_be_resubmitted_with_existing_artifacts(): void
+    {
+        Storage::fake('local');
+        config(['bahram.uploads.private_disk' => 'local']);
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09128889900']);
+        $profile = app(EnsureIdentityProfile::class)($student);
+        $submission = IdentityVerificationSubmission::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $student->id,
+            'identity_profile_id' => $profile->id,
+            'version' => 2,
+            'status' => IdentityVerificationStatus::NeedsCorrection,
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+            'national_code_encrypted' => NationalCode::encrypt('0010350829'),
+            'national_code_hash' => NationalCode::hash('0010350829'),
+            'date_of_birth' => '1990-01-01',
+            'gender' => 'male',
+            'city' => 'تهران',
+            'required_corrections' => ['ویدیوی سلفی مناسب نیست'],
+            'submitted_at' => now()->subDay(),
+            'reviewed_at' => now()->subDay(),
+        ]);
+
+        $cardPath = "identity-verifications/{$profile->uuid}/{$submission->uuid}/national_card_front.jpg";
+        $videoPath = "identity-verifications/{$profile->uuid}/{$submission->uuid}/selfie_video.mp4";
+        Storage::disk('local')->put($cardPath, 'card-bytes');
+        Storage::disk('local')->put($videoPath, 'video-bytes');
+
+        IdentityVerificationArtifact::query()->create([
+            'submission_id' => $submission->id,
+            'type' => IdentityArtifactType::NationalCardFront,
+            'disk' => 'local',
+            'path' => $cardPath,
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 10,
+            'original_name' => 'card.jpg',
+        ]);
+        IdentityVerificationArtifact::query()->create([
+            'submission_id' => $submission->id,
+            'type' => IdentityArtifactType::SelfieVideo,
+            'disk' => 'local',
+            'path' => $videoPath,
+            'mime_type' => 'video/mp4',
+            'size_bytes' => 11,
+            'original_name' => 'selfie.mp4',
+        ]);
+
+        $profile->update(['identity_status' => IdentityVerificationStatus::NeedsCorrection]);
+
+        Sanctum::actingAs($student);
+
+        $this->withHeader('User-Agent', self::PHONE_USER_AGENT)
+            ->postJson('/api/v1/student/identity-verification/submit', [
+                ...$this->identityDraftPayload(),
+                'draft_submission_id' => $submission->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', IdentityVerificationStatus::Submitted->value);
+
+        $submission->refresh();
+        $this->assertSame(IdentityVerificationStatus::Submitted, $submission->status);
+        $this->assertNull($submission->required_corrections);
+        $this->assertNull($submission->reviewed_at);
+    }
+
+    public function test_identity_show_marks_missing_card_file_as_unavailable(): void
+    {
+        Storage::fake('local');
+        config(['bahram.uploads.private_disk' => 'local']);
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09129990011']);
+        $profile = app(EnsureIdentityProfile::class)($student);
+        $submission = IdentityVerificationSubmission::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $student->id,
+            'identity_profile_id' => $profile->id,
+            'version' => 1,
+            'status' => IdentityVerificationStatus::NeedsCorrection,
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+            'national_code_encrypted' => NationalCode::encrypt('0010350829'),
+            'national_code_hash' => NationalCode::hash('0010350829'),
+            'date_of_birth' => '1990-01-01',
+            'gender' => 'male',
+            'city' => 'تهران',
+        ]);
+
+        IdentityVerificationArtifact::query()->create([
+            'submission_id' => $submission->id,
+            'type' => IdentityArtifactType::NationalCardFront,
+            'disk' => 'local',
+            'path' => 'identity-verifications/missing/card.jpg',
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 10,
+            'original_name' => 'card.jpg',
+        ]);
+
+        $profile->update(['identity_status' => IdentityVerificationStatus::NeedsCorrection]);
+
+        Sanctum::actingAs($student);
+
+        $this->getJson('/api/v1/student/identity-verification')
+            ->assertOk()
+            ->assertJsonPath('data.latest_submission.artifacts.0.file_available', false);
     }
 
     public function test_sat_accepted_plus_level_1_does_not_activate_membership(): void

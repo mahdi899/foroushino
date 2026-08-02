@@ -19,6 +19,8 @@ export type DatabaseBackupView = {
   mysqldump_available: boolean;
   database_name: string;
   site_media_available: boolean;
+  private_media_available?: boolean;
+  remote_site_media_configured?: boolean;
   database_row_estimate?: number;
   latest_dump_stats?: {
     filename: string;

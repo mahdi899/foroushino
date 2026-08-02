@@ -237,7 +237,10 @@ class SubmitIdentityVerification
         $draft = IdentityVerificationSubmission::query()
             ->where('user_id', $user->id)
             ->whereKey($draftId)
-            ->where('status', IdentityVerificationStatus::Draft)
+            ->whereIn('status', [
+                IdentityVerificationStatus::Draft,
+                IdentityVerificationStatus::NeedsCorrection,
+            ])
             ->lockForUpdate()
             ->first();
 
@@ -259,9 +262,11 @@ class SubmitIdentityVerification
             'gender' => $data['gender'],
             'city' => $data['city'],
             'expected_video_text' => $expectedText,
+            'required_corrections' => null,
             'provider_route' => 'IDENTITY_MANUAL_REVIEW',
             'provider_slug' => 'manual-review',
             'submitted_at' => now(),
+            'reviewed_at' => null,
         ]);
 
         return $draft->fresh();
@@ -269,10 +274,22 @@ class SubmitIdentityVerification
 
     private function assertSubmissionHasArtifacts(IdentityVerificationSubmission $submission): void
     {
-        $hasCard = $submission->artifacts()->where('type', IdentityArtifactType::NationalCardFront)->exists();
-        $hasVideo = $submission->artifacts()->where('type', IdentityArtifactType::SelfieVideo)->exists();
+        $submission->loadMissing('artifacts');
 
-        if (! $hasCard || ! $hasVideo) {
+        $card = $submission->artifacts->first(
+            fn (IdentityVerificationArtifact $artifact) => $artifact->type === IdentityArtifactType::NationalCardFront,
+        );
+        $video = $submission->artifacts->first(
+            fn (IdentityVerificationArtifact $artifact) => $artifact->type === IdentityArtifactType::SelfieVideo,
+        );
+
+        if (! $card || ! $video) {
+            throw ValidationException::withMessages([
+                'artifacts' => [IdentityVerificationMessages::ARTIFACTS_REQUIRED],
+            ]);
+        }
+
+        if (! $this->storage->exists($card) || ! $this->storage->exists($video)) {
             throw ValidationException::withMessages([
                 'artifacts' => [IdentityVerificationMessages::ARTIFACTS_REQUIRED],
             ]);

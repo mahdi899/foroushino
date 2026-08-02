@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\DatabaseBackupSetting;
+use App\Support\MediaFtpConnection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
@@ -39,8 +41,9 @@ class DatabaseBackupService
             'telegram_chat_count' => count($chatIds),
             'mysqldump_available' => $this->mysqldumpBinary() !== null,
             'database_name' => $this->databaseName(),
-            'site_media_available' => is_dir($this->siteMediaPath()),
+            'site_media_available' => is_dir($this->siteMediaPath()) || $this->shouldBackupMediaFromRemote(),
             'private_media_available' => is_dir($this->privateMediaPath()),
+            'remote_site_media_configured' => $this->shouldBackupMediaFromRemote(),
             'database_row_estimate' => $this->dumper->estimateDatabaseRowCount($this->mysqlConfig()),
             'latest_dump_stats' => $this->latestDumpStats(),
         ];
@@ -325,6 +328,22 @@ class DatabaseBackupService
     /** @return array{path: string, filename: string, size_bytes: int} */
     public function createMediaArtifact(): array
     {
+        if ($this->shouldBackupMediaFromRemote()) {
+            $tempDir = $this->downloadRemoteMediaToTemp();
+
+            try {
+                return $this->createZipDirectoryArtifact(
+                    source: $tempDir,
+                    zipPrefix: 'media',
+                    filenamePrefix: 'media_backup',
+                    outputDirectory: $this->mediaBackupDirectory(),
+                    missingSourceMessage: 'پوشه media روی هاست دانلود یافت نشد.',
+                );
+            } finally {
+                File::deleteDirectory($tempDir);
+            }
+        }
+
         return $this->createZipDirectoryArtifact(
             source: $this->siteMediaPath(),
             zipPrefix: 'media',
@@ -837,6 +856,110 @@ class DatabaseBackupService
     private function privateMediaPath(): string
     {
         return storage_path('app/private');
+    }
+
+    private function shouldBackupMediaFromRemote(): bool
+    {
+        if (! MediaFtpConnection::isReady()) {
+            return false;
+        }
+
+        $diskName = MediaFtpConnection::diskName();
+        $driver = (string) config("filesystems.disks.{$diskName}.driver", 'local');
+
+        if (! in_array($driver, ['ftp', 'sftp'], true)) {
+            return false;
+        }
+
+        if (config('bahram.uploads.public_disk') === $diskName) {
+            return true;
+        }
+
+        return $this->countFilesInDirectory($this->siteMediaPath()) === 0;
+    }
+
+    private function downloadRemoteMediaToTemp(): string
+    {
+        $diskName = MediaFtpConnection::diskName();
+        $disk = Storage::disk($diskName);
+        $tempDir = storage_path('app/backups/tmp/media-'.now()->format('YmdHis'));
+        File::ensureDirectoryExists($tempDir);
+
+        try {
+            $files = $disk->allFiles('media');
+        } catch (Throwable $e) {
+            File::deleteDirectory($tempDir);
+
+            throw new RuntimeException('لیست فایل‌های media روی هاست دانلود ناموفق بود: '.$e->getMessage());
+        }
+
+        foreach ($files as $remotePath) {
+            $normalized = str_replace('\\', '/', $remotePath);
+            if (str_ends_with($normalized, '.part')) {
+                continue;
+            }
+
+            $relative = str_starts_with($normalized, 'media/')
+                ? substr($normalized, strlen('media/'))
+                : $normalized;
+
+            if ($relative === '') {
+                continue;
+            }
+
+            $localPath = $tempDir.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+            File::ensureDirectoryExists(dirname($localPath));
+
+            try {
+                $stream = $disk->readStream($normalized);
+                if ($stream === null) {
+                    continue;
+                }
+
+                $out = fopen($localPath, 'wb');
+                if ($out === false) {
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
+
+                    continue;
+                }
+
+                stream_copy_to_stream($stream, $out);
+                fclose($out);
+
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            } catch (Throwable $e) {
+                Log::warning('Backup: failed to download remote media file.', [
+                    'path' => $normalized,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $tempDir;
+    }
+
+    private function countFilesInDirectory(string $directory): int
+    {
+        if (! is_dir($directory)) {
+            return 0;
+        }
+
+        $count = 0;
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     private function readSqlPayload(UploadedFile $file): string

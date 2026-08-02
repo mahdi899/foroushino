@@ -15,11 +15,14 @@ export const dynamic = 'force-dynamic';
 type IdentityArtifact = {
   id?: number;
   type?: string;
+  file_available?: boolean;
 };
 
 function resolveNationalCardArtifactId(state: IdentityState | null): number | null {
   const artifacts = state?.latest_submission?.artifacts ?? [];
-  const card = artifacts.find((artifact) => artifact.type === 'national_card_front');
+  const card = artifacts.find(
+    (artifact) => artifact.type === 'national_card_front' && artifact.file_available !== false,
+  );
   return typeof card?.id === 'number' ? card.id : null;
 }
 
@@ -63,7 +66,9 @@ function buildIdentityDraft(state: IdentityState | null, userName?: string, prof
 
 function hasUploadedNationalCard(state: IdentityState | null): boolean {
   const artifacts = state?.latest_submission?.artifacts ?? [];
-  return artifacts.some((artifact) => artifact.type === 'national_card_front');
+  return artifacts.some(
+    (artifact) => artifact.type === 'national_card_front' && artifact.file_available !== false,
+  );
 }
 
 function resolveInitialStep(

@@ -399,6 +399,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('panel/settings/database-backup/run', [DatabaseBackupSettingsController::class, 'run']);
     Route::get('panel/settings/database-backup/export', [DatabaseBackupSettingsController::class, 'export']);
     Route::get('panel/settings/database-backup/export/media', [DatabaseBackupSettingsController::class, 'exportMedia']);
+    Route::get('panel/settings/database-backup/export/private-media', [DatabaseBackupSettingsController::class, 'exportPrivateMedia']);
     Route::post('panel/settings/database-backup/import', [DatabaseBackupSettingsController::class, 'import']);
     Route::post('panel/settings/database-backup/upload-download-host', [DatabaseBackupSettingsController::class, 'uploadDownloadHost']);
     Route::post('panel/settings/database-backup/test-telegram', [DatabaseBackupSettingsController::class, 'testTelegram']);

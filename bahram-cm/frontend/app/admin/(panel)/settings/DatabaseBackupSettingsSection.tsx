@@ -7,6 +7,7 @@ import { Badge } from '../ui';
 import {
   exportDatabaseBackupAction,
   exportMediaBackupAction,
+  exportPrivateMediaBackupAction,
   importDatabaseBackupAction,
   loadDatabaseBackupSettings,
   runDatabaseBackupAction,
@@ -33,6 +34,7 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
   const [running, setRunning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingMedia, setExportingMedia] = useState(false);
+  const [exportingPrivateMedia, setExportingPrivateMedia] = useState(false);
   const [uploadingOffsite, setUploadingOffsite] = useState(false);
   const [importing, setImporting] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -110,6 +112,25 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
     anchor.click();
     URL.revokeObjectURL(url);
     setStatus('فایل بکاپ media دانلود شد.');
+  }
+
+  async function onExportPrivateMedia() {
+    setExportingPrivateMedia(true);
+    setStatus('');
+    const res = await exportPrivateMediaBackupAction();
+    setExportingPrivateMedia(false);
+    if (!res.ok) {
+      setStatus(res.error);
+      return;
+    }
+    const blob = new Blob([res.blob], { type: 'application/zip' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = res.filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setStatus('فایل بکاپ مدارک خصوصی دانلود شد.');
   }
 
   async function onUploadOffsite() {
@@ -261,7 +282,9 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
         </p>
         <p className="mt-1 text-text-muted">
           هر بکاپ در پوشه جدا با نام تاریخ ذخیره می‌شود (جایگزین نمی‌شود). بکاپ‌های قدیمی‌تر از{' '}
-          {view?.offsite_retention_days ?? 30} روز حذف می‌شوند.
+          {view?.offsite_retention_days ?? 30} روز حذف می‌شوند. هر پوشه شامل{' '}
+          <span dir="ltr">media_backup_*.zip</span> (رسانه سایت و خانواده از هاست دانلود) و{' '}
+          <span dir="ltr">private_media_backup_*.zip</span> (مدارک احراز هویت روی سرور ایران) است.
         </p>
         {view?.last_offsite_backup_at ? (
           <p className="mt-1">آخرین آپلود: {new Date(view.last_offsite_backup_at).toLocaleString('fa-IR')}</p>
@@ -271,6 +294,22 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
             DB:{' '}
             <a href={view.last_offsite_links.database.url} className="text-primary hover:underline" dir="ltr">
               {view.last_offsite_links.database.url}
+            </a>
+          </p>
+        ) : null}
+        {view?.last_offsite_links?.media?.url ? (
+          <p className="mt-1 break-all">
+            Media:{' '}
+            <a href={view.last_offsite_links.media.url} className="text-primary hover:underline" dir="ltr">
+              {view.last_offsite_links.media.url}
+            </a>
+          </p>
+        ) : null}
+        {view?.last_offsite_links?.private_media?.url ? (
+          <p className="mt-1 break-all">
+            Private:{' '}
+            <a href={view.last_offsite_links.private_media.url} className="text-primary hover:underline" dir="ltr">
+              {view.last_offsite_links.private_media.url}
             </a>
           </p>
         ) : null}
@@ -308,12 +347,21 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
         </button>
         <button
           type="button"
+          onClick={() => void onExportPrivateMedia()}
+          disabled={exportingPrivateMedia || !view?.private_media_available}
+          className="btn btn-secondary px-3 py-1.5 text-caption"
+        >
+          {exportingPrivateMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
+          دانلود مدارک خصوصی
+        </button>
+        <button
+          type="button"
           onClick={() => void onUploadOffsite()}
           disabled={uploadingOffsite || !view?.download_host_configured}
           className="btn btn-secondary px-3 py-1.5 text-caption"
         >
           {uploadingOffsite ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
-          آپلود هفتگی به هاست
+          آپلود media به هاست
         </button>
         <button type="button" onClick={() => void onTestTelegram()} disabled={testing} className="btn btn-secondary px-3 py-1.5 text-caption">
           {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

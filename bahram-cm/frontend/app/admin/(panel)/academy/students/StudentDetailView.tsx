@@ -11,7 +11,6 @@ import {
   type AdminStudentDetail,
 } from '@/lib/admin/academyTypes';
 import { COURSE_ACCESS_SOURCE_LABELS, ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/admin/commerceTypes';
-import { IDENTITY_STATUS_LABELS, type IdentityVerificationListItem } from '@/lib/admin/identityTypes';
 import { StudentDeleteButton } from './StudentDeleteButton';
 import { StudentStatusForm } from './StudentStatusForm';
 
@@ -115,11 +114,9 @@ function TicketMobileCard({ ticket }: { ticket: AdminStudentDetail['tickets'][nu
 
 export function StudentDetailView({
   student,
-  identityHistory = [],
   canDeleteStudent = false,
 }: {
   student: AdminStudentDetail;
-  identityHistory?: IdentityVerificationListItem[];
   canDeleteStudent?: boolean;
 }) {
   const profile = student.profile;
@@ -328,28 +325,6 @@ export function StudentDetailView({
           </ul>
         </div>
       )}
-
-      {identityHistory.length > 0 ? (
-        <div className="card p-4 sm:p-6">
-          <h3 className="mb-4 text-h3 font-bold text-primary-dark">تاریخچه احراز هویت</h3>
-          <ul className="divide-y divide-border text-small">
-            {identityHistory.map((h) => (
-              <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-                <span>
-                  نسخه {h.version ?? '—'} · {IDENTITY_STATUS_LABELS[h.status] ?? h.status}
-                  {h.submitted_at ? ` · ${formatDateTime(h.submitted_at)}` : ''}
-                </span>
-                <Link
-                  href={`/admin/academy/identity-verifications/${h.id}`}
-                  className="text-accent hover:underline"
-                >
-                  مشاهده پرونده
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
 
       {canDeleteStudent ? (
         <StudentDeleteButton studentId={student.id} studentName={student.display_name ?? student.name} />

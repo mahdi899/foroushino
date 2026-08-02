@@ -1,0 +1,148 @@
+=== RECOVERY SEARCH 2026-08-02T04:26:41.869688 ===
+
+$ ls -lah /var/backups/bahram/ 2>/dev/null; ls -lah /var/backups/bahram/media/ 2>/dev/null | tail -10; ls -lah /var/backups/bahram/private/ 2>/dev/null | tail -10; ls -lah /var/backups/bahram/db/ 2>/dev/null | tail -5
+total 12K
+drwxr-xr-x 3 root root 4.0K Jul 21 01:26 .
+drwxr-xr-x 3 root root 4.0K Aug  2 00:00 ..
+drwxr-xr-x 2 root root 4.0K Jul 21 01:26 db
+total 248K
+drwxr-xr-x 2 root root 4.0K Jul 21 01:26 .
+drwxr-xr-x 3 root root 4.0K Jul 21 01:26 ..
+-rw-r--r-- 1 root root 237K Jul 21 01:26 bahram_pre_sync_20260721-012615.sql.gz
+
+
+$ find /var/backups -iname '*identity*' -o -iname '*private*' 2>/dev/null | head -30
+
+
+$ find /var/www -path '*identity-verifications*' -type f 2>/dev/null | wc -l
+87
+
+
+$ find /var/www -path '*identity-verifications*' -type f 2>/dev/null | grep -v 'storage/app/private' | head -10
+/var/www/foroushino/bahram-cm/frontend/app/admin/(panel)/academy/identity-verifications/IdentityReviewActions.tsx
+/var/www/foroushino/bahram-cm/frontend/app/admin/(panel)/academy/identity-verifications/[id]/page.tsx
+/var/www/foroushino/bahram-cm/frontend/app/admin/(panel)/academy/identity-verifications/actions.ts
+/var/www/foroushino/bahram-cm/frontend/app/admin/(panel)/academy/identity-verifications/IdentityDocumentViewer.tsx
+/var/www/foroushino/bahram-cm/frontend/app/admin/(panel)/academy/identity-verifications/page.tsx
+/var/www/foroushino/bahram-cm/frontend/.next/server/app/admin/(panel)/academy/identity-verifications/[id]/page.js.nft.json
+/var/www/foroushino/bahram-cm/frontend/.next/server/app/admin/(panel)/academy/identity-verifications/[id]/page/next-font-manifest.json
+/var/www/foroushino/bahram-cm/frontend/.next/server/app/admin/(panel)/academy/identity-verifications/[id]/page/react-loadable-manifest.json
+/var/www/foroushino/bahram-cm/frontend/.next/server/app/admin/(panel)/academy/identity-verifications/[id]/page/build-manifest.json
+/var/www/foroushino/bahram-cm/frontend/.next/server/app/admin/(panel)/academy/identity-verifications/[id]/page/server-reference-manifest.json
+
+
+$ ls -lah /var/www/bahram-cm/backend/storage/app/backups/ 2>/dev/null; ls -lah /var/www/bahram-cm/backend/storage/app/backups/media/ 2>/dev/null | tail -5; ls -lah /var/www/bahram-cm/backend/storage/app/backups/private/ 2>/dev/null | tail -5
+total 20K
+drwxr-xr-x 5 www-data www-data 4.0K Jul 26 00:00 .
+drwxrwxr-x 6 www-data www-data 4.0K Aug  1 21:18 ..
+drwxr-xr-x 2 www-data www-data 4.0K Aug  2 00:18 database
+drwxr-xr-x 2 www-data www-data 4.0K Jul 26 00:00 download-host
+drwxr-xr-x 2 www-data www-data 4.0K Aug  2 00:00 media
+total 8.0K
+drwxr-xr-x 2 www-data www-data 4.0K Aug  2 00:00 .
+drwxr-xr-x 5 www-data www-data 4.0K Jul 26 00:00 ..
+
+
+$ ls -lah /var/www/bahram-cm/backend/storage/app/backups/download-host/ 2>/dev/null; cat /var/www/bahram-cm/backend/storage/app/backups/download-host/latest.json 2>/dev/null | head -40
+total 12K
+drwxr-xr-x 2 www-data www-data 4.0K Jul 26 00:00 .
+drwxr-xr-x 5 www-data www-data 4.0K Jul 26 00:00 ..
+-rw-rw-r-- 1 www-data www-data  500 Aug  2 00:00 latest.json
+{
+    "site": "bahram",
+    "id": "2026-08-02_033007",
+    "backup_date": "2026-08-02_033007",
+    "created_at": "2026-08-02T03:30:11+03:30",
+    "files": {
+        "media": {
+            "name": "media_backup_2026-08-02_033007.zip",
+            "path": "backups\/bahram\/2026-08-02_033007\/media_backup_2026-08-02_033007.zip",
+            "size_bytes": 32316001,
+            "url": "https:\/\/cdn.rostami.app\/backups\/bahram\/2026-08-02_033007\/media_backup_2026-08-02_033007.zip"
+        }
+    }
+}
+
+$ grep -E 'BACKUP_|MEDIA_FTP|MEDIA_URL|private_disk' /var/www/bahram-cm/backend/.env 2>/dev/null | sed 's/=.*/=***/'
+MEDIA_URL=***
+
+
+$ for f in /var/backups/bahram/media/*.tar.gz; do [ -f "$f" ] && echo "--- $f" && tar -tzf "$f" 2>/dev/null | grep -i identity | head -5; done
+
+
+$ for f in /var/www/bahram-cm/backend/storage/app/backups/media/*.zip; do [ -f "$f" ] && echo "--- $f" && unzip -l "$f" 2>/dev/null | grep -i identity | head -5; done
+
+
+$ ls -lah /var/www/foroushino/bahram-cm/backend/storage/app/private/identity-verifications 2>/dev/null | head -3; readlink -f /var/www/bahram-cm 2>/dev/null; readlink -f /var/www/foroushino 2>/dev/null
+total 2.0M
+drwx------ 479 www-data www-data  36K Aug  2 00:51 .
+drwxrwxr-x   4 www-data www-data 4.0K Jul 25 20:48 ..
+/var/www/foroushino/bahram-cm
+/var/www/foroushino
+
+
+
+=== CDN ZIP CHECK ===
+$ curl -skI 'https://cdn.rostami.app/backups/bahram/2026-08-02_033007/media_backup_2026-08-02_033007.z
+HTTP/1.1 200 OK
+Server: nginx
+Date: Sun, 02 Aug 2026 00:56:09 GMT
+Content-Type: application/zip
+Content-Length: 32316001
+
+$ curl -sk 'https://cdn.rostami.app/backups/bahram/2026-08-02_033007/media_backup_2026-08-02_033007.zi
+
+$ find /var/www/bahram-cm/backend/storage/app/backups -name '*.zip' -o -name '*.tar.gz' 2>/dev/null | 
+total 1.8M
+drwx------ 14 root root 4.0K Jul 29 00:21 .
+drwxr-xr-x 23 root root 4.0K Jul 21 21:10 ..
+-rw-r--r--  1 root root 1.5M Jul 20 00:23 bahram_backend_import.sql
+-rw-r--r--  1 root root 8.0K Jul 19 23:44 bahram-finalize.log
+-rwxr-xr-x  1 root root 1.4K Jul 19 23:44 bahram-finalize.sh
+-rw-r--r--  1 root root 114K Jul 19 23:58 bahram-finish.log
+-rwxr-xr-x  1 root root 3.0K Jul 19 23:34 bahram-finish.sh
+-rw-r--r--  1 root root  25K Jul 19 23:14 bahram-install.log
+-rw-r--r--  1 root root    0 Jul 19 23:09 bahram-install.nohup
+-rwxr-xr-x  1 root root 2.6K Jul 19 23:09 bahram-install.sh
+-rwxr-xr-x  1 root root 1.8K Jul 19 23:14 bahram-resume.sh
+-rw-------  1 root root  58K Aug  1 13:56 .bash_history
+-rw-r--r--  1 root root 3.1K Apr 22  2024 .bashrc
+drwx------  3 root root 4.0K Jul 19 23:10 .cache
+drwxr-xr-x  8 root root 4.0K Jul 28 00:31 .config
+drwxr-xr-x  2 root root 4.0K Jul 20 00:06 .dart-tool
+-rw-r--r--  1 root root  173 Jul 27 13:50 exec_recipe.log
+-rw-r--r--  1 root root   78 Jul 20 02:06 .flutter
+-rw-r--r--  1 root root  193 Jul 19 23:45 flutter-build.log
+-rw-r--r--  1 root root   55 Jul 23 12:59 .gitconfig
+drwx------  3 root root 4.0K Jul 20 17:08 .launchpadlib
+-rw-------  1 root root   20 Jul 29 00:21 .lesshst
+drwxr-xr-x  3 root root 4.0K Apr 26  2024 .local
+-rwxr-xr-x  1 root root  759 Jul 19 23:45 nginx-setup.sh
+drwxr-xr-x  5 root root 4.0K Jul 30 01:31 .npm
+drwxr-xr-x  5 root root 4.0K Aug  1 10:23 .pm2
+drwxr-xr-x  3 root root 4.0K Jul 21 01:26 pre-deploy-backup-20260721-012615
+drwxr-xr-x  2 root root 4.0K Jul 21 01:27 pre-deploy-backup-runtime
+-rw-r--r--  1 root root 2.3K Jul 21 00:00 pre-rebuild-backend.env
+drwxr-xr-x  2 root root 4.0K Jul 21 02:19 pre-rebuild-env
+-rw-r--r--  1 root root  629 Jul 20 22:03 pre-rebuild-frontend.env.local
+-rw-r--r--  1 root root  161 Apr 22  2024 .profile
+drwxr-xr-x  6 root root 4.0K Jul 20 00:05 .pub-cache
+-rw-r--r--  1 root root 1.5K Jul 19 22:42 recipe_-312.log
+-rw-r--r--  1 root root 1.5K Jul 19 22:39 recipe_-63.log
+-rw-r--r--  1 root root 1.5K Jul 27 13:50 recipe_-77.log
+drwx------  2 root root 4.0K Jul 20 19:45 .ssh
+-rw-r--r--  1 root root  237 Jul 19 23:47 ssl-setup.log
+-rwxr-xr-x  1 root root  630 Jul 19 23:46 ssl-setup.sh
+-rw-r--r--  1 root root    0 Jul 27 00:12 typescript
+-rw-r--r--  1 root root 2.3K Jul 27 13:46 udo systemctl enable --now ssh
+
+$ ls -lah /var/www/bahram-cm/backend/storage/app/backups/database/ | tail -5
+drwxr-xr-x 5 www-data www-data 4.0K Jul 26 00:00 ..
+-rw-r--r-- 1 www-data www-data 272K Jul 22 16:25 backup_bahram_backend_2026-07-22_195511.sql.gz
+-rw-r--r-- 1 www-data www-data 351K Jul 28 14:00 backup_bahram_backend_2026-07-28_173053.sql.gz
+-rw-r--r-- 1 www-data www-data 5.0M Aug  1 20:59 backup_bahram_backend_2026-08-02_002946.sql.gz
+-rw-r--r-- 1 www-data www-data 5.0M Aug  1 21:00 backup_bahram_backend_2026-08-02_002958.sql.gz
+
+$ find /var/www/bahram-cm/backend/storage/app/backups/download-host -type f 2>/dev/null
+/var/www/bahram-cm/backend/storage/app/backups/download-host/latest.json
+

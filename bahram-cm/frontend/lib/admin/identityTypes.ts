@@ -54,6 +54,7 @@ export type IdentityArtifact = {
   view_url?: string | null;
   stream_url?: string | null;
   original_name?: string | null;
+  file_exists?: boolean;
 };
 
 export type IdentityReview = {

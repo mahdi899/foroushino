@@ -30,6 +30,7 @@ class IdentityVerificationController extends Controller
     {
         $user = $request->user();
         $profile = $ensure($user);
+        $artifactStorage = app(IdentityArtifactStorage::class);
         $latest = IdentityVerificationSubmission::query()
             ->where('user_id', $user->id)
             ->with('artifacts')
@@ -49,7 +50,7 @@ class IdentityVerificationController extends Controller
             'gender' => $profile->gender,
             'city' => $profile->city,
             'required_corrections' => IdentityReasonCode::labelsForList($latest?->required_corrections),
-            'latest_submission' => $latest ? $this->submissionPayload($latest) : null,
+            'latest_submission' => $latest ? $this->submissionPayload($latest, $artifactStorage) : null,
             'can_submit' => $this->canSubmit($profile, $user->id),
             'requires_phone_for_selfie' => true,
             'is_phone_client' => MobileClient::isPhone(MobileClient::requestUserAgent($request)),
@@ -146,7 +147,7 @@ class IdentityVerificationController extends Controller
             return ApiResponse::error('duplicate_national_code', IdentityVerificationMessages::DUPLICATE_NATIONAL_CODE, 422);
         }
 
-        return ApiResponse::success($this->submissionPayload($submission));
+        return ApiResponse::success($this->submissionPayload($submission, app(IdentityArtifactStorage::class)));
     }
 
     public function uploadArtifact(
@@ -177,7 +178,7 @@ class IdentityVerificationController extends Controller
 
         $mimeRules = $type === IdentityArtifactType::SelfieVideo
             ? ['mimes:mp4,webm,mov,quicktime']
-            : ['mimes:jpg,jpeg,png,webp'];
+            : ['mimes:jpg,jpeg,png,webp,heic,heif'];
 
         $request->validate(
             ['file' => array_merge($mimeRules, ["max:{$maxKb}"])],
@@ -200,7 +201,10 @@ class IdentityVerificationController extends Controller
             ->when(
                 $data['submission_id'] ?? null,
                 fn ($q, $id) => $q->whereKey($id),
-                fn ($q) => $q->where('status', IdentityVerificationStatus::Draft)->orderByDesc('id'),
+                fn ($q) => $q->whereIn('status', [
+                    IdentityVerificationStatus::Draft,
+                    IdentityVerificationStatus::NeedsCorrection,
+                ])->orderByDesc('id'),
             )
             ->first();
 
@@ -310,12 +314,16 @@ class IdentityVerificationController extends Controller
             return ApiResponse::error('validation_error', $message, 422, $errors);
         }
 
-        return ApiResponse::success($this->submissionPayload($submission), 201);
+        return ApiResponse::success($this->submissionPayload($submission, app(IdentityArtifactStorage::class)), 201);
     }
 
     /** @return array<string, mixed> */
-    private function submissionPayload(IdentityVerificationSubmission $submission): array
-    {
+    private function submissionPayload(
+        IdentityVerificationSubmission $submission,
+        ?IdentityArtifactStorage $artifactStorage = null,
+    ): array {
+        $artifactStorage ??= app(IdentityArtifactStorage::class);
+
         return [
             'id' => $submission->id,
             'uuid' => $submission->uuid,
@@ -336,6 +344,7 @@ class IdentityVerificationController extends Controller
                     'type' => $a->type->value,
                     'mime_type' => $a->mime_type,
                     'size_bytes' => $a->size_bytes,
+                    'file_available' => $artifactStorage->exists($a),
                 ])->values()->all()
                 : [],
         ];

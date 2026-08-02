@@ -1,0 +1,18 @@
+find /var/backups -name '*.tar.gz' -o -name '*.zip' 2>/dev/null | head -20
+
+---
+find /var/www -path '*identity-verifications*' -name '*.mp4' -o -path '*identity-verifications*' -name '*.webm' 2>/dev/null | wc -l
+2
+
+---
+ls -la /var/www/bahram-cm/backend/storage/app/private/identity-verifications/ 2>/dev/null | head -10
+total 1948
+drwx------ 478 www-data www-data 36864 Aug  1 23:49 .
+drwxrwxr-x   4 www-data www-data  4096 Jul 25 20:48 ..
+drwx------   3 www-data www-data  4096 Aug  1 12:40 0120e495-f4d5-4cf1-ad1b-010f47ef6b68
+drwx------   3 www-data www-data  4096 Aug  1 11:55 02dddc93-3e76-432a-ad89-c88df5569500
+drwx------   3 www-data www-data  4096 Aug  1 16:09 03be5d64-4090-4dcc-990e-c1756460dff7
+drwx------   3 www-data www-data  4096 Aug  1 10:59 03e4620e-8a7c-4bff-99e5-384d3656877e
+drwx------   3 www-data www-data  4096 Aug  1 09:08 04d77104-a07d-495c-92c7-f39f19b918f5
+drwx------   3 www-data www-data  4096 Aug  1 19:27 04da4872-7763-4738-a863-81629623fa0e
+drwx------   3 www-data www-data  4096 Aug  1 13:40 05793fd4-50f1-48b9-bde3-e1a49da234a5
