@@ -1,0 +1,79 @@
+---
+description: TypeScript typecheck قبل از build و deploy — هم‌تیمی‌ها
+alwaysApply: true
+---
+
+# Typecheck فرانت‌اند (بهرام + کلاب)
+
+## وضعیت فعلی
+
+در `bahram-cm/frontend/next.config.ts`:
+
+```ts
+typescript: {
+  ignoreBuildErrors: false,  // ✅ فعال — build با خطای TS متوقف می‌شود
+}
+```
+
+**قبلاً** `ignoreBuildErrors: true` بود (برای تست build روی سرور کم‌رم) — این را **غیرفعال نکنید** مگر موقت و با هماهنگی تیم.
+
+## قبل از push / PR / deploy
+
+از پوشه `bahram-cm/frontend`:
+
+```bash
+npm run verify   # lint + typecheck + validate:images + check-imports
+npm run build
+```
+
+حداقل:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+## CI (GitHub Actions)
+
+در `.github/workflows/ci.yml` مراحل جداگانه اجرا می‌شوند:
+
+1. `npm run lint`
+2. `npm run typecheck`
+3. `npm run validate:images`
+4. `npm run check-imports`
+5. `npm run build`
+
+PR بدون پاس شدن typecheck merge نشود.
+
+## Deploy روی سرور
+
+`deploy/scripts/deploy.sh` و `rebuild-frontend.sh` قبل از `next build`:
+
+```bash
+npm run typecheck
+```
+
+اگر typecheck fail شود، deploy ادامه پیدا نمی‌کند.
+
+## بعد از pull (هم‌تیمی)
+
+```bash
+cd bahram-cm/frontend
+npm ci
+npm run verify
+```
+
+## ممنوع
+
+- `typescript.ignoreBuildErrors: true` در `next.config.ts` بدون issue/هماهنگی
+- deploy کردن وقتی `npm run typecheck` لوکال fail می‌دهد
+- fix کردن خطای TS با `@ts-ignore` / `any` بدون دلیل
+
+## فایل‌های مرجع
+
+| فایل | نقش |
+|------|-----|
+| `bahram-cm/frontend/next.config.ts` | `ignoreBuildErrors` |
+| `bahram-cm/frontend/package.json` | اسکریپت‌های `typecheck` و `verify` |
+| `bahram-cm/.github/workflows/ci.yml` | CI gate |
+| `bahram-cm/deploy/scripts/deploy.sh` | typecheck قبل از build در production |

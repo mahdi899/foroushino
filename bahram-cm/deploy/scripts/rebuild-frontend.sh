@@ -44,8 +44,9 @@ if [[ -f .env.local ]]; then
     && sed -i 's|^NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=https://rostami.app|' .env.local \
     || echo 'NEXT_PUBLIC_SITE_URL=https://rostami.app' >> .env.local
 fi
-export NEXT_DEPLOY_REV="$(git -C "${GIT_ROOT}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M)"
-echo "NEXT_DEPLOY_REV=${NEXT_DEPLOY_REV}"
+# Do NOT set NEXT_DEPLOY_REV — assetPrefix caused mixed /_next/ + /deploy/* chunk URLs and blank pages.
+unset NEXT_DEPLOY_REV
+npm run typecheck
 npm run build
 test -f .next/BUILD_ID
 echo "BUILD_ID=$(cat .next/BUILD_ID)"

@@ -27,10 +27,10 @@ export function TelegramSupportGroupsLazy({ compact = false }: { compact?: boole
       };
     }
 
-    const timer = window.setTimeout(load, 400);
+    const timer = setTimeout(load, 400);
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      clearTimeout(timer);
     };
   }, []);
 

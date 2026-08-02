@@ -153,8 +153,9 @@ if [[ -r /proc/meminfo ]]; then
     export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
     if ! npm ci; then npm install --no-audit --no-fund; fi
     export NODE_ENV=production
-    export NEXT_DEPLOY_REV="$(git -C "${GIT_ROOT}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M)"
-    echo "NEXT_DEPLOY_REV=${NEXT_DEPLOY_REV}"
+    # Do NOT set NEXT_DEPLOY_REV — assetPrefix caused mixed chunk URLs and blank pages.
+    unset NEXT_DEPLOY_REV
+    npm run typecheck
     rm -rf .next
     npm run build
   fi
@@ -162,8 +163,9 @@ else
   unset NODE_ENV
   if ! npm ci; then npm install --no-audit --no-fund; fi
   export NODE_ENV=production
-  export NEXT_DEPLOY_REV="$(git -C "${GIT_ROOT}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M)"
-  echo "NEXT_DEPLOY_REV=${NEXT_DEPLOY_REV}"
+  # Do NOT set NEXT_DEPLOY_REV — assetPrefix caused mixed chunk URLs and blank pages.
+  unset NEXT_DEPLOY_REV
+  npm run typecheck
   rm -rf .next
   npm run build
 fi

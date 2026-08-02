@@ -205,7 +205,7 @@ export function PanelNotificationProvider({
         if ('requestIdleCallback' in window) {
           window.requestIdleCallback(loadRecent, { timeout: 3000 });
         } else {
-          window.setTimeout(loadRecent, 1200);
+          setTimeout(loadRecent, 1200);
         }
       } finally {
         if (!cancelled) {

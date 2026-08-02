@@ -129,9 +129,9 @@ const config: NextConfig = {
   assetPrefix: productionAssetPrefix,
   /** Hide bottom-left "Compiling / Rendering" dev badge (nextjs-portal). Errors still show. */
   devIndicators: false,
-  /** Production server builds: skip TS typecheck so low-RAM hosts can finish next build. */
+  /** Typecheck runs in CI (`npm run typecheck`) and during `next build` — do not disable. */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   async redirects() {
     return [
