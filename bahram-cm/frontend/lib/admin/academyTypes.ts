@@ -374,6 +374,21 @@ export const TICKET_STATUS_LABELS: Record<string, string> = {
   closed: 'بسته شده',
 };
 
+export const TICKET_DEPARTMENT_LABELS: Record<string, string> = {
+  technical: 'فنی',
+  financial: 'مالی',
+  course: 'دوره',
+  general: 'عمومی',
+};
+
+export const TICKET_DEPARTMENT_OPTIONS = [
+  { value: '', label: 'همه بخش‌ها' },
+  { value: 'technical', label: 'فنی' },
+  { value: 'financial', label: 'مالی' },
+  { value: 'course', label: 'دوره' },
+  { value: 'general', label: 'عمومی' },
+] as const;
+
 export const TICKET_PRIORITY_LABELS: Record<string, string> = {
   low: 'کم',
   normal: 'متوسط',

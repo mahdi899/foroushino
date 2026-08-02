@@ -6,18 +6,26 @@ import Link from 'next/link';
 import { Loader2, MessageSquarePlus, X } from 'lucide-react';
 import { createTicketForStudent } from '../actions';
 import { StudentSearchPicker, type SelectedStudent } from './StudentSearchPicker';
+import { TICKET_DEPARTMENT_LABELS } from '@/lib/admin/academyTypes';
 
 const DEPARTMENTS = [
-  { value: '', label: 'عمومی' },
-  { value: 'technical', label: 'فنی' },
-  { value: 'financial', label: 'مالی' },
-  { value: 'course', label: 'دوره' },
+  { value: '', label: TICKET_DEPARTMENT_LABELS.general },
+  { value: 'technical', label: TICKET_DEPARTMENT_LABELS.technical },
+  { value: 'financial', label: TICKET_DEPARTMENT_LABELS.financial },
+  { value: 'course', label: TICKET_DEPARTMENT_LABELS.course },
 ];
 
-export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpen?: boolean }) {
+export function CreateTicketForStudentForm({
+  defaultOpen = false,
+  canSearchStudents = true,
+}: {
+  defaultOpen?: boolean;
+  canSearchStudents?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(defaultOpen);
   const [student, setStudent] = useState<SelectedStudent | null>(null);
+  const [mobile, setMobile] = useState('');
   const [subject, setSubject] = useState('');
   const [department, setDepartment] = useState('');
   const [message, setMessage] = useState('');
@@ -27,8 +35,13 @@ export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpe
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!student) {
+
+    if (canSearchStudents && !student) {
       setError('لطفاً یک دانشجو انتخاب کنید.');
+      return;
+    }
+    if (!canSearchStudents && !mobile.trim()) {
+      setError('لطفاً شماره موبایل دانشجو را وارد کنید.');
       return;
     }
 
@@ -37,7 +50,9 @@ export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpe
     setCreatedId(null);
 
     const res = await createTicketForStudent({
-      user_id: student.id,
+      ...(canSearchStudents && student
+        ? { user_id: student.id }
+        : { mobile: mobile.trim() }),
       subject: subject.trim(),
       message: message.trim(),
       department: department || undefined,
@@ -48,6 +63,7 @@ export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpe
     if (res.ok) {
       setCreatedId(res.id);
       setStudent(null);
+      setMobile('');
       setSubject('');
       setDepartment('');
       setMessage('');
@@ -66,6 +82,8 @@ export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpe
     );
   }
 
+  const canSubmit = canSearchStudents ? Boolean(student) : Boolean(mobile.trim());
+
   return (
     <form onSubmit={onSubmit} className="card mb-5 space-y-4 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -82,7 +100,21 @@ export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpe
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-          <StudentSearchPicker value={student} onChange={setStudent} required />
+          {canSearchStudents ? (
+            <StudentSearchPicker value={student} onChange={setStudent} required />
+          ) : (
+            <label className="block min-w-0">
+              <span className="field-label">شماره موبایل دانشجو</span>
+              <input
+                required
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                className="field-input w-full"
+                dir="ltr"
+                placeholder="0912..."
+              />
+            </label>
+          )}
         </div>
         <label className="min-w-0">
           <span className="field-label">موضوع</span>
@@ -119,7 +151,7 @@ export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpe
       </label>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <button type="submit" disabled={pending || !student} className="btn btn-primary w-full sm:w-auto">
+        <button type="submit" disabled={pending || !canSubmit} className="btn btn-primary w-full sm:w-auto">
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquarePlus className="h-4 w-4" />}
           ارسال تیکت
         </button>

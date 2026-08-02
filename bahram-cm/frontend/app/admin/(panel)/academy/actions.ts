@@ -341,10 +341,10 @@ export async function fetchTicketsByUser(userId: number) {
   }
 }
 
-export async function fetchRecentTickets(perPage = 20) {
+export async function fetchRecentTickets(perPage = 20, department?: string) {
   try {
     const res = await adminFetch<{ data: AdminTicket[]; meta: PageMeta }>('/tickets', {
-      query: { per_page: perPage },
+      query: { per_page: perPage, department: department || undefined },
     });
     return { ok: true as const, items: res.data, meta: res.meta };
   } catch (e) {
@@ -389,6 +389,16 @@ export async function updateTicketStatus(id: number, status: string) {
     return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی وضعیت تیکت ناموفق بود.');
+  }
+}
+
+export async function updateTicketDepartment(id: number, department: string | null) {
+  try {
+    await adminFetch(`/tickets/${id}`, { method: 'PATCH', body: { department } });
+    revalidateAcademy();
+    return { ok: true as const };
+  } catch (e) {
+    return actionError(e, 'به‌روزرسانی بخش تیکت ناموفق بود.');
   }
 }
 

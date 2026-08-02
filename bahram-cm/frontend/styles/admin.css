@@ -2915,6 +2915,105 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   color: var(--color-text-muted);
 }
 
+.admin-root .admin-tickets-hub__technical {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: min(70vh, 36rem);
+  flex-direction: column;
+}
+
+.admin-root .admin-tickets-hub__technical > .admin-tickets-hub__main {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.admin-root .admin-tickets-hub__technical-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.admin-root .admin-tickets-hub__technical--chat {
+  min-height: min(72dvh, 40rem);
+}
+
+@media (min-width: 1024px) {
+  .admin-root .admin-tickets-hub__technical {
+    min-height: min(72vh, 42rem);
+  }
+
+  .admin-root .admin-tickets-hub__technical--chat {
+    min-height: min(74vh, 44rem);
+  }
+}
+
+.admin-root .admin-ticket-chat__header {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  background: var(--color-surface);
+  padding: 0.75rem 1rem;
+}
+
+.admin-root .admin-ticket-chat__header-actions {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.admin-root .admin-ticket-chat__tech-btn {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .admin-root .admin-ticket-chat__tech-btn {
+    width: auto;
+  }
+}
+
+.admin-root .admin-ticket-chat__footer,
+.admin-root .admin-ticket-chat__reply {
+  background: var(--color-surface);
+}
+
+.admin-root .admin-ticket-chat .admin-ticket-chat__control,
+.admin-root .admin-ticket-chat select.admin-ticket-chat__control,
+.admin-root .admin-ticket-chat textarea.admin-ticket-chat__control {
+  border-color: transparent;
+  box-shadow: none;
+  background: var(--color-surface-soft);
+}
+
+.admin-root .admin-ticket-chat .admin-ticket-chat__control:focus,
+.admin-root .admin-ticket-chat select.admin-ticket-chat__control:focus,
+.admin-root .admin-ticket-chat textarea.admin-ticket-chat__control:focus {
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.admin-root[data-admin-theme='dark'] .admin-ticket-chat .admin-ticket-chat__control,
+.admin-root[data-admin-theme='dark'] .admin-ticket-chat select.admin-ticket-chat__control,
+.admin-root[data-admin-theme='dark'] .admin-ticket-chat textarea.admin-ticket-chat__control {
+  border-color: transparent;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--color-surface-soft) 88%, transparent);
+}
+
+.admin-root .admin-ticket-chat-shell {
+  border: none;
+  box-shadow: none;
+}
+
 @media (max-width: 1023px) {
   .admin-root .admin-tickets-hub__layout--detail .admin-tickets-hub__sidebar {
     display: none;
@@ -2924,8 +3023,21 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
     min-height: min(72dvh, 36rem);
   }
 
+  .admin-root .admin-tickets-hub__technical--chat {
+    min-height: min(78dvh, 40rem);
+  }
+
   .admin-root .admin-ticket-chat__reply {
     padding-bottom: calc(0.75rem + var(--admin-bottom-nav-offset));
+  }
+
+  .admin-root .admin-tickets-hub__tabs .admin-period-segments {
+    width: 100%;
+  }
+
+  .admin-root .admin-tickets-hub__tabs .admin-period-btn {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 0;
   }
 }
 

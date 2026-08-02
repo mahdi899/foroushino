@@ -12,11 +12,16 @@ use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TicketAdminController extends Controller
 {
+    private const DEPARTMENTS = ['technical', 'financial', 'course', 'general'];
+
     public function index(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('tickets.view'), 403);
+
         $query = Ticket::query()
             ->with('user')
             ->orderByRaw("CASE status WHEN 'open' THEN 0 WHEN 'answered' THEN 1 WHEN 'waiting_user' THEN 2 WHEN 'closed' THEN 3 ELSE 4 END")
@@ -24,6 +29,16 @@ class TicketAdminController extends Controller
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
+        }
+
+        if ($department = $request->string('department')->toString()) {
+            if ($department === 'general') {
+                $query->where(function ($q) {
+                    $q->whereNull('department')->orWhere('department', 'general');
+                });
+            } else {
+                $query->where('department', $department);
+            }
         }
 
         if ($userId = $request->integer('user_id') ?: null) {
@@ -40,10 +55,12 @@ class TicketAdminController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('tickets.manage'), 403);
+
         $data = $request->validate([
             'user_id' => ['required_without:mobile', 'integer', 'exists:users,id'],
             'mobile' => ['required_without:user_id', 'string'],
-            'department' => ['nullable', 'string', 'max:120'],
+            'department' => ['nullable', 'string', Rule::in(self::DEPARTMENTS)],
             'subject' => ['required', 'string', 'max:255'],
             'message' => ['required', 'string', 'max:5000'],
         ]);
@@ -58,8 +75,13 @@ class TicketAdminController extends Controller
             ], 422);
         }
 
+        $department = $data['department'] ?? null;
+        if ($department === 'general') {
+            $department = null;
+        }
+
         $ticket = $student->tickets()->create([
-            'department' => $data['department'] ?? null,
+            'department' => $department,
             'subject' => $data['subject'],
             'status' => 'waiting_user',
             'priority' => 'normal',
@@ -80,8 +102,10 @@ class TicketAdminController extends Controller
         return response()->json(['data' => $this->listPayload($ticket)], 201);
     }
 
-    public function show(Ticket $ticket): JsonResponse
+    public function show(Request $request, Ticket $ticket): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('tickets.view'), 403);
+
         $ticket->load(['user', 'messages.user']);
 
         return response()->json(['data' => [
@@ -99,6 +123,8 @@ class TicketAdminController extends Controller
 
     public function storeMessage(Request $request, Ticket $ticket): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('tickets.manage'), 403);
+
         $data = $request->validate(['message' => ['required', 'string', 'max:5000']]);
 
         app(\App\Modules\TelegramBot\Services\BotTicketDeliveryService::class)
@@ -115,17 +141,41 @@ class TicketAdminController extends Controller
 
     public function update(Request $request, Ticket $ticket): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('tickets.manage'), 403);
+
         $data = $request->validate([
-            'status' => ['required', 'string', 'in:open,answered,waiting_user,closed'],
+            'status' => ['sometimes', 'required', 'string', 'in:open,answered,waiting_user,closed'],
+            'department' => ['sometimes', 'nullable', 'string', Rule::in(self::DEPARTMENTS)],
         ]);
 
-        $ticket->update($data);
+        if (! array_key_exists('status', $data) && ! array_key_exists('department', $data)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'validation_error',
+                    'message_fa' => 'حداقل یکی از وضعیت یا بخش باید ارسال شود.',
+                ],
+            ], 422);
+        }
+
+        $payload = [];
+        if (array_key_exists('status', $data)) {
+            $payload['status'] = $data['status'];
+        }
+        if (array_key_exists('department', $data)) {
+            $payload['department'] = ($data['department'] === 'general' || $data['department'] === null)
+                ? null
+                : $data['department'];
+        }
+
+        $ticket->update($payload);
 
         return response()->json(['data' => $this->listPayload($ticket)]);
     }
 
     public function users(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('tickets.view'), 403);
+
         $search = $request->string('search')->trim()->toString();
         $perPage = min(max((int) $request->input('per_page', 30), 1), 100);
 
@@ -167,6 +217,8 @@ class TicketAdminController extends Controller
 
     public function reports(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('tickets.view'), 403);
+
         $base = Ticket::query();
 
         if ($from = $request->string('from')->toString()) {

@@ -63,16 +63,30 @@ class RbacAndIdentityTest extends TestCase
             ->assertJsonFragment(['students.view_full_mobile']);
     }
 
-    public function test_student_list_masks_mobile_and_support_cannot_reveal(): void
+    public function test_student_list_is_forbidden_for_support(): void
     {
         $support = $this->makeAdmin(AdminRoleName::Support);
+        User::factory()->create([
+            'mobile' => '09121234567',
+            'is_admin' => false,
+            'name' => 'دانشجو تست',
+        ]);
+
+        Sanctum::actingAs($support, ['*']);
+
+        $this->getJson('/api/v1/students')->assertForbidden();
+    }
+
+    public function test_student_list_masks_mobile_and_read_only_cannot_reveal(): void
+    {
+        $viewer = $this->makeAdmin(AdminRoleName::ReadOnly);
         $student = User::factory()->create([
             'mobile' => '09121234567',
             'is_admin' => false,
             'name' => 'دانشجو تست',
         ]);
 
-        Sanctum::actingAs($support);
+        Sanctum::actingAs($viewer, ['*']);
 
         $this->getJson('/api/v1/students')
             ->assertOk()
@@ -91,7 +105,7 @@ class RbacAndIdentityTest extends TestCase
             'is_admin' => false,
         ]);
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($manager, ['*']);
 
         $this->postJson("/api/v1/students/{$student->id}/reveal-mobile")
             ->assertOk()
@@ -104,7 +118,7 @@ class RbacAndIdentityTest extends TestCase
         ]);
     }
 
-    public function test_support_can_search_by_exact_mobile_but_response_is_masked(): void
+    public function test_support_cannot_search_students_by_mobile(): void
     {
         $support = $this->makeAdmin(AdminRoleName::Support);
         User::factory()->create([
@@ -113,7 +127,21 @@ class RbacAndIdentityTest extends TestCase
             'is_admin' => false,
         ]);
 
-        Sanctum::actingAs($support);
+        Sanctum::actingAs($support, ['*']);
+
+        $this->getJson('/api/v1/students?search=09129876543')->assertForbidden();
+    }
+
+    public function test_student_manager_can_search_by_exact_mobile_but_response_is_masked_until_reveal(): void
+    {
+        $manager = $this->makeAdmin(AdminRoleName::StudentManager);
+        User::factory()->create([
+            'mobile' => '09129876543',
+            'name' => 'محمد تست',
+            'is_admin' => false,
+        ]);
+
+        Sanctum::actingAs($manager, ['*']);
 
         $this->getJson('/api/v1/students?search=09129876543')
             ->assertOk()

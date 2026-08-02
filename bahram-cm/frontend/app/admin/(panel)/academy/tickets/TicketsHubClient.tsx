@@ -13,6 +13,7 @@ import {
   Search,
   UserRound,
   Users,
+  Wrench,
 } from 'lucide-react';
 import { fetchRecentTickets, fetchTicketDetail, fetchTicketUsers, fetchTicketsByUser } from '../actions';
 import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
@@ -21,6 +22,8 @@ import { CreateTicketForStudentForm } from './CreateTicketForStudentForm';
 import { TicketChatPanel } from './TicketChatPanel';
 import { TicketReportPanel } from './TicketReportPanel';
 import {
+  TICKET_DEPARTMENT_LABELS,
+  TICKET_DEPARTMENT_OPTIONS,
   TICKET_STATUS_LABELS,
   formatDateTime,
   type AdminTicket,
@@ -30,9 +33,9 @@ import {
 } from '@/lib/admin/academyTypes';
 import { cn } from '@/lib/utils';
 
-type TabId = 'send' | 'users' | 'reports';
+type TabId = 'technical' | 'send' | 'users' | 'reports';
 
-const TABS: { id: TabId; label: string; icon: typeof MessageSquarePlus }[] = [
+const BASE_TABS: { id: Exclude<TabId, 'technical'>; label: string; icon: typeof MessageSquarePlus }[] = [
   { id: 'send', label: 'ارسال تیکت', icon: MessageSquarePlus },
   { id: 'users', label: 'تیکت‌های کاربران', icon: Users },
   { id: 'reports', label: 'گزارش', icon: BarChart3 },
@@ -85,10 +88,24 @@ function HubLoading() {
   );
 }
 
-export function TicketsHubClient() {
-  const [tab, setTab] = useState<TabId>('users');
+function departmentLabel(department: string | null): string {
+  if (!department) return TICKET_DEPARTMENT_LABELS.general;
+  return TICKET_DEPARTMENT_LABELS[department] ?? department;
+}
+
+export function TicketsHubClient({
+  canViewStudents = false,
+  canSearchStudents = false,
+  showTechnicalQueue = false,
+}: {
+  canViewStudents?: boolean;
+  canSearchStudents?: boolean;
+  showTechnicalQueue?: boolean;
+}) {
+  const [tab, setTab] = useState<TabId>(showTechnicalQueue ? 'technical' : 'users');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [users, setUsers] = useState<AdminTicketUserGroup[]>([]);
   const [usersMeta, setUsersMeta] = useState<PageMeta | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -97,8 +114,15 @@ export function TicketsHubClient() {
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [recentTickets, setRecentTickets] = useState<AdminTicket[]>([]);
   const [recentTicketsLoading, setRecentTicketsLoading] = useState(false);
+  const [technicalTickets, setTechnicalTickets] = useState<AdminTicket[]>([]);
+  const [technicalMeta, setTechnicalMeta] = useState<PageMeta | null>(null);
+  const [technicalLoading, setTechnicalLoading] = useState(false);
   const [activeTicket, setActiveTicket] = useState<AdminTicketDetail | null>(null);
   const [ticketLoading, setTicketLoading] = useState(false);
+
+  const tabs = showTechnicalQueue
+    ? ([{ id: 'technical' as const, label: 'پشتیبانی فنی', icon: Wrench }, ...BASE_TABS])
+    : BASE_TABS;
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -115,17 +139,37 @@ export function TicketsHubClient() {
     }
   }
 
+  async function loadTechnicalTickets() {
+    setTechnicalLoading(true);
+    const res = await fetchRecentTickets(50, 'technical');
+    setTechnicalLoading(false);
+    if (res.ok) {
+      setTechnicalTickets(res.items);
+      setTechnicalMeta(res.meta);
+    }
+  }
+
   useEffect(() => {
     if (tab === 'users') void loadUsers(1, debouncedQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, debouncedQuery]);
 
   useEffect(() => {
-    if (tab !== 'send' || recentTickets.length > 0 || recentTicketsLoading) return;
+    if (!showTechnicalQueue) return;
+    void loadTechnicalTickets();
+  }, [showTechnicalQueue]);
+
+  useEffect(() => {
+    if (tab !== 'technical') return;
+    void loadTechnicalTickets();
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab !== 'send') return;
     let cancelled = false;
     async function loadRecent() {
       setRecentTicketsLoading(true);
-      const res = await fetchRecentTickets(20);
+      const res = await fetchRecentTickets(20, departmentFilter || undefined);
       setRecentTicketsLoading(false);
       if (cancelled) return;
       if (res.ok) setRecentTickets(res.items);
@@ -134,8 +178,7 @@ export function TicketsHubClient() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [tab, departmentFilter]);
 
   function switchTab(next: TabId) {
     setTab(next);
@@ -166,12 +209,13 @@ export function TicketsHubClient() {
   }
 
   const showMobileDetail = Boolean(selectedUser || activeTicket || ticketLoading);
+  const technicalCount = technicalMeta?.total ?? technicalTickets.length;
 
   return (
     <div className="admin-tickets-hub">
       <div className="admin-period-toolbar admin-tickets-hub__tabs">
         <div className="admin-period-segments">
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -181,6 +225,9 @@ export function TicketsHubClient() {
             >
               <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
               <span>{label}</span>
+              {id === 'technical' && technicalCount > 0 ? (
+                <Badge tone="warning">{technicalCount.toLocaleString('fa-IR')}</Badge>
+              ) : null}
             </button>
           ))}
         </div>
@@ -189,23 +236,89 @@ export function TicketsHubClient() {
             {usersMeta.total.toLocaleString('fa-IR')} کاربر با تیکت
           </span>
         ) : null}
+        {tab === 'technical' && technicalMeta ? (
+          <span className="admin-period-summary">
+            {technicalMeta.total.toLocaleString('fa-IR')} تیکت فنی
+          </span>
+        ) : null}
       </div>
+
+      {tab === 'technical' && (
+        <div className={cn('admin-tickets-hub__technical', activeTicket && 'admin-tickets-hub__technical--chat')}>
+          <div className="admin-dashboard-panel admin-tickets-hub__main">
+            {activeTicket ? (
+              <>
+                <div className="admin-dashboard-panel__head">
+                  <button type="button" onClick={goBack} className="admin-tickets-hub__back">
+                    <ChevronRight className="h-4 w-4" />
+                    بازگشت به صف فنی
+                  </button>
+                </div>
+                {ticketLoading ? (
+                  <div className="admin-tickets-hub__main-body">
+                    <HubLoading />
+                  </div>
+                ) : (
+                  <div className="admin-tickets-hub__chat">
+                    <TicketChatPanel ticket={activeTicket} compact canViewStudents={canViewStudents} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="admin-dashboard-panel__head">
+                  <div className="min-w-0">
+                    <h2 className="admin-dashboard-panel__title">تیکت‌های پشتیبانی فنی</h2>
+                    <p className="mt-1 text-caption text-text-muted">
+                      تیکت‌هایی که پشتیبان برای بررسی فنی علامت زده است
+                    </p>
+                  </div>
+                </div>
+                <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded admin-tickets-hub__technical-body">
+                  {technicalLoading ? (
+                    <HubLoading />
+                  ) : (
+                    <TicketTable
+                      tickets={technicalTickets}
+                      showUser
+                      emptyDescription="فعلاً تیکتی برای بررسی پشتیبانی فنی علامت نخورده است."
+                      onSelect={(id) => void openTicket(id)}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {tab === 'send' && (
         <div className="admin-tickets-hub__send">
-          <CreateTicketForStudentForm defaultOpen />
-          {recentTicketsLoading ? (
-            <HubLoading />
-          ) : recentTickets.length > 0 ? (
-            <div className="admin-dashboard-panel">
-              <div className="admin-dashboard-panel__head">
-                <h2 className="admin-dashboard-panel__title">آخرین تیکت‌ها</h2>
-              </div>
-              <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded">
-                <TicketTable tickets={recentTickets} />
-              </div>
+          <CreateTicketForStudentForm defaultOpen canSearchStudents={canSearchStudents} />
+          <div className="admin-dashboard-panel">
+            <div className="admin-dashboard-panel__head flex flex-wrap items-center justify-between gap-3">
+              <h2 className="admin-dashboard-panel__title">آخرین تیکت‌ها</h2>
+              <select
+                className="field-input w-auto py-1.5 text-caption"
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                aria-label="فیلتر بخش"
+              >
+                {TICKET_DEPARTMENT_OPTIONS.map((opt) => (
+                  <option key={opt.value || 'all'} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : null}
+            <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded">
+              {recentTicketsLoading ? (
+                <HubLoading />
+              ) : (
+                <TicketTable tickets={recentTickets} showUser />
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -328,12 +441,14 @@ export function TicketsHubClient() {
                       {selectedUser.mobile}
                     </p>
                   </div>
-                  <Link
-                    href={`/admin/academy/students/${selectedUser.user_id}`}
-                    className="admin-dashboard-panel__action"
-                  >
-                    پروفایل دانشجو
-                  </Link>
+                  {canViewStudents ? (
+                    <Link
+                      href={`/admin/academy/students/${selectedUser.user_id}`}
+                      className="admin-dashboard-panel__action"
+                    >
+                      پروفایل دانشجو
+                    </Link>
+                  ) : null}
                 </div>
                 <div className="admin-tickets-hub__main-body">
                   <div className="admin-tickets-hub__main-head lg:hidden">
@@ -343,12 +458,14 @@ export function TicketsHubClient() {
                         {selectedUser.mobile}
                       </p>
                     </div>
-                    <Link
-                      href={`/admin/academy/students/${selectedUser.user_id}`}
-                      className="admin-dashboard-panel__action shrink-0"
-                    >
-                      پروفایل
-                    </Link>
+                    {canViewStudents ? (
+                      <Link
+                        href={`/admin/academy/students/${selectedUser.user_id}`}
+                        className="admin-dashboard-panel__action shrink-0"
+                      >
+                        پروفایل
+                      </Link>
+                    ) : null}
                   </div>
                   {ticketsLoading ? (
                     <HubLoading />
@@ -367,7 +484,7 @@ export function TicketsHubClient() {
 
             {activeTicket && !ticketLoading ? (
               <div className="admin-tickets-hub__chat">
-                <TicketChatPanel ticket={activeTicket} compact />
+                <TicketChatPanel ticket={activeTicket} compact canViewStudents={canViewStudents} />
               </div>
             ) : null}
           </main>
@@ -377,26 +494,65 @@ export function TicketsHubClient() {
   );
 }
 
-function TicketTable({ tickets, onSelect }: { tickets: AdminTicket[]; onSelect?: (id: number) => void }) {
+function TicketTable({
+  tickets,
+  onSelect,
+  showUser = false,
+  emptyDescription = 'برای این دانشجو هنوز تیکتی ثبت نشده است.',
+}: {
+  tickets: AdminTicket[];
+  onSelect?: (id: number) => void;
+  showUser?: boolean;
+  emptyDescription?: string;
+}) {
   if (tickets.length === 0) {
     return (
       <HubEmptyState
         icon={<Inbox className="h-6 w-6" strokeWidth={1.75} />}
         title="تیکتی یافت نشد"
-        description="برای این دانشجو هنوز تیکتی ثبت نشده است."
+        description={emptyDescription}
       />
     );
   }
 
+  const head = showUser
+    ? ['موضوع', 'کاربر', 'بخش', 'وضعیت', 'تاریخ', 'عملیات']
+    : ['موضوع', 'بخش', 'وضعیت', 'تاریخ', 'عملیات'];
+
   return (
     <Table
-      head={['موضوع', 'وضعیت', 'تاریخ', 'عملیات']}
+      head={head}
       mobile={tickets.map((ticket) => (
         <AdminTableCard
           key={ticket.id}
           title={ticket.subject}
           className={ticketRowClass(ticket.status)}
           fields={[
+            ...(showUser
+              ? [
+                  {
+                    label: 'کاربر',
+                    value: (
+                      <span>
+                        {ticket.user_name ?? '—'}
+                        {ticket.user_mobile ? (
+                          <span className="ms-2 text-text-muted" dir="ltr">
+                            {ticket.user_mobile}
+                          </span>
+                        ) : null}
+                      </span>
+                    ),
+                  },
+                ]
+              : []),
+            {
+              label: 'بخش',
+              value: (
+                <Badge tone={ticket.department === 'technical' ? 'warning' : 'default'}>
+                  {departmentLabel(ticket.department)}
+                </Badge>
+              ),
+            },
             {
               label: 'وضعیت',
               value: (
@@ -432,6 +588,21 @@ function TicketTable({ tickets, onSelect }: { tickets: AdminTicket[]; onSelect?:
       {tickets.map((ticket) => (
         <tr key={ticket.id} className={cn('hover:bg-surface-soft/40', ticketRowClass(ticket.status))}>
           <td className="px-4 py-3 font-medium text-text">{ticket.subject}</td>
+          {showUser ? (
+            <td className="px-4 py-3 text-small">
+              <div>{ticket.user_name ?? '—'}</div>
+              {ticket.user_mobile ? (
+                <div className="text-caption text-text-muted" dir="ltr">
+                  {ticket.user_mobile}
+                </div>
+              ) : null}
+            </td>
+          ) : null}
+          <td className="px-4 py-3">
+            <Badge tone={ticket.department === 'technical' ? 'warning' : 'default'}>
+              {departmentLabel(ticket.department)}
+            </Badge>
+          </td>
           <td className="px-4 py-3">
             <Badge tone={STATUS_TONE[ticket.status] ?? 'default'}>
               {TICKET_STATUS_LABELS[ticket.status]}
