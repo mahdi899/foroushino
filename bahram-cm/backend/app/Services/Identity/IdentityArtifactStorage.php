@@ -3,6 +3,7 @@
 namespace App\Services\Identity;
 
 use App\Models\IdentityVerificationArtifact;
+use App\Models\IdentityVerificationSubmission;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -61,6 +62,28 @@ class IdentityArtifactStorage
 
         if ($disk->exists($artifact->path)) {
             return $disk->delete($artifact->path);
+        }
+
+        return true;
+    }
+
+    public function exists(IdentityVerificationArtifact $artifact): bool
+    {
+        return Storage::disk($artifact->disk ?: $this->disk())->exists($artifact->path);
+    }
+
+    public function submissionArtifactsAvailable(IdentityVerificationSubmission $submission): bool
+    {
+        $submission->loadMissing('artifacts');
+
+        if ($submission->artifacts->isEmpty()) {
+            return false;
+        }
+
+        foreach ($submission->artifacts as $artifact) {
+            if (! $this->exists($artifact)) {
+                return false;
+            }
         }
 
         return true;

@@ -75,6 +75,16 @@ export default async function IdentityVerificationDetailPage({
                 ) : null}
               </div>
 
+              {item.artifacts_missing ? (
+                <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">
+                  <p className="mb-1 font-bold">مدارک این پرونده روی سرور موجود نیست</p>
+                  <p>
+                    فایل کارت ملی یا ویدیو قابل نمایش نیست (احتمالاً به‌دلیل خطای فنی). پرونده باید به
+                    «نیاز به اصلاح» برگردد تا کاربر دوباره مدارک را آپلود کند.
+                  </p>
+                </div>
+              ) : null}
+
               {item.mobile_match?.match_status === 'mismatched' ? (
                 <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">
                   <p className="mb-1 font-bold">رد خودکار: موبایل با کد ملی مطابقت ندارد</p>

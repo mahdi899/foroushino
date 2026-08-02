@@ -73,6 +73,7 @@ export type IdentityVerificationDetail = IdentityVerificationListItem & {
   required_corrections?: string[] | null;
   artifacts?: IdentityArtifact[];
   artifacts_purged?: boolean;
+  artifacts_missing?: boolean;
   reviews?: IdentityReview[];
   can_view_documents?: boolean;
   can_reveal_national_code?: boolean;

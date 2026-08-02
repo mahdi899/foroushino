@@ -14,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
+use App\Services\Identity\IdentityArtifactStorage;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Support\Mobile;
 use App\Support\NationalCode;
@@ -92,6 +93,8 @@ class IdentityVerificationAdminController extends Controller
         abort_unless($request->user()->hasPermission('identity.view'), 403);
 
         $submission->load(['artifacts', 'reviews.reviewer:id,name', 'user:id,name,mobile', 'identityProfile']);
+        $artifactStorage = app(IdentityArtifactStorage::class);
+        $artifactsMissing = ! $artifactStorage->submissionArtifactsAvailable($submission);
 
         if ($submission->status === IdentityVerificationStatus::Submitted
             && $request->user()->hasPermission('identity.review')) {
@@ -132,7 +135,9 @@ class IdentityVerificationAdminController extends Controller
                 'mime_type' => $a->mime_type,
                 'size_bytes' => $a->size_bytes,
                 'original_name' => $a->original_name,
+                'file_exists' => $artifactStorage->exists($a),
             ]),
+            'artifacts_missing' => $artifactsMissing,
             'artifacts_purged' => $submission->status === IdentityVerificationStatus::Approved
                 && $submission->artifacts->isEmpty(),
             'reviews' => $submission->reviews->map(fn ($r) => [
