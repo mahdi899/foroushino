@@ -19,6 +19,8 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing" force="true"/>
+        <!-- Deterministic 32-byte key so encrypted casts (e.g. PaymentSetting) work in CI/local tests. -->
+        <env name="APP_KEY" value="base64:2fl+KtvkdphvQyEfm8yJe8i4tq7GFv6h8qK6V5nR0xE=" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

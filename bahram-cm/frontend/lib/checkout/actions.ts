@@ -1,5 +1,6 @@
 'use server';
 
+import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { buildCustomerName } from '@/lib/checkout/productFields';
 import { INVALID_PAYMENT_GATEWAY_URL_MESSAGE, isCheckoutRedirectUrl } from '@/lib/checkout/paymentGateway';
 import { getCurrentStudent, getStudentToken } from '@/lib/student/session';
@@ -13,14 +14,19 @@ function publicApiBase(): string {
   return `${backend}/api`;
 }
 
+async function checkoutHeaders(token?: string): Promise<Record<string, string>> {
+  return {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    ...(await forwardedClientHeaders()),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 async function requestPayment(orderId: number, token?: string): Promise<CheckoutResult> {
   const res = await fetch(`${publicApiBase()}/payments/zarinpal/request`, {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: await checkoutHeaders(token),
     body: JSON.stringify({ order_id: orderId }),
     cache: 'no-store',
   });
@@ -48,11 +54,7 @@ async function createOrder(
 ): Promise<{ ok: true; id: number; order_number: string } | { ok: false; error: string }> {
   const res = await fetch(`${publicApiBase()}/orders`, {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: await checkoutHeaders(token),
     body: JSON.stringify(body),
     cache: 'no-store',
   });
@@ -114,7 +116,7 @@ export async function sendGuestCheckoutOtpAction(input: {
 > {
   const res = await fetch(`${publicApiBase()}/orders/guest-checkout/send-otp`, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: await checkoutHeaders(),
     body: JSON.stringify({
       product_id: input.product_id,
       customer_name: input.customer_name.trim(),
@@ -149,7 +151,7 @@ export async function resendGuestCheckoutOtpAction(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const res = await fetch(`${publicApiBase()}/orders/guest-checkout/resend-otp`, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: await checkoutHeaders(),
     body: JSON.stringify({ checkout_token: checkoutToken }),
     cache: 'no-store',
   });
@@ -168,7 +170,7 @@ export async function verifyGuestCheckoutAndPayAction(input: {
 }): Promise<CheckoutResult> {
   const res = await fetch(`${publicApiBase()}/orders/guest-checkout/verify-and-pay`, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: await checkoutHeaders(),
     body: JSON.stringify({
       checkout_token: input.checkout_token,
       code: input.code.trim(),
@@ -208,7 +210,7 @@ export async function completeOrderProfileAction(input: {
 > {
   const res = await fetch(`${publicApiBase()}/orders/complete-customer`, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: await checkoutHeaders(),
     body: JSON.stringify(input),
     cache: 'no-store',
   });
@@ -246,7 +248,7 @@ export async function loginFromPaymentReceiptAction(receiptToken: string): Promi
 > {
   const res = await fetch(`${publicApiBase()}/orders/payment-result/login`, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: await checkoutHeaders(),
     body: JSON.stringify({ token: receiptToken }),
     cache: 'no-store',
   });
@@ -285,7 +287,7 @@ export async function postPaymentVerifyOtpAction(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const res = await fetch(`${publicApiBase()}/orders/post-payment-login/verify-otp`, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: await checkoutHeaders(),
     body: JSON.stringify({ post_login_token: postLoginToken, code }),
     cache: 'no-store',
   });
@@ -304,7 +306,7 @@ export async function postPaymentResendOtpAction(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const res = await fetch(`${publicApiBase()}/orders/post-payment-login/resend-otp`, {
     method: 'POST',
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    headers: await checkoutHeaders(),
     body: JSON.stringify({ post_login_token: postLoginToken }),
     cache: 'no-store',
   });
