@@ -38,7 +38,6 @@ class SubmitIdentityVerification
     public function __construct(
         private readonly EnsureIdentityProfile $ensureProfile,
         private readonly IdentityArtifactStorage $storage,
-        private readonly PurgeIdentityVerificationArtifacts $purgeArtifacts,
         private readonly SmsService $sms,
         private readonly IdentityVerificationProviderRegistry $registry,
         private readonly IdentityDailyLimitService $dailyLimits,
@@ -160,7 +159,6 @@ class SubmitIdentityVerification
                 Cache::put($cooldownKey, true, $cooldown);
 
                 $this->purgeStaleDraftSubmissions($user, $submission->id);
-                $this->purgeArtifacts->purgeSupersededForUser($user, $submission->id);
 
                 return $submission->load('artifacts');
             }
@@ -168,7 +166,6 @@ class SubmitIdentityVerification
             Cache::put($cooldownKey, true, $cooldown);
 
             $this->purgeStaleDraftSubmissions($user, $submission->id);
-            $this->purgeArtifacts->purgeSupersededForUser($user, $submission->id);
 
             return $submission->load('artifacts');
         });

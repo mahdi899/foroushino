@@ -189,7 +189,7 @@ class PersonInfoIdentityTest extends TestCase
         ]);
     }
 
-    public function test_new_submit_purges_artifacts_from_previous_versions(): void
+    public function test_new_submit_does_not_purge_previous_version_artifacts(): void
     {
         $this->bindProviders(
             new PersonInfoResult(
@@ -250,11 +250,11 @@ class PersonInfoIdentityTest extends TestCase
         ]);
 
         $this->assertSame(2, $newSubmission->version);
-        $this->assertDatabaseMissing('identity_verification_artifacts', [
+        $this->assertDatabaseHas('identity_verification_artifacts', [
             'submission_id' => $oldSubmission->id,
         ]);
-        Storage::disk('local')->assertMissing($oldCardPath);
-        Storage::disk('local')->assertMissing($oldVideoPath);
+        Storage::disk('local')->assertExists($oldCardPath);
+        Storage::disk('local')->assertExists($oldVideoPath);
         $this->assertGreaterThanOrEqual(2, $newSubmission->artifacts()->count());
         $this->assertDatabaseHas('identity_verification_submissions', [
             'id' => $oldSubmission->id,
