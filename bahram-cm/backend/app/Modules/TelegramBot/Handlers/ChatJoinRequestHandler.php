@@ -34,6 +34,17 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
             return;
         }
 
+        $destination = TelegramDestination::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('chat_id', $chatId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($destination === null) {
+            // Not a registered destination — bot must not gate required/admin channels.
+            return;
+        }
+
         $rateKey = "telegram:join:{$chatId}:{$telegramUserId}";
         if (RateLimiter::tooManyAttempts($rateKey, 5)) {
             $this->safeDecline($this->clients->forBot($bot), $chatId, $telegramUserId);
@@ -42,20 +53,12 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
         }
         RateLimiter::hit($rateKey, 3600);
 
-        $destination = TelegramDestination::query()
-            ->where('telegram_bot_id', $bot->id)
-            ->where('chat_id', $chatId)
-            ->where('is_active', true)
-            ->first();
-
         $account = TelegramAccount::query()
             ->where('telegram_bot_id', $bot->id)
             ->where('telegram_user_id', $telegramUserId)
             ->first();
 
-        $decision = $destination
-            ? $this->policy->evaluate($destination, $account?->user_id)
-            : ['allowed' => false, 'reason' => 'مقصد ناشناخته است.'];
+        $decision = $this->policy->evaluate($destination, $account?->user_id);
 
         $join = TelegramJoinRequest::query()->create([
             'telegram_bot_id' => $bot->id,
