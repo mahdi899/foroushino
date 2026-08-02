@@ -36,9 +36,8 @@ final class HostChatJoinRequestHandler
 
         $destination = $this->findDestination($chatId);
         if ($destination === null) {
-            // Unknown chat — do not spam Iran; decline when Telegram allows it.
-            $this->safeDecline($chatId, $telegramUserId);
-
+            // Not a registered destination (campaign / SAT / reference group) — ignore.
+            // Required chats, reports group, and other admin channels are out of scope.
             return;
         }
 
