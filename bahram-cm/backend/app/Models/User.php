@@ -98,6 +98,33 @@ class User extends Authenticatable
         return ! $this->is_admin && ! $this->is_sat_staff;
     }
 
+    public function hasIdentityVerificationTrail(): bool
+    {
+        if ($this->relationLoaded('identityProfile')) {
+            if ($this->identityProfile !== null) {
+                return true;
+            }
+        } elseif ($this->identityProfile()->exists()) {
+            return true;
+        }
+
+        if ($this->relationLoaded('identityVerificationSubmissions')) {
+            return $this->identityVerificationSubmissions->isNotEmpty();
+        }
+
+        return $this->identityVerificationSubmissions()->exists();
+    }
+
+    /** Block student-identity admin APIs for real staff accounts without KYC history. */
+    public function isIdentityManagementProtected(): bool
+    {
+        if ($this->hasIdentityVerificationTrail()) {
+            return false;
+        }
+
+        return $this->is_admin || $this->is_sat_staff;
+    }
+
     public function satLeader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sat_leader_id');

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { extractError, type SimpleFormState } from './panelFormUtils';
 import { studentFetch } from './session';
+import type { StudentTelegramDestinationsPayload } from '@/lib/student/telegramDestinations';
 
 export async function updateStudentDisplayNameAction(
   firstName: string,
@@ -247,6 +248,15 @@ export interface PanelNotificationPayload {
   read_at: string | null;
   created_at: string | null;
   show_toast?: boolean;
+}
+
+export async function fetchTelegramDestinationsAction(): Promise<StudentTelegramDestinationsPayload | null> {
+  try {
+    const res = await studentFetch<{ data: StudentTelegramDestinationsPayload }>('/telegram-destinations');
+    return res.data;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchUnreadNotificationCount(): Promise<number> {

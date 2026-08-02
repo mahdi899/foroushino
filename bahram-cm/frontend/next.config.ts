@@ -117,10 +117,16 @@ const serverActionAllowedOrigins = [
     .filter(Boolean) ?? []),
 ].filter((value): value is string => Boolean(value?.trim()));
 
+/** Bust Cloudflare immutable cache after deploy without API purge (new URL prefix per commit). */
+const deployRev = process.env.NEXT_DEPLOY_REV?.trim();
+const productionAssetPrefix =
+  process.env.NODE_ENV === "production" && deployRev ? `/deploy/${deployRev}` : undefined;
+
 const config: NextConfig = {
   allowedDevOrigins,
   reactStrictMode: true,
   poweredByHeader: false,
+  assetPrefix: productionAssetPrefix,
   /** Hide bottom-left "Compiling / Rendering" dev badge (nextjs-portal). Errors still show. */
   devIndicators: false,
   /** Production server builds: skip TS typecheck so low-RAM hosts can finish next build. */
@@ -158,6 +164,7 @@ const config: NextConfig = {
       { source: "/sw-site.js", headers: swNoStore },
       { source: "/sw-panel.js", headers: swNoStore },
       { source: "/_next/static/:path*", headers: immutable },
+      { source: "/deploy/:rev/_next/static/:path*", headers: immutable },
       { source: "/fonts/:path*", headers: immutable },
       { source: "/icons/:path*", headers: immutable },
       { source: "/vendor/:path*", headers: immutable },

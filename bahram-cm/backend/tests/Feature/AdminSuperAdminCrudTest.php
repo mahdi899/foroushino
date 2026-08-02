@@ -52,6 +52,93 @@ class AdminSuperAdminCrudTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_kyc_operator_can_reset_identity(): void
+    {
+        $operator = $this->makeAdmin(AdminRoleName::KycOperator);
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09126667788']);
+        $profile = app(EnsureIdentityProfile::class)($student);
+        $profile->update([
+            'verification_level' => 2,
+            'identity_status' => IdentityVerificationStatus::Approved,
+        ]);
+
+        IdentityVerificationSubmission::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $student->id,
+            'identity_profile_id' => $profile->id,
+            'version' => 1,
+            'status' => IdentityVerificationStatus::Approved,
+            'first_name' => 'رضا',
+            'last_name' => 'تست',
+            'national_code_encrypted' => NationalCode::encrypt('0010350829'),
+            'national_code_hash' => NationalCode::hash('0010350829'),
+            'date_of_birth' => '1990-01-01',
+            'gender' => 'male',
+            'city' => 'تهران',
+            'submitted_at' => now(),
+            'reviewed_at' => now(),
+        ]);
+
+        Sanctum::actingAs($operator, ['*']);
+
+        $this->postJson("/api/v1/students/{$student->id}/identity/reset", [
+            'reason' => 'wrong national code submitted',
+        ])->assertOk();
+    }
+
+    public function test_reset_identity_works_when_student_row_has_polluted_admin_flags(): void
+    {
+        $admin = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        $student = User::factory()->create([
+            'is_admin' => true,
+            'is_root_admin' => true,
+            'mobile' => '09104085688',
+        ]);
+        $student->assignRole(AdminRoleName::SuperAdmin->value);
+        $profile = app(EnsureIdentityProfile::class)($student);
+        $profile->update([
+            'verification_level' => 2,
+            'identity_status' => IdentityVerificationStatus::Approved,
+        ]);
+
+        IdentityVerificationSubmission::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $student->id,
+            'identity_profile_id' => $profile->id,
+            'version' => 1,
+            'status' => IdentityVerificationStatus::Approved,
+            'first_name' => 'کاربر',
+            'last_name' => 'تست',
+            'national_code_encrypted' => NationalCode::encrypt('0010350829'),
+            'national_code_hash' => NationalCode::hash('0010350829'),
+            'date_of_birth' => '1990-01-01',
+            'gender' => 'male',
+            'city' => 'تهران',
+            'submitted_at' => now(),
+            'reviewed_at' => now(),
+        ]);
+
+        Sanctum::actingAs($admin, ['*']);
+
+        $this->postJson("/api/v1/students/{$student->id}/identity/reset", [
+            'reason' => 'cleanup polluted admin flags on student account',
+        ])->assertOk();
+
+        $this->assertSame(IdentityVerificationStatus::NotStarted, $profile->fresh()->identity_status);
+    }
+
+    public function test_reset_identity_still_blocks_real_staff_without_identity_trail(): void
+    {
+        $admin = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        $staff = $this->makeAdmin(AdminRoleName::Support);
+
+        Sanctum::actingAs($admin, ['*']);
+
+        $this->postJson("/api/v1/students/{$staff->id}/identity/reset", [
+            'reason' => 'should not work',
+        ])->assertNotFound();
+    }
+
     public function test_super_admin_can_reset_identity_and_preserves_submissions(): void
     {
         $admin = $this->makeAdmin(AdminRoleName::SuperAdmin);

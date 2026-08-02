@@ -165,39 +165,48 @@ export function PanelNotificationProvider({
 
     const bootstrap = async () => {
       try {
-        const [count, notifications] = await Promise.all([
-          fetchUnreadNotificationCount(),
-          fetchRecentNotifications(30, false),
-        ]);
-        if (cancelled) return;
-
-        const maxId = maxNotificationId(notifications);
-        if (knownMaxIdRef.current <= 0) {
-          // Only suppress toasts for notifications the user already read in past sessions.
-          const readBaseline = maxReadNotificationId(notifications);
-          knownMaxIdRef.current = readBaseline;
-          writeStoredBaseline(readBaseline);
+        if (initialUnreadCount <= 0) {
+          const count = await fetchUnreadNotificationCount();
+          if (cancelled) return;
+          lastUnreadCountRef.current = count;
+          updateUnreadCount(count);
         }
 
-        const freshOnBootstrap = notifications
-          .filter(
-            (item) =>
-              shouldShowNotificationToast(item) &&
-              !item.read_at &&
-              item.id > knownMaxIdRef.current &&
-              !toastedIdsRef.current.has(item.id),
-          )
-          .sort((a, b) => a.id - b.id);
+        const loadRecent = () => {
+          void fetchRecentNotifications(30, false).then((notifications) => {
+            if (cancelled) return;
 
-        pushToasts(freshOnBootstrap);
+            const maxId = maxNotificationId(notifications);
+            if (knownMaxIdRef.current <= 0) {
+              const readBaseline = maxReadNotificationId(notifications);
+              knownMaxIdRef.current = readBaseline;
+              writeStoredBaseline(readBaseline);
+            }
 
-        if (maxId > knownMaxIdRef.current) {
-          knownMaxIdRef.current = maxId;
-          writeStoredBaseline(maxId);
+            const freshOnBootstrap = notifications
+              .filter(
+                (item) =>
+                  shouldShowNotificationToast(item) &&
+                  !item.read_at &&
+                  item.id > knownMaxIdRef.current &&
+                  !toastedIdsRef.current.has(item.id),
+              )
+              .sort((a, b) => a.id - b.id);
+
+            pushToasts(freshOnBootstrap);
+
+            if (maxId > knownMaxIdRef.current) {
+              knownMaxIdRef.current = maxId;
+              writeStoredBaseline(maxId);
+            }
+          });
+        };
+
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(loadRecent, { timeout: 3000 });
+        } else {
+          window.setTimeout(loadRecent, 1200);
         }
-
-        lastUnreadCountRef.current = count;
-        updateUnreadCount(count);
       } finally {
         if (!cancelled) {
           bootstrappedRef.current = true;
@@ -217,7 +226,6 @@ export function PanelNotificationProvider({
     const start = async () => {
       await bootstrap();
       if (cancelled) return;
-      await pollNotifications();
       schedule();
     };
 
@@ -237,7 +245,7 @@ export function PanelNotificationProvider({
       window.clearTimeout(timerId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [pollNotifications, updateUnreadCount]);
+  }, [initialUnreadCount, pollNotifications, pushToasts, updateUnreadCount]);
 
   useEffect(() => {
     if (pathname !== '/panel/notifications') return;

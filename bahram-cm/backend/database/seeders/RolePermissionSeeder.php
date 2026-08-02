@@ -69,6 +69,7 @@ class RolePermissionSeeder extends Seeder
             'identity.view', 'identity.review', 'identity.approve', 'identity.reject',
             'identity.request_correction', 'identity.view_national_code',
             'identity.view_sensitive_documents', 'identity.unlock_ownership_verification',
+            'identity.reset',
         ]);
 
         Role::findByName(AdminRoleName::Support->value)->syncPermissions([

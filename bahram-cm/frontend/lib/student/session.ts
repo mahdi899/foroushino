@@ -65,10 +65,38 @@ export async function studentFetch<T = unknown>(
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
 
+/** Full profile payload (heavier than /session) — use on profile/settings pages only. */
+export const getFullCurrentStudent = cache(async (): Promise<StudentUser | null> => {
+  if (!(await getStudentToken())) {
+    return null;
+  }
+
+  try {
+    const res = await studentFetch<{ data: StudentUser }>('/me');
+    return res.data;
+  } catch {
+    return null;
+  }
+});
+
 /** Resolve the current student; returns null when unauthenticated or blocked. */
 export const getCurrentStudent = cache(async (): Promise<StudentUser | null> => {
   const result = await resolvePanelAccess();
   return result.user;
+});
+
+/** Unread notification badge for the panel shell (cached 20s on Laravel). */
+export const getPanelUnreadCount = cache(async (): Promise<number> => {
+  if (!(await getStudentToken())) {
+    return 0;
+  }
+
+  try {
+    const res = await studentFetch<{ data: { unread_count: number } }>('/notifications/unread-count');
+    return Math.max(0, res.data.unread_count ?? 0);
+  } catch {
+    return 0;
+  }
 });
 
 export const resolvePanelAccess = cache(async (): Promise<{ user: StudentUser | null; blocked: boolean }> => {
@@ -77,7 +105,7 @@ export const resolvePanelAccess = cache(async (): Promise<{ user: StudentUser | 
   }
 
   try {
-    const res = await studentFetch<{ data: StudentUser }>('/me');
+    const res = await studentFetch<{ data: StudentUser }>('/session');
     return { user: res.data, blocked: false };
   } catch (e) {
     const err = e as Error & { status?: number; payload?: { error?: { code?: string } } };

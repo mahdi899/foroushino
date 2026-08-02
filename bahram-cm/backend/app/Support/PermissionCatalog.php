@@ -123,7 +123,6 @@ final class PermissionCatalog
             'students.export_sensitive_data',
             'students.delete',
             'identity.override_level',
-            'identity.reset',
             'orders.delete',
             'roles.manage',
             'permissions.manage',

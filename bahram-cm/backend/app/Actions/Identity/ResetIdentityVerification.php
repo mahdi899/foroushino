@@ -23,7 +23,7 @@ class ResetIdentityVerification
 
     public function __invoke(User $actor, User $student, string $reason): UserIdentityProfile
     {
-        abort_if($student->is_admin, 404);
+        abort_if($student->isIdentityManagementProtected(), 404);
 
         $reason = trim($reason);
         if ($reason === '') {

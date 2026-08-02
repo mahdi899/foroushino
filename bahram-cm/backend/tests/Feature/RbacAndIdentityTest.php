@@ -172,6 +172,27 @@ class RbacAndIdentityTest extends TestCase
         $this->assertSame(2, (int) $profile->verification_level);
     }
 
+    public function test_identity_verification_search_finds_approved_user_by_mobile(): void
+    {
+        $approver = $this->makeAdmin(AdminRoleName::KycOperator);
+        $admin = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        $student = User::factory()->create([
+            'is_admin' => false,
+            'mobile' => '09104085688',
+            'name' => 'کاربر تست',
+        ]);
+        $submission = $this->makeSubmittedIdentity($student);
+
+        app(ApproveIdentityVerification::class)($approver, $submission);
+
+        Sanctum::actingAs($admin, ['*']);
+
+        $this->getJson('/api/v1/identity-verifications?search=09104085688')
+            ->assertOk()
+            ->assertJsonPath('data.0.user_id', $student->id)
+            ->assertJsonPath('data.0.status', IdentityVerificationStatus::Approved->value);
+    }
+
     public function test_draft_cannot_reset_submitted_identity_to_draft(): void
     {
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09125556677']);

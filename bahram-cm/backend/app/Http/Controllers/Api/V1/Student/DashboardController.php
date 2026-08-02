@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Http\Controllers\Controller;
+use App\Services\ReferralService;
 use App\Services\StudentOnboardingService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -10,7 +11,10 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly StudentOnboardingService $onboarding) {}
+    public function __construct(
+        private readonly StudentOnboardingService $onboarding,
+        private readonly ReferralService $referrals,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -19,6 +23,7 @@ class DashboardController extends Controller
         return ApiResponse::success([
             'first_login_at' => $user->first_login_at?->toIso8601String(),
             'checklist' => $this->onboarding->checklist($user),
+            'referral_payable_amount' => $this->referrals->summary($user)['payable_amount'],
         ]);
     }
 

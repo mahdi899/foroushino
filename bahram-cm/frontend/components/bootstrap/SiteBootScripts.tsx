@@ -16,11 +16,14 @@ export function SiteBootScripts({
   themeHtml,
   devCleanupHtml = null,
   familyHostCleanupHtml = null,
+  chunkRecoveryHtml = null,
 }: {
   themeHtml: string;
   devCleanupHtml?: string | null;
   /** Production club apex — strip mistaken `sw-site` before React boots. */
   familyHostCleanupHtml?: string | null;
+  /** Production — auto-reload once after deploy chunk mismatch. */
+  chunkRecoveryHtml?: string | null;
 }) {
   const isServerOrHydration = useSyncExternalStore(
     subscribe,
@@ -48,6 +51,12 @@ export function SiteBootScripts({
         <script
           id="bahram-dev-sw-cleanup"
           dangerouslySetInnerHTML={{ __html: devCleanupHtml }}
+        />
+      ) : null}
+      {chunkRecoveryHtml ? (
+        <script
+          id="bahram-chunk-recovery"
+          dangerouslySetInnerHTML={{ __html: chunkRecoveryHtml }}
         />
       ) : null}
     </>

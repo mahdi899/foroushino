@@ -3,20 +3,23 @@ import { DashboardFeatureCards } from '@/components/student-panel/dashboard/Dash
 import { DashboardWelcome } from '@/components/student-panel/dashboard/DashboardWelcome';
 import { OnboardingChecklist, type ChecklistItem } from '@/components/student-panel/dashboard/OnboardingChecklist';
 import { QuickResourceLinks } from '@/components/student-panel/dashboard/QuickResourceLinks';
-import { TelegramSupportGroupsSection } from '@/components/student-panel/telegram/TelegramSupportGroupsSection';
-import type { AcademyLinkKey } from '@/components/student-panel/academy/academyLinkMeta';
 import { RecentNotifications } from '@/components/student-panel/dashboard/RecentNotifications';
 import { ProgressBar } from '@/components/student-panel/ui/ProgressBar';
+import { TelegramSupportGroupsLazy } from '@/components/student-panel/telegram/TelegramSupportGroupsLazy';
+import type { AcademyLinkKey } from '@/components/student-panel/academy/academyLinkMeta';
 import { getStudentDisplayName } from '@/lib/student/displayName';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 import { getCurrentStudent } from '@/lib/student/session';
-import type { StudentTelegramDestinationsPayload } from '@/lib/student/telegramDestinations';
 import type { NotificationEntry } from '@/components/student-panel/notifications/NotificationItem';
 
 export const metadata: Metadata = { title: 'داشبورد | پنل کاربری', robots: { index: false, follow: false } };
 
 interface DashboardResponse {
-  data: { first_login_at: string | null; checklist: ChecklistItem[] };
+  data: {
+    first_login_at: string | null;
+    checklist: ChecklistItem[];
+    referral_payable_amount: number;
+  };
 }
 
 interface CourseAccess {
@@ -28,16 +31,10 @@ interface CourseAccess {
 
 export default async function PanelDashboardPage() {
   const user = await getCurrentStudent();
-  const [{ data }, coursesRes, notificationsRes, referralRes, telegramDestinationsRes] = await Promise.all([
+  const [{ data }, coursesRes, notificationsRes] = await Promise.all([
     panelStudentFetch<DashboardResponse>('/dashboard'),
     panelStudentFetch<{ data: CourseAccess[] }>('/courses').catch(() => ({ data: [] as CourseAccess[] })),
     panelStudentFetch<{ data: NotificationEntry[] }>('/notifications?per_page=3').catch(() => ({ data: [] as NotificationEntry[] })),
-    panelStudentFetch<{ data: { summary: { payable_amount: number } } }>('/referrals').catch(() => ({
-      data: { summary: { payable_amount: 0 } },
-    })),
-    panelStudentFetch<{ data: StudentTelegramDestinationsPayload }>('/telegram-destinations').catch(() => ({
-      data: { telegram_linked: false, telegram_bot_url: null, destinations: [] },
-    })),
   ]);
 
   const doneCount = data.checklist.filter((i) => i.done).length;
@@ -76,11 +73,11 @@ export default async function PanelDashboardPage() {
       <DashboardFeatureCards
         courseTitle={activeCourse?.product?.title ?? null}
         courseHref={courseHref}
-        referralAmount={referralRes.data.summary.payable_amount}
+        referralAmount={data.referral_payable_amount ?? 0}
         courseActive={activeCourse?.is_active ?? false}
       />
 
-      <TelegramSupportGroupsSection data={telegramDestinationsRes.data} />
+      <TelegramSupportGroupsLazy />
 
       <section className="panel-dashboard-split">
         <RecentNotifications notifications={notifications} />

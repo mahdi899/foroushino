@@ -180,6 +180,7 @@ Route::prefix('student')->group(function () {
     Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
         Route::post('auth/sso/bridge', [SsoBridgeController::class, 'issue']);
         Route::post('auth/logout', [StudentAuthController::class, 'logout']);
+        Route::get('session', [StudentAuthController::class, 'session']);
         Route::get('me', [StudentAuthController::class, 'me']);
 
         Route::get('dashboard', [StudentDashboardController::class, 'index']);

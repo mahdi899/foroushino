@@ -172,11 +172,36 @@ class AuthController extends Controller
         return response()->json(null, 204);
     }
 
+    public function session(Request $request): \Illuminate\Http\JsonResponse
+    {
+        return ApiResponse::success($this->sessionPayload($request->user()));
+    }
+
     public function me(Request $request): \Illuminate\Http\JsonResponse
     {
         $user = $request->user();
 
         return ApiResponse::success($this->userPayload($user));
+    }
+
+    /** @return array<string, mixed> */
+    private function sessionPayload(User $user): array
+    {
+        $user->loadMissing(['profile', 'identityProfile']);
+        $identity = $user->identityProfile;
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'mobile' => $user->mobile,
+            'has_password' => filled($user->password),
+            'first_login_at' => $user->first_login_at?->toIso8601String(),
+            'profile' => StudentProfilePayload::fromUser($user),
+            'verification_level' => (int) ($identity?->verification_level ?? 1),
+            'identity_status' => $identity?->identity_status?->value ?? 'not_started',
+            'mobile_ownership_status' => $identity?->mobile_ownership_status?->value ?? 'not_started',
+            'has_reference_channel' => $this->referenceChannelAccess->userHasAnyEntitlement($user),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -193,7 +218,6 @@ class AuthController extends Controller
         }
 
         $identity = $user->identityProfile;
-        $this->referenceChannelAccess->syncFromPaidOrders($user);
 
         return [
             'id' => $user->id,

@@ -2,10 +2,13 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { PanelShell } from '@/components/student-panel/layout/PanelShell';
 import { panelLoginRedirectTarget } from '@/lib/student/panelAuth';
-import { resolvePanelAccess } from '@/lib/student/session';
+import { getPanelUnreadCount, resolvePanelAccess } from '@/lib/student/session';
 
 export default async function PanelShellLayout({ children }: { children: React.ReactNode }) {
-  const { user, blocked } = await resolvePanelAccess();
+  const [{ user, blocked }, unreadCount] = await Promise.all([
+    resolvePanelAccess(),
+    getPanelUnreadCount(),
+  ]);
 
   if (!user) {
     const pathname = (await headers()).get('x-pathname') ?? '/panel';
@@ -16,5 +19,5 @@ export default async function PanelShellLayout({ children }: { children: React.R
 
   // Page loading UI lives in ./loading.tsx — avoid a second Suspense fallback here
   // or first entry flashes full-shell loader then inset loader.
-  return <PanelShell user={user} unreadCount={0}>{children}</PanelShell>;
+  return <PanelShell user={user} unreadCount={unreadCount}>{children}</PanelShell>;
 }

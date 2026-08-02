@@ -11,7 +11,11 @@ GIT_ROOT="${GIT_ROOT:-/var/www/foroushino}"
 if [[ -d "${GIT_ROOT}/.git" ]]; then
   cd "$GIT_ROOT"
   if ! git pull --ff-only origin main; then
-    echo "WARN: git pull failed (no credentials?) — continuing with existing tree"
+    echo "WARN: git pull blocked — stashing local drift and retrying"
+    git stash push -u -m "pre-deploy-$(date +%Y%m%d%H%M)" || true
+    if ! git pull --ff-only origin main; then
+      echo "WARN: git pull still failed — continuing with existing tree"
+    fi
   fi
 fi
 APP_ROOT="${APP_ROOT:-/var/www/bahram-cm}"
@@ -149,12 +153,18 @@ if [[ -r /proc/meminfo ]]; then
     export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
     if ! npm ci; then npm install --no-audit --no-fund; fi
     export NODE_ENV=production
+    export NEXT_DEPLOY_REV="$(git -C "${GIT_ROOT}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M)"
+    echo "NEXT_DEPLOY_REV=${NEXT_DEPLOY_REV}"
+    rm -rf .next
     npm run build
   fi
 else
   unset NODE_ENV
   if ! npm ci; then npm install --no-audit --no-fund; fi
   export NODE_ENV=production
+  export NEXT_DEPLOY_REV="$(git -C "${GIT_ROOT}" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M)"
+  echo "NEXT_DEPLOY_REV=${NEXT_DEPLOY_REV}"
+  rm -rf .next
   npm run build
 fi
 
@@ -168,5 +178,11 @@ sudo supervisorctl restart bahram-queue:* bahram-family-queue:* bahram-horizon b
 
 echo "==> OPcache reset (if available)"
 php -r "if (function_exists('opcache_reset')) { opcache_reset(); echo 'OPcache reset'; }" || true
+
+echo "==> Purge edge + nginx microcache"
+rm -rf /var/cache/nginx/rostami_next/* 2>/dev/null || true
+if [[ -f "$APP_ROOT/backend/scripts/purge-cdn.php" ]]; then
+  php "$APP_ROOT/backend/scripts/purge-cdn.php" || echo "WARN: CDN purge skipped (configure Cloudflare in admin)"
+fi
 
 echo "==> Deploy complete"

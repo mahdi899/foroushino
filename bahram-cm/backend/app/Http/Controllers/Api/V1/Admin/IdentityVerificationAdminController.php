@@ -15,6 +15,7 @@ use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use Illuminate\Contracts\Auth\Authenticatable;
+use App\Support\Mobile;
 use App\Support\NationalCode;
 use App\Support\SensitiveData;
 use Illuminate\Http\JsonResponse;
@@ -35,10 +36,14 @@ class IdentityVerificationAdminController extends Controller
         abort_unless($request->user()->hasPermission('identity.view'), 403);
 
         $status = $request->string('status')->toString();
+        $search = $request->string('search')->trim()->toString();
+        // When searching without an explicit status filter, include the latest submission per user
+        // regardless of queue status so approved/rejected records remain discoverable.
+        $statusForSubquery = $status !== '' ? $status : ($search !== '' ? 'all' : null);
 
         $query = IdentityVerificationSubmission::query()
             ->with(['user:id,name,mobile', 'identityProfile'])
-            ->whereIn('id', $this->latestSubmissionIdsSubquery($status !== '' ? $status : null))
+            ->whereIn('id', $this->latestSubmissionIdsSubquery($statusForSubquery))
             ->orderByDesc('submitted_at')
             ->orderByDesc('id');
 
@@ -49,12 +54,22 @@ class IdentityVerificationAdminController extends Controller
             );
         }
 
-        if ($search = $request->string('search')->trim()->toString()) {
-            $query->where(function ($q) use ($search) {
+        if ($search !== '') {
+            $normalizedMobile = Mobile::normalize($search);
+
+            $query->where(function ($q) use ($search, $normalizedMobile) {
                 $q->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('city', 'like', "%{$search}%")
-                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('user', function ($u) use ($search, $normalizedMobile) {
+                        $u->where('name', 'like', "%{$search}%");
+
+                        if ($normalizedMobile) {
+                            $u->orWhere('mobile', $normalizedMobile);
+                        } else {
+                            $u->orWhere('mobile', 'like', "%{$search}%");
+                        }
+                    });
             });
         }
 
@@ -251,7 +266,7 @@ class IdentityVerificationAdminController extends Controller
         UnlockMobileOwnershipVerification $unlock,
     ): JsonResponse {
         abort_unless($request->user()->hasPermission('identity.unlock_ownership_verification'), 403);
-        abort_if($student->is_admin, 404);
+        abort_if($student->isIdentityManagementProtected(), 404);
 
         $profile = $unlock($request->user(), $student);
 
@@ -268,7 +283,7 @@ class IdentityVerificationAdminController extends Controller
         OverrideVerificationLevel $override,
     ): JsonResponse {
         abort_unless($request->user()->hasPermission('identity.override_level'), 403);
-        abort_if($student->is_admin, 404);
+        abort_if($student->isIdentityManagementProtected(), 404);
 
         $data = $request->validate([
             'level' => ['required', 'integer', 'in:1,2,3'],
@@ -292,7 +307,7 @@ class IdentityVerificationAdminController extends Controller
     public function history(Request $request, User $student): JsonResponse
     {
         abort_unless($request->user()->hasPermission('identity.view'), 403);
-        abort_if($student->is_admin, 404);
+        abort_if($student->isIdentityManagementProtected(), 404);
 
         $submissions = IdentityVerificationSubmission::query()
             ->where('user_id', $student->id)
@@ -315,7 +330,7 @@ class IdentityVerificationAdminController extends Controller
         ResetIdentityVerification $reset,
     ): JsonResponse {
         abort_unless($request->user()->hasPermission('identity.reset'), 403);
-        abort_if($student->is_admin, 404);
+        abort_if($student->isIdentityManagementProtected(), 404);
 
         $data = $request->validate([
             'reason' => ['required', 'string', 'max:2000'],

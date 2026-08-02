@@ -266,7 +266,7 @@ export function IdentityReviewActions({
 
       {canReset ? (
         <div className="border-t border-border pt-4">
-          <p className="mb-2 text-caption font-medium text-error">بازنشانی احراز هویت (مدیر کل)</p>
+          <p className="mb-2 text-caption font-medium text-error">بازنشانی احراز هویت</p>
           <p className="mb-2 text-caption text-text-muted leading-relaxed">
             پرونده‌های قبلی حفظ می‌شوند؛ دانشجو می‌تواند با کد ملی یا شماره جدید دوباره احراز کند.
           </p>

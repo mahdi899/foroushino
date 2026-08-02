@@ -36,6 +36,7 @@ import {
   DEV_SERVICE_WORKER_CLEANUP_SCRIPT,
   FAMILY_HOST_SITE_SW_CLEANUP_SCRIPT,
 } from "@/lib/pwa/unregisterBahramServiceWorkers";
+import { CHUNK_LOAD_RECOVERY_SCRIPT } from "@/lib/pwa/chunkLoadRecovery";
 import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
@@ -116,6 +117,9 @@ export default async function RootLayout({
           }
           devCleanupHtml={
             process.env.NODE_ENV === "development" ? DEV_SERVICE_WORKER_CLEANUP_SCRIPT : null
+          }
+          chunkRecoveryHtml={
+            process.env.NODE_ENV === "production" ? CHUNK_LOAD_RECOVERY_SCRIPT : null
           }
         />
         <MediaPreconnect />
