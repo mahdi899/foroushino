@@ -108,7 +108,7 @@ class IdentityApprovedTelegramTest extends TestCase
         app(SyncTelegramHostOnIdentityApproved::class)->handle(new IdentityLevel2Approved($student));
     }
 
-    public function test_approve_purges_sensitive_artifacts_after_response(): void
+    public function test_approve_keeps_sensitive_artifacts_for_future_use(): void
     {
         Storage::fake('local');
         config(['bahram.uploads.private_disk' => 'local']);
@@ -133,8 +133,8 @@ class IdentityApprovedTelegramTest extends TestCase
 
         $this->app->terminate();
 
-        $this->assertDatabaseCount('identity_verification_artifacts', 0);
-        Storage::disk('local')->assertMissing($cardPath);
+        $this->assertDatabaseCount('identity_verification_artifacts', 1);
+        Storage::disk('local')->assertExists($cardPath);
     }
 
     private function makeSubmittedIdentity(User $student): IdentityVerificationSubmission

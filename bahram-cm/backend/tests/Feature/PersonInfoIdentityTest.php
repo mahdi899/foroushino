@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Actions\Identity\ApproveIdentityVerification;
 use App\Actions\Identity\EnsureIdentityProfile;
 use App\Actions\Identity\SubmitIdentityVerification;
+use App\Enums\IdentityArtifactType;
 use App\Enums\IdentityCapability;
 use App\Enums\IdentityVerificationStatus;
 use App\Enums\MobileOwnershipStatus;
 use App\Enums\OwnershipVerificationResult;
 use App\Enums\SmsEventKey;
+use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationRoute;
 use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
@@ -184,6 +186,79 @@ class PersonInfoIdentityTest extends TestCase
         $this->submitIdentity($student, [
             'first_name' => 'علی',
             'last_name' => 'تستی',
+        ]);
+    }
+
+    public function test_new_submit_purges_artifacts_from_previous_versions(): void
+    {
+        $this->bindProviders(
+            new PersonInfoResult(
+                OwnershipVerificationResult::Matched,
+                first_name: 'علی',
+                last_name: 'تستی',
+            ),
+            OwnershipVerificationResult::Matched,
+        );
+
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121110099']);
+        $profile = app(EnsureIdentityProfile::class)($student);
+
+        $oldSubmission = IdentityVerificationSubmission::query()->create([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $student->id,
+            'identity_profile_id' => $profile->id,
+            'version' => 1,
+            'status' => IdentityVerificationStatus::Rejected,
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+            'national_code_encrypted' => 'x',
+            'national_code_hash' => 'hash-old',
+            'date_of_birth' => '1990-01-01',
+            'gender' => 'male',
+            'city' => 'تهران',
+            'submitted_at' => now(),
+            'reviewed_at' => now(),
+        ]);
+
+        $oldCardPath = 'identity-verifications/old/card.jpg';
+        $oldVideoPath = 'identity-verifications/old/video.mp4';
+        Storage::disk('local')->put($oldCardPath, 'old-card');
+        Storage::disk('local')->put($oldVideoPath, 'old-video');
+
+        IdentityVerificationArtifact::query()->create([
+            'submission_id' => $oldSubmission->id,
+            'type' => IdentityArtifactType::NationalCardFront,
+            'disk' => 'local',
+            'path' => $oldCardPath,
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 8,
+        ]);
+        IdentityVerificationArtifact::query()->create([
+            'submission_id' => $oldSubmission->id,
+            'type' => IdentityArtifactType::SelfieVideo,
+            'disk' => 'local',
+            'path' => $oldVideoPath,
+            'mime_type' => 'video/mp4',
+            'size_bytes' => 8,
+        ]);
+
+        $profile->update(['identity_status' => IdentityVerificationStatus::Rejected]);
+
+        $newSubmission = $this->submitIdentity($student, [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+        ]);
+
+        $this->assertSame(2, $newSubmission->version);
+        $this->assertDatabaseMissing('identity_verification_artifacts', [
+            'submission_id' => $oldSubmission->id,
+        ]);
+        Storage::disk('local')->assertMissing($oldCardPath);
+        Storage::disk('local')->assertMissing($oldVideoPath);
+        $this->assertGreaterThanOrEqual(2, $newSubmission->artifacts()->count());
+        $this->assertDatabaseHas('identity_verification_submissions', [
+            'id' => $oldSubmission->id,
+            'status' => IdentityVerificationStatus::Rejected->value,
         ]);
     }
 

@@ -208,12 +208,21 @@ class IdentityVerificationController extends Controller
             return ApiResponse::error('draft_required', IdentityVerificationMessages::DRAFT_REQUIRED, 422);
         }
 
+        $existing = IdentityVerificationArtifact::query()
+            ->where('submission_id', $submission->id)
+            ->where('type', $type)
+            ->first();
+
         $stored = $storage->storeUploadedFile(
             $request->file('file'),
             $profile->uuid,
             $submission->uuid,
             $type->value,
         );
+
+        if ($existing && $existing->path !== $stored['path']) {
+            $storage->delete($existing);
+        }
 
         $artifact = IdentityVerificationArtifact::query()->updateOrCreate(
             ['submission_id' => $submission->id, 'type' => $type],
