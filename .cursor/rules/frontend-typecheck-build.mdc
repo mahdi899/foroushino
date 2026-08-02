@@ -66,6 +66,7 @@ npm run verify
 ## ممنوع
 
 - `typescript.ignoreBuildErrors: true` در `next.config.ts` بدون issue/هماهنگی
+- `assetPrefix` / `NEXT_DEPLOY_REV` در `next.config.ts` یا اسکریپت deploy — باعث URL مخلوط chunk و صفحه سیاه می‌شود
 - deploy کردن وقتی `npm run typecheck` لوکال fail می‌دهد
 - fix کردن خطای TS با `@ts-ignore` / `any` بدون دلیل
 

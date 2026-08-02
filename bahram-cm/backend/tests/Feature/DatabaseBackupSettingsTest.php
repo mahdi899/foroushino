@@ -141,6 +141,26 @@ class DatabaseBackupSettingsTest extends TestCase
         @unlink($mediaDir.'/artifact-test.txt');
     }
 
+    public function test_create_private_media_artifact_builds_zip(): void
+    {
+        $identityDir = storage_path('app/private/identity-verifications/test-user');
+        if (! is_dir($identityDir)) {
+            mkdir($identityDir, 0777, true);
+        }
+        file_put_contents($identityDir.'/selfie_video.mp4', 'video-bytes');
+
+        $artifact = app(DatabaseBackupService::class)->createPrivateMediaArtifact();
+
+        $this->assertStringStartsWith('private_media_backup_', $artifact['filename']);
+        $this->assertStringEndsWith('.zip', $artifact['filename']);
+        $this->assertGreaterThan(0, $artifact['size_bytes']);
+        $this->assertFileExists($artifact['path']);
+
+        @unlink($artifact['path']);
+        @unlink($identityDir.'/selfie_video.mp4');
+        @rmdir($identityDir);
+    }
+
     public function test_create_dump_artifact_includes_data_when_mysqldump_available(): void
     {
         if (config('database.default') !== 'mysql') {
@@ -170,39 +190,53 @@ class DatabaseBackupSettingsTest extends TestCase
     {
         $dbDir = storage_path('app/backups/database');
         $mediaDir = storage_path('app/backups/media');
+        $privateDir = storage_path('app/backups/private');
         if (! is_dir($dbDir)) {
             mkdir($dbDir, 0777, true);
         }
         if (! is_dir($mediaDir)) {
             mkdir($mediaDir, 0777, true);
         }
+        if (! is_dir($privateDir)) {
+            mkdir($privateDir, 0777, true);
+        }
 
         foreach (glob($dbDir.'/*') ?: [] as $path) {
             @unlink($path);
         }
         foreach (glob($mediaDir.'/*') ?: [] as $path) {
+            @unlink($path);
+        }
+        foreach (glob($privateDir.'/*') ?: [] as $path) {
             @unlink($path);
         }
 
         for ($i = 0; $i < 4; $i++) {
             $dbPath = $dbDir.'/backup_test_'.$i.'.sql.gz';
             $mediaPath = $mediaDir.'/media_backup_test_'.$i.'.zip';
+            $privatePath = $privateDir.'/private_media_backup_test_'.$i.'.zip';
             file_put_contents($dbPath, 'db');
             file_put_contents($mediaPath, 'media');
+            file_put_contents($privatePath, 'private');
             $ageDays = [5, 15, 35, 45][$i];
             touch($dbPath, now()->subDays($ageDays)->getTimestamp());
             touch($mediaPath, now()->subDays($ageDays)->getTimestamp());
+            touch($privatePath, now()->subDays($ageDays)->getTimestamp());
         }
 
         app(DatabaseBackupService::class)->pruneLocalBackups(30);
 
         $this->assertCount(2, glob($dbDir.'/*.sql.gz'));
         $this->assertCount(2, glob($mediaDir.'/*.zip'));
+        $this->assertCount(2, glob($privateDir.'/*.zip'));
 
         foreach (glob($dbDir.'/*') ?: [] as $path) {
             @unlink($path);
         }
         foreach (glob($mediaDir.'/*') ?: [] as $path) {
+            @unlink($path);
+        }
+        foreach (glob($privateDir.'/*') ?: [] as $path) {
             @unlink($path);
         }
     }

@@ -118,6 +118,11 @@ class DownloadHostBackupService
 
             $this->uploadLocalFile($disk, $mediaArtifact['path'], $filesRemote, allowReplace: false);
 
+            $privateArtifact = $this->databaseBackup->createPrivateMediaArtifact();
+            $privateRemote = $remoteDir.'/'.$privateArtifact['filename'];
+
+            $this->uploadLocalFile($disk, $privateArtifact['path'], $privateRemote, allowReplace: false);
+
             $manifest = $this->readRemoteManifest($disk, $remoteDir) ?? [
                 'site' => $siteSlug,
                 'id' => $folderName,
@@ -133,6 +138,11 @@ class DownloadHostBackupService
                 $filesRemote,
                 $mediaArtifact['size_bytes'],
             );
+            $manifest['files']['private_media'] = $this->fileEntry(
+                $privateArtifact['filename'],
+                $privateRemote,
+                $privateArtifact['size_bytes'],
+            );
 
             $disk->put(
                 $remoteDir.'/manifest.json',
@@ -143,10 +153,11 @@ class DownloadHostBackupService
             $this->pruneRemoteBackups($disk, $siteSlug);
 
             @unlink($mediaArtifact['path']);
+            @unlink($privateArtifact['path']);
 
             return [
                 'ok' => true,
-                'message' => "بکاپ media در پوشه {$folderName} روی هاست دانلود آپلود شد.",
+                'message' => "بکاپ media و مدارک خصوصی در پوشه {$folderName} روی هاست دانلود آپلود شد.",
                 'manifest' => $manifest,
             ];
         } catch (Throwable $e) {

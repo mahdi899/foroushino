@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Bahram CM — backup policy:
 #   - Database: every run (daily cron recommended) — full mysqldump via Laravel
-#   - Media files: weekly (default Sunday)
-#   - Retention: 30 days for both
+#   - Public media: weekly (default Sunday) — storage/app/public/media
+#   - Private media (KYC docs/videos): weekly — storage/app/private (separate archive)
+#   - Retention: 30 days for all local archives
+#   - Weekly offsite: both media zips uploaded to download host via artisan
 #
 # Cron: 0 3 * * * /var/www/bahram-cm/deploy/scripts/backup.sh
 #
@@ -18,7 +20,7 @@ FILES_BACKUP_WEEKDAY="${FILES_BACKUP_WEEKDAY:-0}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 TODAY_WEEKDAY="$(date +%w)"
 
-mkdir -p "$BACKUP_DIR/db" "$BACKUP_DIR/media"
+mkdir -p "$BACKUP_DIR/db" "$BACKUP_DIR/media" "$BACKUP_DIR/private"
 
 ENV_FILE="$APP_ROOT/backend/.env"
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -41,9 +43,13 @@ echo "==> Latest database backups:"
 ls -lt "$BACKUP_DIR/db"/*.sql.gz 2>/dev/null | head -3 || true
 
 if [[ "$TODAY_WEEKDAY" == "$FILES_BACKUP_WEEKDAY" ]]; then
-  echo "==> Media archive (weekly, weekday=${FILES_BACKUP_WEEKDAY})"
+  echo "==> Public media archive (weekly, weekday=${FILES_BACKUP_WEEKDAY})"
   tar -czf "$BACKUP_DIR/media/bahram_media_${TIMESTAMP}.tar.gz" \
     -C "$APP_ROOT/backend/storage/app/public" media 2>/dev/null || true
+
+  echo "==> Private media archive — KYC cards/videos (weekly)"
+  tar -czf "$BACKUP_DIR/private/bahram_private_${TIMESTAMP}.tar.gz" \
+    -C "$APP_ROOT/backend/storage/app" private 2>/dev/null || true
 else
   echo "==> Media skipped (weekly on weekday ${FILES_BACKUP_WEEKDAY}, today is ${TODAY_WEEKDAY})"
 fi
@@ -51,6 +57,7 @@ fi
 echo "==> Prune backups older than ${RETENTION_DAYS} days"
 find "$BACKUP_DIR/db" -name '*.sql.gz' -mtime +"$RETENTION_DAYS" -delete
 find "$BACKUP_DIR/media" -name '*.tar.gz' -mtime +"$RETENTION_DAYS" -delete
+find "$BACKUP_DIR/private" -name '*.tar.gz' -mtime +"$RETENTION_DAYS" -delete
 
 if [[ "$TODAY_WEEKDAY" == "$FILES_BACKUP_WEEKDAY" ]]; then
   echo "==> Upload weekly backup to download host (FTP/CDN)"

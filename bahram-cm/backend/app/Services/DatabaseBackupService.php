@@ -40,6 +40,7 @@ class DatabaseBackupService
             'mysqldump_available' => $this->mysqldumpBinary() !== null,
             'database_name' => $this->databaseName(),
             'site_media_available' => is_dir($this->siteMediaPath()),
+            'private_media_available' => is_dir($this->privateMediaPath()),
             'database_row_estimate' => $this->dumper->estimateDatabaseRowCount($this->mysqlConfig()),
             'latest_dump_stats' => $this->latestDumpStats(),
         ];
@@ -324,17 +325,52 @@ class DatabaseBackupService
     /** @return array{path: string, filename: string, size_bytes: int} */
     public function createMediaArtifact(): array
     {
-        $source = $this->siteMediaPath();
+        return $this->createZipDirectoryArtifact(
+            source: $this->siteMediaPath(),
+            zipPrefix: 'media',
+            filenamePrefix: 'media_backup',
+            outputDirectory: $this->mediaBackupDirectory(),
+            missingSourceMessage: 'پوشه media یافت نشد.',
+        );
+    }
+
+    /**
+     * Private site files (KYC card images, selfie videos, etc.) under storage/app/private.
+     *
+     * @return array{path: string, filename: string, size_bytes: int}
+     */
+    public function createPrivateMediaArtifact(): array
+    {
+        File::ensureDirectoryExists($this->privateMediaPath());
+
+        return $this->createZipDirectoryArtifact(
+            source: $this->privateMediaPath(),
+            zipPrefix: 'private',
+            filenamePrefix: 'private_media_backup',
+            outputDirectory: $this->privateMediaBackupDirectory(),
+            missingSourceMessage: 'پوشه private media یافت نشد.',
+        );
+    }
+
+    /**
+     * @return array{path: string, filename: string, size_bytes: int}
+     */
+    private function createZipDirectoryArtifact(
+        string $source,
+        string $zipPrefix,
+        string $filenamePrefix,
+        string $outputDirectory,
+        string $missingSourceMessage,
+    ): array {
         if (! is_dir($source)) {
-            throw new RuntimeException('پوشه media یافت نشد.');
+            throw new RuntimeException($missingSourceMessage);
         }
 
-        $dir = $this->mediaBackupDirectory();
-        File::ensureDirectoryExists($dir);
+        File::ensureDirectoryExists($outputDirectory);
 
         $timestamp = now()->format('Y-m-d_His');
-        $filename = "media_backup_{$timestamp}.zip";
-        $zipPath = $dir.DIRECTORY_SEPARATOR.$filename;
+        $filename = "{$filenamePrefix}_{$timestamp}.zip";
+        $zipPath = $outputDirectory.DIRECTORY_SEPARATOR.$filename;
 
         $zip = new ZipArchive();
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -346,7 +382,7 @@ class DatabaseBackupService
             $zip->close();
             @unlink($zipPath);
 
-            throw new RuntimeException('مسیر media نامعتبر است.');
+            throw new RuntimeException("مسیر {$zipPrefix} نامعتبر است.");
         }
 
         $hasFiles = false;
@@ -358,7 +394,7 @@ class DatabaseBackupService
         foreach ($iterator as $file) {
             /** @var \SplFileInfo $file */
             $path = $file->getPathname();
-            $relative = 'media/'.substr($path, strlen($sourceReal) + 1);
+            $relative = $zipPrefix.'/'.substr($path, strlen($sourceReal) + 1);
 
             if ($file->isDir()) {
                 $zip->addEmptyDir(str_replace('\\', '/', $relative));
@@ -369,7 +405,7 @@ class DatabaseBackupService
         }
 
         if (! $hasFiles) {
-            $zip->addEmptyDir('media');
+            $zip->addEmptyDir($zipPrefix);
         }
 
         $zip->close();
@@ -741,6 +777,7 @@ class DatabaseBackupService
 
         $this->pruneDirectoryOlderThan($this->backupDirectory(), '.sql.gz', $cutoff);
         $this->pruneDirectoryOlderThan($this->mediaBackupDirectory(), '.zip', $cutoff);
+        $this->pruneDirectoryOlderThan($this->privateMediaBackupDirectory(), '.zip', $cutoff);
     }
 
     private function retentionDays(): int
@@ -787,9 +824,19 @@ class DatabaseBackupService
         return storage_path('app/backups/media');
     }
 
+    private function privateMediaBackupDirectory(): string
+    {
+        return storage_path('app/backups/private');
+    }
+
     private function siteMediaPath(): string
     {
         return storage_path('app/public/media');
+    }
+
+    private function privateMediaPath(): string
+    {
+        return storage_path('app/private');
     }
 
     private function readSqlPayload(UploadedFile $file): string

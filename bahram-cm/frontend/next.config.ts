@@ -117,16 +117,10 @@ const serverActionAllowedOrigins = [
     .filter(Boolean) ?? []),
 ].filter((value): value is string => Boolean(value?.trim()));
 
-/** Bust Cloudflare immutable cache after deploy without API purge (new URL prefix per commit). */
-const deployRev = process.env.NEXT_DEPLOY_REV?.trim();
-const productionAssetPrefix =
-  process.env.NODE_ENV === "production" && deployRev ? `/deploy/${deployRev}` : undefined;
-
 const config: NextConfig = {
   allowedDevOrigins,
   reactStrictMode: true,
   poweredByHeader: false,
-  assetPrefix: productionAssetPrefix,
   /** Hide bottom-left "Compiling / Rendering" dev badge (nextjs-portal). Errors still show. */
   devIndicators: false,
   /** Typecheck runs in CI (`npm run typecheck`) and during `next build` — do not disable. */
