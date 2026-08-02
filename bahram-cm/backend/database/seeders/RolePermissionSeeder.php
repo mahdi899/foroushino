@@ -75,6 +75,14 @@ class RolePermissionSeeder extends Seeder
             'tickets.view', 'tickets.manage',
         ]);
 
+        Role::findByName(AdminRoleName::TechSupport->value)->syncPermissions([
+            'tickets.view', 'tickets.manage', 'tickets.technical',
+        ]);
+
+        Role::findByName(AdminRoleName::TechManager->value)->syncPermissions([
+            'tickets.view', 'tickets.manage', 'tickets.technical',
+        ]);
+
         Role::findByName(AdminRoleName::ContentManager->value)->syncPermissions([
             'content.view', 'content.manage',
         ]);

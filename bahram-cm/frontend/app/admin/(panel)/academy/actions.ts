@@ -341,10 +341,18 @@ export async function fetchTicketsByUser(userId: number) {
   }
 }
 
-export async function fetchRecentTickets(perPage = 20, department?: string) {
+export async function fetchRecentTickets(
+  perPage = 20,
+  department?: string,
+  techEscalation?: string,
+) {
   try {
     const res = await adminFetch<{ data: AdminTicket[]; meta: PageMeta }>('/tickets', {
-      query: { per_page: perPage, department: department || undefined },
+      query: {
+        per_page: perPage,
+        department: department || undefined,
+        tech_escalation: techEscalation || undefined,
+      },
     });
     return { ok: true as const, items: res.data, meta: res.meta };
   } catch (e) {
@@ -399,6 +407,19 @@ export async function updateTicketDepartment(id: number, department: string | nu
     return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی بخش تیکت ناموفق بود.');
+  }
+}
+
+export async function updateTicketTechEscalation(
+  id: number,
+  techEscalation: 'tech_support' | 'tech_manager' | 'super_admin' | 'resolved',
+) {
+  try {
+    await adminFetch(`/tickets/${id}`, { method: 'PATCH', body: { tech_escalation: techEscalation } });
+    revalidateAcademy();
+    return { ok: true as const };
+  } catch (e) {
+    return actionError(e, 'به‌روزرسانی ارجاع فنی ناموفق بود.');
   }
 }
 

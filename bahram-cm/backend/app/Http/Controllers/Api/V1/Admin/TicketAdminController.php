@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\AdminRoleName;
+use App\Enums\TicketTechEscalation;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\User;
@@ -23,7 +25,7 @@ class TicketAdminController extends Controller
         abort_unless($request->user()->hasPermission('tickets.view'), 403);
 
         $query = Ticket::query()
-            ->with('user')
+            ->with(['user', 'techResolver'])
             ->orderByRaw("CASE status WHEN 'open' THEN 0 WHEN 'answered' THEN 1 WHEN 'waiting_user' THEN 2 WHEN 'closed' THEN 3 ELSE 4 END")
             ->orderByDesc('id');
 
@@ -39,6 +41,10 @@ class TicketAdminController extends Controller
             } else {
                 $query->where('department', $department);
             }
+        }
+
+        if ($techEscalation = $request->string('tech_escalation')->toString()) {
+            $query->where('tech_escalation', $techEscalation);
         }
 
         if ($userId = $request->integer('user_id') ?: null) {
@@ -82,6 +88,7 @@ class TicketAdminController extends Controller
 
         $ticket = $student->tickets()->create([
             'department' => $department,
+            'tech_escalation' => $department === 'technical' ? TicketTechEscalation::TechSupport : null,
             'subject' => $data['subject'],
             'status' => 'waiting_user',
             'priority' => 'normal',
@@ -93,7 +100,7 @@ class TicketAdminController extends Controller
             'is_admin_reply' => true,
         ]);
 
-        $ticket->load(['user', 'messages.user']);
+        $ticket->load(['user', 'messages.user', 'techResolver']);
 
         app(SmsService::class)->sendTicketReply($ticket);
         app(InAppNotificationService::class)->ticketReply($ticket);
@@ -106,7 +113,7 @@ class TicketAdminController extends Controller
     {
         abort_unless($request->user()->hasPermission('tickets.view'), 403);
 
-        $ticket->load(['user', 'messages.user']);
+        $ticket->load(['user', 'messages.user', 'techResolver']);
 
         return response()->json(['data' => [
             ...$this->listPayload($ticket),
@@ -130,7 +137,7 @@ class TicketAdminController extends Controller
         app(\App\Modules\TelegramBot\Services\BotTicketDeliveryService::class)
             ->deliverAdminReply($ticket, $data['message'], null, (int) $request->user()->id);
 
-        $ticket->load(['user', 'messages.user']);
+        $ticket->load(['user', 'messages.user', 'techResolver']);
 
         app(SmsService::class)->sendTicketReply($ticket);
         app(InAppNotificationService::class)->ticketReply($ticket);
@@ -146,13 +153,18 @@ class TicketAdminController extends Controller
         $data = $request->validate([
             'status' => ['sometimes', 'required', 'string', 'in:open,answered,waiting_user,closed'],
             'department' => ['sometimes', 'nullable', 'string', Rule::in(self::DEPARTMENTS)],
+            'tech_escalation' => ['sometimes', 'required', 'string', Rule::in(TicketTechEscalation::values())],
         ]);
 
-        if (! array_key_exists('status', $data) && ! array_key_exists('department', $data)) {
+        if (
+            ! array_key_exists('status', $data)
+            && ! array_key_exists('department', $data)
+            && ! array_key_exists('tech_escalation', $data)
+        ) {
             return response()->json([
                 'error' => [
                     'code' => 'validation_error',
-                    'message_fa' => 'حداقل یکی از وضعیت یا بخش باید ارسال شود.',
+                    'message_fa' => 'حداقل یکی از وضعیت، بخش یا ارجاع فنی باید ارسال شود.',
                 ],
             ], 422);
         }
@@ -161,13 +173,47 @@ class TicketAdminController extends Controller
         if (array_key_exists('status', $data)) {
             $payload['status'] = $data['status'];
         }
+
         if (array_key_exists('department', $data)) {
-            $payload['department'] = ($data['department'] === 'general' || $data['department'] === null)
+            $department = ($data['department'] === 'general' || $data['department'] === null)
                 ? null
                 : $data['department'];
+            $payload['department'] = $department;
+
+            if ($department === 'technical' && $ticket->tech_escalation === null) {
+                $payload['tech_escalation'] = TicketTechEscalation::TechSupport;
+                $payload['tech_resolved_at'] = null;
+                $payload['tech_resolved_by'] = null;
+            }
+
+            if ($department !== 'technical' && ! array_key_exists('tech_escalation', $data)) {
+                $payload['tech_escalation'] = null;
+                $payload['tech_resolved_at'] = null;
+                $payload['tech_resolved_by'] = null;
+            }
+        }
+
+        if (array_key_exists('tech_escalation', $data)) {
+            $target = TicketTechEscalation::from($data['tech_escalation']);
+            $error = $this->authorizeTechEscalationChange($request->user(), $ticket, $target);
+            if ($error !== null) {
+                return $error;
+            }
+
+            $payload['department'] = 'technical';
+            $payload['tech_escalation'] = $target;
+
+            if ($target === TicketTechEscalation::Resolved) {
+                $payload['tech_resolved_at'] = now();
+                $payload['tech_resolved_by'] = $request->user()->id;
+            } else {
+                $payload['tech_resolved_at'] = null;
+                $payload['tech_resolved_by'] = null;
+            }
         }
 
         $ticket->update($payload);
+        $ticket->load(['user', 'techResolver']);
 
         return response()->json(['data' => $this->listPayload($ticket)]);
     }
@@ -277,6 +323,94 @@ class TicketAdminController extends Controller
         ]]);
     }
 
+    private function authorizeTechEscalationChange(User $actor, Ticket $ticket, TicketTechEscalation $target): ?JsonResponse
+    {
+        if (! $actor->hasPermission('tickets.technical') && ! $actor->isSuperAdmin()) {
+            return response()->json([
+                'error' => [
+                    'code' => 'forbidden',
+                    'message_fa' => 'اجازه تغییر ارجاع فنی را ندارید.',
+                ],
+            ], 403);
+        }
+
+        $level = $this->actorTechLevel($actor);
+
+        if ($target === TicketTechEscalation::Resolved) {
+            if ($level === null) {
+                return response()->json([
+                    'error' => [
+                        'code' => 'forbidden',
+                        'message_fa' => 'اجازه اعلام حل مشکل فنی را ندارید.',
+                    ],
+                ], 403);
+            }
+
+            return null;
+        }
+
+        if ($target === TicketTechEscalation::TechManager) {
+            if (! in_array($level, ['tech_support', 'tech_manager', 'super_admin'], true)) {
+                return response()->json([
+                    'error' => [
+                        'code' => 'forbidden',
+                        'message_fa' => 'اجازه ارجاع به مدیر فنی را ندارید.',
+                    ],
+                ], 403);
+            }
+
+            return null;
+        }
+
+        if ($target === TicketTechEscalation::SuperAdmin) {
+            if (! in_array($level, ['tech_manager', 'super_admin'], true)) {
+                return response()->json([
+                    'error' => [
+                        'code' => 'forbidden',
+                        'message_fa' => 'اجازه ارجاع به مدیر کل را ندارید.',
+                    ],
+                ], 403);
+            }
+
+            return null;
+        }
+
+        if ($target === TicketTechEscalation::TechSupport) {
+            if ($level !== 'super_admin' && $level !== 'tech_manager') {
+                return response()->json([
+                    'error' => [
+                        'code' => 'forbidden',
+                        'message_fa' => 'اجازه بازگردانی به پشتیبان فنی را ندارید.',
+                    ],
+                ], 403);
+            }
+
+            return null;
+        }
+
+        return response()->json([
+            'error' => [
+                'code' => 'validation_error',
+                'message_fa' => 'وضعیت ارجاع فنی نامعتبر است.',
+            ],
+        ], 422);
+    }
+
+    private function actorTechLevel(User $actor): ?string
+    {
+        if ($actor->isSuperAdmin() || $actor->isRootAdmin()) {
+            return 'super_admin';
+        }
+        if ($actor->hasRole(AdminRoleName::TechManager->value)) {
+            return 'tech_manager';
+        }
+        if ($actor->hasRole(AdminRoleName::TechSupport->value)) {
+            return 'tech_support';
+        }
+
+        return null;
+    }
+
     /** @return array<string, mixed> */
     private function listPayload(Ticket $t): array
     {
@@ -284,6 +418,11 @@ class TicketAdminController extends Controller
             'id' => $t->id,
             'subject' => $t->subject,
             'department' => $t->department,
+            'tech_escalation' => $t->tech_escalation?->value,
+            'tech_escalation_label' => $t->tech_escalation?->label(),
+            'tech_resolved_at' => $t->tech_resolved_at?->toIso8601String(),
+            'tech_resolved_by' => $t->tech_resolved_by,
+            'tech_resolver_name' => $t->techResolver?->name,
             'status' => $t->status->value,
             'priority' => $t->priority->value,
             'user_id' => $t->user_id,

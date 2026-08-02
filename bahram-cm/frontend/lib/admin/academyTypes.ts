@@ -270,6 +270,11 @@ export type AdminTicket = {
   id: number;
   subject: string;
   department: string | null;
+  tech_escalation: 'tech_support' | 'tech_manager' | 'super_admin' | 'resolved' | null;
+  tech_escalation_label?: string | null;
+  tech_resolved_at?: string | null;
+  tech_resolved_by?: number | null;
+  tech_resolver_name?: string | null;
   status: 'open' | 'answered' | 'waiting_user' | 'closed';
   priority: 'low' | 'normal' | 'high';
   user_id?: number;
@@ -380,6 +385,17 @@ export const TICKET_DEPARTMENT_LABELS: Record<string, string> = {
   course: 'دوره',
   general: 'عمومی',
 };
+
+export const TICKET_TECH_ESCALATION_LABELS: Record<string, string> = {
+  tech_support: 'پشتیبان فنی',
+  tech_manager: 'مدیر فنی',
+  super_admin: 'مدیر کل',
+  resolved: 'حل‌شده — آماده اعلام',
+};
+
+export type TicketTechEscalation = 'tech_support' | 'tech_manager' | 'super_admin' | 'resolved';
+
+export type TicketTechActorLevel = 'tech_support' | 'tech_manager' | 'super_admin';
 
 export const TICKET_DEPARTMENT_OPTIONS = [
   { value: '', label: 'همه بخش‌ها' },

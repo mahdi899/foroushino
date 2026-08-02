@@ -54,6 +54,20 @@ class SupportAndKycRoleScopeTest extends TestCase
         ], $names);
     }
 
+    public function test_tech_roles_have_technical_ticket_queue_permission(): void
+    {
+        foreach ([AdminRoleName::TechSupport, AdminRoleName::TechManager] as $roleName) {
+            $role = Role::findByName($roleName->value);
+            $names = $role->permissions->pluck('name')->sort()->values()->all();
+
+            $this->assertSame([
+                'tickets.manage',
+                'tickets.technical',
+                'tickets.view',
+            ], $names, $roleName->value);
+        }
+    }
+
     public function test_kyc_operator_cannot_access_tickets_or_students(): void
     {
         $operator = $this->makeAdmin(AdminRoleName::KycOperator);
@@ -105,16 +119,82 @@ class SupportAndKycRoleScopeTest extends TestCase
             'department' => 'technical',
         ])
             ->assertOk()
-            ->assertJsonPath('data.department', 'technical');
+            ->assertJsonPath('data.department', 'technical')
+            ->assertJsonPath('data.tech_escalation', 'tech_support');
 
         $this->assertDatabaseHas('tickets', [
             'id' => $ticket->id,
             'department' => 'technical',
+            'tech_escalation' => 'tech_support',
         ]);
 
         $this->getJson('/api/v1/tickets?department=technical')
             ->assertOk()
             ->assertJsonFragment(['id' => $ticket->id]);
+    }
+
+    public function test_tech_escalation_flow_support_to_manager_to_resolve(): void
+    {
+        $techSupport = $this->makeAdmin(AdminRoleName::TechSupport);
+        $techManager = $this->makeAdmin(AdminRoleName::TechManager);
+        $support = $this->makeAdmin(AdminRoleName::Support);
+        $student = User::factory()->create([
+            'is_admin' => false,
+            'mobile' => '09121113344',
+        ]);
+
+        $ticket = Ticket::query()->create([
+            'user_id' => $student->id,
+            'department' => 'technical',
+            'tech_escalation' => 'tech_support',
+            'subject' => 'باگ فنی',
+            'status' => TicketStatus::Open,
+            'priority' => TicketPriority::Normal,
+        ]);
+
+        Sanctum::actingAs($techSupport, ['*']);
+        $this->patchJson("/api/v1/tickets/{$ticket->id}", [
+            'tech_escalation' => 'tech_manager',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.tech_escalation', 'tech_manager');
+
+        Sanctum::actingAs($support, ['*']);
+        $this->patchJson("/api/v1/tickets/{$ticket->id}", [
+            'tech_escalation' => 'resolved',
+        ])->assertForbidden();
+
+        Sanctum::actingAs($techManager, ['*']);
+        $this->patchJson("/api/v1/tickets/{$ticket->id}", [
+            'tech_escalation' => 'resolved',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.tech_escalation', 'resolved')
+            ->assertJsonPath('data.tech_resolved_by', $techManager->id);
+
+        Sanctum::actingAs($support, ['*']);
+        $this->getJson('/api/v1/tickets?tech_escalation=resolved')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $ticket->id]);
+    }
+
+    public function test_tech_support_cannot_escalate_directly_to_super_admin(): void
+    {
+        $techSupport = $this->makeAdmin(AdminRoleName::TechSupport);
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09121114455']);
+        $ticket = Ticket::query()->create([
+            'user_id' => $student->id,
+            'department' => 'technical',
+            'tech_escalation' => 'tech_support',
+            'subject' => 'ارجاع مستقیم',
+            'status' => TicketStatus::Open,
+            'priority' => TicketPriority::Normal,
+        ]);
+
+        Sanctum::actingAs($techSupport, ['*']);
+        $this->patchJson("/api/v1/tickets/{$ticket->id}", [
+            'tech_escalation' => 'super_admin',
+        ])->assertForbidden();
     }
 
     public function test_admin_without_ticket_permission_is_forbidden(): void

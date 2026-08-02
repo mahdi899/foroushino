@@ -3,15 +3,24 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCheck, ExternalLink, Loader2, Send, Wrench } from 'lucide-react';
-import { fetchTicketDetail, replyToTicket, updateTicketDepartment, updateTicketStatus } from '../actions';
+import { ArrowUpRight, CheckCheck, CheckCircle2, ExternalLink, Loader2, Send, Wrench } from 'lucide-react';
+import {
+  fetchTicketDetail,
+  replyToTicket,
+  updateTicketDepartment,
+  updateTicketStatus,
+  updateTicketTechEscalation,
+} from '../actions';
 import { useOperatorQueueAlert } from '../../OperatorQueueAlertContext';
 import { Badge } from '../../ui';
 import {
   TICKET_DEPARTMENT_LABELS,
   TICKET_STATUS_LABELS,
+  TICKET_TECH_ESCALATION_LABELS,
   formatDateTime,
   type AdminTicketDetail,
+  type TicketTechActorLevel,
+  type TicketTechEscalation,
 } from '@/lib/admin/academyTypes';
 
 const STATUS_TONE: Record<string, 'default' | 'success' | 'warning'> = {
@@ -42,14 +51,23 @@ function departmentLabel(department: string | null): string {
   return TICKET_DEPARTMENT_LABELS[department] ?? department;
 }
 
+function escalationLabel(value: string | null | undefined): string {
+  if (!value) return '';
+  return TICKET_TECH_ESCALATION_LABELS[value] ?? value;
+}
+
 export function TicketChatPanel({
   ticket: initial,
   compact = false,
   canViewStudents = false,
+  techActorLevel = null,
+  onTechEscalationChanged,
 }: {
   ticket: AdminTicketDetail;
   compact?: boolean;
   canViewStudents?: boolean;
+  techActorLevel?: TicketTechActorLevel | null;
+  onTechEscalationChanged?: () => void;
 }) {
   const router = useRouter();
   const { refreshPendingCount } = useOperatorQueueAlert();
@@ -58,6 +76,7 @@ export function TicketChatPanel({
   const [pending, setPending] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
   const [departmentPending, setDepartmentPending] = useState(false);
+  const [escalationPending, setEscalationPending] = useState(false);
   const [error, setError] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -116,11 +135,37 @@ export function TicketChatPanel({
       setError(res.error ?? 'انتقال به پشتیبانی فنی ناموفق بود.');
       return;
     }
-    setTicket((current) => ({ ...current, department: 'technical' }));
+    const refreshed = await fetchTicketDetail(ticket.id);
+    if (refreshed.ok && refreshed.data) setTicket(refreshed.data);
+    else setTicket((current) => ({ ...current, department: 'technical', tech_escalation: 'tech_support' }));
+    onTechEscalationChanged?.();
+    router.refresh();
+  }
+
+  async function setTechEscalation(next: TicketTechEscalation) {
+    setEscalationPending(true);
+    setError('');
+    const res = await updateTicketTechEscalation(ticket.id, next);
+    setEscalationPending(false);
+    if (!res.ok) {
+      setError(res.error ?? 'به‌روزرسانی ارجاع فنی ناموفق بود.');
+      return;
+    }
+    const refreshed = await fetchTicketDetail(ticket.id);
+    if (refreshed.ok && refreshed.data) setTicket(refreshed.data);
+    onTechEscalationChanged?.();
     router.refresh();
   }
 
   const isTechnical = ticket.department === 'technical';
+  const escalation = ticket.tech_escalation;
+  const isResolved = escalation === 'resolved';
+  const canWorkTechnical = Boolean(techActorLevel);
+  const canEscalateToManager =
+    canWorkTechnical && techActorLevel !== null && ['tech_support', 'tech_manager', 'super_admin'].includes(techActorLevel) && escalation === 'tech_support';
+  const canEscalateToSuper =
+    canWorkTechnical && techActorLevel !== null && ['tech_manager', 'super_admin'].includes(techActorLevel) && (escalation === 'tech_manager' || escalation === 'tech_support');
+  const canMarkResolved = canWorkTechnical && isTechnical && !isResolved;
 
   return (
     <div
@@ -144,6 +189,9 @@ export function TicketChatPanel({
         </div>
         <div className="admin-ticket-chat__header-actions">
           <Badge tone={isTechnical ? 'warning' : 'default'}>{departmentLabel(ticket.department)}</Badge>
+          {isTechnical && escalation ? (
+            <Badge tone={isResolved ? 'success' : 'warning'}>{escalationLabel(escalation)}</Badge>
+          ) : null}
           <Badge tone={STATUS_TONE[ticket.status] ?? 'default'}>{TICKET_STATUS_LABELS[ticket.status]}</Badge>
           <select
             className="field-input admin-ticket-chat__control py-1 text-caption"
@@ -166,8 +214,50 @@ export function TicketChatPanel({
               نیاز به بررسی پشتیبانی فنی دارد
             </button>
           ) : null}
+          {canMarkResolved ? (
+            <button
+              type="button"
+              className="btn btn-primary admin-ticket-chat__tech-btn inline-flex items-center justify-center gap-1.5 py-1.5 text-caption"
+              disabled={escalationPending}
+              onClick={() => void setTechEscalation('resolved')}
+            >
+              {escalationPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              مشکل حل شد
+            </button>
+          ) : null}
+          {canEscalateToManager ? (
+            <button
+              type="button"
+              className="btn btn-secondary admin-ticket-chat__tech-btn inline-flex items-center justify-center gap-1.5 py-1.5 text-caption"
+              disabled={escalationPending}
+              onClick={() => void setTechEscalation('tech_manager')}
+            >
+              {escalationPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
+              ارجاع به مدیر فنی
+            </button>
+          ) : null}
+          {canEscalateToSuper ? (
+            <button
+              type="button"
+              className="btn btn-secondary admin-ticket-chat__tech-btn inline-flex items-center justify-center gap-1.5 py-1.5 text-caption"
+              disabled={escalationPending}
+              onClick={() => void setTechEscalation('super_admin')}
+            >
+              {escalationPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
+              ارجاع به مدیر کل
+            </button>
+          ) : null}
         </div>
       </div>
+
+      {isResolved ? (
+        <div className="shrink-0 bg-success/10 px-4 py-2 text-caption text-success">
+          مشکل فنی حل شده است
+          {ticket.tech_resolver_name ? ` — توسط ${ticket.tech_resolver_name}` : ''}
+          {ticket.tech_resolved_at ? ` (${formatDateTime(ticket.tech_resolved_at)})` : ''}.
+          پشتیبانی می‌تواند نتیجه را به مخاطب اعلام کند.
+        </div>
+      ) : null}
 
       <div className="admin-ticket-chat__messages flex-1 overflow-y-auto p-3 sm:p-4">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">

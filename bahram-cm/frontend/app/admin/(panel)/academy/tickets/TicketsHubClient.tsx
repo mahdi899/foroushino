@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   BarChart3,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Inbox,
@@ -25,17 +26,22 @@ import {
   TICKET_DEPARTMENT_LABELS,
   TICKET_DEPARTMENT_OPTIONS,
   TICKET_STATUS_LABELS,
+  TICKET_TECH_ESCALATION_LABELS,
   formatDateTime,
   type AdminTicket,
   type AdminTicketDetail,
   type AdminTicketUserGroup,
   type PageMeta,
+  type TicketTechActorLevel,
+  type TicketTechEscalation,
 } from '@/lib/admin/academyTypes';
 import { cn } from '@/lib/utils';
 
-type TabId = 'technical' | 'send' | 'users' | 'reports';
+type TabId = 'technical' | 'resolved' | 'send' | 'users' | 'reports';
 
-const BASE_TABS: { id: Exclude<TabId, 'technical'>; label: string; icon: typeof MessageSquarePlus }[] = [
+type TechQueueFilter = 'mine' | 'resolved' | 'tech_support' | 'tech_manager';
+
+const BASE_TABS: { id: Exclude<TabId, 'technical' | 'resolved'>; label: string; icon: typeof MessageSquarePlus }[] = [
   { id: 'send', label: 'ارسال تیکت', icon: MessageSquarePlus },
   { id: 'users', label: 'تیکت‌های کاربران', icon: Users },
   { id: 'reports', label: 'گزارش', icon: BarChart3 },
@@ -46,6 +52,12 @@ const STATUS_TONE: Record<string, 'default' | 'success' | 'warning'> = {
   answered: 'success',
   open: 'warning',
   waiting_user: 'warning',
+};
+
+const MINE_FILTER_LABELS: Record<TicketTechActorLevel, string> = {
+  tech_support: 'صف پشتیبان فنی',
+  tech_manager: 'ارجاع به مدیر فنی',
+  super_admin: 'ارجاع به مدیر کل',
 };
 
 type TicketRowVariant = 'closed' | 'answered' | 'pending';
@@ -93,16 +105,34 @@ function departmentLabel(department: string | null): string {
   return TICKET_DEPARTMENT_LABELS[department] ?? department;
 }
 
+function defaultTab(showTechnicalQueue: boolean, showResolvedForSupport: boolean): TabId {
+  if (showTechnicalQueue) return 'technical';
+  if (showResolvedForSupport) return 'resolved';
+  return 'users';
+}
+
+function escalationForTechFilter(
+  filter: TechQueueFilter,
+  techActorLevel: TicketTechActorLevel | null,
+): TicketTechEscalation | undefined {
+  if (filter === 'mine') return techActorLevel ?? undefined;
+  return filter;
+}
+
 export function TicketsHubClient({
   canViewStudents = false,
   canSearchStudents = false,
   showTechnicalQueue = false,
+  showResolvedForSupport = false,
+  techActorLevel = null,
 }: {
   canViewStudents?: boolean;
   canSearchStudents?: boolean;
   showTechnicalQueue?: boolean;
+  showResolvedForSupport?: boolean;
+  techActorLevel?: TicketTechActorLevel | null;
 }) {
-  const [tab, setTab] = useState<TabId>(showTechnicalQueue ? 'technical' : 'users');
+  const [tab, setTab] = useState<TabId>(() => defaultTab(showTechnicalQueue, showResolvedForSupport));
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
@@ -117,12 +147,30 @@ export function TicketsHubClient({
   const [technicalTickets, setTechnicalTickets] = useState<AdminTicket[]>([]);
   const [technicalMeta, setTechnicalMeta] = useState<PageMeta | null>(null);
   const [technicalLoading, setTechnicalLoading] = useState(false);
+  const [techQueueFilter, setTechQueueFilter] = useState<TechQueueFilter>(
+    () => (techActorLevel ? 'mine' : 'resolved'),
+  );
   const [activeTicket, setActiveTicket] = useState<AdminTicketDetail | null>(null);
   const [ticketLoading, setTicketLoading] = useState(false);
 
-  const tabs = showTechnicalQueue
-    ? ([{ id: 'technical' as const, label: 'پشتیبانی فنی', icon: Wrench }, ...BASE_TABS])
-    : BASE_TABS;
+  const tabs: { id: TabId; label: string; icon: typeof MessageSquarePlus }[] = showTechnicalQueue
+    ? [{ id: 'technical', label: 'پشتیبانی فنی', icon: Wrench }, ...BASE_TABS]
+    : showResolvedForSupport
+      ? [{ id: 'resolved', label: 'آماده اعلام', icon: CheckCircle2 }, ...BASE_TABS]
+      : BASE_TABS;
+
+  const techQueueFilters: { id: TechQueueFilter; label: string }[] = [
+    ...(techActorLevel
+      ? [{ id: 'mine' as const, label: MINE_FILTER_LABELS[techActorLevel] }]
+      : []),
+    ...(techActorLevel === 'tech_manager' || techActorLevel === 'super_admin'
+      ? [{ id: 'tech_support' as const, label: 'صف پشتیبان فنی' }]
+      : []),
+    ...(techActorLevel === 'super_admin'
+      ? [{ id: 'tech_manager' as const, label: 'ارجاع به مدیر فنی' }]
+      : []),
+    { id: 'resolved', label: 'حل‌شده' },
+  ];
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -139,14 +187,22 @@ export function TicketsHubClient({
     }
   }
 
-  async function loadTechnicalTickets() {
+  async function loadTechnicalTickets(escalation?: TicketTechEscalation) {
     setTechnicalLoading(true);
-    const res = await fetchRecentTickets(50, 'technical');
+    const res = await fetchRecentTickets(50, 'technical', escalation);
     setTechnicalLoading(false);
     if (res.ok) {
       setTechnicalTickets(res.items);
       setTechnicalMeta(res.meta);
     }
+  }
+
+  function reloadCurrentTechnicalQueue() {
+    if (tab === 'resolved') {
+      void loadTechnicalTickets('resolved');
+      return;
+    }
+    void loadTechnicalTickets(escalationForTechFilter(techQueueFilter, techActorLevel));
   }
 
   useEffect(() => {
@@ -156,12 +212,20 @@ export function TicketsHubClient({
 
   useEffect(() => {
     if (!showTechnicalQueue) return;
-    void loadTechnicalTickets();
+    void loadTechnicalTickets(escalationForTechFilter(techQueueFilter, techActorLevel));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTechnicalQueue]);
 
   useEffect(() => {
     if (tab !== 'technical') return;
-    void loadTechnicalTickets();
+    void loadTechnicalTickets(escalationForTechFilter(techQueueFilter, techActorLevel));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, techQueueFilter]);
+
+  useEffect(() => {
+    if (tab !== 'resolved') return;
+    void loadTechnicalTickets('resolved');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   useEffect(() => {
@@ -225,8 +289,10 @@ export function TicketsHubClient({
             >
               <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
               <span>{label}</span>
-              {id === 'technical' && technicalCount > 0 ? (
-                <Badge tone="warning">{technicalCount.toLocaleString('fa-IR')}</Badge>
+              {(id === 'technical' || id === 'resolved') && technicalCount > 0 && tab === id ? (
+                <Badge tone={id === 'resolved' ? 'success' : 'warning'}>
+                  {technicalCount.toLocaleString('fa-IR')}
+                </Badge>
               ) : null}
             </button>
           ))}
@@ -239,6 +305,11 @@ export function TicketsHubClient({
         {tab === 'technical' && technicalMeta ? (
           <span className="admin-period-summary">
             {technicalMeta.total.toLocaleString('fa-IR')} تیکت فنی
+          </span>
+        ) : null}
+        {tab === 'resolved' && technicalMeta ? (
+          <span className="admin-period-summary">
+            {technicalMeta.total.toLocaleString('fa-IR')} آماده اعلام
           </span>
         ) : null}
       </div>
@@ -260,7 +331,13 @@ export function TicketsHubClient({
                   </div>
                 ) : (
                   <div className="admin-tickets-hub__chat">
-                    <TicketChatPanel ticket={activeTicket} compact canViewStudents={canViewStudents} />
+                    <TicketChatPanel
+                      ticket={activeTicket}
+                      compact
+                      canViewStudents={canViewStudents}
+                      techActorLevel={techActorLevel}
+                      onTechEscalationChanged={reloadCurrentTechnicalQueue}
+                    />
                   </div>
                 )}
               </>
@@ -275,13 +352,84 @@ export function TicketsHubClient({
                   </div>
                 </div>
                 <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded admin-tickets-hub__technical-body">
+                  <div className="admin-period-segments mb-4 flex-wrap">
+                    {techQueueFilters.map(({ id, label }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setTechQueueFilter(id);
+                          setActiveTicket(null);
+                        }}
+                        className="admin-period-btn inline-flex items-center gap-2"
+                        data-active={techQueueFilter === id ? 'true' : undefined}
+                      >
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
                   {technicalLoading ? (
                     <HubLoading />
                   ) : (
                     <TicketTable
                       tickets={technicalTickets}
                       showUser
-                      emptyDescription="فعلاً تیکتی برای بررسی پشتیبانی فنی علامت نخورده است."
+                      emptyDescription="فعلاً تیکتی در این صف نیست."
+                      onSelect={(id) => void openTicket(id)}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'resolved' && (
+        <div className={cn('admin-tickets-hub__technical', activeTicket && 'admin-tickets-hub__technical--chat')}>
+          <div className="admin-dashboard-panel admin-tickets-hub__main">
+            {activeTicket ? (
+              <>
+                <div className="admin-dashboard-panel__head">
+                  <button type="button" onClick={goBack} className="admin-tickets-hub__back">
+                    <ChevronRight className="h-4 w-4" />
+                    بازگشت به آماده اعلام
+                  </button>
+                </div>
+                {ticketLoading ? (
+                  <div className="admin-tickets-hub__main-body">
+                    <HubLoading />
+                  </div>
+                ) : (
+                  <div className="admin-tickets-hub__chat">
+                    <TicketChatPanel
+                      ticket={activeTicket}
+                      compact
+                      canViewStudents={canViewStudents}
+                      techActorLevel={techActorLevel}
+                      onTechEscalationChanged={reloadCurrentTechnicalQueue}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="admin-dashboard-panel__head">
+                  <div className="min-w-0">
+                    <h2 className="admin-dashboard-panel__title">آماده اعلام</h2>
+                    <p className="mt-1 text-caption text-text-muted">
+                      تیکت‌های فنی حل‌شده که آماده اعلام به دانشجو هستند
+                    </p>
+                  </div>
+                </div>
+                <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded admin-tickets-hub__technical-body">
+                  {technicalLoading ? (
+                    <HubLoading />
+                  ) : (
+                    <TicketTable
+                      tickets={technicalTickets}
+                      showUser
+                      emptyDescription="فعلاً تیکت حل‌شده‌ای برای اعلام نیست."
                       onSelect={(id) => void openTicket(id)}
                     />
                   )}
@@ -484,7 +632,12 @@ export function TicketsHubClient({
 
             {activeTicket && !ticketLoading ? (
               <div className="admin-tickets-hub__chat">
-                <TicketChatPanel ticket={activeTicket} compact canViewStudents={canViewStudents} />
+                <TicketChatPanel
+                  ticket={activeTicket}
+                  compact
+                  canViewStudents={canViewStudents}
+                  techActorLevel={techActorLevel}
+                />
               </div>
             ) : null}
           </main>
@@ -492,6 +645,12 @@ export function TicketsHubClient({
       )}
     </div>
   );
+}
+
+function TechEscalationBadge({ value }: { value: string | null | undefined }) {
+  if (!value) return null;
+  const label = TICKET_TECH_ESCALATION_LABELS[value] ?? value;
+  return <Badge tone={value === 'resolved' ? 'success' : 'warning'}>{label}</Badge>;
 }
 
 function TicketTable({
@@ -548,9 +707,12 @@ function TicketTable({
             {
               label: 'بخش',
               value: (
-                <Badge tone={ticket.department === 'technical' ? 'warning' : 'default'}>
-                  {departmentLabel(ticket.department)}
-                </Badge>
+                <span className="inline-flex flex-wrap items-center gap-1.5">
+                  <Badge tone={ticket.department === 'technical' ? 'warning' : 'default'}>
+                    {departmentLabel(ticket.department)}
+                  </Badge>
+                  {showUser ? <TechEscalationBadge value={ticket.tech_escalation} /> : null}
+                </span>
               ),
             },
             {
@@ -599,9 +761,12 @@ function TicketTable({
             </td>
           ) : null}
           <td className="px-4 py-3">
-            <Badge tone={ticket.department === 'technical' ? 'warning' : 'default'}>
-              {departmentLabel(ticket.department)}
-            </Badge>
+            <span className="inline-flex flex-wrap items-center gap-1.5">
+              <Badge tone={ticket.department === 'technical' ? 'warning' : 'default'}>
+                {departmentLabel(ticket.department)}
+              </Badge>
+              {showUser ? <TechEscalationBadge value={ticket.tech_escalation} /> : null}
+            </span>
           </td>
           <td className="px-4 py-3">
             <Badge tone={STATUS_TONE[ticket.status] ?? 'default'}>
