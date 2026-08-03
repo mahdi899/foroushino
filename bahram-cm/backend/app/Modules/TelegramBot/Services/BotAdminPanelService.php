@@ -572,7 +572,30 @@ class BotAdminPanelService
             .$e('shield')." ادمین‌های بات: {$admins}\n"
             .$e('tv')." کانال اجباری فعال: {$requiredChats}\n\n"
             .'از دکمه‌های پایین برای مدیریت استفاده کنید.'."\n"
+            .'🔗 ادغام خط مقاصد و 🔄 ریست ثبت‌نام هاست: دکمه‌های inline بالا.'."\n"
             .'برای لغو هر مرحله «لغو» بنویسید.';
+    }
+
+    /** Quick inline shortcuts on dashboard (merge + user search / reset). */
+    /** @return array<string, mixed> */
+    private function adminQuickActionsMarkup(TelegramAccount $account): array
+    {
+        $canUserInfo = $account->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::UserInfo)
+            || $account->isPermanentBotAdmin();
+
+        $rows = [];
+        if ($canUserInfo) {
+            $rows[] = [
+                AdminMenuKeyboard::inlineButton('🔗 ادغام خط مقاصد', 'admin:dm:list'),
+                AdminMenuKeyboard::inlineButton('👥 کاربر / ریست هاست', 'admin:u:s', 'user'),
+            ];
+        }
+
+        $rows[] = [
+            AdminMenuKeyboard::inlineButton('داشبورد', 'admin:h', 'home'),
+        ];
+
+        return ['inline_keyboard' => $rows];
     }
 
     /** @return array<string, mixed> */
@@ -632,12 +655,14 @@ class BotAdminPanelService
         ]);
 
         $text = $this->dashboardText($bot);
+        $quickMarkup = $this->adminQuickActionsMarkup($account);
 
         if ($messageId > 0) {
             $client->editMessageText($text, [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
                 'parse_mode' => 'HTML',
+                'reply_markup' => $quickMarkup,
             ]);
             $client->sendMessage($chatId, 'منوی پنل ادمین پایین صفحه است.', [
                 'reply_markup' => $this->adminMenuMarkup($account),
@@ -648,6 +673,9 @@ class BotAdminPanelService
 
         $client->sendMessage($chatId, $text, [
             'parse_mode' => 'HTML',
+            'reply_markup' => $quickMarkup,
+        ]);
+        $client->sendMessage($chatId, 'منوی پنل ادمین پایین صفحه است.', [
             'reply_markup' => $this->adminMenuMarkup($account),
         ]);
     }
@@ -808,17 +836,25 @@ class BotAdminPanelService
             'admin' => ['flow' => 'user_search', 'draft' => []],
         ]);
 
+        $canUserInfo = $account->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::UserInfo)
+            || $account->isPermanentBotAdmin();
+
         $text = "👥 مدیریت کاربران\n\n"
             ."تعداد کل کاربران (بدون ادمین): {$totalUsers}\n\n"
             ."از کیبورد پایین «👥 کاربران» همیشه در دسترس است.\n"
             ."شناسه عددی تلگرام یا یوزرنیم را همین‌جا بفرستید.\n"
             .'مثال: 303360676 یا mahdi_akbari';
+        if ($canUserInfo) {
+            $text .= "\n\n🔄 ریست ثبت‌نام هاست: بعد از جستجو، در پروفایل کاربر دکمه «ریست ثبت‌نام هاست» را بزنید.";
+        }
 
-        $keyboard = [
-            [
-                ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
-                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-            ],
+        $keyboard = [];
+        if ($canUserInfo) {
+            $keyboard[] = [['text' => '🔗 ادغام خط مقاصد', 'callback_data' => 'admin:dm:list']];
+        }
+        $keyboard[] = [
+            ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
+            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
         ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
