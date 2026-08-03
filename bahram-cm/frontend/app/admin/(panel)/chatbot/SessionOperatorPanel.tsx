@@ -1,13 +1,26 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Reply, Send, User } from 'lucide-react';
-import { fetchChatbotSessionThread, replyToChatbotSession } from '@/lib/chatbot/actions';
+import { Loader2, MessageSquarePlus, Reply, Send, User, X } from 'lucide-react';
+import {
+  convertChatbotSessionToTicket,
+  fetchChatbotSessionThread,
+  replyToChatbotSession,
+} from '@/lib/chatbot/actions';
 import type { ChatbotOperatorProfile, ChatbotThreadItem } from '@/lib/chatbot/types';
+import { TICKET_DEPARTMENT_LABELS } from '@/lib/admin/academyTypes';
 import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { cn } from '@/lib/utils';
 
 const LAST_PROFILE_KEY = 'bahram_chatbot_last_operator_profile';
+
+const CONVERT_DEPARTMENTS = [
+  { value: '', label: TICKET_DEPARTMENT_LABELS.general },
+  { value: 'technical', label: TICKET_DEPARTMENT_LABELS.technical },
+  { value: 'financial', label: TICKET_DEPARTMENT_LABELS.financial },
+  { value: 'course', label: TICKET_DEPARTMENT_LABELS.course },
+];
 
 interface SessionOperatorPanelProps {
   sessionId: string;
@@ -15,7 +28,9 @@ interface SessionOperatorPanelProps {
   visitorName?: string | null;
   operatorProfiles: ChatbotOperatorProfile[];
   initialReplyToLogId?: number | null;
+  initialTicketId?: number | null;
   onReplied?: () => void;
+  onConverted?: (ticketId: number) => void;
 }
 
 export function SessionOperatorPanel({
@@ -24,9 +39,13 @@ export function SessionOperatorPanel({
   visitorName,
   operatorProfiles,
   initialReplyToLogId,
+  initialTicketId = null,
   onReplied,
+  onConverted,
 }: SessionOperatorPanelProps) {
   const [thread, setThread] = useState<ChatbotThreadItem[]>([]);
+  const [ticketId, setTicketId] = useState<number | null>(initialTicketId);
+  const [resolvedPhone, setResolvedPhone] = useState<string | null>(visitorPhone ?? null);
   const [loading, setLoading] = useState(true);
   const [replyText, setReplyText] = useState('');
   const [replyToLogId, setReplyToLogId] = useState<number | null>(null);
@@ -34,6 +53,12 @@ export function SessionOperatorPanel({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [highlightLogId, setHighlightLogId] = useState<number | null>(null);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertSubject, setConvertSubject] = useState('');
+  const [convertDepartment, setConvertDepartment] = useState('');
+  const [convertMobile, setConvertMobile] = useState('');
+  const [converting, setConverting] = useState(false);
+  const [convertError, setConvertError] = useState<string | null>(null);
   const threadScrollRef = useRef<HTMLDivElement>(null);
   const threadItemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -65,7 +90,13 @@ export function SessionOperatorPanel({
     if (!silent) setLoading(true);
     try {
       const data = await fetchChatbotSessionThread(sessionId);
-      setThread(data);
+      setThread(data.items);
+      if (data.ticketId != null) {
+        setTicketId(data.ticketId);
+      }
+      if (data.visitorPhone?.trim()) {
+        setResolvedPhone(data.visitorPhone.trim());
+      }
     } catch {
       setThread([]);
     } finally {
@@ -74,10 +105,66 @@ export function SessionOperatorPanel({
   }, [sessionId]);
 
   useEffect(() => {
+    setTicketId(initialTicketId);
+    setResolvedPhone(visitorPhone ?? null);
+  }, [sessionId, initialTicketId, visitorPhone]);
+
+  useEffect(() => {
     void loadThread(false);
     const timer = window.setInterval(() => void loadThread(true), 12000);
     return () => window.clearInterval(timer);
   }, [loadThread]);
+
+  const displayPhone = resolvedPhone?.trim() || null;
+  const canConvert = ticketId == null;
+  const needsManualMobile = !displayPhone;
+
+  async function handleConvert(e: React.FormEvent) {
+    e.preventDefault();
+    const subject = convertSubject.trim();
+    if (!subject || converting || !canConvert) return;
+
+    if (validProfiles.length > 0 && !selectedProfileId) {
+      setConvertError('یک پروفایل اپراتور انتخاب کنید.');
+      return;
+    }
+
+    if (needsManualMobile && !convertMobile.trim()) {
+      setConvertError('شماره موبایل دانشجوی ثبت‌نام‌شده را وارد کنید.');
+      return;
+    }
+
+    setConverting(true);
+    setConvertError(null);
+
+    const res = await convertChatbotSessionToTicket({
+      sessionId,
+      subject,
+      department: convertDepartment || undefined,
+      operatorProfileId: selectedProfileId || undefined,
+      mobile: needsManualMobile ? convertMobile.trim() : undefined,
+    });
+
+    setConverting(false);
+
+    if (!res.ok) {
+      setConvertError(res.error);
+      return;
+    }
+
+    setTicketId(res.ticketId);
+    if (needsManualMobile && convertMobile.trim()) {
+      setResolvedPhone(convertMobile.trim());
+    }
+    setConvertOpen(false);
+    setConvertSubject('');
+    setConvertDepartment('');
+    setConvertMobile('');
+    stickToBottomRef.current = true;
+    await loadThread(true);
+    onConverted?.(res.ticketId);
+    onReplied?.();
+  }
 
   function scrollThreadToBottom(behavior: ScrollBehavior = 'auto') {
     const el = threadScrollRef.current;
@@ -220,13 +307,129 @@ export function SessionOperatorPanel({
         <p className="font-mono text-caption text-text-muted">Session: {sessionId}</p>
         <div className="flex flex-wrap items-center gap-3 text-caption text-text-muted">
           {visitorName && <p>نام: <span className="font-medium text-primary-dark">{visitorName}</span></p>}
-          {visitorPhone && (
+          {displayPhone && (
             <p>
-              تلفن: <span dir="ltr">{visitorPhone}</span>
+              تلفن: <span dir="ltr">{displayPhone}</span>
             </p>
+          )}
+          {ticketId != null ? (
+            <Link
+              href={`/admin/academy/tickets/${ticketId}`}
+              className="rounded-pill bg-success/15 px-2.5 py-1 font-medium text-success hover:underline"
+            >
+              تبدیل‌شده به تیکت #{ticketId}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setConvertError(null);
+                setConvertMobile('');
+                setConvertOpen(true);
+              }}
+              disabled={!canConvert}
+              className="btn btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-caption disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              تبدیل به تیکت
+            </button>
           )}
         </div>
       </div>
+
+      {convertOpen && (
+        <form
+          onSubmit={(e) => void handleConvert(e)}
+          className="space-y-3 rounded-lg border border-border bg-surface p-4"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-small font-semibold text-primary-dark">تبدیل گفتگو به تیکت پشتیبانی</h3>
+              <p className="mt-1 admin-text-caption text-text-muted">
+                عنوان را بنویسید؛ تاریخچه چت کپی نمی‌شود و فقط ارجاع به این نشست در تیکت ثبت می‌شود.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="admin-icon-btn"
+              aria-label="بستن"
+              onClick={() => setConvertOpen(false)}
+              disabled={converting}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <label className="block space-y-1">
+            <span className="admin-text-meta font-medium text-text-muted">عنوان تیکت</span>
+            <input
+              type="text"
+              value={convertSubject}
+              onChange={(e) => setConvertSubject(e.target.value)}
+              className="field-input w-full text-small"
+              placeholder="مثلاً مشکل پرداخت سفارش"
+              maxLength={255}
+              disabled={converting}
+              required
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="admin-text-meta font-medium text-text-muted">دپارتمان</span>
+            <select
+              value={convertDepartment}
+              onChange={(e) => setConvertDepartment(e.target.value)}
+              className="field-input w-full text-small"
+              disabled={converting}
+            >
+              {CONVERT_DEPARTMENTS.map((d) => (
+                <option key={d.value || 'general'} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {needsManualMobile ? (
+            <label className="block space-y-1">
+              <span className="admin-text-meta font-medium text-text-muted">موبایل دانشجو</span>
+              <input
+                type="tel"
+                value={convertMobile}
+                onChange={(e) => setConvertMobile(e.target.value)}
+                className="field-input w-full text-small"
+                placeholder="09xxxxxxxxx"
+                dir="ltr"
+                disabled={converting}
+                required
+              />
+              <span className="block admin-text-caption text-text-muted">
+                در این نشست شماره ذخیره نشده؛ موبایل دانشجوی ثبت‌نام‌شده را وارد کنید.
+              </span>
+            </label>
+          ) : (
+            <p className="admin-text-caption text-text-muted">
+              موبایل نشست: <span dir="ltr" className="font-mono">{displayPhone}</span>
+            </p>
+          )}
+          {convertError && <p className="admin-text-caption text-error">{convertError}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn btn-secondary px-3 py-1.5 text-caption"
+              onClick={() => setConvertOpen(false)}
+              disabled={converting}
+            >
+              انصراف
+            </button>
+            <button
+              type="submit"
+              disabled={converting || !convertSubject.trim() || (needsManualMobile && !convertMobile.trim())}
+              className="btn btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 text-caption"
+            >
+              {converting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquarePlus className="h-4 w-4" />}
+              ساخت تیکت
+            </button>
+          </div>
+        </form>
+      )}
 
       {loading && thread.length === 0 ? (
         <div className="flex items-center gap-2 py-4 text-caption text-text-muted">

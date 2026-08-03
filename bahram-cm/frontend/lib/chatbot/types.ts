@@ -205,6 +205,8 @@ export interface ChatbotSessionEntry {
   visitor_name: string | null;
   preferred_operator_profile_id: string | null;
   lead_id: number | null;
+  ticket_id: number | null;
+  converted_at: string | null;
   open_count: number;
   message_count: number;
   opened_at: string | null;
@@ -226,6 +228,8 @@ export interface ChatbotOperatorQueueEntry {
   visitor_last_name: string | null;
   visitor_name: string | null;
   page_url: string | null;
+  ticket_id: number | null;
+  converted_at: string | null;
   low_rating_followup: boolean;
   rated_stars: number | null;
   rated_question: string | null;

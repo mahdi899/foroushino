@@ -33,7 +33,7 @@ import { TypingText } from '@/components/chatbot/TypingText';
 import { clearCaptchaTrust, isCaptchaTrusted, markCaptchaTrusted } from '@/lib/captcha/trust';
 import type { CaptchaPayload } from '@/lib/captcha/types';
 import { FaqAccordion } from '@/components/FaqAccordion';
-import { sendChatbotMessage, rateChatbotMessage, submitChatbotRatingFeedback, queueChatbotVisitorMessage, saveChatbotVisitorInfo } from '@/lib/chatbot/actions';
+import { sendChatbotMessage, rateChatbotMessage, submitChatbotRatingFeedback, queueChatbotVisitorMessage, saveChatbotVisitorInfo, saveChatbotPhone } from '@/lib/chatbot/actions';
 import { resolveContactHref } from '@/lib/chatbot/contacts';
 import { pollChatbotUpdatesClient } from '@/lib/chatbot/poll.client';
 import {
@@ -43,7 +43,7 @@ import {
 } from '@/lib/chatbot/prompt';
 import { verifyChatbotCaptchaClient } from '@/lib/chatbot/verifyCaptcha.client';
 import { loadChatHistory, scheduleSaveChatHistory } from '@/lib/chatbot/history';
-import { loadSavedChatbotPhone, markChatbotPhoneSaved } from '@/lib/chatbot/phone';
+import { isValidIranMobile, loadSavedChatbotPhone, markChatbotPhoneSaved, normalizeIranMobile } from '@/lib/chatbot/phone';
 import {
   hasVisitorIntroBeenShown,
   loadGlobalVisitorName,
@@ -748,6 +748,27 @@ export function FloatingChatbot({
     }, 700);
     return () => window.clearTimeout(timer);
   }, [visitorFirstName, visitorLastName, sessionId]);
+
+  const lastPhoneSyncRef = useRef('');
+
+  useEffect(() => {
+    const phone = savedPhone?.trim() ?? '';
+    if (!phone || !isValidIranMobile(phone)) return;
+    const normalized = normalizeIranMobile(phone);
+    if (normalized === lastPhoneSyncRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      lastPhoneSyncRef.current = normalized;
+      markChatbotPhoneSaved(sessionId, normalized);
+      void saveChatbotPhone({
+        sessionId,
+        phone: normalized,
+        clientIp: clientIpRef.current,
+        pageUrl: typeof window !== 'undefined' ? window.location.pathname : undefined,
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [savedPhone, sessionId]);
 
   const showCaptcha = config.require_captcha && !captchaTrusted;
   const chatInputLocked = showCaptcha;

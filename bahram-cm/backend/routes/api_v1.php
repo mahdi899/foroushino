@@ -419,6 +419,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('panel/chatbot/operator-queue', [ChatbotController::class, 'adminOperatorQueue']);
     Route::get('panel/chatbot/sessions/{sessionId}/thread', [ChatbotController::class, 'adminSessionThread']);
     Route::post('panel/chatbot/sessions/{sessionId}/reply', [ChatbotController::class, 'adminOperatorReply']);
+    Route::post('panel/chatbot/sessions/{sessionId}/convert-to-ticket', [ChatbotController::class, 'adminConvertToTicket']);
     Route::get('panel/chatbot/export', [ChatbotController::class, 'adminExport']);
     Route::delete('panel/chatbot/sessions', [ChatbotController::class, 'adminDeleteSessions']);
 

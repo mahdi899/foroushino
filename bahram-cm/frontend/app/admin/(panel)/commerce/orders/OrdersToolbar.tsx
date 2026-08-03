@@ -9,6 +9,17 @@ import { ordersHasFilters, type OrdersListParams } from './ordersQuery';
 
 const selectClass = 'field-input w-full min-w-0 py-2 text-small';
 
+type OrdersToolbarProps = {
+  search?: string;
+  status?: string;
+  productType?: string;
+  sort?: string;
+  dir?: string;
+  days?: string;
+  from?: string;
+  to?: string;
+};
+
 export function OrdersToolbar({
   search,
   status,
@@ -18,7 +29,7 @@ export function OrdersToolbar({
   days,
   from,
   to,
-}: OrdersListParams) {
+}: OrdersToolbarProps) {
   const params: OrdersListParams = { search, status, product_type: productType, sort, dir, days, from, to };
   const hasFilters = ordersHasFilters(params);
 

@@ -603,7 +603,16 @@ export default function ChatbotAdminPage() {
                         onClick={(e) => e.stopPropagation()}
                       />
                     }
-                    title={s.visitor_name ?? 'مهمان'}
+                    title={
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        <span>{s.visitor_name ?? 'مهمان'}</span>
+                        {s.ticket_id != null && (
+                          <span className="rounded-pill bg-success/15 px-2 py-0.5 admin-text-caption font-medium text-success">
+                            تیکت #{s.ticket_id}
+                          </span>
+                        )}
+                      </span>
+                    }
                     fields={[
                       {
                         label: 'آخرین فعالیت',
@@ -633,6 +642,7 @@ export default function ChatbotAdminPage() {
                           visitorPhone={s.visitor_phone}
                           visitorName={s.visitor_name}
                           operatorProfiles={operatorProfiles}
+                          initialTicketId={s.ticket_id}
                         />
                       ) : undefined
                     }
@@ -654,7 +664,14 @@ export default function ChatbotAdminPage() {
                       <td className="whitespace-nowrap px-4 py-3 text-caption">
                         {s.last_activity_at ? new Date(s.last_activity_at).toLocaleString('fa-IR') : '—'}
                       </td>
-                      <td className="px-4 py-3 text-caption">{s.visitor_name ?? '—'}</td>
+                      <td className="px-4 py-3 text-caption">
+                        <span>{s.visitor_name ?? '—'}</span>
+                        {s.ticket_id != null && (
+                          <span className="ms-2 rounded-pill bg-success/15 px-2 py-0.5 admin-text-caption font-medium text-success">
+                            تیکت #{s.ticket_id}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 font-mono text-caption">{s.ip_address ?? '—'}</td>
                       <td className="px-4 py-3 font-mono text-caption" dir="ltr">
                         {s.visitor_phone ?? '—'}
@@ -681,6 +698,7 @@ export default function ChatbotAdminPage() {
                             visitorPhone={s.visitor_phone}
                             visitorName={s.visitor_name}
                             operatorProfiles={operatorProfiles}
+                            initialTicketId={s.ticket_id}
                           />
                         </td>
                       </tr>

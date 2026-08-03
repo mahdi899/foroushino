@@ -1,6 +1,7 @@
 'use server';
 
 import {
+  convertChatbotSessionToTicket,
   deleteChatbotSessions,
   exportChatbotLogs,
   fetchChatbotLogs,
@@ -23,6 +24,7 @@ export {
   fetchChatbotOperatorQueueCount,
   fetchChatbotSessionThread,
   replyToChatbotSession,
+  convertChatbotSessionToTicket,
   exportChatbotLogs,
   deleteChatbotSessions,
   saveChatbotConfig,
