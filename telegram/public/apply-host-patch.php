@@ -32,6 +32,7 @@ $allowed = [
     'config.php',
     'src/Http/InboundSyncHandler.php',
     'src/Account/AccountCache.php',
+    'src/Account/PendingMobileAccess.php',
     'src/Services/HostRegistrationFlow.php',
     'src/Services/HostSatFlow.php',
     'src/Services/HostChatJoinRequestHandler.php',

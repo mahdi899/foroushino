@@ -9,9 +9,12 @@ use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Enums\OrderCancellationReason;
+use App\Jobs\NotifyOrderCancelledJob;
 use App\Services\AdminTelegramLogService;
 use App\Services\OrderAnalyticsService;
 use App\Services\OrderService;
+use App\Support\AdminOrderFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -23,32 +26,32 @@ class OrderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Order::query()->with('product')->orderByDesc('created_at')->orderByDesc('id');
+        $validated = $request->validate([
+            'sort' => ['sometimes', 'string', Rule::in(['amount', 'created_at'])],
+            'dir' => ['sometimes', 'string', Rule::in(['asc', 'desc'])],
+            'from' => ['sometimes', 'date', 'date_format:Y-m-d'],
+            'to' => ['sometimes', 'date', 'date_format:Y-m-d'],
+            'days' => ['sometimes'],
+        ]);
 
-        if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+        if (! empty($validated['from']) && ! empty($validated['to']) && $validated['from'] > $validated['to']) {
+            throw ValidationException::withMessages([
+                'to' => ['تاریخ پایان باید بعد از تاریخ شروع باشد.'],
+            ]);
         }
 
-        if ($paymentStatus = $request->string('payment_status')->toString()) {
-            $query->where('payment_status', $paymentStatus);
+        $sort = $validated['sort'] ?? 'created_at';
+        $dir = $validated['dir'] ?? 'desc';
+
+        $query = Order::query()->with('product');
+
+        if ($sort === 'amount') {
+            $query->orderBy('final_amount', $dir)->orderBy('id', $dir);
+        } else {
+            $query->orderBy('created_at', $dir)->orderBy('id', $dir);
         }
 
-        if ($search = $request->string('search')->trim()->toString()) {
-            $query->where(function ($q) use ($search) {
-                $q->where('order_number', 'like', "%{$search}%")
-                    ->orWhere('customer_name', 'like', "%{$search}%")
-                    ->orWhere('customer_phone', 'like', "%{$search}%")
-                    ->orWhereHas('product', function ($productQuery) use ($search) {
-                        $productQuery
-                            ->where('title', 'like', "%{$search}%")
-                            ->orWhere('type', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        if ($productType = $request->string('product_type')->toString()) {
-            $query->whereHas('product', fn ($q) => $q->where('type', $productType));
-        }
+        AdminOrderFilters::apply($query, $request);
 
         $orders = $query->paginate((int) $request->input('per_page', 50));
 
@@ -101,6 +104,10 @@ class OrderController extends Controller
             }
         }
 
+        $becameCancelled = isset($data['status'])
+            && $data['status'] === 'cancelled'
+            && $order->status !== 'cancelled';
+
         $order->update($data);
         $order->load([
             'product',
@@ -113,6 +120,10 @@ class OrderController extends Controller
 
         if ($changes !== []) {
             app(AdminTelegramLogService::class)->notifyOrderUpdated($order, $changes);
+        }
+
+        if ($becameCancelled) {
+            NotifyOrderCancelledJob::dispatch($order->id, OrderCancellationReason::Admin->value)->afterResponse();
         }
 
         return response()->json(['data' => $this->detailedPayload($order)]);

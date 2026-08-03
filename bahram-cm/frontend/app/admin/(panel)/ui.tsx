@@ -13,6 +13,7 @@ export function AdminPage({
   icon,
   headerVariant = 'default',
   stackHeader = false,
+  fullWidthAction = false,
   compactHeader = false,
   backHref,
   backLabel,
@@ -25,6 +26,8 @@ export function AdminPage({
   headerVariant?: AdminPageHeaderVariant;
   /** Keep title and toolbar stacked (full width) — use on dense editor toolbars */
   stackHeader?: boolean;
+  /** Toolbar spans full header width (no 40rem cap, stays stacked on desktop) */
+  fullWidthAction?: boolean;
   /** Single-line compact header — title and actions on one row */
   compactHeader?: boolean;
   /** Mobile-only back link shown above the page header */
@@ -41,6 +44,7 @@ export function AdminPage({
         variant={headerVariant}
         compact={compactHeader}
         action={action}
+        fullWidthAction={fullWidthAction}
         className={cn(
           !compactHeader && (stackHeader ? 'mb-5 sm:mb-5' : 'mb-5 sm:mb-6'),
           !compactHeader && stackHeader && 'flex-col gap-3',
@@ -58,6 +62,7 @@ export function StatCard({
   hint,
   href,
   tone = 'teal',
+  hintLines = 1,
 }: {
   label: string;
   value: string | number;
@@ -65,6 +70,7 @@ export function StatCard({
   hint?: string;
   href?: string;
   tone?: 'teal' | 'gold' | 'blue' | 'green' | 'amber';
+  hintLines?: 1 | 2;
 }) {
   const content = (
     <div
@@ -80,7 +86,11 @@ export function StatCard({
       <div className="admin-stat-card__body">
         <p className="admin-stat-card__label">{label}</p>
         <p className="admin-stat-card__value">{value}</p>
-        <p className="admin-stat-card__hint">{hint ?? '\u00a0'}</p>
+        <p
+          className={cn('admin-stat-card__hint', hintLines > 1 && 'admin-stat-card__hint--multiline')}
+        >
+          {hint ?? '\u00a0'}
+        </p>
       </div>
     </div>
   );
@@ -107,20 +117,37 @@ export function Table({
   headCells,
   children,
   mobile,
+  stackBelow = 'md',
+  tableClassName,
 }: {
   head: string[];
   headCells?: React.ReactNode[];
   children: React.ReactNode;
-  /** Card list for viewports below `md` — avoids horizontal scroll */
+  /** Card list for viewports below `stackBelow` — avoids horizontal scroll */
   mobile?: React.ReactNode;
+  stackBelow?: 'md' | 'lg';
+  tableClassName?: string;
 }) {
   const cells = headCells ?? head;
+  const tableHiddenClass = stackBelow === 'lg' ? 'hidden lg:block' : 'hidden md:block';
 
   return (
     <>
-      {mobile ? <AdminTableCardList>{mobile}</AdminTableCardList> : null}
-      <div className={cn('admin-table-wrap overflow-x-auto', mobile && 'hidden md:block')}>
-        <table className="admin-table admin-text-body w-full min-w-[32rem] text-right">
+      {mobile ? (
+        <AdminTableCardList stackBelow={stackBelow}>{mobile}</AdminTableCardList>
+      ) : null}
+      <div
+        className={cn(
+          'admin-table-wrap min-w-0 max-w-full overflow-x-auto',
+          mobile && tableHiddenClass,
+        )}
+      >
+        <table
+          className={cn(
+            'admin-table admin-text-body w-full text-right',
+            tableClassName ?? 'min-w-[32rem]',
+          )}
+        >
           <thead>
             <tr>
               {cells.map((cell, index) => (

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Payment;
+use App\Support\Mobile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +26,7 @@ class OrderAnalyticsService
 
     private const GATEWAY_LABELS = [
         'zarinpal' => 'زرین‌پال',
+        'card_to_card' => 'کارت به کارت',
     ];
 
     /** @var list<string> */
@@ -44,11 +46,15 @@ class OrderAnalyticsService
 
         $totalOrders = (clone $base)->whereNotIn('status', self::CANCELLED_STATUSES)->count();
         $cancelledOrders = (clone $base)->whereIn('status', self::CANCELLED_STATUSES)->count();
+        $allOrders = $totalOrders + $cancelledOrders;
+        $pendingOrders = (clone $base)->where('status', 'pending_payment')->count();
+        $failedOrders = (clone $base)->where('status', 'failed')->count();
         $paidOrders = (clone $base)->whereIn('status', self::PAID_STATUSES)->count();
         $totalRevenue = (int) (clone $base)->whereIn('status', self::PAID_STATUSES)->sum('final_amount');
         $pendingRevenue = (int) (clone $base)->where('status', 'pending_payment')->sum('final_amount');
         $avgOrderValue = $paidOrders > 0 ? (int) round($totalRevenue / $paidOrders) : 0;
-        $conversionRate = $totalOrders > 0 ? round(($paidOrders / $totalOrders) * 100, 1) : 0.0;
+        $conversionRate = $allOrders > 0 ? round(($paidOrders / $allOrders) * 100, 1) : 0.0;
+        $paymentFunnel = $this->paymentFunnelMetrics($base, $allOrders);
 
         $byStatus = (clone $base)
             ->select('status')
@@ -81,28 +87,13 @@ class OrderAnalyticsService
             ->all();
 
         $paidList = implode(',', array_map(fn ($s) => "'{$s}'", self::PAID_STATUSES));
-        $dateExpr = DB::getDriverName() === 'sqlite' ? 'date(orders.created_at)' : 'DATE(orders.created_at)';
 
-        $dailyRows = (clone $base)
-            ->selectRaw("{$dateExpr} as date")
-            ->selectRaw('count(*) as orders')
-            ->selectRaw("sum(case when status in ({$paidList}) then final_amount else 0 end) as revenue")
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
-
-        $daily = $from && $days
-            ? $this->fillDailySeries($dailyRows, $days)
-            : $dailyRows->map(fn ($row) => [
-                'date' => (string) $row->date,
-                'orders' => (int) $row->orders,
-                'revenue' => (int) $row->revenue,
-            ])->values()->all();
+        $daily = $this->dailyTrend($from, $days);
 
         $byProduct = (clone $base)
             ->join('products', 'orders.product_id', '=', 'products.id')
             ->select('products.id as product_id', 'products.title')
-            ->selectRaw('count(*) as count')
+            ->selectRaw("sum(case when orders.status in ({$paidList}) then 1 else 0 end) as count")
             ->selectRaw("sum(case when orders.status in ({$paidList}) then orders.final_amount else 0 end) as revenue")
             ->groupBy('products.id', 'products.title')
             ->orderByDesc('count')
@@ -117,26 +108,7 @@ class OrderAnalyticsService
             ->values()
             ->all();
 
-        $paymentsQuery = Payment::query()
-            ->join('orders', 'payments.order_id', '=', 'orders.id')
-            ->when($from, fn ($q) => $q->where('orders.created_at', '>=', $from));
-
-        $byGateway = (clone $paymentsQuery)
-            ->where('payments.status', 'paid')
-            ->select('payments.gateway')
-            ->selectRaw('count(*) as count')
-            ->selectRaw('coalesce(sum(payments.amount), 0) as revenue')
-            ->groupBy('payments.gateway')
-            ->orderByDesc('count')
-            ->get()
-            ->map(fn ($row) => [
-                'key' => $row->gateway,
-                'label' => self::GATEWAY_LABELS[$row->gateway] ?? $row->gateway,
-                'count' => (int) $row->count,
-                'revenue' => (int) $row->revenue,
-            ])
-            ->values()
-            ->all();
+        $byGateway = $this->gatewayBreakdown($base);
 
         $byOrderUniqueness = $this->orderUniquenessBreakdown($base);
 
@@ -179,12 +151,22 @@ class OrderAnalyticsService
             'period_days' => $days,
             'summary' => [
                 'total_orders' => $totalOrders,
+                'all_orders' => $allOrders,
                 'cancelled_orders' => $cancelledOrders,
+                'pending_orders' => $pendingOrders,
+                'failed_orders' => $failedOrders,
                 'paid_orders' => $paidOrders,
                 'total_revenue' => $totalRevenue,
                 'pending_revenue' => $pendingRevenue,
                 'avg_order_value' => $avgOrderValue,
                 'conversion_rate' => $conversionRate,
+                'pre_gateway_dropout_count' => $paymentFunnel['pre_gateway_dropout_count'],
+                'pre_gateway_dropout_rate' => $paymentFunnel['pre_gateway_dropout_rate'],
+                'gateway_started_count' => $paymentFunnel['gateway_started_count'],
+                'gateway_abandoned_count' => $paymentFunnel['gateway_abandoned_count'],
+                'gateway_pending_order_count' => $paymentFunnel['gateway_pending_order_count'],
+                'gateway_abandonment_rate' => $paymentFunnel['gateway_abandonment_rate'],
+                'gateway_pending_rate' => $paymentFunnel['gateway_pending_rate'],
             ],
             'fulfillment' => $fulfillment,
             'by_status' => $byStatus,
@@ -197,21 +179,144 @@ class OrderAnalyticsService
         ];
     }
 
+    /**
+     * Daily paid-order trend keyed by payment date (paid_at), not order creation date.
+     *
+     * @return list<array{date: string, paid_orders: int, revenue: int}>
+     */
+    private function dailyTrend(?\Illuminate\Support\Carbon $from, ?int $days): array
+    {
+        $paidDateExpr = $this->paidAtDateExpr();
+        $paidAtExpr = DB::getDriverName() === 'sqlite'
+            ? 'coalesce(orders.paid_at, orders.created_at)'
+            : 'COALESCE(orders.paid_at, orders.created_at)';
+
+        $dailyQuery = Order::query()->whereIn('status', self::PAID_STATUSES);
+
+        if ($from !== null && $days !== null) {
+            $dailyQuery
+                ->whereRaw("{$paidAtExpr} >= ?", [$from])
+                ->whereRaw("{$paidAtExpr} <= ?", [now()->endOfDay()]);
+        }
+
+        $dailyRows = $dailyQuery
+            ->selectRaw("{$paidDateExpr} as date")
+            ->selectRaw('count(*) as paid_orders')
+            ->selectRaw('coalesce(sum(final_amount), 0) as revenue')
+            ->groupByRaw($paidDateExpr)
+            ->orderBy('date')
+            ->get();
+
+        if ($days !== null && $from !== null) {
+            return $this->fillDailySeries($dailyRows, $days);
+        }
+
+        return $this->fillDailySeriesAll($dailyRows);
+    }
+
+    private function paidAtDateExpr(): string
+    {
+        return DB::getDriverName() === 'sqlite'
+            ? 'date(coalesce(orders.paid_at, orders.created_at))'
+            : 'DATE(COALESCE(orders.paid_at, orders.created_at))';
+    }
+
+    /**
+     * @param  Collection<int, object{date: string, paid_orders: int|string, revenue: int|string}>  $rows
+     * @return list<array{date: string, paid_orders: int, revenue: int}>
+     */
+    private function fillDailySeriesAll(Collection $rows): array
+    {
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $indexed = $rows->keyBy('date');
+        $end = now()->startOfDay();
+        $start = $end->copy()->subDays(364);
+        $firstDataDate = \Illuminate\Support\Carbon::parse((string) $rows->min('date'))->startOfDay();
+        if ($firstDataDate->gt($start)) {
+            $start = $firstDataDate;
+        }
+
+        $series = [];
+        for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
+            $key = $d->toDateString();
+            $row = $indexed->get($key);
+            $series[] = [
+                'date' => $key,
+                'paid_orders' => $row ? (int) $row->paid_orders : 0,
+                'revenue' => $row ? (int) $row->revenue : 0,
+            ];
+        }
+
+        return $series;
+    }
+
+    /** @return list<array{key: string, label: string, count: int, revenue: int}> */
+    private function gatewayBreakdown(\Illuminate\Database\Eloquent\Builder $base): array
+    {
+        $orders = (clone $base)
+            ->whereIn('status', self::PAID_STATUSES)
+            ->with(['payments' => fn ($q) => $q->where('status', 'paid')->orderByDesc('paid_at')->orderByDesc('id')])
+            ->get(['id', 'final_amount', 'customer_extra_data']);
+
+        /** @var array<string, array{count: int, revenue: int}> $buckets */
+        $buckets = [];
+
+        foreach ($orders as $order) {
+            $gateway = $this->resolveOrderGateway($order);
+            $buckets[$gateway] ??= ['count' => 0, 'revenue' => 0];
+            $buckets[$gateway]['count']++;
+            $buckets[$gateway]['revenue'] += (int) $order->final_amount;
+        }
+
+        return collect($buckets)
+            ->map(fn (array $stats, string $gateway) => [
+                'key' => $gateway,
+                'label' => self::GATEWAY_LABELS[$gateway] ?? $gateway,
+                'count' => $stats['count'],
+                'revenue' => $stats['revenue'],
+            ])
+            ->sortByDesc('count')
+            ->values()
+            ->all();
+    }
+
+    private function resolveOrderGateway(Order $order): string
+    {
+        $paidPayment = $order->payments->first();
+        if ($paidPayment !== null) {
+            return self::normalizeGateway((string) $paidPayment->gateway);
+        }
+
+        if (data_get($order->customer_extra_data, 'card_to_card.status') === 'approved') {
+            return 'card_to_card';
+        }
+
+        return 'unknown';
+    }
+
+    private static function normalizeGateway(string $gateway): string
+    {
+        return in_array($gateway, ['c2c', 'card_to_card'], true) ? 'card_to_card' : $gateway;
+    }
+
     /** @return list<array{key: string, label: string, count: int, revenue: int}> */
     private function orderUniquenessBreakdown(\Illuminate\Database\Eloquent\Builder $base): array
     {
+        // Include cancelled/failed attempts — replaced checkouts are duplicate registrations per buyer+product.
         $orders = (clone $base)
-            ->whereNotIn('status', self::CANCELLED_STATUSES)
             ->orderBy('created_at')
             ->orderBy('id')
-            ->get(['id', 'customer_phone', 'product_id', 'final_amount', 'status']);
+            ->get(['id', 'user_id', 'customer_phone', 'product_id', 'final_amount', 'status']);
 
         $uniqueCount = 0;
         $duplicateCount = 0;
         $uniqueRevenue = 0;
         $duplicateRevenue = 0;
 
-        foreach ($orders->groupBy(fn (Order $order) => $order->customer_phone.'|'.$order->product_id) as $group) {
+        foreach ($orders->groupBy(fn (Order $order) => $this->buyerProductKey($order)) as $group) {
             $uniqueCount++;
             $duplicateCount += max(0, $group->count() - 1);
 
@@ -245,6 +350,64 @@ class OrderAnalyticsService
         ];
     }
 
+    private function buyerProductKey(Order $order): string
+    {
+        $buyer = $order->user_id
+            ? 'u:'.$order->user_id
+            : 'p:'.(Mobile::normalize((string) $order->customer_phone) ?: 'o:'.$order->id);
+
+        return $buyer.'|'.$order->product_id;
+    }
+
+    /**
+     * Order-level payment funnel — all rates use all_orders as denominator so they sum with conversion.
+     *
+     * @return array{
+     *     pre_gateway_dropout_count: int,
+     *     pre_gateway_dropout_rate: float,
+     *     gateway_started_count: int,
+     *     gateway_abandoned_count: int,
+     *     gateway_pending_order_count: int,
+     *     gateway_abandonment_rate: float,
+     *     gateway_pending_rate: float
+     * }
+     */
+    private function paymentFunnelMetrics(\Illuminate\Database\Eloquent\Builder $base, int $allOrders): array
+    {
+        $notPaid = (clone $base)->whereNotIn('status', self::PAID_STATUSES);
+
+        $preGatewayDropoutCount = (clone $notPaid)
+            ->whereDoesntHave('payments')
+            ->count();
+
+        $gatewayPendingOrderCount = (clone $notPaid)
+            ->whereHas('payments', fn ($q) => $q->where('status', 'pending'))
+            ->count();
+
+        $gatewayAbandonedOrderCount = (clone $notPaid)
+            ->whereHas('payments')
+            ->whereDoesntHave('payments', fn ($q) => $q->where('status', 'paid'))
+            ->whereDoesntHave('payments', fn ($q) => $q->where('status', 'pending'))
+            ->count();
+
+        $orderIds = (clone $base)->select('orders.id');
+        $gatewayStartedCount = Payment::query()->whereIn('order_id', $orderIds)->count();
+
+        $rate = static fn (int $count): float => $allOrders > 0
+            ? round(($count / $allOrders) * 100, 1)
+            : 0.0;
+
+        return [
+            'pre_gateway_dropout_count' => $preGatewayDropoutCount,
+            'pre_gateway_dropout_rate' => $rate($preGatewayDropoutCount),
+            'gateway_started_count' => $gatewayStartedCount,
+            'gateway_abandoned_count' => $gatewayAbandonedOrderCount,
+            'gateway_pending_order_count' => $gatewayPendingOrderCount,
+            'gateway_abandonment_rate' => $rate($gatewayAbandonedOrderCount),
+            'gateway_pending_rate' => $rate($gatewayPendingOrderCount),
+        ];
+    }
+
     private function paymentMode(Payment $payment): string
     {
         if (str_starts_with((string) $payment->authority, 'DEV-')) {
@@ -259,8 +422,8 @@ class OrderAnalyticsService
     }
 
     /**
-     * @param  Collection<int, object{date: string, orders: int|string, revenue: int|string}>  $rows
-     * @return list<array{date: string, orders: int, revenue: int}>
+     * @param  Collection<int, object{date: string, paid_orders: int|string, revenue: int|string}>  $rows
+     * @return list<array{date: string, paid_orders: int, revenue: int}>
      */
     private function fillDailySeries(Collection $rows, int $days): array
     {
@@ -273,7 +436,7 @@ class OrderAnalyticsService
             $row = $indexed->get($date);
             $series[] = [
                 'date' => $date,
-                'orders' => $row ? (int) $row->orders : 0,
+                'paid_orders' => $row ? (int) $row->paid_orders : 0,
                 'revenue' => $row ? (int) $row->revenue : 0,
             ];
         }

@@ -73,3 +73,18 @@ export function identityCorrectionLabel(item: string): string {
   const key = item.trim();
   return IDENTITY_CORRECTION_FA[key] ?? key;
 }
+
+export const IDENTITY_GENDER_FA: Record<string, string> = {
+  male: 'آقا',
+  female: 'خانم',
+};
+
+export const IDENTITY_GENDER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'male', label: 'آقا' },
+  { value: 'female', label: 'خانم' },
+];
+
+export function identityGenderLabel(gender?: string | null): string {
+  if (!gender) return '';
+  return IDENTITY_GENDER_FA[gender] ?? gender;
+}

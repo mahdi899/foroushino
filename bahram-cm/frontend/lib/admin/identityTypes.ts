@@ -135,12 +135,14 @@ export const IDENTITY_ADMIN_FILTER_STATUSES = (
 ).filter((status) => status !== 'draft' && status !== 'not_started');
 
 export const IDENTITY_GENDER_LABELS: Record<string, string> = {
-  male: 'مرد',
-  female: 'زن',
-  m: 'مرد',
-  f: 'زن',
-  مرد: 'مرد',
-  زن: 'زن',
+  male: 'آقا',
+  female: 'خانم',
+  m: 'آقا',
+  f: 'خانم',
+  مرد: 'آقا',
+  زن: 'خانم',
+  آقا: 'آقا',
+  خانم: 'خانم',
 };
 
 export const IDENTITY_REASON_LABELS: Record<string, string> = {

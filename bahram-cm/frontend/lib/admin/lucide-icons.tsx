@@ -1,6 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   BarChart3,
   Bell,
   Bot,
@@ -13,6 +16,7 @@ import {
   ClipboardList,
   Cable,
   CreditCard,
+  DoorOpen,
   ExternalLink,
   Eye,
   FileUp,
@@ -69,6 +73,9 @@ import { cn } from '@/lib/utils';
 /** Tree-shaken icon map for admin UI — avoids `import * as Icons from 'lucide-react'`. */
 export const adminLucideIcons: Record<string, LucideIcon> = {
   Activity,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   BarChart3,
   Bell,
   Bot,
@@ -81,6 +88,7 @@ export const adminLucideIcons: Record<string, LucideIcon> = {
   ClipboardList,
   Cable,
   CreditCard,
+  DoorOpen,
   ExternalLink,
   Eye,
   FileUp,

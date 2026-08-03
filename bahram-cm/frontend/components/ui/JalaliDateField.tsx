@@ -20,6 +20,7 @@ type JalaliDateFieldProps = {
   required?: boolean;
   maxDate?: Date;
   minDate?: Date;
+  compact?: boolean;
 };
 
 export function JalaliDateField({
@@ -30,12 +31,17 @@ export function JalaliDateField({
   required,
   maxDate,
   minDate,
+  compact = false,
 }: JalaliDateFieldProps) {
   const pickerValue = apiDateToDateObject(value);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | undefined>(undefined);
 
   useEffect(() => {
-    setPortalTarget(document.getElementById('panel-root') ?? document.body);
+    setPortalTarget(
+      document.getElementById('panel-root')
+        ?? document.getElementById('admin-root')
+        ?? document.body,
+    );
   }, []);
 
   function handleChange(next: DateObject | DateObject[] | null) {
@@ -60,13 +66,13 @@ export function JalaliDateField({
       arrow={false}
       required={required}
       className="jalali-rmdp teal"
-      containerClassName="jalali-date-field"
+      containerClassName={compact ? 'jalali-date-field jalali-date-field--compact' : 'jalali-date-field'}
       portal
       portalTarget={portalTarget}
       render={(displayValue, openCalendar) => (
         <button
           type="button"
-          className="jalali-date-input-wrap"
+          className={compact ? 'jalali-date-input-wrap jalali-date-input-wrap--compact' : 'jalali-date-input-wrap'}
           onClick={openCalendar}
           aria-labelledby={id ? `${id}-label` : undefined}
         >

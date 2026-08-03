@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, MapPin, Search } from 'lucide-react';
-import { IRAN_CITIES } from '@/lib/iran/cities';
+import { MapPin } from 'lucide-react';
+import {
+  completeIranCityInput,
+  IRAN_CITY_SEARCH_MIN_LENGTH,
+  searchIranCitySuggestions,
+} from '@/lib/iran/iranCityBank';
 import { cn } from '@/lib/cn';
+import { sanitizePersianCityInput } from '@/lib/persian/persianCity';
 
 type PanelCitySheetFieldProps = {
   id?: string;
@@ -12,10 +17,16 @@ type PanelCitySheetFieldProps = {
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
+  onRejectedInput?: () => void;
   required?: boolean;
   title?: string;
   placeholder?: string;
+  invalid?: boolean;
+  describedBy?: string;
 };
+
+const LIST_GAP_PX = 6;
+const LIST_MAX_HEIGHT_PX = 256;
 
 export function PanelCitySheetField({
   id,
@@ -23,154 +34,222 @@ export function PanelCitySheetField({
   value: controlledValue,
   defaultValue = '',
   onChange,
+  onRejectedInput,
   required,
-  title = 'شهر',
-  placeholder = 'انتخاب شهر',
+  placeholder = 'مثلاً تهران',
+  invalid = false,
+  describedBy,
 }: PanelCitySheetFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
-  const labelId = `${fieldId}-label`;
+  const listboxId = `${fieldId}-suggestions`;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef('');
+
   const [internal, setInternal] = useState(defaultValue);
   const value = controlledValue ?? internal;
+  const [draft, setDraft] = useState(value);
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const [listStyle, setListStyle] = useState<React.CSSProperties | null>(null);
+
+  draftRef.current = draft;
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
 
   useEffect(() => {
     setPortalTarget(document.getElementById('panel-root') ?? document.body);
   }, []);
 
+  const suggestions = useMemo(() => searchIranCitySuggestions(draft, 8), [draft]);
+  const canSuggest = draft.trim().length >= IRAN_CITY_SEARCH_MIN_LENGTH;
+
   useEffect(() => {
     if (!open) return;
-    setQuery('');
-    const t = window.setTimeout(() => searchRef.current?.focus(), 80);
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
+
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        const listNode = document.getElementById(listboxId);
+        if (listNode?.contains(event.target as Node)) return;
+        commitDraft(draftRef.current);
+        setOpen(false);
+      }
     }
-    document.addEventListener('keydown', onKey);
-    return () => {
-      window.clearTimeout(t);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim();
-    if (!q) return IRAN_CITIES;
-    return IRAN_CITIES.filter((city) => city.includes(q));
-  }, [query]);
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [open, listboxId]);
 
-  const showCustom =
-    Boolean(query.trim()) && !IRAN_CITIES.some((city) => city === query.trim());
-
-  function commit(next: string) {
-    const city = next.trim();
-    if (!city) return;
-    if (controlledValue === undefined) setInternal(city);
-    onChange?.(city);
-    setOpen(false);
-    triggerRef.current?.focus();
+  function commitValue(next: string) {
+    const trimmed = next.trim();
+    if (controlledValue === undefined) setInternal(trimmed);
+    onChange?.(trimmed);
+    setDraft(trimmed);
   }
 
+  function commitDraft(next: string) {
+    const trimmed = next.trim();
+    const resolved =
+      trimmed.length >= IRAN_CITY_SEARCH_MIN_LENGTH ? completeIranCityInput(trimmed) : trimmed;
+    commitValue(resolved);
+    setActiveIndex(-1);
+  }
+
+  function selectSuggestion(label: string) {
+    commitDraft(label);
+    setOpen(false);
+    inputRef.current?.blur();
+  }
+
+  function onInputChange(next: string) {
+    const sanitized = sanitizePersianCityInput(next);
+    if (next !== sanitized) onRejectedInput?.();
+    setDraft(sanitized);
+    setOpen(sanitized.trim().length >= IRAN_CITY_SEARCH_MIN_LENGTH);
+    setActiveIndex(-1);
+    onChange?.(sanitized);
+  }
+
+  function onInputFocus() {
+    if (canSuggest) setOpen(true);
+  }
+
+  function onInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'ArrowDown') {
+      if (!canSuggest || suggestions.length === 0) return;
+      event.preventDefault();
+      if (!open) setOpen(true);
+      setActiveIndex((index) => Math.min(index + 1, suggestions.length - 1));
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      if (!canSuggest || suggestions.length === 0) return;
+      event.preventDefault();
+      setActiveIndex((index) => Math.max(index - 1, 0));
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      if (open && activeIndex >= 0 && suggestions[activeIndex]) {
+        event.preventDefault();
+        selectSuggestion(suggestions[activeIndex].label);
+        return;
+      }
+      commitDraft(draft);
+      setOpen(false);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setDraft(value);
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  }
+
+  const showSuggestions = open && canSuggest && suggestions.length > 0;
+
+  useLayoutEffect(() => {
+    if (!showSuggestions || !inputRef.current) {
+      setListStyle(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const input = inputRef.current;
+      if (!input) return;
+
+      const rect = input.getBoundingClientRect();
+      const availableAbove = Math.max(0, rect.top - LIST_GAP_PX - 8);
+      const maxHeight = Math.min(LIST_MAX_HEIGHT_PX, availableAbove);
+
+      setListStyle({
+        position: 'fixed',
+        left: rect.left,
+        width: rect.width,
+        bottom: window.innerHeight - rect.top + LIST_GAP_PX,
+        maxHeight: maxHeight > 0 ? maxHeight : LIST_MAX_HEIGHT_PX,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [showSuggestions, suggestions.length, draft]);
+
+  const suggestionsList =
+    showSuggestions && portalTarget && listStyle ? (
+      <ul
+        id={listboxId}
+        className="panel-city-combobox__list panel-city-combobox__list--floating"
+        style={listStyle}
+        role="listbox"
+      >
+        {suggestions.map((item, index) => (
+          <li key={item.label} role="presentation">
+            <button
+              type="button"
+              role="option"
+              aria-selected={index === activeIndex}
+              className={cn('panel-city-combobox__option', index === activeIndex && 'is-active')}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => selectSuggestion(item.label)}
+            >
+              <span className="panel-city-combobox__option-city">{item.city}</span>
+              <span className="panel-city-combobox__option-province">{item.province}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null;
+
   return (
-    <div className="panel-option-sheet-field">
+    <div ref={rootRef} className="panel-city-combobox">
       {name ? <input type="hidden" name={name} value={value} required={required && !value} /> : null}
 
-      <button
-        ref={triggerRef}
-        id={fieldId}
-        type="button"
-        className="jalali-date-input-wrap"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-labelledby={labelId}
-        onClick={() => setOpen(true)}
-      >
-        <span className={cn('jalali-date-input', !value && 'jalali-date-input--empty')}>
-          {value || placeholder}
-        </span>
-        <MapPin className="jalali-date-input__icon" aria-hidden />
-      </button>
+      {suggestionsList ? createPortal(suggestionsList, portalTarget) : null}
 
-      {open && portalTarget
-        ? createPortal(
-            <div className="wheel-date-overlay" role="presentation" onClick={() => setOpen(false)}>
-              <div
-                className="wheel-date-sheet panel-option-sheet panel-option-sheet--city"
-                role="dialog"
-                aria-modal="true"
-                aria-label={title}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="wheel-date-sheet__header">
-                  <span className="wheel-date-sheet__title">{title}</span>
-                  {value ? <span className="wheel-date-sheet__preview">{value}</span> : null}
-                </div>
-
-                <label className="panel-option-sheet__search">
-                  <Search className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-                  <input
-                    ref={searchRef}
-                    type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="جستجوی شهر…"
-                    className="panel-option-sheet__search-input"
-                    autoComplete="off"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && showCustom) {
-                        e.preventDefault();
-                        commit(query);
-                      }
-                    }}
-                  />
-                </label>
-
-                <div className="panel-option-sheet__list panel-option-sheet__list--scroll" role="listbox">
-                  {filtered.map((city) => {
-                    const active = city === value;
-                    return (
-                      <button
-                        key={city}
-                        type="button"
-                        role="option"
-                        aria-selected={active}
-                        className={cn('panel-option-sheet__item', active && 'is-selected')}
-                        onClick={() => commit(city)}
-                      >
-                        <span>{city}</span>
-                        {active ? <Check className="h-4 w-4 shrink-0" aria-hidden /> : null}
-                      </button>
-                    );
-                  })}
-
-                  {showCustom ? (
-                    <button
-                      type="button"
-                      className="btn btn-primary panel-option-sheet__custom-commit"
-                      onClick={() => commit(query)}
-                    >
-                      ثبت «{query.trim()}»
-                    </button>
-                  ) : null}
-
-                  {filtered.length === 0 && !showCustom ? (
-                    <p className="panel-option-sheet__empty">شهری پیدا نشد.</p>
-                  ) : null}
-                </div>
-
-                <div className="wheel-date-sheet__actions wheel-date-sheet__actions--single">
-                  <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
-                    بستن
-                  </button>
-                </div>
-              </div>
-            </div>,
-            portalTarget,
-          )
-        : null}
+      <div className="panel-city-combobox__input-wrap">
+        <input
+          ref={inputRef}
+          id={fieldId}
+          type="text"
+          className={cn('field-input panel-city-combobox__input', invalid && 'field-input--error')}
+          value={draft}
+          onChange={(event) => onInputChange(event.target.value)}
+          onFocus={onInputFocus}
+          onBlur={() => {
+            window.setTimeout(() => {
+              if (!rootRef.current?.contains(document.activeElement)) {
+                const listNode = document.getElementById(listboxId);
+                if (listNode?.contains(document.activeElement)) return;
+                commitDraft(draftRef.current);
+                setOpen(false);
+              }
+            }, 120);
+          }}
+          onKeyDown={onInputKeyDown}
+          placeholder={placeholder}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={showSuggestions}
+          aria-controls={showSuggestions ? listboxId : undefined}
+          aria-autocomplete="list"
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
+          required={required}
+        />
+        <MapPin className="panel-city-combobox__icon" aria-hidden />
+      </div>
     </div>
   );
 }

@@ -4,13 +4,8 @@ import { VerificationActionCta } from '@/components/student-panel/profile/Verifi
 import { cn } from '@/lib/cn';
 import { formatDateFa } from '@/lib/persian';
 import { getStudentLegalName, hasIdentityLegalFields } from '@/lib/student/displayName';
-import { identityStatusLabel } from '@/lib/student/identityLabels';
+import { identityGenderLabel, identityStatusLabel } from '@/lib/student/identityLabels';
 import type { StudentUser } from '@/lib/student/session';
-
-const GENDER_FA: Record<string, string> = {
-  male: 'مرد',
-  female: 'زن',
-};
 
 const LOCKED_STATUSES = new Set(['submitted', 'under_review', 'approved']);
 
@@ -46,7 +41,7 @@ function buildIdentityFields(user: StudentUser, locked: boolean): IdentityField[
     fields.push({ key: 'dob', label: 'تاریخ تولد', value: formatDateFa(identity.date_of_birth) });
   }
   if (identity?.gender) {
-    fields.push({ key: 'gender', label: 'جنسیت', value: GENDER_FA[identity.gender] ?? identity.gender });
+    fields.push({ key: 'gender', label: 'جنسیت', value: identityGenderLabel(identity.gender) });
   }
   if (user.national_code_masked) {
     fields.push({

@@ -72,7 +72,7 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card mb-5 space-y-4 p-4 sm:p-6">
+    <form onSubmit={onSubmit} className="card mb-5 min-w-0 max-w-full space-y-4 overflow-hidden p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-h3 font-bold text-primary-dark">

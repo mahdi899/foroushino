@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import { ShieldCheck } from 'lucide-react';
-import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { IdentityVerificationWizard } from '@/components/student-panel/identity/IdentityVerificationWizard';
 import { splitDisplayName } from '@/lib/student/displayName';
 import { getCurrentStudent, studentFetch } from '@/lib/student/session';
@@ -113,13 +111,7 @@ export default async function IdentityVerificationPage({
   const initialStep = resolveInitialStep(state, params.step);
 
   return (
-    <div className="panel-page-inner panel-page-inner--identity flex flex-col gap-3 sm:gap-5">
-      <PanelPageHeader
-        icon={ShieldCheck}
-        title="تأیید هویت"
-        description="اطلاعات رسمی و مدارک خود را مرحله‌به‌مرحله تکمیل کنید تا حساب شما تأیید شود."
-        backLink={{ href: '/panel/profile', label: 'بازگشت به پروفایل' }}
-      />
+    <div className="panel-page-inner panel-page-inner--identity">
       <IdentityVerificationWizard
         initialStatus={state?.identity_status ?? user?.identity_status}
         initialCanSubmit={state?.can_submit ?? true}
@@ -129,6 +121,7 @@ export default async function IdentityVerificationPage({
         cardUploadedOnServer={cardUploaded}
         serverCardArtifactId={serverCardArtifactId}
         draftSubmissionId={state?.latest_submission?.id ?? null}
+        accountMobile={user?.mobile ?? null}
       />
     </div>
   );

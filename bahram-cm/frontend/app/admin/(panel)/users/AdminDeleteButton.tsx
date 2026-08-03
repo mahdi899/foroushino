@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Trash2 } from 'lucide-react';
 import { deleteAdminAction } from '../access/actions';
 import type { AdminUserRow } from '@/lib/admin/accessTypes';
+import { cn } from '@/lib/utils';
 
 export function AdminDeleteButton({
   admin,
+  centered = false,
 }: {
   admin: AdminUserRow;
+  centered?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -20,7 +23,7 @@ export function AdminDeleteButton({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn('flex flex-col gap-1', centered && 'items-center')}>
       <button
         type="button"
         disabled={pending}
@@ -38,12 +41,12 @@ export function AdminDeleteButton({
             router.refresh();
           });
         }}
-        className="btn btn-secondary inline-flex min-h-9 items-center gap-1.5 px-2.5 text-caption text-error hover:border-error/40 hover:bg-error/10"
+        className="btn btn-secondary inline-flex min-h-9 items-center justify-center gap-1.5 px-2.5 text-caption text-error hover:border-error/40 hover:bg-error/10"
       >
         {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
         حذف
       </button>
-      {error ? <span className="text-caption text-error">{error}</span> : null}
+      {error ? <span className={cn('text-caption text-error', centered && 'text-center')}>{error}</span> : null}
     </div>
   );
 }

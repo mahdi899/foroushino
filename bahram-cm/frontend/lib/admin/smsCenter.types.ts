@@ -94,6 +94,7 @@ export type SmsEventForm = {
 export const SMS_EVENT_LABELS: Record<string, string> = {
   otp: 'OTP',
   purchase_confirmation: 'خرید',
+  order_cancelled: 'لغو سفارش',
   license_created: 'لایسنس',
   welcome: 'خوش‌آمد',
   ticket_created: 'تیکت جدید',

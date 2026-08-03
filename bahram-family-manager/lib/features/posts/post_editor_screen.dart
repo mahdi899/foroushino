@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
-import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/core/utils/local_media_url.dart';
 import 'package:bahram_family_manager/features/posts/widgets/family_picker_sheet.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_action_results_panel.dart';
@@ -235,10 +235,91 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     return _type;
   }
 
+  bool get _hasSingleMediaAttached =>
+      _mediaRef != null || _localPreviewBytes != null;
+
+  bool get _showsSingleMediaSection =>
+      _hasSingleMediaAttached ||
+      _mediaPhase != MediaUploadPhase.idle;
+
   bool get _hasRequiredMedia {
     if (_type == 'text') return true;
     if (_isImagePost) return _images.any((img) => img.media != null);
     return _mediaRef != null;
+  }
+
+  double get _singleMediaPreviewHeight {
+    if (_type == 'voice') {
+      return _mediaPhase.isActive ? 160 : 88;
+    }
+    return (_mediaRef?.isAudio ?? _type == 'voice') ? 88 : 220;
+  }
+
+  bool _rejectOversizeMedia(int bytes) {
+    final message = MediaSizeGuard.oversizeMessage(bytes);
+    if (message == null) return false;
+    if (mounted) showAppSnackBar(context, message);
+    return true;
+  }
+
+  Widget _buildSingleMediaUploadPreview({
+    required Color subtle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_mediaStatusLabel != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text(
+              _mediaStatusLabel!,
+              style: TextStyle(color: subtle, fontSize: 13),
+            ),
+          ),
+        MediaUploadProgressOverlay(
+          phase: _mediaPhase,
+          progress: _uploadProgress,
+          sentBytes: _uploadSentBytes,
+          totalBytes: _uploadTotalBytes,
+          borderRadius: BorderRadius.circular(14),
+          onRetry: _mediaPhase == MediaUploadPhase.failed ? _retryMedia : null,
+          child: FamilyMediaView(
+            media: _mediaRef ??
+                FamilyMediaRef(
+                  id: 0,
+                  type: _type == 'voice' ? 'voice' : _type,
+                  status: 'uploading',
+                  originalFilename: null,
+                ),
+            height: _singleMediaPreviewHeight,
+            localBytes: _localPreviewBytes,
+            localUrl: _localPreviewUrl,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: (_mediaBusy || _saving)
+                ? null
+                : () async {
+                    await _clearLocalPreview();
+                    if (mounted) {
+                      setState(() {
+                        _mediaRef = null;
+                        _mediaPhase = MediaUploadPhase.idle;
+                        _uploadProgress = 0;
+                        _uploadSentBytes = 0;
+                        _uploadTotalBytes = 0;
+                      });
+                    }
+                  },
+            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+            label: const Text('حذف رسانه', style: TextStyle(color: AppColors.error)),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _prepareLocalPreview(Uint8List bytes, String filename, String mediaType) async {
@@ -316,8 +397,15 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             });
           }
         }
-      } catch (_) {
-        // Keep current refs; user can retry publish later.
+      } catch (e) {
+        if (mounted) {
+          showAppSnackBar(context, messageOf(e));
+          for (var i = 0; i < _images.length; i++) {
+            if (_images[i].media != null && !_images[i].media!.isReady) {
+              _images[i].phase = MediaUploadPhase.failed;
+            }
+          }
+        }
       }
       return;
     }
@@ -347,21 +435,24 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           _uploadProgress = 1;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _mediaPhase = MediaUploadPhase.failed);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _mediaPhase = MediaUploadPhase.failed);
+        showAppSnackBar(context, messageOf(e));
+      }
     }
   }
 
   Future<void> _uploadMediaBytes(Uint8List bytes, String filename) async {
+    if (_rejectOversizeMedia(bytes.length)) return;
+
     if (_isImagePost) {
       await _uploadImageBytes(bytes, filename);
       return;
     }
 
     final totalBytes = bytes.length;
-    await _prepareLocalPreview(bytes, filename, _type);
     if (!mounted) return;
-
     setState(() {
       _mediaPhase = MediaUploadPhase.uploading;
       _uploadProgress = 0;
@@ -370,6 +461,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
 
     try {
+      await _prepareLocalPreview(bytes, filename, _type);
+      if (!mounted) return;
+
       final manager = context.read<AppState>().manager;
       final media = await manager.uploadMedia(
             bytes: bytes,
@@ -428,6 +522,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   Future<void> _uploadImageBytes(Uint8List bytes, String filename) async {
+    if (_rejectOversizeMedia(bytes.length)) return;
+
     final draft = _AttachedImage(localBytes: bytes);
     draft.phase = MediaUploadPhase.uploading;
     setState(() {
@@ -502,11 +598,14 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       if (files.isEmpty) return;
 
       for (final picked in files) {
+        final size = picked.size;
+        if (size > 0 && _rejectOversizeMedia(size)) continue;
         final bytes = picked.bytes;
         if (bytes == null) {
           if (mounted) showAppSnackBar(context, 'خواندن فایل «${picked.name}» ناموفق بود.');
           continue;
         }
+        if (_rejectOversizeMedia(bytes.length)) continue;
         await _uploadImageBytes(bytes, picked.name);
         if (!mounted) return;
       }
@@ -523,9 +622,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     final picked = result?.files.singleOrNull;
     if (picked == null) return;
 
+    final size = picked.size;
+    if (size > 0 && _rejectOversizeMedia(size)) return;
+
     final bytes = picked.bytes;
     if (bytes == null) {
-      showAppSnackBar(context, 'خواندن فایل ناموفق بود.');
+      if (mounted) showAppSnackBar(context, 'خواندن فایل ناموفق بود.');
       return;
     }
 
@@ -1197,120 +1299,44 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                   if (_isImagePost) const SizedBox(height: AppSpacing.sm),
                   if (_isImagePost)
                     _buildImageAttachments(scheme: scheme, subtle: subtle)
-                  else if (_mediaRef == null && _localPreviewBytes == null)
-                    _type == 'voice'
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (_mediaBusy)
-                                SizedBox(
-                                  height: 88,
-                                  child: MediaUploadProgressOverlay(
-                                    phase: _mediaPhase,
-                                    progress: _uploadProgress,
-                                    sentBytes: _uploadSentBytes,
-                                    totalBytes: _uploadTotalBytes,
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Container(
-                                      color: context.appSurfaceSoft,
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        _mediaStatusLabel ?? 'در حال آپلود…',
-                                        style: TextStyle(color: subtle, fontSize: 13),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else ...[
-                                VoiceRecorderPanel(
-                                  enabled: !_saving,
-                                  onRecorded: (result) => _uploadVoiceBytes(
-                                    result.bytes,
-                                    result.filename,
-                                  ),
-                                  onError: (message) => showAppSnackBar(context, message),
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Align(
-                                  alignment: Alignment.center,
-                                  child: TextButton.icon(
-                                    onPressed: _saving ? null : _pickAndUploadMedia,
-                                    icon: Icon(Icons.audio_file_outlined, size: 18, color: scheme.primary),
-                                    label: Text(
-                                      'انتخاب از فایل',
-                                      style: TextStyle(color: scheme.primary),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          )
-                        : UploadZone(
-                            label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
-                            uploading: _mediaPhase == MediaUploadPhase.uploading ||
-                                _mediaPhase == MediaUploadPhase.finalizing,
-                            progress: _uploadProgress,
-                            sentBytes: _uploadSentBytes,
-                            totalBytes: _uploadTotalBytes,
-                            phase: _mediaPhase,
-                            enabled: !_saving && !_mediaBusy,
-                            onTap: _pickAndUploadMedia,
-                          )
-                  else
+                  else if (_showsSingleMediaSection)
+                    _buildSingleMediaUploadPreview(subtle: subtle)
+                  else if (_type == 'voice')
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (_mediaStatusLabel != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                            child: Text(
-                              _mediaStatusLabel!,
-                              style: TextStyle(color: subtle, fontSize: 13),
-                            ),
+                        VoiceRecorderPanel(
+                          enabled: !_saving,
+                          onRecorded: (result) => _uploadVoiceBytes(
+                            result.bytes,
+                            result.filename,
                           ),
-                        MediaUploadProgressOverlay(
-                          phase: _mediaPhase,
-                          progress: _uploadProgress,
-                          sentBytes: _uploadSentBytes,
-                          totalBytes: _uploadTotalBytes,
-                          borderRadius: BorderRadius.circular(14),
-                          onRetry: _mediaPhase == MediaUploadPhase.failed ? _retryMedia : null,
-                          child: FamilyMediaView(
-                            media: _mediaRef ??
-                                FamilyMediaRef(
-                                  id: 0,
-                                  type: _type == 'voice' ? 'voice' : _type,
-                                  status: 'uploading',
-                                  originalFilename: null,
-                                ),
-                            height: (_mediaRef?.isAudio ?? _type == 'voice') ? 88 : 220,
-                            localBytes: _localPreviewBytes,
-                            localUrl: _localPreviewUrl,
-                          ),
+                          onError: (message) => showAppSnackBar(context, message),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Align(
-                          alignment: Alignment.centerLeft,
+                          alignment: Alignment.center,
                           child: TextButton.icon(
-                            onPressed: (_mediaBusy || _saving)
-                                ? null
-                                : () async {
-                                    await _clearLocalPreview();
-                                    if (mounted) {
-                                      setState(() {
-                                        _mediaRef = null;
-                                        _mediaPhase = MediaUploadPhase.idle;
-                                        _uploadProgress = 0;
-                                        _uploadSentBytes = 0;
-                                        _uploadTotalBytes = 0;
-                                      });
-                                    }
-                                  },
-                            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
-                            label: const Text('حذف رسانه', style: TextStyle(color: AppColors.error)),
+                            onPressed: _saving ? null : _pickAndUploadMedia,
+                            icon: Icon(Icons.audio_file_outlined, size: 18, color: scheme.primary),
+                            label: Text(
+                              'انتخاب از فایل',
+                              style: TextStyle(color: scheme.primary),
+                            ),
                           ),
                         ),
                       ],
+                    )
+                  else
+                    UploadZone(
+                      label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
+                      uploading: false,
+                      progress: _uploadProgress,
+                      sentBytes: _uploadSentBytes,
+                      totalBytes: _uploadTotalBytes,
+                      phase: _mediaPhase,
+                      enabled: !_saving && !_mediaBusy,
+                      onTap: _pickAndUploadMedia,
                     ),
                 ],
               ],

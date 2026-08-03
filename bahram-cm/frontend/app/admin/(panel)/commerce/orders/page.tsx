@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { AdminPage, EditLink, Table } from '../../ui';
 import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
-import { formatToman, getOrders } from '@/lib/admin/commerceData';
+import { formatOrderAmount, getOrders } from '@/lib/admin/commerceData';
 import { OrderStatusBadge } from './OrderDetailForm';
 import { OrdersToolbar } from './OrdersToolbar';
-import { OrdersTablePaymentFilter, OrdersTableStatusFilter } from './OrdersTableHeaderFilters';
-import { PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
+import { OrdersTableStatusFilter, OrdersTableAmountSortHeader, OrdersTableDateSortHeader } from './OrdersTableHeaderFilters';
+import { PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
+import { buildOrdersHref, ordersHasFilters } from './ordersQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,31 +21,42 @@ export default async function OrdersPage({
   searchParams: Promise<{
     search?: string;
     status?: string;
-    payment_status?: string;
     product_type?: string;
     page?: string;
+    sort?: string;
+    dir?: string;
+    days?: string;
+    from?: string;
+    to?: string;
   }>;
 }) {
   const sp = await searchParams;
+  const listParams = {
+    search: sp.search,
+    status: sp.status,
+    product_type: sp.product_type,
+    sort: sp.sort,
+    dir: sp.dir,
+    days: sp.days,
+    from: sp.from,
+    to: sp.to,
+  };
   const { items: orders, meta, error } = await getOrders({
     search: sp.search,
     status: sp.status,
-    payment_status: sp.payment_status,
     product_type: sp.product_type,
     page: sp.page ? Number(sp.page) : undefined,
+    sort: sp.sort,
+    dir: sp.dir,
+    days: sp.days,
+    from: sp.from,
+    to: sp.to,
   });
 
-  const hasFilters = Boolean(sp.search?.trim() || sp.status || sp.payment_status || sp.product_type);
+  const hasFilters = ordersHasFilters(listParams);
 
   function ordersPageHref(page: number) {
-    const query = new URLSearchParams();
-    if (sp.search?.trim()) query.set('search', sp.search.trim());
-    if (sp.status) query.set('status', sp.status);
-    if (sp.payment_status) query.set('payment_status', sp.payment_status);
-    if (sp.product_type) query.set('product_type', sp.product_type);
-    if (page > 1) query.set('page', String(page));
-    const qs = query.toString();
-    return qs ? `/admin/commerce/orders?${qs}` : '/admin/commerce/orders';
+    return buildOrdersHref({ ...listParams, page });
   }
 
   return (
@@ -58,12 +70,17 @@ export default async function OrdersPage({
           : 'پیگیری پرداخت و تحویل سفارش‌ها'
       }
       stackHeader
+      fullWidthAction
       action={
         <OrdersToolbar
           search={sp.search}
           status={sp.status}
-          paymentStatus={sp.payment_status}
           productType={sp.product_type}
+          sort={sp.sort}
+          dir={sp.dir}
+          days={sp.days}
+          from={sp.from}
+          to={sp.to}
         />
       }
     >
@@ -76,14 +93,13 @@ export default async function OrdersPage({
       {orders.length > 0 ? (
         <>
           <Table
-            head={['محصول', 'مشتری', 'مبلغ', 'وضعیت', 'پرداخت', 'تاریخ', 'عملیات']}
+            head={['محصول', 'مشتری', 'مبلغ', 'وضعیت', 'تاریخ', 'عملیات']}
             headCells={[
               'محصول',
               'مشتری',
-              'مبلغ',
+              <OrdersTableAmountSortHeader key="sort-amount" activeSort={sp.sort} activeDir={sp.dir} />,
               <OrdersTableStatusFilter key="status" status={sp.status} />,
-              <OrdersTablePaymentFilter key="payment" paymentStatus={sp.payment_status} />,
-              'تاریخ',
+              <OrdersTableDateSortHeader key="sort-date" activeSort={sp.sort} activeDir={sp.dir} />,
               'عملیات',
             ]}
             mobile={orders.map((o) => (
@@ -107,14 +123,10 @@ export default async function OrdersPage({
                     value: o.order_number,
                     mono: true,
                   },
-                  { label: 'مبلغ', value: formatToman(o.final_amount) },
+                  { label: 'مبلغ', value: formatOrderAmount(o) },
                   {
                     label: 'وضعیت',
                     value: <OrderStatusBadge status={o.status} />,
-                  },
-                  {
-                    label: 'پرداخت',
-                    value: PAYMENT_STATUS_LABELS[o.payment_status] ?? o.payment_status,
                   },
                   {
                     label: 'تاریخ',
@@ -145,12 +157,9 @@ export default async function OrdersPage({
                     {o.order_number}
                   </p>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3">{formatToman(o.final_amount)}</td>
+                <td className="whitespace-nowrap px-4 py-3">{formatOrderAmount(o)}</td>
                 <td className="px-4 py-3">
                   <OrderStatusBadge status={o.status} />
-                </td>
-                <td className="px-4 py-3 text-caption">
-                  {PAYMENT_STATUS_LABELS[o.payment_status] ?? o.payment_status}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-caption">
                   {formatOrderDateTime(o.created_at)}

@@ -1,4 +1,21 @@
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"] as const;
+const AR_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"] as const;
+
+/** Convert Persian/Arabic digits in a string to Latin digits. */
+export function toLatinDigits(input: string): string {
+  return input.replace(/[۰-۹٠-٩]/g, (ch) => {
+    const fa = FA_DIGITS.indexOf(ch as (typeof FA_DIGITS)[number]);
+    if (fa >= 0) return String(fa);
+    const ar = AR_DIGITS.indexOf(ch as (typeof AR_DIGITS)[number]);
+    return ar >= 0 ? String(ar) : ch;
+  });
+}
+
+/** Keep only Latin digits (normalizes Persian/Arabic numerals first). */
+export function sanitizeLatinDigits(input: string, maxLength?: number): string {
+  const digits = toLatinDigits(input).replace(/\D/g, '');
+  return maxLength === undefined ? digits : digits.slice(0, maxLength);
+}
 
 /** Convert Latin digits in a string to Persian digits. Leaves other chars alone. */
 export function toPersianDigits(input: string | number): string {

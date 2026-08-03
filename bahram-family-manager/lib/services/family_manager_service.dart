@@ -488,7 +488,8 @@ class FamilyManagerService {
         }
       }
     }
-    throw lastError!;
+    throw lastError ??
+        ApiException(message: 'آپلود تکه‌ای ناموفق بود.', code: 'chunk_upload_failed');
   }
 
   Future<FamilyMediaRef> _uploadSimple(

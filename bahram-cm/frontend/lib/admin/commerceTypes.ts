@@ -213,6 +213,7 @@ export const PAYMENT_RECORD_STATUS_LABELS: Record<string, string> = {
 
 export const GATEWAY_LABELS: Record<string, string> = {
   zarinpal: 'زرین‌پال',
+  card_to_card: 'کارت به کارت',
 };
 
 export const COURSE_ACCESS_SOURCE_LABELS: Record<string, string> = {
@@ -223,6 +224,13 @@ export const COURSE_ACCESS_SOURCE_LABELS: Record<string, string> = {
 
 export function formatToman(amount: number): string {
   return `${formatPanelFa(amount)} تومان`;
+}
+
+/** Prefer final_amount; fall back to list price when legacy rows have final_amount = 0. */
+export function formatOrderAmount(order: { final_amount: number; amount?: number }): string {
+  const value = order.final_amount > 0 ? order.final_amount : (order.amount ?? 0);
+
+  return formatToman(value);
 }
 
 export type AdminDiscountType = 'percent' | 'fixed';
@@ -274,7 +282,8 @@ export type OrderAnalyticsSlice = {
 
 export type OrderAnalyticsDaily = {
   date: string;
-  orders: number;
+  /** Paid or fulfilled orders — successful transactions only */
+  paid_orders: number;
   revenue: number;
 };
 
@@ -289,12 +298,22 @@ export type OrderAnalytics = {
   period_days: number | null;
   summary: {
     total_orders: number;
+    all_orders?: number;
     cancelled_orders?: number;
+    pending_orders?: number;
+    failed_orders?: number;
     paid_orders: number;
     total_revenue: number;
     pending_revenue: number;
     avg_order_value: number;
     conversion_rate: number;
+    pre_gateway_dropout_count?: number;
+    pre_gateway_dropout_rate?: number;
+    gateway_started_count?: number;
+    gateway_abandoned_count?: number;
+    gateway_pending_order_count?: number;
+    gateway_abandonment_rate?: number;
+    gateway_pending_rate?: number;
   };
   fulfillment: {
     licenses_issued: number;

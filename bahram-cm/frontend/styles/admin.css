@@ -49,6 +49,8 @@
   --admin-line-height-body: 1.6;
   --admin-line-height-caption: 1.5;
 
+  width: 100%;
+  max-width: 100%;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -76,12 +78,15 @@ body:has(.admin-root .admin-login-screen) {
 html:has(.admin-root):not(:has(.admin-login-screen)),
 body:has(.admin-root):not(:has(.admin-login-screen)) {
   height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
 .admin-root .admin-shell {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -89,11 +94,14 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 .admin-root .admin-main {
   display: flex;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: hidden;
 }
 
 .admin-root .admin-main-scroll {
@@ -856,9 +864,14 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 }
 
 .admin-root .admin-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 0.75rem;
   border: 1px solid var(--admin-border-section);
   background: var(--color-surface);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .admin-root .admin-table {
@@ -1614,17 +1627,23 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   bottom: 0;
   z-index: 50;
   display: flex;
-  max-height: min(78dvh, 32rem);
+  max-height: min(92dvh, 42rem);
   flex-direction: column;
   overflow: hidden;
   border-radius: 1.35rem 1.35rem 0 0;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
   background: var(--color-surface);
   box-shadow: 0 -18px 48px rgba(2, 6, 7, 0.28);
-  transform: translateY(105%);
+  transform: translateY(105%) translateZ(0);
+  -webkit-transform: translateY(105%) translateZ(0);
   transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.35rem);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
   pointer-events: none;
+  visibility: hidden;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  isolation: isolate;
 }
 
 .admin-root[data-admin-theme='dark'] .admin-mobile-menu {
@@ -1636,8 +1655,17 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 }
 
 .admin-root .admin-mobile-menu--open {
-  transform: translateY(0);
+  transform: translateY(0) translateZ(0);
+  -webkit-transform: translateY(0) translateZ(0);
   pointer-events: auto;
+  visibility: visible;
+}
+
+@media (min-width: 1024px) {
+  .admin-root .admin-mobile-menu,
+  .admin-root .admin-mobile-menu__scrim {
+    display: none !important;
+  }
 }
 
 .admin-root .admin-mobile-menu__handle {
@@ -1655,18 +1683,83 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.65rem 0.85rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.admin-root .admin-mobile-menu__close {
+  display: grid;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.admin-root .admin-mobile-menu__close:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .admin-root .admin-mobile-menu__body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 0.25rem 0.75rem 0.5rem;
+  touch-action: pan-y;
+  padding: 0.25rem 0.75rem 0.65rem;
+}
+
+.admin-root .admin-mobile-nav-group__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .admin-root .admin-mobile-nav-group {
   margin-bottom: 0.75rem;
+}
+
+@media (max-width: 1023px) {
+  .admin-root .admin-mobile-nav-group__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .admin-root .admin-mobile-nav-item {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 4.5rem;
+    padding: 0.5rem 0.35rem;
+    text-align: center;
+  }
+
+  .admin-root .admin-mobile-nav-item > .min-w-0.flex-1 {
+    flex: none;
+    width: 100%;
+    font-size: var(--admin-text-caption);
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .admin-root .admin-mobile-nav-item > .admin-nav-item__badge {
+    position: absolute;
+    top: 0.35rem;
+    inset-inline-end: 0.35rem;
+  }
+
+  .admin-root .admin-mobile-nav-item {
+    position: relative;
+  }
 }
 
 .admin-root .admin-mobile-nav-group__label {
@@ -1829,6 +1922,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   font-size: var(--admin-text-body);
   line-height: var(--admin-line-height-body);
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
 }
 
 /* Mobile table cards */
@@ -1849,6 +1943,9 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 .admin-root .admin-table-card-list {
   margin-bottom: 0.25rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* Scrollable tab bars */
@@ -2110,6 +2207,11 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   overflow: hidden;
+}
+
+.admin-root .admin-stat-card__hint--multiline {
+  -webkit-line-clamp: 2;
+  white-space: pre-line;
 }
 
 .admin-root .admin-stat-card__icon {
@@ -3813,6 +3915,143 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   color: var(--color-text);
 }
 
+/* Jalali date-only picker (react-multi-date-picker) */
+.admin-root .jalali-date-field {
+  width: 100%;
+}
+
+.admin-root .jalali-date-input-wrap {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
+  padding: 0.75rem 1rem;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  transition: all 180ms ease;
+  cursor: pointer;
+  text-align: right;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  margin: 0;
+}
+
+.admin-root .jalali-date-input-wrap--compact {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  font-size: var(--admin-text-small, 0.8125rem);
+}
+
+.admin-root .jalali-date-input-wrap:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  background: var(--color-surface);
+}
+
+.admin-root .jalali-date-input-wrap:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.admin-root .jalali-date-input {
+  flex: 1;
+  min-width: 0;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.admin-root .jalali-date-input--empty {
+  color: var(--color-text-muted);
+  opacity: 0.72;
+}
+
+.admin-root .jalali-date-input__icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-text-muted);
+}
+
+.admin-root .admin-orders-toolbar {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-root .admin-orders-toolbar__periods {
+  width: 100%;
+}
+
+.admin-root .admin-orders-toolbar__periods .admin-period-segments {
+  flex-wrap: wrap;
+}
+
+.admin-root .admin-orders-toolbar__grid {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 0.625rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+}
+
+@media (min-width: 640px) {
+  .admin-root .admin-orders-toolbar__grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .admin-root .admin-orders-toolbar__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-root .admin-orders-toolbar__grid {
+    grid-template-columns:
+      minmax(0, 2.2fr)
+      minmax(0, 1.15fr)
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      auto;
+    gap: 0.75rem;
+  }
+
+  .admin-root .admin-orders-toolbar__actions {
+    grid-column: auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+}
+
+.admin-root .admin-orders-toolbar__field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.admin-root .admin-orders-toolbar__search {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1024px) {
+  .admin-root .admin-orders-toolbar__search {
+    grid-column: auto;
+  }
+}
+
 /* Academy — optional link block in notification compose */
 .admin-root .admin-notification-compose-link {
   position: relative;
@@ -4784,6 +5023,11 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   color: var(--color-text);
 }
 
+.admin-root .admin-orders-reports__donut-center-unit {
+  font-size: var(--admin-text-meta);
+  color: var(--color-text-muted);
+}
+
 .admin-root .admin-orders-reports__legend-row {
   display: flex;
   align-items: center;
@@ -4808,5 +5052,47 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   -webkit-backdrop-filter: blur(12px);
   padding: 2.5rem 1.5rem;
   text-align: center;
+}
+
+.admin-root .admin-orders-reports__daily-chart .recharts-area-curve,
+.admin-root .admin-orders-reports__daily-chart .recharts-line-curve {
+  filter: drop-shadow(0 3px 8px color-mix(in srgb, var(--color-accent-gold, #c9a227) 22%, transparent));
+}
+
+.admin-root .admin-orders-reports__daily-chart .recharts-bar-rectangle {
+  transition: opacity 0.15s ease;
+}
+
+.admin-root .admin-orders-reports__daily-chart .recharts-active-bar .recharts-bar-rectangle {
+  opacity: 1 !important;
+}
+
+.admin-root .admin-table-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-root .admin-table-sort-btn:hover {
+  color: var(--color-accent);
+}
+
+.admin-root .admin-table-sort-btn__icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  opacity: 0.45;
+}
+
+.admin-root .admin-table-sort-btn__icon.is-active {
+  opacity: 1;
+  color: var(--color-accent);
 }
 

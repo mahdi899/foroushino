@@ -136,8 +136,19 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by((string) ($request->user()?->id ?: $request->ip()));
         });
 
+        RateLimiter::for('identity-draft', function (Request $request) {
+            return Limit::perMinute((int) config('bahram.identity.rate_limits.draft_per_minute', 20))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('identity-upload', function (Request $request) {
+            return Limit::perMinute((int) config('bahram.identity.rate_limits.upload_per_minute', 12))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
         RateLimiter::for('identity-submit', function (Request $request) {
-            return Limit::perMinute(5)->by((string) ($request->user()?->id ?: $request->ip()));
+            return Limit::perMinute((int) config('bahram.identity.rate_limits.submit_per_minute', 5))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
         });
 
         RateLimiter::for('ownership-verify', function (Request $request) {

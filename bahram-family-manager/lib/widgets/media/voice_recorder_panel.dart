@@ -16,6 +16,7 @@ import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/local_media_url.dart';
 import 'package:bahram_family_manager/core/utils/media_playback_source.dart';
 import 'package:bahram_family_manager/core/utils/read_file_bytes.dart';
+import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/core/utils/wav_audio_edit.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
@@ -472,6 +473,7 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
 
   StreamSubscription<Duration>? _posSub;
   StreamSubscription<PlayerState>? _stateSub;
+  StreamSubscription<Duration?>? _durSub;
 
   @override
   void initState() {
@@ -504,6 +506,10 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
       if (total != null && total > Duration.zero) {
         _duration = total;
       }
+      _durSub = _player.durationStream.listen((total) {
+        if (!mounted || total == null || total <= Duration.zero) return;
+        setState(() => _duration = total);
+      });
       // HTMLMediaElement volume is [0, 1] on web — never pass gain > 1 here.
       await _player.setVolume(_previewVolume);
       _posSub = _player.positionStream.listen((pos) {
@@ -574,6 +580,12 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
           name = '${p.basenameWithoutExtension(name)}.wav';
         }
       }
+      final oversize = MediaSizeGuard.oversizeMessage(out.length);
+      if (oversize != null) {
+        widget.onError?.call(oversize);
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
       widget.onConfirm(out, name);
     } catch (_) {
       widget.onError?.call('اعمال ویرایش ویس ناموفق بود.');
@@ -585,6 +597,7 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
   void dispose() {
     _posSub?.cancel();
     _stateSub?.cancel();
+    _durSub?.cancel();
     _player.dispose();
     unawaited(revokeLocalMediaUrl(_previewUrl));
     super.dispose();

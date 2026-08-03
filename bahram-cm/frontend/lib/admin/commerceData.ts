@@ -21,7 +21,7 @@ export type {
   PaymentSettingsData,
 } from './commerceTypes';
 
-export { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, formatToman } from './commerceTypes';
+export { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, formatToman, formatOrderAmount } from './commerceTypes';
 
 function commerceErrorMessage(error: unknown): string {
   const err = error as Error & { status?: number };
@@ -62,6 +62,11 @@ export async function getOrders(filters?: {
   product_type?: string;
   page?: number;
   per_page?: number;
+  sort?: string;
+  dir?: string;
+  days?: string;
+  from?: string;
+  to?: string;
 }): Promise<{
   items: AdminOrder[];
   meta: { current_page: number; last_page: number; per_page: number; total: number } | null;
@@ -79,6 +84,11 @@ export async function getOrders(filters?: {
         status: filters?.status,
         payment_status: filters?.payment_status,
         product_type: filters?.product_type,
+        sort: filters?.sort,
+        dir: filters?.dir,
+        days: filters?.days,
+        from: filters?.from,
+        to: filters?.to,
       },
     });
     return { items: res.data, meta: res.meta, error: null };

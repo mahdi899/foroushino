@@ -13,6 +13,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Sms\SmsProviderFactory;
 use App\Support\SmsMessage;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -48,6 +49,29 @@ class SmsService
             '{product_title}' => $order->product?->title ?? '-',
             '{code}' => $order->spotplayer_license_code,
             '{order_number}' => $order->order_number,
+        ], $order->user_id);
+    }
+
+    public function sendOrderCancelled(Order $order, ?string $reason = null): bool
+    {
+        if (blank($order->customer_phone)) {
+            return false;
+        }
+
+        $order->loadMissing('product');
+
+        $siteUrl = TelegramSiteUrl::resolve(
+            $order->product?->landing_href,
+            $order->product?->slug,
+        ) ?? TelegramSiteUrl::frontendBase();
+
+        return $this->sendEvent(SmsEventKey::OrderCancelled, $order->customer_phone, [
+            '{name}' => $order->customer_name ?: 'دانشجو',
+            '{phone}' => $order->customer_phone,
+            '{order_number}' => $order->order_number,
+            '{product_title}' => $order->product?->title ?? '-',
+            '{site_url}' => $siteUrl,
+            '{reason}' => $reason ?: '-',
         ], $order->user_id);
     }
 
@@ -379,6 +403,8 @@ class SmsService
             '{subject}' => 'موضوع تست',
             '{ticket_id}' => '1001',
             '{message}' => 'پیام آزمایشی از پنل مدیریت',
+            '{site_url}' => TelegramSiteUrl::frontendBase(),
+            '{reason}' => 'انقضای مهلت پرداخت',
         ];
 
         return array_intersect_key($samples, array_flip($eventKey->placeholders()));

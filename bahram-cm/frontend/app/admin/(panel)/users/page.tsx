@@ -1,9 +1,7 @@
-import { AdminPage, Badge, Table } from '../ui';
+import { AdminPage } from '../ui';
 import { getAdminUsers, getRoles } from '@/lib/admin/accessData';
-import { displayAdminEmail } from '@/lib/admin/maskEmail';
 import { can, getCurrentUser, isSuperAdmin } from '@/lib/auth/session';
-import { AdminDeleteButton } from './AdminDeleteButton';
-import { AdminRoleSelect } from './AdminRoleSelect';
+import { AdminUsersTable } from './AdminUsersTable';
 import { CreateAdminForm } from './CreateAdminForm';
 
 export const dynamic = 'force-dynamic';
@@ -38,46 +36,14 @@ export default async function AdminUsersPage() {
       {canCreate ? <CreateAdminForm roles={roles} isSuperAdmin={viewerIsSuperAdmin} /> : null}
 
       {admins.length > 0 ? (
-        <Table
-          head={
-            showDeleteColumn
-              ? ['نام', 'موبایل', 'ایمیل', 'نقش فعلی', 'تخصیص نقش', 'حذف']
-              : ['نام', 'موبایل', 'ایمیل', 'نقش فعلی', 'تخصیص نقش']
-          }
-        >
-          {admins.map((admin) => (
-            <tr key={admin.id} className="hover:bg-surface-soft/40">
-              <td className="px-4 py-3 font-medium text-text">{admin.name}</td>
-              <td className="px-4 py-3 text-text-muted" dir="ltr">
-                {admin.mobile ?? '—'}
-              </td>
-              <td className="px-4 py-3 text-text-muted" dir="ltr" title={canViewEmail ? admin.email : undefined}>
-                {displayAdminEmail(admin.email, canViewEmail)}
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex flex-wrap gap-1">
-                  {admin.roles.length ? (
-                    admin.roles.map((r) => (
-                      <Badge key={r} tone="default">
-                        {roles.find((x) => x.name === r)?.label ?? r}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-caption text-text-muted">بدون نقش</span>
-                  )}
-                </div>
-              </td>
-              <td className="px-4 py-3 align-top">
-                <AdminRoleSelect admin={admin} roles={roles} viewerIsSuperAdmin={viewerIsSuperAdmin} />
-              </td>
-              {showDeleteColumn ? (
-                <td className="px-4 py-3">
-                  <AdminDeleteButton admin={admin} />
-                </td>
-              ) : null}
-            </tr>
-          ))}
-        </Table>
+        <AdminUsersTable
+          key={admins.map((admin) => admin.id).join('-')}
+          initialAdmins={admins}
+          roles={roles}
+          viewerIsSuperAdmin={viewerIsSuperAdmin}
+          canViewEmail={canViewEmail}
+          showDeleteColumn={showDeleteColumn}
+        />
       ) : (
         <div className="card p-8 text-center text-small text-text-muted">
           مدیری یافت نشد یا دسترسی مشاهده نقش‌ها را ندارید.

@@ -56,7 +56,16 @@ class WavAudioEdit {
     final bytesPerFrame = channels * (bitsPerSample ~/ 8);
     if (bytesPerFrame <= 0) return null;
 
-    final frameCount = dataSize ~/ bytesPerFrame;
+    // Recorders may write an understated `data` chunk size in the header while
+    // the real PCM payload is already present — trust actual file bytes.
+    final availablePcm = bytes.length - dataOffset;
+    if (availablePcm <= 0) return null;
+    final actualDataSize = dataSize > 0
+        ? math.min(dataSize, availablePcm)
+        : availablePcm;
+    final frameCount = actualDataSize ~/ bytesPerFrame;
+    if (frameCount <= 0) return null;
+
     return _WavInfo(
       channels: channels,
       sampleRate: sampleRate,

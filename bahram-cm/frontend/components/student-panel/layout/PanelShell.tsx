@@ -14,6 +14,7 @@ import { BahramUpdateBanner } from '@/components/pwa/BahramUpdateBanner';
 import { PANEL_PWA_ENABLED } from '@/lib/panel/pwa';
 import { PanelSidebar } from './PanelSidebar';
 import { ReferenceChannelPostIdentityRedirect } from '@/components/student-panel/reference-channel/ReferenceChannelPostIdentityRedirect';
+import { isPanelIdentityFocusPath } from '@/lib/student/panelIdentityFocus';
 
 const SIDEBAR_COLLAPSED_KEY = 'panel-sidebar-collapsed';
 
@@ -52,6 +53,7 @@ export function PanelShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const identityFocus = isPanelIdentityFocusPath(pathname);
   const mainRef = useRef<HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [liveUnreadCount, setLiveUnreadCount] = useState(unreadCount);
@@ -71,6 +73,17 @@ export function PanelShell({
     if (sidebarCollapsed) root.setAttribute('data-sidebar-collapsed', '1');
     else root.removeAttribute('data-sidebar-collapsed');
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    const root = document.getElementById('panel-root');
+    if (!root) return;
+    if (identityFocus) root.setAttribute('data-identity-focus', '1');
+    else root.removeAttribute('data-identity-focus');
+  }, [identityFocus]);
+
+  useEffect(() => {
+    if (identityFocus) setMobileOpen(false);
+  }, [identityFocus]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -115,7 +128,7 @@ export function PanelShell({
           <PanelPwaRegistrar />
           <PanelSidebar
             unreadCount={liveUnreadCount}
-            mobileOpen={mobileOpen}
+            mobileOpen={identityFocus ? false : mobileOpen}
             collapsed={sidebarCollapsed}
             onClose={() => setMobileOpen(false)}
             onToggleCollapse={toggleSidebarCollapsed}
@@ -131,11 +144,13 @@ export function PanelShell({
             </main>
           </div>
 
-          <PanelBottomNav
-            unreadCount={liveUnreadCount}
-            menuOpen={mobileOpen}
-            onMenuOpen={() => setMobileOpen(true)}
-          />
+          {!identityFocus ? (
+            <PanelBottomNav
+              unreadCount={liveUnreadCount}
+              menuOpen={mobileOpen}
+              onMenuOpen={() => setMobileOpen(true)}
+            />
+          ) : null}
           {PANEL_PWA_ENABLED ? <BahramUpdateBanner variant="panel" /> : null}
         </div>
         </PanelNotificationProvider>
