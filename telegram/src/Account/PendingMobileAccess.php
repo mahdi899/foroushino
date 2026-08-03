@@ -167,21 +167,6 @@ final class PendingMobileAccess
         return true;
     }
 
-    public function delete(string $mobile): void
-    {
-        $mobile = trim($mobile);
-        if ($mobile === '') {
-            return;
-        }
-
-        try {
-            $stmt = $this->pdo->prepare('DELETE FROM telegram_pending_access_by_mobile WHERE mobile = :mobile');
-            $stmt->execute(['mobile' => $mobile]);
-        } catch (\Throwable $e) {
-            error_log('[telegram-host] pending mobile access delete: '.$e->getMessage());
-        }
-    }
-
     private function ensureSchema(): void
     {
         if ($this->schemaReady) {

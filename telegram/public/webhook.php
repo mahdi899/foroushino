@@ -66,6 +66,8 @@ $allowed = [
     'public/webhook.php',
     'public/apply-host-patch.php',
     'config.php',
+    'src/Account/AccountCache.php',
+    'src/Account/PendingMobileAccess.php',
     'src/Services/HostRegistrationFlow.php',
     'src/Cache/SyncCache.php',
     'src/Cache/HotCache.php',
