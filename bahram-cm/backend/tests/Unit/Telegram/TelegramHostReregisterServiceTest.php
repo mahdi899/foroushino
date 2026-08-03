@@ -45,7 +45,6 @@ class TelegramHostReregisterServiceTest extends TestCase
         $push = Mockery::mock(TelegramHostPushService::class);
         $push->shouldReceive('resetRegistration')->once()->with(555001, '09125556666')->andReturn(true);
         $push->shouldReceive('revokeMobileAccess')->once()->with('09125556666')->andReturn(true);
-        $push->shouldReceive('notifyUser')->once();
         $this->app->instance(TelegramHostPushService::class, $push);
 
         $ok = app(TelegramHostReregisterService::class)->softReregister($account->fresh(), $user);

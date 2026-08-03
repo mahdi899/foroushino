@@ -50,9 +50,6 @@ class TelegramHostReregisterService
             $this->hostPush->revokeMobileAccess($oldMobile);
         }
 
-        $notifyText = 'ثبت‌نام شما ریست شد. لطفاً شماره تماس جدید را از دکمه «ارسال شماره تماس» share کنید.';
-        $this->hostPush->notifyUser($telegramUserId, $notifyText);
-
         Log::channel('telegram')->info('telegram.host.soft_reregister', [
             'telegram_user_id' => $telegramUserId,
             'telegram_account_id' => $account->id,

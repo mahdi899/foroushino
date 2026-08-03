@@ -8,8 +8,10 @@ use TelegramHost\Account\AccountCache;
 use TelegramHost\Account\PendingMobileAccess;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Db\Connection;
+use TelegramHost\Http\SyncClient;
 use TelegramHost\Services\WebhookRegisterFromPull;
 use TelegramHost\Support\HostBridgeConfig;
+use TelegramHost\Support\InlineButtons;
 use TelegramHost\Telegram\BotApiClient;
 
 /**
@@ -220,7 +222,51 @@ final class InboundSyncHandler
             $oldMobile !== '' ? $oldMobile : null,
         );
 
+        $this->sendRegistrationPromptAfterReset($pdo, $telegramUserId);
+
         return ['ok' => true, 'action' => 'reset_registration', 'defer' => false];
+    }
+
+  /**
+   * Replace main menu with the phone-share keyboard (same UX as /start registration).
+   */
+    private function sendRegistrationPromptAfterReset(\PDO $pdo, int $telegramUserId): void
+    {
+        if ($telegramUserId <= 0) {
+            return;
+        }
+
+        try {
+            $sync = new SyncClient($this->config);
+            $messageCache = new SyncCache($pdo, $sync, $this->config);
+
+            $resetLine = trim($messageCache->message(
+                'host_reregister_done',
+                'ثبت‌نام شما ریست شد.',
+            ));
+            $askMobile = trim($messageCache->message(
+                'registration_ask_mobile',
+                "📱 تأیید شماره موبایل\n\n"
+                ."برای ادامه ثبت‌نام، شماره موبایل ایران خود را تأیید کنید.\n\n"
+                ."👇 منوی پایین صفحه را باز کنید و روی «ارسال شماره تماس» بزنید.\n"
+                ."❗️ شماره را تایپ نکنید — فقط همان دکمه.",
+            ));
+
+            $text = $resetLine !== '' ? $resetLine."\n\n".$askMobile : $askMobile;
+
+            $api = new BotApiClient((string) ($this->config['bot_token'] ?? ''));
+            $result = $api->sendMessageResult($telegramUserId, $text, [
+                'parse_mode' => 'HTML',
+                'reply_markup' => InlineButtons::shareContactReplyMarkup(),
+            ]);
+
+            $messageId = (int) ($result['message_id'] ?? 0);
+            if ($messageId > 0) {
+                $api->editMessageReplyMarkup($telegramUserId, $messageId, InlineButtons::shareContactInlineMarkup());
+            }
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] reset registration prompt: '.$e->getMessage());
+        }
     }
 
     /** Run deferred work after HTTP response was flushed to Iran. */
