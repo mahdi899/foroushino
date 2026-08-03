@@ -198,7 +198,12 @@ export async function exportOrdersCsv(filters?: {
   status?: string;
   payment_status?: string;
   product_type?: string;
-}): Promise<{ ok: true; csv: string } | { ok: false; error: string }> {
+  sort?: string;
+  dir?: string;
+  days?: string;
+  from?: string;
+  to?: string;
+}): Promise<{ ok: true; blob: Blob; filename: string } | { ok: false; error: string }> {
   try {
     const token = await getToken();
     const url = new URL(`${SERVER_API_URL}/panel/orders/export`);
@@ -206,10 +211,15 @@ export async function exportOrdersCsv(filters?: {
     if (filters?.status) url.searchParams.set('status', filters.status);
     if (filters?.payment_status) url.searchParams.set('payment_status', filters.payment_status);
     if (filters?.product_type) url.searchParams.set('product_type', filters.product_type);
+    if (filters?.sort) url.searchParams.set('sort', filters.sort);
+    if (filters?.dir) url.searchParams.set('dir', filters.dir);
+    if (filters?.days) url.searchParams.set('days', filters.days);
+    if (filters?.from) url.searchParams.set('from', filters.from);
+    if (filters?.to) url.searchParams.set('to', filters.to);
 
     const res = await fetch(url, {
       headers: {
-        Accept: 'text/csv',
+        Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       cache: 'no-store',
@@ -219,7 +229,12 @@ export async function exportOrdersCsv(filters?: {
       return { ok: false, error: 'خروجی گرفتن از سفارش‌ها ناموفق بود.' };
     }
 
-    return { ok: true, csv: await res.text() };
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = match?.[1] ?? `orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    return { ok: true, blob, filename };
   } catch {
     return { ok: false, error: 'خروجی گرفتن از سفارش‌ها ناموفق بود.' };
   }

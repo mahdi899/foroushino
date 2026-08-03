@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\OrderCancellationReason;
+use App\Jobs\NotifyOrderCancelledJob;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
@@ -266,6 +268,10 @@ class TelegramPaymentLinkService
 
     private function cancelPendingOrder(Order $order): void
     {
+        if ($order->status === 'cancelled' || $order->isPaid()) {
+            return;
+        }
+
         $order->update([
             'status' => 'cancelled',
             'payment_status' => 'canceled',
@@ -275,6 +281,8 @@ class TelegramPaymentLinkService
             ->where('order_id', $order->id)
             ->where('status', 'pending')
             ->update(['status' => 'canceled']);
+
+        NotifyOrderCancelledJob::dispatch($order->id, OrderCancellationReason::PaymentLinkRevoked->value)->afterResponse();
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\OrderCancellationReason;
+use App\Jobs\NotifyOrderCancelledJob;
 use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Payment;
@@ -332,16 +334,7 @@ class OrderService
                         continue;
                     }
 
-                    $order->update([
-                        'status' => 'cancelled',
-                        'payment_status' => 'canceled',
-                    ]);
-
-                    Payment::query()
-                        ->where('order_id', $order->id)
-                        ->where('status', 'pending')
-                        ->update(['status' => 'canceled']);
-
+                    $this->cancelPendingOrder($order, OrderCancellationReason::ExpiredTtl);
                     $cancelled++;
                 }
             });
@@ -451,12 +444,16 @@ class OrderService
                 continue;
             }
 
-            $this->cancelPendingOrder($order);
+            $this->cancelPendingOrder($order, OrderCancellationReason::ReplacedCheckout);
         }
     }
 
-    private function cancelPendingOrder(Order $order): void
+    private function cancelPendingOrder(Order $order, OrderCancellationReason $reason = OrderCancellationReason::ReplacedCheckout): void
     {
+        if ($order->status === 'cancelled' || $order->isPaid()) {
+            return;
+        }
+
         $order->update([
             'status' => 'cancelled',
             'payment_status' => 'canceled',
@@ -471,6 +468,10 @@ class OrderService
             ->where('order_id', $order->id)
             ->whereNull('revoked_at')
             ->update(['revoked_at' => now()]);
+
+        if ($reason->notifyCustomer()) {
+            NotifyOrderCancelledJob::dispatch($order->id, $reason->value)->afterResponse();
+        }
     }
 
     private function assertSeminarPurchaseAllowed(Product $product, ?int $userId, string $phone): void

@@ -1,26 +1,31 @@
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { OrdersExportButton } from './OrdersExportButton';
+import { OrdersPeriodPresets } from './OrdersPeriodPresets';
 import { PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
 import { OrdersTableHeaderFilters } from './OrdersTableHeaderFilters';
+import { activeOrdersPeriod, ordersHasFilters, type OrdersListParams } from './ordersQuery';
 
 const selectClass = 'field-input w-full min-w-0 py-2 text-small';
 
 export function OrdersToolbar({
   search,
   status,
-  paymentStatus,
   productType,
-}: {
-  search?: string;
-  status?: string;
-  paymentStatus?: string;
-  productType?: string;
-}) {
-  const hasFilters = Boolean(search?.trim() || status || paymentStatus || productType);
+  sort,
+  dir,
+  days,
+  from,
+  to,
+}: OrdersListParams) {
+  const params: OrdersListParams = { search, status, product_type: productType, sort, dir, days, from, to };
+  const hasFilters = ordersHasFilters(params);
+  const customRangeActive = activeOrdersPeriod(params) === 'custom';
 
   return (
     <form method="get" className="flex w-full min-w-0 flex-col gap-2.5">
+      <OrdersPeriodPresets params={params} />
+
       <div className="relative min-w-0 w-full">
         <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
         <input
@@ -32,11 +37,39 @@ export function OrdersToolbar({
       </div>
 
       {status ? <input type="hidden" name="status" value={status} /> : null}
-      {paymentStatus ? <input type="hidden" name="payment_status" value={paymentStatus} /> : null}
+      {sort ? <input type="hidden" name="sort" value={sort} /> : null}
+      {dir ? <input type="hidden" name="dir" value={dir} /> : null}
 
       <div className="md:hidden">
-        <OrdersTableHeaderFilters status={status} paymentStatus={paymentStatus} />
+        <OrdersTableHeaderFilters status={status} />
       </div>
+
+      <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+        <label className="min-w-0">
+          <span className="field-label">از تاریخ</span>
+          <input
+            type="date"
+            name="from"
+            defaultValue={from ?? ''}
+            className={selectClass}
+            aria-label="از تاریخ"
+          />
+        </label>
+        <label className="min-w-0">
+          <span className="field-label">تا تاریخ</span>
+          <input
+            type="date"
+            name="to"
+            defaultValue={to ?? ''}
+            className={selectClass}
+            aria-label="تا تاریخ"
+          />
+        </label>
+      </div>
+
+      {customRangeActive ? (
+        <p className="text-caption text-text-muted">بازه دلخواه فعال است — برای presetها یکی از دکمه‌های بالا را بزنید.</p>
+      ) : null}
 
       <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-1">
         <select
@@ -66,8 +99,12 @@ export function OrdersToolbar({
         <OrdersExportButton
           search={search}
           status={status}
-          paymentStatus={paymentStatus}
           productType={productType}
+          sort={sort}
+          dir={dir}
+          days={days}
+          from={from}
+          to={to}
         />
       </div>
     </form>

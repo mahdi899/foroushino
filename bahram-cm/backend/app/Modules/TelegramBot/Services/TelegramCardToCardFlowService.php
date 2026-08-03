@@ -2,7 +2,9 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Enums\OrderCancellationReason;
 use App\Jobs\FulfillOrderJob;
+use App\Jobs\NotifyOrderCancelledJob;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
@@ -656,13 +658,7 @@ class TelegramCardToCardFlowService
             $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
         }
 
-        $this->notifyBuyer(
-            $bot,
-            $client,
-            $order,
-            TelegramCustomEmoji::tag('cross')." رسید سفارش #{$order->id} تأیید نشد و سفارش لغو شد.\n"
-            .'در صورت تمایل می‌توانید دوباره خرید کنید.',
-        );
+        NotifyOrderCancelledJob::dispatch($order->id, OrderCancellationReason::AdminRejected->value)->afterResponse();
     }
 
     private function isReceiptWindowExpired(Order $order): bool
@@ -839,6 +835,20 @@ class TelegramCardToCardFlowService
             ->where('gateway', 'card_to_card')
             ->where('status', 'pending')
             ->update(['status' => 'canceled']);
+
+        $mappedReason = $this->mapCancellationReason($reason);
+        if ($mappedReason->notifyCustomer()) {
+            NotifyOrderCancelledJob::dispatch($order->id, $mappedReason->value)->afterResponse();
+        }
+    }
+
+    private function mapCancellationReason(string $reason): OrderCancellationReason
+    {
+        return match ($reason) {
+            'user_cancel' => OrderCancellationReason::UserCancel,
+            'receipt_timeout', 'review_timeout' => OrderCancellationReason::ExpiredTtl,
+            default => OrderCancellationReason::System,
+        };
     }
 
     /**

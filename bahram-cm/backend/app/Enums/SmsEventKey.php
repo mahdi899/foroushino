@@ -7,6 +7,7 @@ enum SmsEventKey: string
     case Otp = 'otp';
     case PurchaseConfirmation = 'purchase_confirmation';
     case LicenseCreated = 'license_created';
+    case OrderCancelled = 'order_cancelled';
     case Welcome = 'welcome';
     case TicketCreated = 'ticket_created';
     case TicketReply = 'ticket_reply';
@@ -24,6 +25,7 @@ enum SmsEventKey: string
             self::Otp => 'کد یک‌بارمصرف (OTP)',
             self::PurchaseConfirmation => 'تأیید خرید / پرداخت موفق',
             self::LicenseCreated => 'صدور لایسنس SpotPlayer',
+            self::OrderCancelled => 'لغو سفارش / دعوت بازگشت به سایت',
             self::Welcome => 'خوش‌آمدگویی (اولین ورود)',
             self::TicketCreated => 'ثبت تیکت پشتیبانی',
             self::TicketReply => 'پاسخ ادمین به تیکت',
@@ -43,6 +45,7 @@ enum SmsEventKey: string
             self::Otp => 'ارسال کد ورود به پنل دانشجو',
             self::PurchaseConfirmation => 'پس از پرداخت موفق و تکمیل سفارش',
             self::LicenseCreated => 'پس از صدور لایسنس SpotPlayer (جدا از پیامک خرید)',
+            self::OrderCancelled => 'پس از لغو سفارش (انقضا، رد رسید، لغو ادمین و …) — دعوت به بازگشت برای تکمیل خرید',
             self::Welcome => 'اولین ورود دانشجو به پنل',
             self::TicketCreated => 'تأیید ثبت تیکت برای دانشجو',
             self::TicketReply => 'اطلاع‌رسانی پاسخ پشتیبانی به دانشجو',
@@ -62,6 +65,7 @@ enum SmsEventKey: string
             self::Otp => 'کد ورود شما به آکادمی بهرام رستمی: {code}\nاین کد را در اختیار دیگران قرار ندهید.',
             self::PurchaseConfirmation => 'سلام {name}، خرید شما با شماره سفارش {order_number} با موفقیت ثبت شد. کد فعال‌سازی: {code}',
             self::LicenseCreated => 'سلام {name}، لایسنس دوره {product_title} صادر شد. کد: {code}',
+            self::OrderCancelled => 'سلام {name}، سفارش {order_number} برای «{product_title}» لغو شد. برای ثبت مجدد خرید به سایت برگردید: {site_url}',
             self::Welcome => 'سلام {name} عزیز؛ به آکادمی بهرام رستمی خوش آمدی! برای شروع به پنل کاربری خودت سر بزن.',
             self::TicketCreated => 'تیکت پشتیبانی شما با موضوع «{subject}» ثبت شد. به‌زودی پاسخ می‌دهیم.',
             self::TicketReply => 'پاسخ جدید برای تیکت «{subject}» در پنل دانشجو ثبت شد.',
@@ -80,6 +84,7 @@ enum SmsEventKey: string
         return match ($this) {
             self::Otp, self::PurchaseConfirmation, self::Welcome => true,
             self::LicenseCreated, self::TicketCreated, self::TicketReply => false,
+            self::OrderCancelled => true,
             self::Broadcast => true,
             self::IdentityVerificationSubmitted,
             self::IdentityVerificationApproved,
@@ -99,7 +104,7 @@ enum SmsEventKey: string
     {
         return match ($this) {
             self::Otp => SmsEventCategory::Auth,
-            self::PurchaseConfirmation, self::LicenseCreated => SmsEventCategory::Commerce,
+            self::PurchaseConfirmation, self::LicenseCreated, self::OrderCancelled => SmsEventCategory::Commerce,
             self::Welcome,
             self::IdentityVerificationSubmitted,
             self::IdentityVerificationApproved,
@@ -119,6 +124,7 @@ enum SmsEventKey: string
             self::Otp => ['{code}'],
             self::PurchaseConfirmation => ['{name}', '{phone}', '{order_number}', '{product_title}', '{code}'],
             self::LicenseCreated => ['{name}', '{product_title}', '{code}', '{order_number}'],
+            self::OrderCancelled => ['{name}', '{phone}', '{order_number}', '{product_title}', '{site_url}', '{reason}'],
             self::Welcome => ['{name}'],
             self::TicketCreated, self::TicketReply => ['{name}', '{subject}', '{ticket_id}'],
             self::Broadcast => ['{message}'],
@@ -138,6 +144,7 @@ enum SmsEventKey: string
             self::Otp,
             self::PurchaseConfirmation,
             self::LicenseCreated,
+            self::OrderCancelled,
             self::Welcome,
             self::TicketCreated,
             self::TicketReply,

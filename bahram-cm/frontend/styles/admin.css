@@ -2209,6 +2209,11 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   overflow: hidden;
 }
 
+.admin-root .admin-stat-card__hint--multiline {
+  -webkit-line-clamp: 2;
+  white-space: pre-line;
+}
+
 .admin-root .admin-stat-card__icon {
   display: grid;
   height: 2.75rem;
@@ -4881,6 +4886,11 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   color: var(--color-text);
 }
 
+.admin-root .admin-orders-reports__donut-center-unit {
+  font-size: var(--admin-text-meta);
+  color: var(--color-text-muted);
+}
+
 .admin-root .admin-orders-reports__legend-row {
   display: flex;
   align-items: center;
@@ -4905,5 +4915,47 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   -webkit-backdrop-filter: blur(12px);
   padding: 2.5rem 1.5rem;
   text-align: center;
+}
+
+.admin-root .admin-orders-reports__daily-chart .recharts-area-curve,
+.admin-root .admin-orders-reports__daily-chart .recharts-line-curve {
+  filter: drop-shadow(0 3px 8px color-mix(in srgb, var(--color-accent-gold, #c9a227) 22%, transparent));
+}
+
+.admin-root .admin-orders-reports__daily-chart .recharts-bar-rectangle {
+  transition: opacity 0.15s ease;
+}
+
+.admin-root .admin-orders-reports__daily-chart .recharts-active-bar .recharts-bar-rectangle {
+  opacity: 1 !important;
+}
+
+.admin-root .admin-table-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-root .admin-table-sort-btn:hover {
+  color: var(--color-accent);
+}
+
+.admin-root .admin-table-sort-btn__icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  opacity: 0.45;
+}
+
+.admin-root .admin-table-sort-btn__icon.is-active {
+  opacity: 1;
+  color: var(--color-accent);
 }
 

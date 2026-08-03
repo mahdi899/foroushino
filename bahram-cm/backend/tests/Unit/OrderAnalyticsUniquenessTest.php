@@ -68,4 +68,50 @@ class OrderAnalyticsUniquenessTest extends TestCase
         $this->assertSame(400_000, $byKey['unique']['revenue']);
         $this->assertSame(0, $byKey['duplicate']['revenue']);
     }
+
+    public function test_order_uniqueness_counts_cancelled_retries_as_duplicate(): void
+    {
+        $product = Product::create([
+            'title' => 'دوره',
+            'slug' => 'uniq-cancel-'.uniqid(),
+            'type' => 'normal',
+            'price' => 200_000,
+            'is_active' => true,
+        ]);
+
+        foreach (['BC-C1', 'BC-C2', 'BC-C3'] as $number) {
+            Order::create([
+                'order_number' => $number,
+                'product_id' => $product->id,
+                'customer_name' => 'علی',
+                'customer_phone' => '09120003333',
+                'amount' => 200_000,
+                'discount_amount' => 0,
+                'final_amount' => 200_000,
+                'status' => 'cancelled',
+                'payment_status' => 'canceled',
+            ]);
+        }
+
+        Order::create([
+            'order_number' => 'BC-C4',
+            'product_id' => $product->id,
+            'customer_name' => 'علی',
+            'customer_phone' => '09120003333',
+            'amount' => 200_000,
+            'discount_amount' => 0,
+            'final_amount' => 200_000,
+            'status' => 'fulfilled',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $report = app(OrderAnalyticsService::class)->report(null);
+        $byKey = collect($report['by_order_uniqueness'])->keyBy('key');
+
+        $this->assertSame(1, $byKey['unique']['count']);
+        $this->assertSame(3, $byKey['duplicate']['count']);
+        $this->assertSame(200_000, $byKey['unique']['revenue']);
+        $this->assertSame(0, $byKey['duplicate']['revenue']);
+    }
 }

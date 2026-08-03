@@ -7,13 +7,21 @@ import { exportOrdersCsv } from '../actions';
 export function OrdersExportButton({
   search,
   status,
-  paymentStatus,
   productType,
+  sort,
+  dir,
+  days,
+  from,
+  to,
 }: {
   search?: string;
   status?: string;
-  paymentStatus?: string;
   productType?: string;
+  sort?: string;
+  dir?: string;
+  days?: string;
+  from?: string;
+  to?: string;
 }) {
   const [pending, setPending] = useState(false);
 
@@ -22,8 +30,12 @@ export function OrdersExportButton({
     const res = await exportOrdersCsv({
       search: search?.trim() || undefined,
       status: status || undefined,
-      payment_status: paymentStatus || undefined,
       product_type: productType || undefined,
+      sort: sort || undefined,
+      dir: dir || undefined,
+      days: days || undefined,
+      from: from || undefined,
+      to: to || undefined,
     });
     setPending(false);
 
@@ -32,11 +44,10 @@ export function OrdersExportButton({
       return;
     }
 
-    const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(res.blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.download = res.filename;
     anchor.click();
     URL.revokeObjectURL(url);
   }

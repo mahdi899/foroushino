@@ -9,6 +9,7 @@ import {
   Cell,
   ComposedChart,
   Legend,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -17,8 +18,10 @@ import {
   YAxis,
 } from 'recharts';
 import { Badge, StatCard, Table } from '../../ui';
+import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { useAdminChartTheme } from '@/lib/admin/chartTheme';
 import { formatToman, type OrderAnalytics } from '@/lib/admin/commerceTypes';
+import { formatDateFa } from '@/lib/persian';
 import { toFa } from '@/lib/utils';
 
 const PERIODS = [
@@ -30,13 +33,91 @@ const PERIODS = [
   { value: 'all', label: 'همه' },
 ] as const;
 
-function formatShortDate(date: string) {
-  const [, month, day] = date.split('-');
-  return `${month}/${day}`;
+function formatChartAxisDate(date: string, showYear: boolean) {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim());
+  const parsed = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]), 12, 0, 0)
+    : new Date(date);
+  if (Number.isNaN(parsed.getTime())) return date;
+
+  return parsed.toLocaleDateString('fa-IR-u-ca-persian', {
+    day: 'numeric',
+    month: 'short',
+    ...(showYear ? { year: 'numeric' } : {}),
+  });
 }
 
 function sliceRevenue(row: { amount?: number; revenue?: number }) {
   return row.revenue ?? row.amount ?? 0;
+}
+
+type TransactionSortKey = 'product' | 'gateway' | 'amount' | 'paid_at';
+type SortDirection = 'asc' | 'desc';
+
+type RecentTransaction = OrderAnalytics['recent_transactions'][number];
+
+function compareTransactions(
+  a: RecentTransaction,
+  b: RecentTransaction,
+  key: TransactionSortKey,
+  dir: SortDirection,
+): number {
+  const factor = dir === 'asc' ? 1 : -1;
+
+  switch (key) {
+    case 'amount':
+      return (a.amount - b.amount) * factor;
+    case 'paid_at': {
+      const ta = a.paid_at ? new Date(a.paid_at).getTime() : 0;
+      const tb = b.paid_at ? new Date(b.paid_at).getTime() : 0;
+      return (ta - tb) * factor;
+    }
+    case 'gateway':
+      return (a.gateway_label ?? '').localeCompare(b.gateway_label ?? '', 'fa') * factor;
+    case 'product':
+      return (a.product_title ?? '').localeCompare(b.product_title ?? '', 'fa') * factor;
+    default:
+      return 0;
+  }
+}
+
+function TransactionsSortHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: TransactionSortKey;
+  activeKey: TransactionSortKey;
+  direction: SortDirection;
+  onSort: (key: TransactionSortKey) => void;
+}) {
+  const active = activeKey === sortKey;
+  const icon = !active ? 'ArrowUpDown' : direction === 'asc' ? 'ArrowUp' : 'ArrowDown';
+  const sortLabel = active
+    ? direction === 'asc'
+      ? 'مرتب‌سازی صعودی'
+      : 'مرتب‌سازی نزولی'
+    : 'مرتب‌سازی';
+
+  return (
+    <button
+      type="button"
+      className="admin-table-sort-btn"
+      onClick={() => onSort(sortKey)}
+      aria-label={`${label} — ${sortLabel}`}
+      aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <span>{label}</span>
+      <AdminLucideIcon
+        name={icon}
+        className={active ? 'admin-table-sort-btn__icon is-active' : 'admin-table-sort-btn__icon'}
+        strokeWidth={2}
+      />
+    </button>
+  );
 }
 
 function GlassTooltip({
@@ -69,31 +150,32 @@ function GlassTooltip({
   );
 }
 
-function RevenueTooltip({
+function DailyChartTooltip({
   active,
   payload,
-  label,
 }: {
   active?: boolean;
-  payload?: { dataKey: string; value: number; name: string; color: string }[];
-  label?: string;
+  payload?: { payload?: { date?: string; paid_orders?: number; revenue?: number } }[];
 }) {
   if (!active || !payload?.length) return null;
 
+  const row = payload[0]?.payload;
+  const date = row?.date;
+  const dateLabel = date ? formatDateFa(date) : undefined;
+  const orders = row?.paid_orders ?? 0;
+  const revenue = row?.revenue ?? 0;
+
   return (
     <div className="admin-chart-tooltip" dir="rtl">
-      <p className="mb-1 font-semibold text-primary-dark" dir="ltr">{label}</p>
-      {payload.map((entry) => (
-        <p key={entry.dataKey} className="flex items-center justify-between gap-4 text-text">
-          <span className="flex items-center gap-2">
-            <span className="admin-orders-reports__legend-dot" style={{ background: entry.color }} />
-            {entry.name}
-          </span>
-          <span className="font-semibold">
-            {entry.dataKey === 'revenue' ? formatToman(entry.value) : toFa(entry.value)}
-          </span>
-        </p>
-      ))}
+      {dateLabel ? <p className="mb-1 font-semibold text-primary-dark">{dateLabel}</p> : null}
+      <p className="flex items-center justify-between gap-4 text-text">
+        <span>تراکنش‌های موفق</span>
+        <span className="font-semibold">{toFa(orders)}</span>
+      </p>
+      <p className="flex items-center justify-between gap-4 text-text">
+        <span>درآمد محقق‌شده</span>
+        <span className="font-semibold">{formatToman(revenue)}</span>
+      </p>
     </div>
   );
 }
@@ -111,7 +193,10 @@ function DonutChartCard({
   showAmount?: boolean;
   colors: string[];
 }) {
+  const [activeSlice, setActiveSlice] = useState<{ name: string; value: number } | null>(null);
   const total = data.reduce((sum, item) => sum + item.value, 0);
+  const centerLabel = activeSlice?.name ?? 'مجموع';
+  const centerValue = activeSlice?.value ?? total;
 
   if (!total) {
     return (
@@ -151,17 +236,27 @@ function DonutChartCard({
               paddingAngle={4}
               stroke="none"
               cornerRadius={4}
+              onMouseEnter={(_, index) => {
+                const slice = data[index];
+                if (slice) setActiveSlice({ name: slice.name, value: slice.value });
+              }}
+              onMouseLeave={() => setActiveSlice(null)}
             >
               {data.map((_, index) => (
-                <Cell key={index} fill={colors[index % colors.length]} />
+                <Cell
+                  key={index}
+                  fill={colors[index % colors.length]}
+                  opacity={activeSlice && activeSlice.name !== data[index]?.name ? 0.45 : 1}
+                />
               ))}
             </Pie>
-            <Tooltip content={<GlassTooltip valueLabel={showAmount ? 'تومان' : 'تعداد'} />} />
+            <Tooltip content={<GlassTooltip valueLabel="تعداد" />} />
           </PieChart>
         </ResponsiveContainer>
         <div className="admin-orders-reports__donut-center">
-          <span className="admin-orders-reports__donut-center-label">مجموع</span>
-          <span className="admin-orders-reports__donut-center-value">{toFa(total)}</span>
+          <span className="admin-orders-reports__donut-center-label">{centerLabel}</span>
+          <span className="admin-orders-reports__donut-center-value">{toFa(centerValue)}</span>
+          <span className="admin-orders-reports__donut-center-unit">تعداد</span>
         </div>
       </div>
 
@@ -169,7 +264,12 @@ function DonutChartCard({
         {data.map((item, index) => {
           const pct = Math.round((item.value / total) * 100);
           return (
-            <li key={item.name} className="admin-orders-reports__legend-row">
+            <li
+              key={item.name}
+              className="admin-orders-reports__legend-row"
+              onMouseEnter={() => setActiveSlice({ name: item.name, value: item.value })}
+              onMouseLeave={() => setActiveSlice(null)}
+            >
               <span className="flex min-w-0 items-center gap-2">
                 <span
                   className="admin-orders-reports__legend-dot"
@@ -199,10 +299,24 @@ export function OrdersAnalyticsDashboard({
   const chartTheme = useAdminChartTheme();
   const periodValue = periodDays === 'all' ? 'all' : String(periodDays);
   const [productFilter, setProductFilter] = useState('all');
+  const [txSortKey, setTxSortKey] = useState<TransactionSortKey>('paid_at');
+  const [txSortDir, setTxSortDir] = useState<SortDirection>('desc');
 
   useEffect(() => {
     setProductFilter('all');
+    setTxSortKey('paid_at');
+    setTxSortDir('desc');
   }, [periodValue, data.recent_transactions.length]);
+
+  const handleTransactionSort = (key: TransactionSortKey) => {
+    if (key === txSortKey) {
+      setTxSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setTxSortKey(key);
+    setTxSortDir(key === 'amount' || key === 'paid_at' ? 'desc' : 'asc');
+  };
 
   const productFilterOptions = useMemo(
     () =>
@@ -219,14 +333,20 @@ export function OrdersAnalyticsDashboard({
     return data.recent_transactions.filter((tx) => tx.product_id === productId);
   }, [data.recent_transactions, productFilter]);
 
-  const statusChartData = useMemo(
+  const sortedTransactions = useMemo(() => {
+    const items = [...filteredTransactions];
+    items.sort((a, b) => compareTransactions(a, b, txSortKey, txSortDir));
+    return items;
+  }, [filteredTransactions, txSortKey, txSortDir]);
+
+  const orderOutcomeChartData = useMemo(
     () =>
-      data.by_status.map((row) => ({
-        name: row.label,
-        value: row.count,
-        amount: sliceRevenue(row),
-      })),
-    [data.by_status],
+      [
+        { name: 'پرداخت موفق', value: data.summary.paid_orders },
+        { name: 'در انتظار', value: (data.summary.pending_orders ?? 0) + (data.summary.failed_orders ?? 0) },
+        { name: 'لغوشده', value: data.summary.cancelled_orders ?? 0 },
+      ].filter((row) => row.value > 0),
+    [data.summary],
   );
 
   const paymentChartData = useMemo(
@@ -235,12 +355,14 @@ export function OrdersAnalyticsDashboard({
   );
 
   const dailyChartData = useMemo(
-    () =>
-      data.daily.map((row) => ({
+    () => {
+      const showYear = (data.period_days ?? 365) > 60;
+      return data.daily.map((row) => ({
         ...row,
-        label: formatShortDate(row.date),
-      })),
-    [data.daily],
+        label: formatChartAxisDate(row.date, showYear),
+      }));
+    },
+    [data.daily, data.period_days],
   );
 
   const productChartData = useMemo(
@@ -275,7 +397,7 @@ export function OrdersAnalyticsDashboard({
   );
 
   const hasData = data.summary.total_orders > 0;
-  const revenueGradientId = 'orders-revenue-gradient';
+  const revenueGradientId = 'orders-daily-trend-gradient';
 
   return (
     <div className="admin-orders-reports space-y-6">
@@ -317,30 +439,25 @@ export function OrdersAnalyticsDashboard({
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
               label="پرداخت‌شده"
               value={toFa(data.summary.paid_orders)}
               icon="Receipt"
-              hint={
-                data.summary.cancelled_orders
-                  ? `${toFa(data.summary.total_orders)} سفارش · ${toFa(data.summary.cancelled_orders)} لغوشده`
-                  : `${toFa(data.summary.total_orders)} کل سفارش`
-              }
+              hint={`${toFa(data.summary.pending_orders ?? 0)} در انتظار · ${toFa(data.summary.cancelled_orders ?? 0)} لغوشده\n${toFa(data.summary.all_orders ?? data.summary.total_orders)} کل سفارشات`}
+              hintLines={2}
               tone="teal"
             />
             <StatCard
               label="درآمد محقق‌شده"
               value={formatToman(data.summary.total_revenue)}
               icon="TrendingUp"
-              hint="سفارش‌های پرداخت‌شده و تحویل‌شده"
               tone="gold"
             />
             <StatCard
               label="میانگین سفارش"
               value={formatToman(data.summary.avg_order_value)}
               icon="ShoppingBag"
-              hint="بر اساس سفارش‌های موفق"
               tone="blue"
             />
             <StatCard
@@ -349,38 +466,71 @@ export function OrdersAnalyticsDashboard({
               icon="Activity"
               hint={
                 data.summary.pending_revenue > 0
-                  ? `${formatToman(data.summary.pending_revenue)} در انتظار`
-                  : 'نسبت پرداخت به کل سفارش'
+                  ? `${toFa(data.summary.paid_orders)} موفق از ${toFa(data.summary.all_orders ?? data.summary.total_orders)} · ${formatToman(data.summary.pending_revenue)} در انتظار`
+                  : `${toFa(data.summary.paid_orders)} موفق از ${toFa(data.summary.all_orders ?? data.summary.total_orders)} سفارش`
               }
               tone="green"
+            />
+            <StatCard
+              label="ریزش قبل از درگاه"
+              value={`${toFa(data.summary.pre_gateway_dropout_rate ?? 0)}٪`}
+              icon="DoorOpen"
+              hint={`${toFa(data.summary.pre_gateway_dropout_count ?? 0)} سفارش بدون ورود به درگاه\nاز ${toFa(data.summary.all_orders ?? data.summary.total_orders)} کل سفارش ثبت‌شده`}
+              hintLines={2}
+              tone="amber"
+            />
+            <StatCard
+              label="انصراف در درگاه"
+              value={`${toFa(data.summary.gateway_abandonment_rate ?? 0)}٪`}
+              icon="CreditCard"
+              hint={(() => {
+                const all = data.summary.all_orders ?? data.summary.total_orders;
+                const abandoned = data.summary.gateway_abandoned_count ?? 0;
+                const pending = data.summary.gateway_pending_order_count ?? 0;
+                const line1 = `${toFa(abandoned)} سفارش با انصراف یا شکست در درگاه`;
+                const line2 =
+                  pending > 0
+                    ? `از ${toFa(all)} کل سفارش · ${toFa(pending)} سفارش هنوز در درگاه`
+                    : `از ${toFa(all)} کل سفارش ثبت‌شده`;
+                return `${line1}\n${line2}`;
+              })()}
+              hintLines={2}
+              tone="amber"
             />
           </div>
 
           <div className="admin-glass-chart-card">
             <div className="admin-glass-chart-card__head">
               <div>
-                <h3 className="admin-glass-chart-card__title">روند روزانه سفارش و درآمد</h3>
+                <h3 className="admin-glass-chart-card__title">روند روزانه تراکنش‌های موفق و درآمد</h3>
                 <p className="admin-glass-chart-card__subtitle">
-                  نمودار ترکیبی — تعداد سفارش (ستون) و درآمد محقق‌شده (ناحیه)
+                  ستون‌ها و منحنی: تعداد تراکنش‌های موفق — درآمد روزانه در هاور — بر اساس تاریخ پرداخت
                 </p>
               </div>
             </div>
-            <div className="h-80 w-full min-w-0" dir="ltr">
+            <div className="admin-orders-reports__daily-chart h-80 w-full min-w-0" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={dailyChartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+                <ComposedChart
+                  data={dailyChartData}
+                  margin={{ top: 16, right: 12, left: 4, bottom: 4 }}
+                  barCategoryGap={dailyChartData.length <= 7 ? '28%' : '18%'}
+                  barGap={4}
+                >
                   <defs>
                     <linearGradient id={revenueGradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={chartTheme.barSecondary} stopOpacity={0.45} />
-                      <stop offset="100%" stopColor={chartTheme.barSecondary} stopOpacity={0.04} />
+                      <stop offset="0%" stopColor={chartTheme.barPrimary} stopOpacity={0.28} />
+                      <stop offset="55%" stopColor={chartTheme.barPrimary} stopOpacity={0.1} />
+                      <stop offset="100%" stopColor={chartTheme.barPrimary} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridStroke} vertical={false} />
+                  <CartesianGrid strokeDasharray="4 6" stroke={chartTheme.gridStroke} vertical={false} />
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 11, fill: chartTheme.tick }}
                     axisLine={false}
                     tickLine={false}
                     interval={dailyChartData.length > 20 ? Math.floor(dailyChartData.length / 10) : 0}
+                    padding={{ left: 20, right: 20 }}
                   />
                   <YAxis
                     yAxisId="orders"
@@ -388,40 +538,60 @@ export function OrdersAnalyticsDashboard({
                     axisLine={false}
                     tickLine={false}
                     width={36}
+                    allowDecimals={false}
                   />
-                  <YAxis
-                    yAxisId="revenue"
-                    orientation="right"
-                    tick={{ fontSize: 11, fill: chartTheme.tick }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={52}
-                    tickFormatter={(v) => toFa(Math.round(Number(v) / 1_000_000)) + 'M'}
-                  />
-                  <Tooltip content={<RevenueTooltip />} />
+                  <Tooltip content={<DailyChartTooltip />} cursor={{ fill: 'rgba(0,140,150,0.06)', radius: 6 }} />
                   <Legend
                     verticalAlign="top"
                     height={36}
                     formatter={(value) => <span style={{ color: 'var(--color-text)' }}>{value}</span>}
                   />
                   <Area
-                    yAxisId="revenue"
+                    yAxisId="orders"
                     type="monotone"
-                    dataKey="revenue"
-                    name="درآمد (تومان)"
-                    stroke={chartTheme.barSecondary}
-                    strokeWidth={2}
+                    dataKey="paid_orders"
+                    name="روند تراکنش‌ها"
+                    stroke="none"
                     fill={`url(#${revenueGradientId})`}
                     fillOpacity={1}
+                    baseValue={0}
+                    connectNulls
+                    legendType="none"
+                    animationDuration={700}
+                    animationEasing="ease-out"
                   />
                   <Bar
                     yAxisId="orders"
-                    dataKey="orders"
-                    name="تعداد سفارش"
+                    dataKey="paid_orders"
+                    name="تراکنش‌های موفق"
                     fill={chartTheme.barPrimary}
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={24}
-                    opacity={0.92}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={dailyChartData.length <= 7 ? 32 : 22}
+                    opacity={0.9}
+                    animationDuration={700}
+                    animationEasing="ease-out"
+                  />
+                  <Line
+                    yAxisId="orders"
+                    type="monotone"
+                    dataKey="paid_orders"
+                    name="روند تراکنش‌ها"
+                    stroke={chartTheme.barSecondary}
+                    strokeWidth={2.5}
+                    dot={
+                      dailyChartData.length <= 14
+                        ? { r: 3.5, strokeWidth: 2, stroke: 'var(--color-surface)', fill: chartTheme.barSecondary }
+                        : false
+                    }
+                    activeDot={{
+                      r: 5,
+                      strokeWidth: 2,
+                      stroke: 'var(--color-surface)',
+                      fill: chartTheme.barSecondary,
+                    }}
+                    legendType="line"
+                    animationDuration={700}
+                    animationEasing="ease-out"
                   />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -469,7 +639,7 @@ export function OrdersAnalyticsDashboard({
             />
             <DonutChartCard
               title="سفارش یونیک / تکراری"
-              subtitle="هر خریدار و محصول یک‌بار یونیک؛ ثبت‌های اضافی تکراری"
+              subtitle="اولین ثبت هر خریدار برای هر محصول یونیک؛ تلاش‌های بعدی (شامل لغوشده) تکراری"
               data={orderUniquenessChartData}
               showAmount
               colors={chartTheme.colors}
@@ -479,9 +649,8 @@ export function OrdersAnalyticsDashboard({
           <div className="grid gap-5 lg:grid-cols-2">
             <DonutChartCard
               title="توزیع وضعیت سفارش"
-              subtitle="سهم هر وضعیت از کل سفارش‌های ثبت‌شده"
-              data={statusChartData}
-              showAmount
+              subtitle="تعداد سفارش‌ها: در انتظار، پرداخت موفق و لغوشده"
+              data={orderOutcomeChartData}
               colors={chartTheme.colors}
             />
             <DonutChartCard
@@ -497,7 +666,7 @@ export function OrdersAnalyticsDashboard({
               <div className="admin-glass-chart-card__head">
                 <div>
                   <h3 className="admin-glass-chart-card__title">فروش به تفکیک محصول</h3>
-                  <p className="admin-glass-chart-card__subtitle">پرتکرارترین محصولات بر اساس تعداد سفارش</p>
+                  <p className="admin-glass-chart-card__subtitle">پرتکرارترین محصولات بر اساس تراکنش‌های موفق</p>
                 </div>
               </div>
               <div className="h-80 w-full min-w-0" dir="ltr">
@@ -529,13 +698,13 @@ export function OrdersAnalyticsDashboard({
                         return (
                           <div className="admin-chart-tooltip" dir="rtl">
                             <p className="mb-1 font-semibold text-primary-dark">{row.fullTitle}</p>
-                            <p>تعداد: {toFa(row.count)}</p>
+                            <p>تراکنش موفق: {toFa(row.count)}</p>
                             <p>درآمد: {formatToman(row.revenue)}</p>
                           </div>
                         );
                       }}
                     />
-                    <Bar dataKey="count" name="تعداد سفارش" radius={[0, 8, 8, 0]} maxBarSize={22}>
+                    <Bar dataKey="count" name="تراکنش‌های موفق" radius={[0, 8, 8, 0]} maxBarSize={22}>
                       {productChartData.map((_, index) => (
                         <Cell key={index} fill={chartTheme.colors[index % chartTheme.colors.length]} />
                       ))}
@@ -552,7 +721,7 @@ export function OrdersAnalyticsDashboard({
                 <div>
                   <h3 className="admin-glass-chart-card__title">تراکنش‌های موفق اخیر</h3>
                   <p className="admin-glass-chart-card__subtitle">
-                    Authority، Ref ID، کارت ماسک‌شده و جزئیات درگاه برای هر پرداخت
+                    Ref ID، کارت ماسک‌شده و جزئیات درگاه برای هر پرداخت
                   </p>
                 </div>
                 {productFilterOptions.length > 0 ? (
@@ -581,8 +750,48 @@ export function OrdersAnalyticsDashboard({
               ) : (
                 <>
               <div className="hidden overflow-x-auto md:block">
-                <Table head={['سفارش', 'مشتری', 'محصول', 'درگاه', 'Authority', 'Ref ID', 'کارت', 'مبلغ', 'زمان']}>
-                  {filteredTransactions.map((tx) => (
+                <Table
+                  head={['سفارش', 'مشتری', 'محصول', 'درگاه', 'Ref ID', 'کارت', 'مبلغ', 'زمان']}
+                  headCells={[
+                    'سفارش',
+                    'مشتری',
+                    <TransactionsSortHeader
+                      key="sort-product"
+                      label="محصول"
+                      sortKey="product"
+                      activeKey={txSortKey}
+                      direction={txSortDir}
+                      onSort={handleTransactionSort}
+                    />,
+                    <TransactionsSortHeader
+                      key="sort-gateway"
+                      label="درگاه"
+                      sortKey="gateway"
+                      activeKey={txSortKey}
+                      direction={txSortDir}
+                      onSort={handleTransactionSort}
+                    />,
+                    'Ref ID',
+                    'کارت',
+                    <TransactionsSortHeader
+                      key="sort-amount"
+                      label="مبلغ"
+                      sortKey="amount"
+                      activeKey={txSortKey}
+                      direction={txSortDir}
+                      onSort={handleTransactionSort}
+                    />,
+                    <TransactionsSortHeader
+                      key="sort-time"
+                      label="زمان"
+                      sortKey="paid_at"
+                      activeKey={txSortKey}
+                      direction={txSortDir}
+                      onSort={handleTransactionSort}
+                    />,
+                  ]}
+                >
+                  {sortedTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-surface-soft/40">
                       <td className="whitespace-nowrap px-3 py-2.5">
                         <Link
@@ -598,13 +807,6 @@ export function OrdersAnalyticsDashboard({
                         {tx.product_title ?? '—'}
                       </td>
                       <td className="px-3 py-2.5 text-caption">{tx.gateway_label}</td>
-                      <td
-                        className="max-w-[120px] truncate px-3 py-2.5 font-mono admin-text-meta"
-                        dir="ltr"
-                        title={tx.authority ?? ''}
-                      >
-                        {tx.authority ?? '—'}
-                      </td>
                       <td className="whitespace-nowrap px-3 py-2.5 font-mono text-caption" dir="ltr">
                         {tx.ref_id ?? '—'}
                       </td>
@@ -623,7 +825,7 @@ export function OrdersAnalyticsDashboard({
               </div>
 
               <div className="space-y-3 md:hidden">
-                {filteredTransactions.map((tx) => (
+                {sortedTransactions.map((tx) => (
                   <Link
                     key={tx.id}
                     href={`/admin/commerce/orders/${tx.order_id}`}
@@ -643,10 +845,6 @@ export function OrdersAnalyticsDashboard({
                       <Badge tone="accent">{tx.gateway_label}</Badge>
                     </div>
                     <dl className="mt-2 grid gap-1 admin-text-meta text-text-muted">
-                      <div className="flex justify-between gap-2" dir="ltr">
-                        <span>Authority</span>
-                        <span className="truncate font-mono text-text">{tx.authority ?? '—'}</span>
-                      </div>
                       <div className="flex justify-between gap-2" dir="ltr">
                         <span>Ref</span>
                         <span className="font-mono text-text">{tx.ref_id ?? '—'}</span>

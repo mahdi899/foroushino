@@ -58,6 +58,7 @@ export function StatCard({
   hint,
   href,
   tone = 'teal',
+  hintLines = 1,
 }: {
   label: string;
   value: string | number;
@@ -65,6 +66,7 @@ export function StatCard({
   hint?: string;
   href?: string;
   tone?: 'teal' | 'gold' | 'blue' | 'green' | 'amber';
+  hintLines?: 1 | 2;
 }) {
   const content = (
     <div
@@ -80,7 +82,11 @@ export function StatCard({
       <div className="admin-stat-card__body">
         <p className="admin-stat-card__label">{label}</p>
         <p className="admin-stat-card__value">{value}</p>
-        <p className="admin-stat-card__hint">{hint ?? '\u00a0'}</p>
+        <p
+          className={cn('admin-stat-card__hint', hintLines > 1 && 'admin-stat-card__hint--multiline')}
+        >
+          {hint ?? '\u00a0'}
+        </p>
       </div>
     </div>
   );
