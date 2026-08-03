@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/core/utils/wav_audio_edit.dart';
 import 'package:bahram_family_manager/core/utils/media_playback_source.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
@@ -89,6 +90,7 @@ class FamilyMediaView extends StatelessWidget {
           url: source,
           isFilePath: networkUrl == null && !kIsWeb,
           compact: compact,
+          localBytes: localBytes,
         );
       }
     }
@@ -288,12 +290,14 @@ class _AudioView extends StatefulWidget {
     required this.url,
     required this.compact,
     this.isFilePath = false,
+    this.localBytes,
   });
 
   final FamilyMediaRef media;
   final String url;
   final bool compact;
   final bool isFilePath;
+  final Uint8List? localBytes;
 
   @override
   State<_AudioView> createState() => _AudioViewState();
@@ -303,6 +307,7 @@ class _AudioViewState extends State<_AudioView> {
   final _player = AudioPlayer();
   var _loading = true;
   var _playing = false;
+  Duration? _playerDuration;
 
   @override
   void initState() {
@@ -312,27 +317,51 @@ class _AudioViewState extends State<_AudioView> {
       if (!mounted) return;
       setState(() => _playing = state.playing);
     });
+    _player.durationStream.listen((duration) {
+      if (!mounted || duration == null || duration <= Duration.zero) return;
+      setState(() => _playerDuration = duration);
+    });
   }
 
   @override
   void didUpdateWidget(covariant _AudioView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url || oldWidget.isFilePath != widget.isFilePath) {
+    if (oldWidget.url != widget.url ||
+        oldWidget.isFilePath != widget.isFilePath ||
+        oldWidget.localBytes != widget.localBytes) {
       _loading = true;
+      _playerDuration = null;
       _init();
     }
   }
 
   Future<void> _init() async {
     try {
-      await setAudioPlayerSource(
+      final total = await setAudioPlayerSource(
         _player,
         widget.url,
         isLocalFile: widget.isFilePath,
       );
+      if (total != null && total > Duration.zero && mounted) {
+        setState(() => _playerDuration = total);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Duration? get _displayDuration {
+    final fromPlayer = _playerDuration;
+    if (fromPlayer != null && fromPlayer > Duration.zero) return fromPlayer;
+    final fromMedia = widget.media.duration;
+    if (fromMedia != null && fromMedia > 0) {
+      return Duration(seconds: fromMedia);
+    }
+    final bytes = widget.localBytes;
+    if (bytes != null && bytes.isNotEmpty) {
+      return WavAudioEdit.durationOf(bytes);
+    }
+    return null;
   }
 
   @override
@@ -343,7 +372,10 @@ class _AudioViewState extends State<_AudioView> {
 
   @override
   Widget build(BuildContext context) {
-    final duration = widget.media.duration;
+    final duration = _displayDuration;
+    final durationLabel = duration != null && duration > Duration.zero
+        ? formatDuration(duration.inSeconds)
+        : 'فایل صوتی';
     return Container(
       padding: EdgeInsets.all(widget.compact ? AppSpacing.md : AppSpacing.lg),
       decoration: BoxDecoration(
@@ -390,7 +422,7 @@ class _AudioViewState extends State<_AudioView> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  duration != null && duration > 0 ? formatDuration(duration) : 'فایل صوتی',
+                  durationLabel,
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
                 ),
               ],
