@@ -10,8 +10,8 @@ export function OrdersPeriodPresets({ params }: { params: OrdersListParams }) {
   const active = activeOrdersPeriod(params);
 
   return (
-    <div className="admin-period-toolbar !border-0 !bg-transparent !p-0 !shadow-none">
-      <div className="admin-period-segments flex-wrap" role="tablist" aria-label="بازه زمانی سفارش‌ها">
+    <div className="admin-period-toolbar admin-orders-toolbar__periods">
+      <div className="admin-period-segments" role="tablist" aria-label="بازه زمانی سفارش‌ها">
         {ORDER_PERIOD_PRESETS.map((preset) => {
           const presetActive = active === preset.value;
           const href = buildOrdersHref(params, {

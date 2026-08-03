@@ -70,6 +70,7 @@ export default async function OrdersPage({
           : 'پیگیری پرداخت و تحویل سفارش‌ها'
       }
       stackHeader
+      fullWidthAction
       action={
         <OrdersToolbar
           search={sp.search}

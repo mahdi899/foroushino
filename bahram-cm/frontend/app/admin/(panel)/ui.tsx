@@ -13,6 +13,7 @@ export function AdminPage({
   icon,
   headerVariant = 'default',
   stackHeader = false,
+  fullWidthAction = false,
   compactHeader = false,
   backHref,
   backLabel,
@@ -25,6 +26,8 @@ export function AdminPage({
   headerVariant?: AdminPageHeaderVariant;
   /** Keep title and toolbar stacked (full width) — use on dense editor toolbars */
   stackHeader?: boolean;
+  /** Toolbar spans full header width (no 40rem cap, stays stacked on desktop) */
+  fullWidthAction?: boolean;
   /** Single-line compact header — title and actions on one row */
   compactHeader?: boolean;
   /** Mobile-only back link shown above the page header */
@@ -41,6 +44,7 @@ export function AdminPage({
         variant={headerVariant}
         compact={compactHeader}
         action={action}
+        fullWidthAction={fullWidthAction}
         className={cn(
           !compactHeader && (stackHeader ? 'mb-5 sm:mb-5' : 'mb-5 sm:mb-6'),
           !compactHeader && stackHeader && 'flex-col gap-3',

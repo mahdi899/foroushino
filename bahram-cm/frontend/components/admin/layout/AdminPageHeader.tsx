@@ -21,6 +21,7 @@ export function AdminPageHeader({
   variant = 'default',
   action,
   compact = false,
+  fullWidthAction = false,
   className,
 }: {
   icon?: string;
@@ -29,6 +30,7 @@ export function AdminPageHeader({
   variant?: AdminPageHeaderVariant;
   action?: React.ReactNode;
   compact?: boolean;
+  fullWidthAction?: boolean;
   className?: string;
 }) {
   if (compact) {
@@ -64,7 +66,11 @@ export function AdminPageHeader({
       className={cn(
         'admin-page-header',
         variant !== 'default' && `admin-page-header--${variant}`,
-        action ? 'flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4' : undefined,
+        action
+          ? fullWidthAction
+            ? 'flex-col gap-3'
+            : 'flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4'
+          : undefined,
         className,
       )}
     >
@@ -79,7 +85,18 @@ export function AdminPageHeader({
           {description ? <p className="admin-page-header__desc admin-section-subtitle mt-1 sm:mt-1.5">{description}</p> : null}
         </div>
       </div>
-      {action ? <div className="admin-page-header__actions flex w-full min-w-0 flex-col gap-2 lg:w-auto lg:max-w-[min(100%,40rem)] lg:items-end">{action}</div> : null}
+      {action ? (
+        <div
+          className={cn(
+            'admin-page-header__actions flex w-full min-w-0 flex-col gap-2',
+            fullWidthAction
+              ? 'max-w-none items-stretch'
+              : 'lg:w-auto lg:max-w-[min(100%,40rem)] lg:items-end',
+          )}
+        >
+          {action}
+        </div>
+      ) : null}
     </header>
   );
 }
