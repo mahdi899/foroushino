@@ -17,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust only the local reverse proxy (Nginx) — set TRUSTED_PROXIES for Cloudflare.
-        $trusted = env('TRUSTED_PROXIES', '127.0.0.1');
+        // Trust only the local reverse proxy (Nginx / Next→Laravel hop).
+        // Production may extend via TRUSTED_PROXIES; never default to '*'.
+        $trusted = env('TRUSTED_PROXIES', '127.0.0.1,::1');
         $middleware->trustProxies(at: $trusted === '*' ? '*' : array_map('trim', explode(',', $trusted)));
 
         $middleware->api(prepend: [
@@ -41,6 +42,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'sat.integration' => \App\Http\Middleware\AuthenticateSatIntegrationToken::class,
             'student.active' => \App\Http\Middleware\EnsureStudentIsActive::class,
             'proxy.origin' => \App\Http\Middleware\EnsureProxyOrigin::class,
+            'optional.bearer' => \App\Http\Middleware\ResolveOptionalBearerUser::class,
+            'purchase.log' => \App\Http\Middleware\LogPurchaseDiagnostics::class,
             'telegram.host.signature' => \App\Modules\TelegramBot\Http\Middleware\VerifyTelegramHostToken::class,
             'telegram.host.token' => \App\Modules\TelegramBot\Http\Middleware\VerifyTelegramHostToken::class,
         ]);

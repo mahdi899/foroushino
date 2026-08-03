@@ -21,11 +21,11 @@ export const adminNav: {
     group: 'پیشخوان',
     items: [
       { href: '/admin', label: 'داشبورد', icon: 'LayoutDashboard' },
-      { href: '/admin/chatbot', label: 'چت‌بات هوشمند', icon: 'MessageSquare', matchPrefix: true },
+      { href: '/admin/chatbot', label: 'چت‌بات هوشمند', icon: 'MessageSquare', matchPrefix: true, permission: 'settings.manage' },
       { href: '/admin/academy/tickets', label: 'تیکت‌های پشتیبانی', icon: 'LifeBuoy', matchPrefix: true, permission: 'tickets.view' },
       { href: '/admin/academy/sms', label: 'مرکز پیامک', icon: 'MessageCircle', matchPrefix: true, permission: 'sms.view' },
       { href: '/admin/telegram', label: 'ربات تلگرام', icon: 'Send', matchPrefix: true, permission: 'telegram.view' },
-      { href: '/admin/academy/notifications', label: 'اعلان‌ها', icon: 'Bell' },
+      { href: '/admin/academy/notifications', label: 'اعلان‌ها', icon: 'Bell', permission: 'sms.view' },
     ],
   },
   {
@@ -40,7 +40,7 @@ export const adminNav: {
   {
     group: 'فروش و عملیات',
     items: [
-      { href: '/admin/leads', label: 'لیدها و فرم‌ها', icon: 'Inbox' },
+      { href: '/admin/leads', label: 'لیدها و فرم‌ها', icon: 'Inbox', permission: 'orders.view' },
       ...commerceModules.map((m) => ({
         href: m.href,
         label: m.label,
@@ -63,8 +63,8 @@ export const adminNav: {
         permission: 'identity.view',
       },
       { href: '/admin/academy/course-accesses', label: 'دسترسی دوره‌ها', icon: 'KeyRound', permission: 'students.manage' },
-      { href: '/admin/academy/seminars', label: 'سمینارها', icon: 'CalendarDays', matchPrefix: true },
-      { href: '/admin/academy/reference-channels', label: 'کانال مرجع', icon: 'Radio', matchPrefix: true },
+      { href: '/admin/academy/seminars', label: 'سمینارها', icon: 'CalendarDays', matchPrefix: true, permission: 'content.view' },
+      { href: '/admin/academy/reference-channels', label: 'کانال مرجع', icon: 'Radio', matchPrefix: true, permission: 'content.view' },
       { href: '/admin/academy/mini-courses', label: 'مینی‌دوره‌ها', icon: 'PlayCircle', matchPrefix: true, permission: 'content.view' },
       { href: '/admin/academy/referrals', label: 'معرفی و کش‌بک', icon: 'Gift', permission: 'finance.view' },
       { href: '/admin/academy/cashback-payouts', label: 'واریز کش‌بک', icon: 'Wallet', permission: 'finance.view' },
@@ -76,7 +76,7 @@ export const adminNav: {
   {
     group: 'سئو و تنظیمات',
     items: [
-      { href: '/admin/seo', label: 'سئو و تحلیل', icon: 'Search', matchPrefix: true },
+      { href: '/admin/seo', label: 'سئو و تحلیل', icon: 'Search', matchPrefix: true, permission: 'settings.view' },
       { href: '/admin/audit', label: 'گزارش فعالیت', icon: 'ClipboardList', matchPrefix: true, permission: 'audit.view' },
       { href: '/admin/cache', label: 'کش و بهینه‌سازی', icon: 'Zap', matchPrefix: true, permission: 'settings.manage' },
       { href: '/admin/ai/settings', label: 'هوش مصنوعی', icon: 'Bot', matchPrefix: true, permission: 'settings.manage' },

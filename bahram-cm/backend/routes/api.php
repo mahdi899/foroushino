@@ -73,8 +73,9 @@ Route::post('/content/{type}/{slug}/comments', [ContentCommentController::class,
 Route::get('/seminars/promo', [SeminarPromoController::class, 'active']);
 Route::get('/seminars/{slug}', [PublicSeminarController::class, 'show'])->where('slug', '[^/]+');
 
-// Orders
-Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:30,1');
+// Orders — optional.bearer resolves Sanctum students before named purchase throttles.
+Route::post('/orders', [OrderController::class, 'store'])
+    ->middleware(['optional.bearer', 'purchase.log', 'throttle:purchase-order']);
 Route::post('/discount-codes/validate', [DiscountCodeController::class, 'validateCode'])
     ->middleware('throttle:30,1');
 Route::post('/referral-codes/validate', [ReferralCodeController::class, 'validateCode'])
@@ -86,13 +87,13 @@ Route::get('/orders/payment-result', [OrderController::class, 'paymentResult'])
 Route::post('/orders/payment-result/login', [OrderController::class, 'paymentResultLogin'])
     ->middleware('throttle:20,1');
 Route::post('/orders/complete-customer', [OrderController::class, 'completeCustomer'])
-    ->middleware('throttle:20,1');
+    ->middleware(['purchase.log', 'throttle:20,1']);
 Route::post('/orders/guest-checkout/send-otp', [GuestCheckoutController::class, 'sendOtp'])
-    ->middleware('throttle:10,1');
+    ->middleware(['purchase.log', 'throttle:guest-checkout-otp']);
 Route::post('/orders/guest-checkout/resend-otp', [GuestCheckoutController::class, 'resendOtp'])
-    ->middleware('throttle:10,1');
+    ->middleware(['purchase.log', 'throttle:guest-checkout-otp']);
 Route::post('/orders/guest-checkout/verify-and-pay', [GuestCheckoutController::class, 'verifyAndPay'])
-    ->middleware('throttle:20,1');
+    ->middleware(['purchase.log', 'throttle:guest-checkout-verify']);
 Route::post('/orders/post-payment-login/resend-otp', [OrderController::class, 'postPaymentResendOtp'])
     ->middleware('throttle:10,1');
 Route::post('/orders/post-payment-login/verify-otp', [OrderController::class, 'postPaymentVerifyOtp'])
@@ -100,7 +101,7 @@ Route::post('/orders/post-payment-login/verify-otp', [OrderController::class, 'p
 
 // Payments (Zarinpal)
 Route::post('/payments/zarinpal/request', [ZarinpalController::class, 'request'])
-    ->middleware('throttle:10,1');
+    ->middleware(['optional.bearer', 'purchase.log', 'throttle:purchase-payment']);
 Route::get('/payments/zarinpal/callback', [ZarinpalController::class, 'callback'])->name('api.payments.zarinpal.callback');
 Route::match(['get', 'post'], '/payments/telegram/{token}', [TelegramPaymentLinkController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')

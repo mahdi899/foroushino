@@ -102,3 +102,23 @@ export function can(user: AdminUser | null, permission: string): boolean {
   }
   return user.permissions.includes(permission);
 }
+
+/**
+ * Home path for narrowly scoped admins (e.g. KYC-only or tickets-only).
+ * Returns null when the user should stay on the general dashboard.
+ */
+export function scopedAdminHomePath(user: AdminUser | null): string | null {
+  if (!user || isSuperAdmin(user)) return null;
+
+  const perms = user.permissions;
+  const hasIdentity = perms.includes('identity.view');
+  const hasTickets = perms.includes('tickets.view');
+  const hasOtherSections = perms.some(
+    (p) => !p.startsWith('identity.') && !p.startsWith('tickets.'),
+  );
+
+  if (hasOtherSections) return null;
+  if (hasIdentity && !hasTickets) return '/admin/academy/identity-verifications';
+  if (hasTickets && !hasIdentity) return '/admin/academy/tickets';
+  return null;
+}

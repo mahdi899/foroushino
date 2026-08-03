@@ -65,7 +65,6 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         Role::findByName(AdminRoleName::KycOperator->value)->syncPermissions([
-            'students.view', 'students.search_by_mobile',
             'identity.view', 'identity.review', 'identity.approve', 'identity.reject',
             'identity.request_correction', 'identity.view_national_code',
             'identity.view_sensitive_documents', 'identity.unlock_ownership_verification',
@@ -73,10 +72,15 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         Role::findByName(AdminRoleName::Support->value)->syncPermissions([
-            'students.view', 'students.search_by_mobile',
             'tickets.view', 'tickets.manage',
-            'orders.view',
-            'sat.view',
+        ]);
+
+        Role::findByName(AdminRoleName::TechSupport->value)->syncPermissions([
+            'tickets.view', 'tickets.manage', 'tickets.technical',
+        ]);
+
+        Role::findByName(AdminRoleName::TechManager->value)->syncPermissions([
+            'tickets.view', 'tickets.manage', 'tickets.technical',
         ]);
 
         Role::findByName(AdminRoleName::ContentManager->value)->syncPermissions([

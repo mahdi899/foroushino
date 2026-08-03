@@ -74,6 +74,7 @@ final class PermissionCatalog
             'Support' => [
                 'tickets.view',
                 'tickets.manage',
+                'tickets.technical',
             ],
             'Orders' => [
                 'orders.view',
@@ -193,6 +194,7 @@ final class PermissionCatalog
             'admins.delete' => 'حذف مدیر',
             'tickets.view' => 'مشاهده تیکت‌ها',
             'tickets.manage' => 'مدیریت تیکت‌ها',
+            'tickets.technical' => 'مشاهده صف تیکت‌های پشتیبانی فنی',
             'orders.view' => 'مشاهده سفارش‌ها',
             'orders.manage' => 'مدیریت سفارش‌ها',
             'orders.delete' => 'حذف سفارش',

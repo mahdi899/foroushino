@@ -33,6 +33,18 @@ return [
         env('APP_ENV') === 'local' ? 60 : 30,
     ),
 
+    /*
+    | Checkout rate limits (named limiters). Per-actor keys use user id,
+    | hashed mobile, or real client IP — never a shared loopback bucket.
+    */
+    'purchase_rate_limits' => [
+        'order_per_minute' => (int) env('PURCHASE_ORDER_PER_MINUTE', 10),
+        'payment_per_minute' => (int) env('PURCHASE_PAYMENT_PER_MINUTE', 8),
+        'guest_otp_per_minute' => (int) env('PURCHASE_GUEST_OTP_PER_MINUTE', 8),
+        'guest_verify_per_minute' => (int) env('PURCHASE_GUEST_VERIFY_PER_MINUTE', 15),
+        'global_per_minute' => (int) env('PURCHASE_GLOBAL_PER_MINUTE', 3000),
+    ],
+
     'uploads' => [
         'public_disk' => env('MEDIA_DISK', 'public'),
         'private_disk' => 'local',

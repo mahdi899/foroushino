@@ -16,6 +16,9 @@ use App\Services\AdminTelegramLogService;
 use App\Services\DiscountService;
 use App\Services\PurchaseGuardService;
 use App\Support\Mobile;
+use App\Support\PurchaseRateLimit;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -90,42 +93,66 @@ class OrderService
 
         $discountAmount = $saleDiscount + $couponDiscount;
 
-        $order = DB::transaction(function () use (
-            $userId,
-            $product,
-            $name,
-            $phone,
-            $data,
-            $validatedReferralCode,
-            $discountCodeId,
-            $couponCode,
-            $amount,
-            $discountAmount,
-            $couponDiscount,
-            $finalAmount,
-        ) {
-            $this->cancelOpenPendingOrders($product->id, $userId, $phone);
+        $lockKey = 'purchase_create:'.PurchaseRateLimit::hashMobile($phone).':'.$product->id;
+        $lock = Cache::lock($lockKey, 10);
 
-            return Order::create([
-                'user_id' => $userId,
-                'order_number' => $this->generateOrderNumber(),
-                'product_id' => $product->id,
-                'customer_name' => $name,
-                'customer_phone' => $phone,
-                'customer_email' => $data['customer_email'] ?? null,
-                'customer_national_code' => $data['customer_national_code'] ?? null,
-                'customer_extra_data' => $data['customer_extra_data'] ?? null,
-                'referral_code' => $validatedReferralCode,
-                'discount_code_id' => $discountCodeId,
-                'coupon_code' => $couponCode,
-                'amount' => $amount,
-                'discount_amount' => $discountAmount,
-                'coupon_discount_amount' => $couponDiscount,
-                'final_amount' => $finalAmount,
-                'status' => 'pending_payment',
-                'payment_status' => 'pending',
+        try {
+            $order = $lock->block(2, function () use (
+                $userId,
+                $product,
+                $name,
+                $phone,
+                $data,
+                $validatedReferralCode,
+                $discountCodeId,
+                $couponCode,
+                $amount,
+                $discountAmount,
+                $couponDiscount,
+                $finalAmount,
+            ) {
+                return DB::transaction(function () use (
+                    $userId,
+                    $product,
+                    $name,
+                    $phone,
+                    $data,
+                    $validatedReferralCode,
+                    $discountCodeId,
+                    $couponCode,
+                    $amount,
+                    $discountAmount,
+                    $couponDiscount,
+                    $finalAmount,
+                ) {
+                    $this->cancelOpenPendingOrders($product->id, $userId, $phone);
+
+                    return Order::create([
+                        'user_id' => $userId,
+                        'order_number' => $this->generateOrderNumber(),
+                        'product_id' => $product->id,
+                        'customer_name' => $name,
+                        'customer_phone' => $phone,
+                        'customer_email' => $data['customer_email'] ?? null,
+                        'customer_national_code' => $data['customer_national_code'] ?? null,
+                        'customer_extra_data' => $data['customer_extra_data'] ?? null,
+                        'referral_code' => $validatedReferralCode,
+                        'discount_code_id' => $discountCodeId,
+                        'coupon_code' => $couponCode,
+                        'amount' => $amount,
+                        'discount_amount' => $discountAmount,
+                        'coupon_discount_amount' => $couponDiscount,
+                        'final_amount' => $finalAmount,
+                        'status' => 'pending_payment',
+                        'payment_status' => 'pending',
+                    ]);
+                });
+            });
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages([
+                'product_id' => 'درخواست قبلی هنوز در حال پردازش است. چند ثانیه صبر کنید.',
             ]);
-        });
+        }
 
         app(AdminTelegramLogService::class)->notifyOrderCreated($order->load('product'));
 

@@ -33,6 +33,7 @@ use App\Observers\UserIdentityProfileTelegramSyncObserver;
 use App\Observers\UserTelegramDisplayNameObserver;
 use App\Support\MediaFtpConnection;
 use App\Support\Mobile;
+use App\Support\PurchaseRateLimit;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
@@ -178,6 +179,24 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->ip());
         });
 
+        // Checkout: per-actor buckets (user / hashed mobile / real IP) + large global ceiling.
+        // Avoids the shared 127.0.0.1 bucket when Next.js Server Actions proxy to loopback.
+        RateLimiter::for('purchase-order', function (Request $request) {
+            return $this->purchaseLimits($request, 'order');
+        });
+
+        RateLimiter::for('purchase-payment', function (Request $request) {
+            return $this->purchaseLimits($request, 'payment');
+        });
+
+        RateLimiter::for('guest-checkout-otp', function (Request $request) {
+            return $this->purchaseLimits($request, 'guest_otp');
+        });
+
+        RateLimiter::for('guest-checkout-verify', function (Request $request) {
+            return $this->purchaseLimits($request, 'guest_verify');
+        });
+
         Event::listen(IdentityLevel2Approved::class, TryActivateSatMembershipListener::class);
         Event::listen(IdentityLevel2Approved::class, SyncTelegramHostOnIdentityApproved::class);
         Event::listen(IdentityLevel2Approved::class, NotifyIdentityApprovedTelegramListener::class);
@@ -232,5 +251,20 @@ class AppServiceProvider extends ServiceProvider
         $decayMinutes = max(1, (int) config('bahram.login.decay_minutes', 10));
 
         return Limit::perMinutes($decayMinutes, $maxAttempts);
+    }
+
+    /**
+     * @return array<int, Limit>
+     */
+    private function purchaseLimits(Request $request, string $bucket): array
+    {
+        $actor = max(1, (int) config("bahram.purchase_rate_limits.{$bucket}_per_minute", 10));
+        $global = max($actor, (int) config('bahram.purchase_rate_limits.global_per_minute', 3000));
+        $identifier = PurchaseRateLimit::identifier($request);
+
+        return [
+            Limit::perMinute($actor)->by("purchase-{$bucket}:{$identifier}"),
+            Limit::perMinute($global)->by("purchase-{$bucket}:global"),
+        ];
     }
 }
