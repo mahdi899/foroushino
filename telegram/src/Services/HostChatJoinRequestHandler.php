@@ -178,14 +178,19 @@ final class HostChatJoinRequestHandler
     {
         $options = [];
         if ($needsIdentity) {
-            $identityUrl = rtrim($this->siteBaseUrl, '/').'/identity';
-            $options = [
-                'reply_markup' => [
-                    'inline_keyboard' => [[
-                        InlineButtons::url('احراز هویت سطح ۲', $identityUrl, 'lock', 'primary'),
-                    ]],
-                ],
-            ];
+            $identityUrl = $this->cache->siteUrl(
+                'identity',
+                rtrim($this->siteBaseUrl, '/').'/panel/identity-verification',
+            );
+            if ($identityUrl !== '') {
+                $options = [
+                    'reply_markup' => [
+                        'inline_keyboard' => [[
+                            InlineButtons::url('احراز هویت سطح ۲', $identityUrl, 'lock', 'primary'),
+                        ]],
+                    ],
+                ];
+            }
         }
 
         try {
