@@ -37,6 +37,7 @@ class BotAdminPanelService
 {
     use BotAdminPanelFeatureHandlers;
     use BotAdminPanelCatalogHandlers;
+    use BotAdminPanelMergeHandlers;
 
     private const USERS_PER_PAGE = 8;
 
@@ -128,6 +129,7 @@ class BotAdminPanelService
                 str_starts_with($data, 'admin:rc:') => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:dc:') => $this->handleDiscountsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:d:') => $this->handleDestinationsCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:dm:') => $this->handleDestinationMergeCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:p') => $this->handleProfileCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:s') => $this->handleSettingsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:ev:') => $this->handleEventsCallback($bot, $account, $client, $chatId, $messageId, $data),
@@ -277,6 +279,8 @@ class BotAdminPanelService
                 'sem_title' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_title'),
                 'sem_price' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_price'),
                 'sem_sale' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_sale'),
+                'dm_add_canonical' => $this->onDestinationMergeCanonicalInput($bot, $account, $conversation, $client, $chatId, $text),
+                'dm_add_telegram' => $this->onDestinationMergeTelegramInput($bot, $account, $conversation, $client, $chatId, $text),
                 'sem_cap' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_cap'),
                 'sem_loc' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_loc'),
                 'sem_date' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_date'),
@@ -748,6 +752,18 @@ class BotAdminPanelService
                 .'این درصد از تنظیمات کش‌بک محصولات فعال گرفته می‌شود.',
                 ['reply_markup' => $this->adminMenuMarkup($account)],
             );
+
+            return;
+        }
+
+        if ($action === 'rhost') {
+            $this->handleUserHostReregisterConfirm($bot, $account, $client, $chatId, $messageId, $target);
+
+            return;
+        }
+
+        if ($action === 'rhostc') {
+            $this->executeUserHostReregister($account, $client, $chatId, $target);
 
             return;
         }
@@ -1538,6 +1554,9 @@ class BotAdminPanelService
         $keyboard = [
             [
                 ['text' => '📩 ارسال پیام', 'callback_data' => 'admin:u:msg:'.$id],
+            ],
+            [
+                ['text' => '🔄 ریست ثبت‌نام هاست', 'callback_data' => 'admin:u:rhost:'.$id],
             ],
             [
                 ['text' => '🏦 پرداخت ها', 'callback_data' => 'admin:u:pay:'.$id],
@@ -2687,6 +2706,7 @@ class BotAdminPanelService
 
         $keyboard = [
             [['text' => '➕ افزودن', 'callback_data' => 'admin:d:add']],
+            [['text' => '🔗 ادغام خط مقاصد', 'callback_data' => 'admin:dm:list']],
             [
                 ['text' => 'حذف', 'callback_data' => 'admin:d:noop'],
                 ['text' => 'تغییر نام', 'callback_data' => 'admin:d:noop'],

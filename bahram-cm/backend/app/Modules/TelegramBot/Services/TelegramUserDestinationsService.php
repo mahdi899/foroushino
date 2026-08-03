@@ -31,7 +31,13 @@ class TelegramUserDestinationsService
      */
     public function accessibleForAccount(TelegramBot $bot, TelegramAccount $account): Collection
     {
-        $userId = $account->user_id;
+        $mergeService = app(DestinationMobileMergeService::class);
+
+        if ($mergeService->isDestinationBlockedForAccount($account)) {
+            return collect();
+        }
+
+        $userId = $mergeService->resolveDestinationUserId($account) ?? $account->user_id;
         if (! $userId) {
             return collect();
         }
@@ -43,7 +49,7 @@ class TelegramUserDestinationsService
             ->orderBy('id')
             ->get()
             ->map(function (TelegramDestination $destination) use ($bot, $account, $userId) {
-                $decision = $this->policy->evaluate($destination, (int) $userId);
+                $decision = $this->policy->evaluateForAccount($destination, $account);
                 if (! $decision['allowed']) {
                     return null;
                 }

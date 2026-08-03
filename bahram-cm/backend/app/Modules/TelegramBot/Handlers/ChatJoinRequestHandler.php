@@ -13,6 +13,7 @@ use App\Modules\TelegramBot\Models\TelegramJoinRequest;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Services\DestinationAccessPolicy;
 use App\Modules\TelegramBot\Services\DestinationInviteLinkService;
+use App\Modules\TelegramBot\Services\DestinationMobileMergeService;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -58,14 +59,18 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
             ->where('telegram_user_id', $telegramUserId)
             ->first();
 
-        $decision = $this->policy->evaluate($destination, $account?->user_id);
+        $decision = $this->policy->evaluateForAccount($destination, $account);
+
+        $effectiveUserId = $account !== null
+            ? app(DestinationMobileMergeService::class)->resolveDestinationUserId($account)
+            : null;
 
         $join = TelegramJoinRequest::query()->create([
             'telegram_bot_id' => $bot->id,
             'telegram_destination_id' => $destination?->id,
             'chat_id' => $chatId,
             'telegram_user_id' => $telegramUserId,
-            'user_id' => $account?->user_id,
+            'user_id' => $effectiveUserId ?? $account?->user_id,
             'status' => $decision['allowed'] ? 'approved' : 'declined',
             'decision_reason' => $decision['reason'],
             'decided_at' => now(),
@@ -77,10 +82,10 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
             $this->safeApprove($client, $chatId, $telegramUserId);
             if ($destination && $account) {
                 $this->inviteLinks->revokeAfterSuccessfulJoin($bot, $destination, $account);
-                if ($account->user_id) {
+                if ($effectiveUserId ?? $account->user_id) {
                     TelegramDestinationMembership::query()->updateOrCreate(
                         [
-                            'user_id' => (int) $account->user_id,
+                            'user_id' => (int) ($effectiveUserId ?? $account->user_id),
                             'telegram_destination_id' => $destination->id,
                         ],
                         [

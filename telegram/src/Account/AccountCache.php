@@ -217,6 +217,16 @@ final class AccountCache
             'cold_at2' => $coldAt,
         ]));
 
+        if (array_key_exists('destination_merge', $account)) {
+            $mergeMeta = $account['destination_merge'];
+            $this->storeDestinationMergeMeta(
+                $telegramUserId,
+                is_array($mergeMeta) ? $mergeMeta : null,
+            );
+        }
+
+        unset($this->rowMemo[$telegramUserId]);
+
         unset($this->rowMemo[$telegramUserId], $this->ownedPresentsMemo[$telegramUserId]);
 
         $mobile = trim((string) ($params['mobile'] ?? ''));
@@ -989,5 +999,149 @@ final class AccountCache
         }
 
         return is_string($value) ? $value : null;
+    }
+
+    /** @return array{role: string, partner_mobile: string}|null */
+    public function destinationMergeMeta(int $telegramUserId): ?array
+    {
+        $this->ensureDestinationMergeColumn();
+        $row = $this->get($telegramUserId);
+        if ($row === null) {
+            return null;
+        }
+
+        $raw = $row['destination_merge_json'] ?? null;
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded) || ! isset($decoded['role'])) {
+            return null;
+        }
+
+        $role = (string) ($decoded['role'] ?? '');
+        $partner = trim((string) ($decoded['partner_mobile'] ?? ''));
+
+        if ($role === '' || $partner === '') {
+            return null;
+        }
+
+        return ['role' => $role, 'partner_mobile' => $partner];
+    }
+
+    /** @param array{role?: string, partner_mobile?: string}|null $meta */
+    public function storeDestinationMergeMeta(int $telegramUserId, ?array $meta): void
+    {
+        if ($telegramUserId <= 0) {
+            return;
+        }
+
+        $this->ensureDestinationMergeColumn();
+
+        $json = null;
+        if ($meta !== null && isset($meta['role'], $meta['partner_mobile'])) {
+            $encoded = json_encode([
+                'role' => (string) $meta['role'],
+                'partner_mobile' => (string) $meta['partner_mobile'],
+            ], JSON_UNESCAPED_UNICODE);
+            $json = $encoded !== false ? $encoded : null;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'UPDATE telegram_accounts_cache SET destination_merge_json = :json, updated_at = NOW()
+                 WHERE telegram_user_id = :id',
+            );
+            $stmt->execute(['json' => $json, 'id' => $telegramUserId]);
+            unset($this->rowMemo[$telegramUserId]);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] storeDestinationMergeMeta: '.$e->getMessage());
+        }
+    }
+
+    public function softResetRegistration(int $telegramUserId, ?string $oldMobile = null): void
+    {
+        if ($telegramUserId <= 0) {
+            return;
+        }
+
+        $this->ensureDestinationMergeColumn();
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'UPDATE telegram_accounts_cache SET
+                    mobile = NULL,
+                    mobile_verified_at = NULL,
+                    owned_product_ids = :owned,
+                    profile_json = NULL,
+                    referral_json = NULL,
+                    family_json = NULL,
+                    owned_presents_json = NULL,
+                    sat_json = NULL,
+                    snapshot_revision = NULL,
+                    destination_merge_json = NULL,
+                    snapshot_synced_at = NULL,
+                    hot_synced_at = NULL,
+                    cold_synced_at = NULL,
+                    verification_level = 1,
+                    updated_at = NOW()
+                 WHERE telegram_user_id = :id',
+            );
+            $stmt->execute([
+                'id' => $telegramUserId,
+                'owned' => json_encode([], JSON_UNESCAPED_UNICODE),
+            ]);
+
+            $conv = $this->pdo->prepare(
+                'INSERT INTO conversations (telegram_user_id, state, context_json, updated_at)
+                 VALUES (:id, :state, :ctx, NOW())
+                 ON DUPLICATE KEY UPDATE state = :state2, context_json = :ctx2, updated_at = NOW()',
+            );
+            $conv->execute([
+                'id' => $telegramUserId,
+                'state' => 'waiting_for_mobile',
+                'ctx' => '{}',
+                'state2' => 'waiting_for_mobile',
+                'ctx2' => '{}',
+            ]);
+
+            $this->pdo->prepare('DELETE FROM pending_account_refresh WHERE telegram_user_id = :id')
+                ->execute(['id' => $telegramUserId]);
+            $this->pdo->prepare('DELETE FROM pending_registration_sync WHERE telegram_user_id = :id')
+                ->execute(['id' => $telegramUserId]);
+            $this->pdo->prepare('DELETE FROM membership_cache WHERE telegram_user_id = :id')
+                ->execute(['id' => $telegramUserId]);
+
+            if ($oldMobile !== null && trim($oldMobile) !== '') {
+                $pending = new \TelegramHost\Account\PendingMobileAccess($this->pdo);
+                $pending->delete(trim($oldMobile));
+            }
+
+            unset($this->rowMemo[$telegramUserId], $this->ownedPresentsMemo[$telegramUserId]);
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] softResetRegistration: '.$e->getMessage());
+        }
+    }
+
+    private function ensureDestinationMergeColumn(): void
+    {
+        static $ready = false;
+        if ($ready) {
+            return;
+        }
+
+        try {
+            $columns = $this->pdo->query('SHOW COLUMNS FROM telegram_accounts_cache')->fetchAll(\PDO::FETCH_COLUMN);
+            $existing = is_array($columns) ? array_map('strval', $columns) : [];
+            if (! in_array('destination_merge_json', $existing, true)) {
+                $this->pdo->exec(
+                    'ALTER TABLE telegram_accounts_cache ADD COLUMN destination_merge_json TEXT NULL AFTER sat_json',
+                );
+            }
+        } catch (\Throwable) {
+        }
+
+        $ready = true;
     }
 }

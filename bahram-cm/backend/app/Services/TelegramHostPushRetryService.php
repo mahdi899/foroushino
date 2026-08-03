@@ -37,6 +37,10 @@ class TelegramHostPushRetryService
                 $payload['display_name'] ?? null,
                 $this->mobilePreProvisionFromPayload($payload),
             ),
+            'reset_registration' => $this->push->resetRegistration(
+                (int) ($payload['telegram_user_id'] ?? 0),
+                isset($payload['old_mobile']) ? (string) $payload['old_mobile'] : null,
+            ),
             default => $this->push->refreshAll(),
         };
         if ($ok) {

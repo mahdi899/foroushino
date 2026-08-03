@@ -51,14 +51,27 @@ final class HostDestinationsFlow
             return false;
         }
 
-        $accessible = $this->accessibleDestinations($telegramUserId, $profile);
+        $mergeMeta = $this->accounts->destinationMergeMeta($telegramUserId);
+        $mergeBlocked = ($mergeMeta['role'] ?? '') === 'blocked';
+
+        $accessible = $mergeBlocked ? [] : $this->accessibleDestinations($telegramUserId, $profile);
         $syncItems = [];
         $joinButtons = [];
         $destLines = [];
         $needsIdentityButton = false;
         $verificationLevel = (int) ($profile['verification_level'] ?? 0);
 
-        if ($accessible !== []) {
+        if ($mergeBlocked) {
+            $partner = (string) ($mergeMeta['partner_mobile'] ?? '');
+            $masked = strlen($partner) >= 6
+                ? substr($partner, 0, 4).'…'.substr($partner, -3)
+                : $partner;
+            $template = $this->cache->message(
+                'destination_merge_blocked',
+                'خط شما با شماره {mobile} ادغام شده است. برای کانال‌های پشتیبانی از همان شماره استفاده کنید. در صورت مشکل با پشتیبانی تماس بگیرید.',
+            );
+            $destLines[] = str_replace('{mobile}', $masked, $template);
+        } elseif ($accessible !== []) {
             $destLines[] = TelegramCustomEmoji::tag('pin').' <b>گروه‌های پشتیبانی شما</b>';
             $destLines[] = '──────────────';
 
@@ -104,7 +117,7 @@ final class HostDestinationsFlow
                     $joinButtons[] = [InlineButtons::url($title !== '' ? $title : 'عضویت', $inviteUrl, 'pin')];
                 }
             }
-        } else {
+        } elseif (! $mergeBlocked && $accessible === []) {
             // No chat_id catalog yet — recover invite buttons, still never claim "member".
             $recovered = $this->recoverDestinationsFromProfile($profile);
             if ($recovered !== []) {
@@ -252,6 +265,11 @@ final class HostDestinationsFlow
      */
     private function accessibleDestinations(int $telegramUserId, array $profile = []): array
     {
+        $mergeMeta = $this->accounts->destinationMergeMeta($telegramUserId);
+        if (($mergeMeta['role'] ?? '') === 'blocked') {
+            return [];
+        }
+
         $seminarProductIds = [];
         foreach ($this->cache->seminars() as $seminar) {
             $pid = (int) ($seminar['product_id'] ?? 0);

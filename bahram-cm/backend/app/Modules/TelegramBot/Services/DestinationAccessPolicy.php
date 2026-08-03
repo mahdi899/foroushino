@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Sat\SatParticipantAccessService;
 use App\Modules\TelegramBot\Models\TelegramAccessDenial;
 use App\Modules\TelegramBot\Models\TelegramAccessGrant;
+use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramDestination;
 use App\Modules\TelegramBot\Models\TelegramDestinationRequirement;
 
@@ -25,6 +26,35 @@ class DestinationAccessPolicy
 
     /** @var array<string, bool> */
     private array $productAccessMemo = [];
+
+    /**
+     * Destination access for a linked Telegram account (merge-aware).
+     *
+     * @return array{allowed: bool, reason: string}
+     */
+    public function evaluateForAccount(TelegramDestination $destination, ?TelegramAccount $account): array
+    {
+        if ($account === null) {
+            return ['allowed' => false, 'reason' => 'ابتدا در ربات ثبت‌نام کنید.'];
+        }
+
+        $mergeService = app(DestinationMobileMergeService::class);
+
+        if ($mergeService->isDestinationBlockedForAccount($account)) {
+            $merge = $mergeService->approvedByCanonicalMobile((string) $account->mobile);
+
+            return [
+                'allowed' => false,
+                'reason' => $merge !== null
+                    ? $mergeService->blockedMessageForCanonical($merge)
+                    : 'خط شما ادغام شده است. با پشتیبانی تماس بگیرید.',
+            ];
+        }
+
+        $userId = $mergeService->resolveDestinationUserId($account);
+
+        return $this->evaluate($destination, $userId);
+    }
 
     /**
      * @return array{allowed: bool, reason: string}

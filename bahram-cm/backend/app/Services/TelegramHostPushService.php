@@ -134,6 +134,18 @@ class TelegramHostPushService
         ]);
     }
 
+    public function resetRegistration(int $telegramUserId, ?string $oldMobile = null): bool
+    {
+        if ($telegramUserId <= 0) {
+            return false;
+        }
+
+        return $this->runAction('reset_registration', [
+            'telegram_user_id' => $telegramUserId,
+            'old_mobile' => $oldMobile,
+        ]);
+    }
+
     /**
      * Instant user message on the external host (Bot API from host — no cron).
      *
@@ -178,7 +190,7 @@ class TelegramHostPushService
             return true;
         }
 
-        $ownershipActions = ['push_account', 'push_mobile_access'];
+        $ownershipActions = ['push_account', 'push_mobile_access', 'reset_registration'];
         if (in_array($action, $ownershipActions, true)) {
             $this->pushState->markPending($action, $extra);
         } elseif ($action !== 'push_account') {
@@ -248,7 +260,7 @@ class TelegramHostPushService
         // host down, etc.) skip the network call for a short cooldown instead
         // of blocking the caller (registration, order notify, queue worker)
         // for the full HTTP timeout on every single attempt.
-        $circuitExempt = in_array($action, ['register_webhook', 'push_account', 'push_mobile_access'], true);
+        $circuitExempt = in_array($action, ['register_webhook', 'push_account', 'push_mobile_access', 'reset_registration'], true);
         if ($this->pushState->isCircuitOpen() && ! $circuitExempt) {
             Log::channel('telegram')->info('Telegram host push skipped — circuit open.', [
                 'action' => $action,
@@ -273,6 +285,7 @@ class TelegramHostPushService
             'notify_user' => 4,
             'push_account' => 4,
             'push_mobile_access' => 4,
+            'reset_registration' => 4,
             // Bootstrap can include messages/destinations; Imunify/WAF + host
             // MySQL store often exceeds 8s on the Iran→host hop.
             'refresh_bootstrap', 'refresh_all' => 45,

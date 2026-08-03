@@ -34,13 +34,26 @@ class DestinationInviteLinkService
         TelegramDestination $destination,
         TelegramAccount $account,
     ): ?array {
-        if (! $account->user_id) {
+        $mergeUserId = app(DestinationMobileMergeService::class)->resolveDestinationUserId($account);
+        if ($account->user_id === null && $mergeUserId === null) {
+            return null;
+        }
+
+        $decision = $this->policy->evaluateForAccount($destination, $account);
+        if (! $decision['allowed']) {
             return null;
         }
 
         $user = $account->relationLoaded('user')
             ? $account->user
             : User::query()->find($account->user_id);
+
+        if ($user === null) {
+            $mergeUserId = app(DestinationMobileMergeService::class)->resolveDestinationUserId($account);
+            if ($mergeUserId !== null) {
+                $user = User::query()->find($mergeUserId);
+            }
+        }
 
         if ($user === null) {
             return null;
@@ -62,7 +75,11 @@ class DestinationInviteLinkService
         User $user,
         ?TelegramAccount $account = null,
     ): ?array {
-        $decision = $this->policy->evaluate($destination, (int) $user->id);
+        if ($account !== null) {
+            $decision = $this->policy->evaluateForAccount($destination, $account);
+        } else {
+            $decision = $this->policy->evaluate($destination, (int) $user->id);
+        }
         if (! $decision['allowed']) {
             return null;
         }

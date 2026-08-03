@@ -75,6 +75,15 @@ final class HostChatJoinRequestHandler
             ];
         }
 
+        $mergeMeta = $this->accounts->destinationMergeMeta($telegramUserId);
+        if (($mergeMeta['role'] ?? '') === 'blocked') {
+            return [
+                'ok' => false,
+                'reason' => $this->destinationMergeBlockedMessage((string) ($mergeMeta['partner_mobile'] ?? '')),
+                'needs_identity' => false,
+            ];
+        }
+
         $needsIdentity = ! empty($destination['requires_identity_level_2']);
         if ($needsIdentity && ! $this->accounts->hasIdentityLevel2($telegramUserId)) {
             return [
@@ -127,6 +136,27 @@ final class HostChatJoinRequestHandler
         }
 
         return ['ok' => true, 'reason' => 'ok', 'needs_identity' => false];
+    }
+
+    private function destinationMergeBlockedMessage(string $partnerMobile): string
+    {
+        $masked = $this->maskMobile($partnerMobile);
+        $template = $this->cache->message(
+            'destination_merge_blocked',
+            'خط شما با شماره {mobile} ادغام شده است. برای کانال‌های پشتیبانی از همان شماره استفاده کنید. در صورت مشکل با پشتیبانی تماس بگیرید.',
+        );
+
+        return str_replace('{mobile}', $masked, $template);
+    }
+
+    private function maskMobile(string $mobile): string
+    {
+        $mobile = trim($mobile);
+        if (strlen($mobile) < 6) {
+            return $mobile;
+        }
+
+        return substr($mobile, 0, 4).'…'.substr($mobile, -3);
     }
 
     /** @return array<string, mixed>|null */

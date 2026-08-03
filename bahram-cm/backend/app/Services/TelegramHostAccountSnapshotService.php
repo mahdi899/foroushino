@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\BotResolver;
+use App\Modules\TelegramBot\Services\DestinationMobileMergeService;
 use App\Modules\TelegramBot\Services\TelegramAdminUserStatsService;
 use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
@@ -68,6 +69,7 @@ class TelegramHostAccountSnapshotService
             'is_bot_admin' => $account->isBotAdmin(),
             'verification_level' => $verificationLevel,
             'snapshot' => $this->buildSnapshot($account, $replaceOwnedProductIds),
+            'destination_merge' => app(DestinationMobileMergeService::class)->mergeMetaForAccount($account),
         ];
     }
 

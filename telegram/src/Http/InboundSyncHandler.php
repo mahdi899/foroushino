@@ -95,6 +95,10 @@ final class InboundSyncHandler
             return $this->handlePushMobileAccess($body);
         }
 
+        if ($action === 'reset_registration') {
+            return $this->handleResetRegistration($body);
+        }
+
         return [
             'ok' => false,
             'error' => 'unknown_action',
@@ -194,6 +198,29 @@ final class InboundSyncHandler
         );
 
         return ['ok' => true, 'action' => 'push_mobile_access', 'defer' => false];
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{ok: bool, action: string, defer: bool}
+     */
+    private function handleResetRegistration(array $body): array
+    {
+        $telegramUserId = (int) ($body['telegram_user_id'] ?? 0);
+        if ($telegramUserId <= 0) {
+            return ['ok' => false, 'action' => 'reset_registration', 'defer' => false];
+        }
+
+        $oldMobile = trim((string) ($body['old_mobile'] ?? ''));
+
+        $pdo = Connection::get($this->config);
+        $cache = new AccountCache($pdo);
+        $cache->softResetRegistration(
+            $telegramUserId,
+            $oldMobile !== '' ? $oldMobile : null,
+        );
+
+        return ['ok' => true, 'action' => 'reset_registration', 'defer' => false];
     }
 
     /** Run deferred work after HTTP response was flushed to Iran. */
