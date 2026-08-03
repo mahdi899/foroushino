@@ -23,6 +23,7 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
     logId: number;
     visitorPhone: string | null;
     visitorName: string | null;
+    ticketId: number | null;
   } | null>(null);
   const currentPageRef = useRef(1);
   const qRef = useRef(q);
@@ -100,6 +101,7 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
       logId: item.id,
       visitorPhone: item.visitor_phone,
       visitorName: item.visitor_name,
+      ticketId: item.ticket_id,
     });
   }
 
@@ -203,7 +205,9 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
                           visitorName={selected.visitorName}
                           operatorProfiles={operatorProfiles}
                           initialReplyToLogId={selected.logId}
+                          initialTicketId={selected.ticketId}
                           onReplied={() => void loadQueue(currentPageRef.current, undefined, true)}
+                          onConverted={() => void loadQueue(currentPageRef.current, undefined, true)}
                         />
                       </td>
                     </tr>

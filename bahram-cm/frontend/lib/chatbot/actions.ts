@@ -604,11 +604,26 @@ export async function pollChatbotUpdates(input: {
   }
 }
 
-export async function fetchChatbotSessionThread(sessionId: string): Promise<ChatbotThreadItem[]> {
-  const res = await adminFetch<{ data: ChatbotThreadItem[] }>(
-    `/panel/chatbot/sessions/${sessionId}/thread`,
-  );
-  return res.data;
+export async function fetchChatbotSessionThread(sessionId: string): Promise<{
+  items: ChatbotThreadItem[];
+  ticketId: number | null;
+  convertedAt: string | null;
+  visitorPhone: string | null;
+}> {
+  const res = await adminFetch<{
+    data: ChatbotThreadItem[];
+    session?: {
+      ticket_id?: number | null;
+      converted_at?: string | null;
+      visitor_phone?: string | null;
+    };
+  }>(`/panel/chatbot/sessions/${sessionId}/thread`);
+  return {
+    items: res.data,
+    ticketId: res.session?.ticket_id ?? null,
+    convertedAt: res.session?.converted_at ?? null,
+    visitorPhone: res.session?.visitor_phone ?? null,
+  };
 }
 
 export async function replyToChatbotSession(input: {
@@ -632,6 +647,35 @@ export async function replyToChatbotSession(input: {
     return { ok: true };
   } catch {
     return { ok: false };
+  }
+}
+
+export async function convertChatbotSessionToTicket(input: {
+  sessionId: string;
+  subject: string;
+  department?: string;
+  operatorProfileId?: string;
+  mobile?: string;
+}): Promise<
+  | { ok: true; ticketId: number; subject: string }
+  | { ok: false; error: string }
+> {
+  try {
+    const res = await adminFetch<{
+      data: { ticket_id: number; subject: string };
+    }>(`/panel/chatbot/sessions/${input.sessionId}/convert-to-ticket`, {
+      method: 'POST',
+      body: {
+        subject: input.subject.trim(),
+        ...(input.department ? { department: input.department } : {}),
+        ...(input.operatorProfileId ? { operator_profile_id: input.operatorProfileId } : {}),
+        ...(input.mobile?.trim() ? { mobile: input.mobile.trim() } : {}),
+      },
+    });
+    return { ok: true, ticketId: res.data.ticket_id, subject: res.data.subject };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'تبدیل به تیکت ناموفق بود.';
+    return { ok: false, error: message };
   }
 }
 

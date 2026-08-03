@@ -2,17 +2,24 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\ChatbotTicketConversionException;
 use App\Http\Controllers\Controller;
 use App\Http\Concerns\VerifiesInternalSecret;
+use App\Models\ChatbotSession;
 use App\Services\ChatbotService;
+use App\Services\ChatbotToTicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ChatbotController extends Controller
 {
     use VerifiesInternalSecret;
 
-    public function __construct(private ChatbotService $chatbot) {}
+    public function __construct(
+        private ChatbotService $chatbot,
+        private ChatbotToTicketService $chatbotToTicket,
+    ) {}
 
     public function config(): JsonResponse
     {
@@ -392,7 +399,16 @@ class ChatbotController extends Controller
 
     public function adminSessionThread(string $sessionId): JsonResponse
     {
-        return response()->json(['data' => $this->chatbot->sessionThread($sessionId)]);
+        $session = ChatbotSession::query()->where('session_id', $sessionId)->first();
+
+        return response()->json([
+            'data' => $this->chatbot->sessionThread($sessionId),
+            'session' => [
+                'ticket_id' => $session?->ticket_id,
+                'converted_at' => $session?->converted_at?->toIso8601String(),
+                'visitor_phone' => $session?->visitor_phone,
+            ],
+        ]);
     }
 
     public function adminOperatorReply(Request $request, string $sessionId): JsonResponse
@@ -422,6 +438,50 @@ class ChatbotController extends Controller
         );
 
         return response()->json(['data' => ['id' => $log->id, 'queued' => false]]);
+    }
+
+    public function adminConvertToTicket(Request $request, string $sessionId): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('settings.manage'), 403);
+
+        $validated = $request->validate([
+            'subject' => ['required', 'string', 'min:1', 'max:255'],
+            'department' => ['nullable', 'string', Rule::in(['technical', 'financial', 'course', 'general'])],
+            'operator_profile_id' => ['nullable', 'string', 'uuid'],
+            'mobile' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        try {
+            $result = $this->chatbotToTicket->convert(
+                $sessionId,
+                $validated['subject'],
+                $validated['department'] ?? null,
+                $request->user(),
+                $validated['operator_profile_id'] ?? null,
+                $validated['mobile'] ?? null,
+            );
+        } catch (ChatbotTicketConversionException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => $e->errorCode,
+                    'message_fa' => $e->getMessage(),
+                ],
+            ], $e->status);
+        }
+
+        $ticket = $result['ticket'];
+        $session = ChatbotSession::query()->where('session_id', $sessionId)->first();
+
+        return response()->json([
+            'data' => [
+                'ticket_id' => $ticket->id,
+                'subject' => $ticket->subject,
+                'department' => $ticket->department,
+                'status' => $ticket->status->value,
+                'student_id' => $result['student']->id,
+                'converted_at' => $session?->converted_at?->toIso8601String(),
+            ],
+        ], 201);
     }
 
     public function adminLogs(Request $request): JsonResponse

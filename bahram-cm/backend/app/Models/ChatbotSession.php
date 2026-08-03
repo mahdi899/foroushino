@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ChatbotSession extends Model
@@ -17,6 +18,8 @@ class ChatbotSession extends Model
         'visitor_last_name',
         'preferred_operator_profile_id',
         'lead_id',
+        'ticket_id',
+        'converted_at',
         'open_count',
         'message_count',
         'opened_at',
@@ -28,10 +31,16 @@ class ChatbotSession extends Model
         'message_count' => 'integer',
         'opened_at' => 'datetime',
         'last_activity_at' => 'datetime',
+        'converted_at' => 'datetime',
     ];
 
     public function logs(): HasMany
     {
         return $this->hasMany(ChatbotLog::class, 'session_id', 'session_id');
+    }
+
+    public function ticket(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class);
     }
 }
