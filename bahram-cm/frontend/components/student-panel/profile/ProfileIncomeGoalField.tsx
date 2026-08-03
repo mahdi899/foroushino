@@ -1,13 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { toPersianDigits } from '@/lib/persian';
+import { toLatinDigits, toPersianDigits } from '@/lib/persian';
 import { PanelOptionSheetField } from '@/components/ui/PanelOptionSheetField';
-
-function toLatinDigits(input: string): string {
-  const fa = '۰۱۲۳۴۵۶۷۸۹';
-  return input.replace(/[۰-۹]/g, (d) => String(fa.indexOf(d)));
-}
 
 const INCOME_OPTIONS = [
   { value: '20', label: `${toPersianDigits(20)} میلیون تومان` },

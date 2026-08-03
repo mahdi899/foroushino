@@ -1,28 +1,39 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, UserRound } from 'lucide-react';
 import { JalaliWheelDateField } from '@/components/ui/JalaliWheelDateField';
 import { PanelCitySheetField } from '@/components/ui/PanelCitySheetField';
 import { PanelOptionSheetField } from '@/components/ui/PanelOptionSheetField';
-import { LiveSelfieVideoStep } from './LiveSelfieVideoStep';
-import { NationalCardUploadStep } from './NationalCardUploadStep';
 import { IdentityVerificationFeedback } from './IdentityVerificationFeedback';
+import { IdentityStepLoading } from './IdentityStepLoading';
 import { SelfieMobileHandoff } from './SelfieMobileHandoff';
 import { uploadIdentityArtifactClient } from '@/lib/student/identityArtifactUpload';
 import {
   saveIdentityDraftAction,
   submitIdentityVerificationAction,
 } from '@/lib/student/identityActions';
-import { identityStatusLabel, identityCorrectionLabel } from '@/lib/student/identityLabels';
+import { identityStatusLabel, identityCorrectionLabel, IDENTITY_GENDER_OPTIONS } from '@/lib/student/identityLabels';
+import { getIranNationalCodeInputError } from '@/lib/iran/nationalCode';
+import { sanitizeLatinDigits } from '@/lib/persian';
 import {
+  sanitizePersianNameInput,
+  PERSIAN_NAME_ONLY_ERROR,
+} from '@/lib/persian/persianName';
+import { PERSIAN_CITY_ONLY_ERROR } from '@/lib/persian/persianCity';
+import {
+  getIdentityStep1FieldErrors,
   IDENTITY_CLIENT_ERRORS,
   IDENTITY_CLIENT_ERROR_TITLES,
   IDENTITY_ERROR_TITLE_BY_CODE,
+  IDENTITY_STEP1_FIELDS,
+  type IdentityStep1Field,
   validateIdentityStep1,
 } from '@/lib/student/identityVerificationErrors';
 import { SELFIE_VIDEO_MAX_BYTES, selfieVideoFileName } from '@/lib/media/recorder';
+import { optimizeNationalCardImage } from '@/lib/media/optimizeNationalCardImage';
 import { optimizeSelfieVideo, pickSmallerVideoBlob } from '@/lib/media/optimizeSelfieVideo';
 import {
   MAX_IDENTITY_AGE,
@@ -32,6 +43,22 @@ import {
 } from '@/lib/student/age';
 import { IdentityReviewStep } from './IdentityReviewStep';
 import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
+import { cn } from '@/lib/cn';
+import {
+  clearIdentityDraftSession,
+  readIdentityDraftSession,
+  writeIdentityDraftSession,
+} from '@/lib/student/identityDraftSession';
+
+const NationalCardUploadStep = dynamic(
+  () => import('./NationalCardUploadStep').then((mod) => mod.NationalCardUploadStep),
+  { loading: () => <IdentityStepLoading label="در حال بارگذاری مرحله کارت ملی…" /> },
+);
+
+const LiveSelfieVideoStep = dynamic(
+  () => import('./LiveSelfieVideoStep').then((mod) => mod.LiveSelfieVideoStep),
+  { loading: () => <IdentityStepLoading label="در حال بارگذاری مرحله سلفی…" /> },
+);
 
 const STEPS = ['اطلاعات هویتی', 'تصویر کارت ملی', 'ویدیوی سلفی زنده', 'بازبینی و ارسال'] as const;
 const STEP_LABELS_SHORT = ['اطلاعات', 'کارت ملی', 'سلفی', 'بازبینی'] as const;
@@ -54,6 +81,7 @@ export function IdentityVerificationWizard({
   cardUploadedOnServer = false,
   serverCardArtifactId = null,
   draftSubmissionId = null,
+  accountMobile = null,
 }: {
   initialStatus?: string | null;
   initialCanSubmit?: boolean;
@@ -63,6 +91,7 @@ export function IdentityVerificationWizard({
   cardUploadedOnServer?: boolean;
   serverCardArtifactId?: number | null;
   draftSubmissionId?: number | null;
+  accountMobile?: string | null;
 }) {
   const router = useRouter();
   const isPhone = useIsPhoneClient();
@@ -79,13 +108,20 @@ export function IdentityVerificationWizard({
   const [cardFile, setCardFile] = useState<File | null>(null);
   const [cardReadyOnServer, setCardReadyOnServer] = useState(cardUploadedOnServer);
   const [activeCardArtifactId, setActiveCardArtifactId] = useState<number | null>(serverCardArtifactId);
-  const [activeDraftSubmissionId, setActiveDraftSubmissionId] = useState<number | null>(draftSubmissionId);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
   const [pendingLabel, setPendingLabel] = useState('ارسال برای بررسی');
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [step1FieldErrors, setStep1FieldErrors] = useState<Partial<Record<IdentityStep1Field, string>>>({});
+  const [activeSubmissionId, setActiveSubmissionId] = useState<number | null>(draftSubmissionId);
+  const [sessionHydrated, setSessionHydrated] = useState(false);
+  const [step1Pending, setStep1Pending] = useState(false);
+  const [cardStepPending, setCardStepPending] = useState(false);
+  const [cardUploadProgress, setCardUploadProgress] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
+  const resumeStepFromSession = useRef(initialStep === 0);
   const maxBirthDate = useMemo(() => maxBirthDateForMinAge(MIN_IDENTITY_AGE), []);
   const minBirthDate = useMemo(() => minBirthDateForMaxAge(MAX_IDENTITY_AGE), []);
 
@@ -93,6 +129,39 @@ export function IdentityVerificationWizard({
     const main = document.querySelector<HTMLElement>('.panel-main-content');
     main?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [step]);
+
+  useEffect(() => {
+    const session = readIdentityDraftSession();
+    if (session?.draft) {
+      setDraft((current) => ({
+        first_name: session.draft.first_name || current.first_name,
+        last_name: session.draft.last_name || current.last_name,
+        national_code: session.draft.national_code || current.national_code,
+        date_of_birth: session.draft.date_of_birth || current.date_of_birth,
+        gender: session.draft.gender || current.gender,
+        city: session.draft.city || current.city,
+      }));
+      if (resumeStepFromSession.current && typeof session.step === 'number') {
+        setStep(Math.min(Math.max(session.step, 0), STEPS.length - 1));
+      }
+      if (typeof session.submissionId === 'number') {
+        setActiveSubmissionId(session.submissionId);
+      }
+    }
+    setSessionHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionHydrated) return;
+    const timer = window.setTimeout(() => {
+      writeIdentityDraftSession({
+        draft,
+        step,
+        submissionId: activeSubmissionId,
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [draft, step, activeSubmissionId, sessionHydrated]);
 
   const lockedStatuses = ['submitted', 'under_review', 'approved'];
   const isLocked =
@@ -113,32 +182,159 @@ export function IdentityVerificationWizard({
     );
   }
 
-  function saveStep1() {
-    setError(null);
-    setErrorTitle(null);
+  function clearStep1FieldError(field: IdentityStep1Field) {
+    setStep1FieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
 
-    const clientError = validateIdentityStep1(draft);
-    if (clientError) {
-      setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.step1);
-      setError(clientError);
+  function handlePersianNameChange(field: 'first_name' | 'last_name', raw: string) {
+    const sanitized = sanitizePersianNameInput(raw);
+    const hadInvalid = raw !== sanitized;
+
+    setDraft((d) => ({ ...d, [field]: sanitized }));
+    setStep1FieldErrors((current) => {
+      const next = { ...current };
+      if (hadInvalid) {
+        next[field] = PERSIAN_NAME_ONLY_ERROR;
+      } else if (next[field] === PERSIAN_NAME_ONLY_ERROR) {
+        delete next[field];
+      }
+      return next;
+    });
+  }
+
+  function handlePersianCityChange(city: string) {
+    setDraft((d) => ({ ...d, city }));
+    setStep1FieldErrors((current) => {
+      const next = { ...current };
+      if (next.city === PERSIAN_CITY_ONLY_ERROR || next.city === IDENTITY_CLIENT_ERRORS.cityPersian) {
+        delete next.city;
+      }
+      return next;
+    });
+  }
+
+  function handlePersianCityRejectedInput() {
+    setStep1FieldErrors((current) => ({ ...current, city: PERSIAN_CITY_ONLY_ERROR }));
+  }
+
+  function handleNationalCodeChange(raw: string) {
+    const national_code = sanitizeLatinDigits(raw, 10);
+    setDraft((d) => ({ ...d, national_code }));
+    setStep1FieldErrors((current) => {
+      const next = { ...current };
+      if (getIranNationalCodeInputError(national_code) === 'invalid') {
+        next.national_code = IDENTITY_CLIENT_ERRORS.nationalCodeInvalid;
+      } else {
+        delete next.national_code;
+      }
+      return next;
+    });
+  }
+
+  function focusStep1Field(field: IdentityStep1Field) {
+    window.requestAnimationFrame(() => {
+      document.getElementById(field)?.focus();
+    });
+  }
+
+  function applyDraftServerError(res: { error?: string; errorTitle?: string | null }) {
+    if (!res.error) return;
+
+    setErrorTitle(res.errorTitle ?? null);
+    setError(res.error);
+
+    if (res.errorTitle === IDENTITY_ERROR_TITLE_BY_CODE.invalid_national_code) {
+      setStep1FieldErrors({ national_code: res.error });
+      setStep(0);
+      focusStep1Field('national_code');
       return;
     }
 
-    const fd = new FormData();
-    Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
-    startTransition(async () => {
-      const res = await saveIdentityDraftAction({}, fd);
-      if (res.error) {
-        setErrorTitle(res.errorTitle ?? null);
-        setError(res.error);
-        return;
-      }
-      const submissionId = res.data?.draft_submission_id;
-      if (typeof submissionId === 'number') {
-        setActiveDraftSubmissionId(submissionId);
-      }
-      setStep(1);
+    if (res.errorTitle === IDENTITY_ERROR_TITLE_BY_CODE.duplicate_national_code) {
+      setStep1FieldErrors({ national_code: res.error });
+      setStep(0);
+      focusStep1Field('national_code');
+    }
+  }
+
+  async function persistIdentityDraft(): Promise<number | null> {
+    const draftFd = new FormData();
+    Object.entries(draft).forEach(([key, value]) => draftFd.set(key, value));
+    const draftRes = await saveIdentityDraftAction({}, draftFd);
+    if (draftRes.error) {
+      applyDraftServerError(draftRes);
+      return null;
+    }
+
+    const submissionId = draftRes.data?.draft_submission_id;
+    if (typeof submissionId !== 'number') {
+      setErrorTitle(IDENTITY_ERROR_TITLE_BY_CODE.server_error);
+      setError(IDENTITY_CLIENT_ERRORS.step1Incomplete);
+      return null;
+    }
+
+    setActiveSubmissionId(submissionId);
+    setError(null);
+    setErrorTitle(null);
+    return submissionId;
+  }
+
+  async function uploadCardArtifact(
+    submissionId: number,
+    file: File,
+    onProgress?: (percent: number) => void,
+  ): Promise<void> {
+    const reportProgress = onProgress ?? setCardUploadProgress;
+    reportProgress(0);
+    const optimizedCard = await optimizeNationalCardImage(file);
+    const cardFd = new FormData();
+    cardFd.set('type', 'national_card_front');
+    cardFd.set('file', optimizedCard);
+    cardFd.set('submission_id', String(submissionId));
+    const { artifactId } = await uploadIdentityArtifactClient(cardFd, {
+      onProgress: reportProgress,
     });
+    setActiveCardArtifactId(artifactId);
+    setCardReadyOnServer(true);
+    setCardFile(null);
+    if (!onProgress) setCardUploadProgress(null);
+    else reportProgress(100);
+  }
+
+  function continueStep1() {
+    setError(null);
+    setErrorTitle(null);
+
+    const fieldErrors = getIdentityStep1FieldErrors(draft);
+    if (Object.keys(fieldErrors).length > 0) {
+      setStep1FieldErrors(fieldErrors);
+      const firstInvalid = IDENTITY_STEP1_FIELDS.find((field) => fieldErrors[field]);
+      if (firstInvalid) focusStep1Field(firstInvalid);
+      const clientError = validateIdentityStep1(draft);
+      setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.step1);
+      setError(clientError ?? IDENTITY_CLIENT_ERRORS.step1Incomplete);
+      return;
+    }
+
+    setStep1FieldErrors({});
+    setStep1Pending(true);
+    void (async () => {
+      try {
+        const submissionId = await persistIdentityDraft();
+        if (submissionId == null) return;
+        setStep(1);
+      } catch {
+        setErrorTitle(IDENTITY_ERROR_TITLE_BY_CODE.server_error);
+        setError(IDENTITY_CLIENT_ERRORS.step1Incomplete);
+      } finally {
+        setStep1Pending(false);
+      }
+    })();
   }
 
   function continueFromCard() {
@@ -151,33 +347,34 @@ export function IdentityVerificationWizard({
       return;
     }
 
-    if (!cardFile && cardReadyOnServer) {
+    if (cardReadyOnServer || !cardFile) {
       setStep(2);
       return;
     }
 
-    if (!cardFile) {
-      return;
-    }
-
-    const fd = new FormData();
-    fd.set('type', 'national_card_front');
-    fd.set('file', cardFile);
-    if (activeDraftSubmissionId) {
-      fd.set('submission_id', String(activeDraftSubmissionId));
-    }
-
-    startTransition(async () => {
+    setCardStepPending(true);
+    void (async () => {
       try {
-        const { artifactId } = await uploadIdentityArtifactClient(fd);
-        setActiveCardArtifactId(artifactId);
-        setCardReadyOnServer(true);
+        let submissionId = activeSubmissionId;
+        if (submissionId == null) {
+          submissionId = await persistIdentityDraft();
+          if (submissionId == null) return;
+        }
+
+        await uploadCardArtifact(submissionId, cardFile);
         setStep(2);
       } catch (err) {
+        setCardUploadProgress(null);
         setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
-        setError(err instanceof Error ? err.message : IDENTITY_CLIENT_ERRORS.cardMissing);
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : 'بارگذاری تصویر کارت ملی ناموفق بود. دوباره تلاش کنید.',
+        );
+      } finally {
+        setCardStepPending(false);
       }
-    });
+    })();
   }
 
   function submitAll() {
@@ -191,43 +388,72 @@ export function IdentityVerificationWizard({
       setError(IDENTITY_CLIENT_ERRORS.videoMissing);
       return;
     }
-    if (!activeDraftSubmissionId) {
-      setErrorTitle(IDENTITY_ERROR_TITLE_BY_CODE.draft_required);
-      setError(IDENTITY_CLIENT_ERRORS.step1Incomplete);
-      return;
-    }
+
     setError(null);
     setErrorTitle(null);
-    setPendingLabel('در حال بهینه‌سازی ویدیو…');
+    setPendingLabel('در حال آماده‌سازی پرونده…');
     startTransition(async () => {
       try {
-        const optimized = await optimizeSelfieVideo(videoBlob);
-        const toUpload = pickSmallerVideoBlob(videoBlob, optimized);
-        if (toUpload.size > SELFIE_VIDEO_MAX_BYTES) {
+        setUploadProgress(null);
+
+        let submissionId = activeSubmissionId;
+        if (submissionId == null) {
+          setPendingLabel('در حال ذخیره اطلاعات…');
+          submissionId = await persistIdentityDraft();
+          if (submissionId == null) return;
+        } else {
+          setPendingLabel('در حال به‌روزرسانی اطلاعات…');
+          submissionId = await persistIdentityDraft();
+          if (submissionId == null) return;
+        }
+
+        if (cardFile) {
+          setPendingLabel('در حال بارگذاری تصویر کارت…');
+          try {
+            await uploadCardArtifact(submissionId, cardFile, setUploadProgress);
+          } catch (err) {
+            setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
+            setError(
+              err instanceof Error && err.message
+                ? err.message
+                : 'بارگذاری تصویر کارت ملی ناموفق بود. دوباره تلاش کنید.',
+            );
+            return;
+          }
+        }
+
+        setPendingLabel('در حال بهینه‌سازی ویدیو…');
+        setUploadProgress(null);
+        const optimizedVideo = await optimizeSelfieVideo(videoBlob);
+        const videoToUpload = pickSmallerVideoBlob(videoBlob, optimizedVideo);
+        if (videoToUpload.size > SELFIE_VIDEO_MAX_BYTES) {
           setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
           setError(IDENTITY_CLIENT_ERRORS.videoTooLarge);
           return;
         }
 
-        setPendingLabel('در حال ارسال ویدیو…');
+        setPendingLabel('در حال بارگذاری ویدیو…');
+        setUploadProgress(0);
         const videoFd = new FormData();
         videoFd.set('type', 'selfie_video');
-        videoFd.set('file', toUpload, selfieVideoFileName(toUpload));
-        videoFd.set('submission_id', String(activeDraftSubmissionId));
-        await uploadIdentityArtifactClient(videoFd);
+        videoFd.set('file', videoToUpload, selfieVideoFileName(videoToUpload));
+        videoFd.set('submission_id', String(submissionId));
+        await uploadIdentityArtifactClient(videoFd, { onProgress: setUploadProgress });
 
         setPendingLabel('در حال ثبت پرونده…');
-        const fd = new FormData();
-        Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
-        if (videoPrompt) fd.set('expected_video_text', videoPrompt);
-        fd.set('draft_submission_id', String(activeDraftSubmissionId));
-        const res = await submitIdentityVerificationAction(fd);
+        setUploadProgress(null);
+        const submitFd = new FormData();
+        Object.entries(draft).forEach(([key, value]) => submitFd.set(key, value));
+        if (videoPrompt) submitFd.set('expected_video_text', videoPrompt);
+        submitFd.set('draft_submission_id', String(submissionId));
+        const res = await submitIdentityVerificationAction(submitFd);
         if (res.error) {
           setErrorTitle(res.errorTitle ?? null);
           setError(res.error);
           return;
         }
         setSubmitted(true);
+        clearIdentityDraftSession();
         router.refresh();
       } catch (err) {
         setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
@@ -237,6 +463,7 @@ export function IdentityVerificationWizard({
             : 'ارسال پرونده تأیید هویت ناموفق بود. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.',
         );
       } finally {
+        setUploadProgress(null);
         setPendingLabel('ارسال برای بررسی');
       }
     });
@@ -292,20 +519,44 @@ export function IdentityVerificationWizard({
       <div className="card panel-identity-wizard__card p-4 sm:p-6">
         {step === 0 ? (
           <div className="panel-form-grid">
-            <p className="panel-form-grid__full text-sm leading-relaxed text-text-muted">
-              نام و شهر باید دقیقاً مطابق کارت ملی باشد. در صورت تمایل، نام نمایشی حساب به‌عنوان پیشنهاد اولیه پر شده است.
-            </p>
+            <div className="panel-form-grid__full panel-identity-step-intro">
+              <div className="panel-identity-step-intro__header">
+                <span className="panel-identity-step-intro__icon" aria-hidden>
+                  <UserRound size={20} strokeWidth={2} />
+                </span>
+                <div className="panel-identity-step-intro__heading">
+                  <h3 className="panel-identity-step-intro__title">اطلاعات هویتی</h3>
+                  <div className="panel-identity-step-intro__warning">
+                    <p className="panel-identity-step-intro__warning-text">
+                      نام، نام خانوادگی و کد ملی باید متعلق به صاحب همین شماره تلفن باشد.
+                    </p>
+                    {accountMobile ? (
+                      <span className="panel-identity-step-intro__account" dir="ltr">
+                        {accountMobile}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
             <div>
               <label className="field-label" htmlFor="first_name">
                 نام
               </label>
               <input
                 id="first_name"
-                className="field-input"
+                className={cn('field-input', step1FieldErrors.first_name && 'field-input--error')}
                 value={draft.first_name}
-                onChange={(e) => setDraft((d) => ({ ...d, first_name: e.target.value }))}
+                onChange={(e) => handlePersianNameChange('first_name', e.target.value)}
+                aria-invalid={Boolean(step1FieldErrors.first_name)}
+                aria-describedby={step1FieldErrors.first_name ? 'first_name-error' : undefined}
                 required
               />
+              {step1FieldErrors.first_name ? (
+                <p id="first_name-error" className="field-input-error" role="alert">
+                  {step1FieldErrors.first_name}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="field-label" htmlFor="last_name">
@@ -313,11 +564,18 @@ export function IdentityVerificationWizard({
               </label>
               <input
                 id="last_name"
-                className="field-input"
+                className={cn('field-input', step1FieldErrors.last_name && 'field-input--error')}
                 value={draft.last_name}
-                onChange={(e) => setDraft((d) => ({ ...d, last_name: e.target.value }))}
+                onChange={(e) => handlePersianNameChange('last_name', e.target.value)}
+                aria-invalid={Boolean(step1FieldErrors.last_name)}
+                aria-describedby={step1FieldErrors.last_name ? 'last_name-error' : undefined}
                 required
               />
+              {step1FieldErrors.last_name ? (
+                <p id="last_name-error" className="field-input-error" role="alert">
+                  {step1FieldErrors.last_name}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="field-label" htmlFor="national_code">
@@ -325,14 +583,29 @@ export function IdentityVerificationWizard({
               </label>
               <input
                 id="national_code"
-                className="field-input"
+                className={cn('field-input', step1FieldErrors.national_code && 'field-input--error')}
                 dir="ltr"
                 inputMode="numeric"
                 maxLength={10}
                 value={draft.national_code}
-                onChange={(e) => setDraft((d) => ({ ...d, national_code: e.target.value.replace(/\D/g, '') }))}
+                onChange={(e) => handleNationalCodeChange(e.target.value)}
+                onBlur={() => {
+                  if (draft.national_code.length === 10 && getIranNationalCodeInputError(draft.national_code) === 'invalid') {
+                    setStep1FieldErrors((current) => ({
+                      ...current,
+                      national_code: IDENTITY_CLIENT_ERRORS.nationalCodeInvalid,
+                    }));
+                  }
+                }}
+                aria-invalid={Boolean(step1FieldErrors.national_code)}
+                aria-describedby={step1FieldErrors.national_code ? 'national_code-error' : undefined}
                 required
               />
+              {step1FieldErrors.national_code ? (
+                <p id="national_code-error" className="field-input-error" role="alert">
+                  {step1FieldErrors.national_code}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="field-label" htmlFor="date_of_birth" id="date_of_birth-label">
@@ -341,10 +614,14 @@ export function IdentityVerificationWizard({
               <JalaliWheelDateField
                 id="date_of_birth"
                 value={draft.date_of_birth}
-                onChange={(date_of_birth) => setDraft((d) => ({ ...d, date_of_birth }))}
-                placeholder="مثال: ۱۳۷۵ / خرداد / ۱۵"
+                onChange={(date_of_birth) => {
+                  clearStep1FieldError('date_of_birth');
+                  setDraft((d) => ({ ...d, date_of_birth }));
+                }}
+                placeholder="۱۳۷۵/۰۳/۱۵"
                 minDate={minBirthDate}
                 maxDate={maxBirthDate}
+                invalid={Boolean(step1FieldErrors.date_of_birth)}
               />
             </div>
             <div>
@@ -356,13 +633,14 @@ export function IdentityVerificationWizard({
                 title="جنسیت"
                 placeholder="انتخاب کنید"
                 value={draft.gender}
-                onChange={(gender) => setDraft((d) => ({ ...d, gender }))}
-                options={[
-                  { value: 'male', label: 'مرد' },
-                  { value: 'female', label: 'زن' },
-                ]}
+                onChange={(gender) => {
+                  clearStep1FieldError('gender');
+                  setDraft((d) => ({ ...d, gender }));
+                }}
+                options={[...IDENTITY_GENDER_OPTIONS]}
                 layout="grid"
                 required
+                invalid={Boolean(step1FieldErrors.gender)}
               />
             </div>
             <div>
@@ -372,15 +650,28 @@ export function IdentityVerificationWizard({
               <PanelCitySheetField
                 id="city"
                 title="شهر"
-                placeholder="انتخاب شهر"
+                placeholder="مثلاً تهران"
                 value={draft.city}
-                onChange={(city) => setDraft((d) => ({ ...d, city }))}
+                onChange={handlePersianCityChange}
+                onRejectedInput={handlePersianCityRejectedInput}
                 required
+                invalid={Boolean(step1FieldErrors.city)}
+                describedBy={step1FieldErrors.city ? 'city-error' : undefined}
               />
+              {step1FieldErrors.city ? (
+                <p id="city-error" className="field-input-error" role="alert">
+                  {step1FieldErrors.city}
+                </p>
+              ) : null}
             </div>
-            <button type="button" className="btn btn-primary panel-form-grid__full" disabled={pending} onClick={saveStep1}>
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              ذخیره و ادامه
+            <button
+              type="button"
+              className="btn btn-primary panel-form-grid__full"
+              disabled={step1Pending}
+              onClick={continueStep1}
+            >
+              {step1Pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+              {step1Pending ? 'در حال ذخیره…' : 'ادامه'}
             </button>
           </div>
         ) : null}
@@ -395,8 +686,10 @@ export function IdentityVerificationWizard({
             }}
             onBack={() => setStep(0)}
             onContinue={continueFromCard}
-            continueDisabled={!cardFile && !cardReadyOnServer}
-            continuePending={pending}
+            continueDisabled={(!cardFile && !cardReadyOnServer) || cardStepPending}
+            continuePending={cardStepPending}
+            continuePendingLabel="در حال بارگذاری…"
+            uploadProgress={cardUploadProgress}
           />
         ) : null}
 
@@ -433,6 +726,7 @@ export function IdentityVerificationWizard({
             videoBlob={videoBlob}
             pending={pending}
             pendingLabel={pendingLabel}
+            uploadProgress={uploadProgress}
             onBack={() => setStep(2)}
             onSubmit={submitAll}
           />

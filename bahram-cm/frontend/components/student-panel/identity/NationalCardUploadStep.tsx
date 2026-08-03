@@ -4,15 +4,13 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { CheckCircle2, CreditCard, ImagePlus, Loader2, Trash2, Upload } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { studentIdentityArtifactStreamUrl } from '@/lib/student/identityArtifacts';
+import { IdentityUploadProgress } from './IdentityUploadProgress';
 
 const MAX_MB = 8;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
 
-const TIPS = [
-  'تمام کارت در کادر باشد و گوشه‌ها بریده نشود.',
-  'نور کافی باشد و بازتاب یا سایه روی متن نباشد.',
-  'تصویر واضح و بدون تارشدگی باشد.',
-] as const;
+const GUIDANCE =
+  'تصویر واضح از کارت ملی یا شناسنامه را انتخاب کنید؛ کل مدرک داخل کادر و متن خوانا باشد. این تصویر فقط برای تأیید هویت استفاده می‌شود.';
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) {
@@ -29,6 +27,8 @@ type Props = {
   onContinue: () => void;
   continueDisabled?: boolean;
   continuePending?: boolean;
+  continuePendingLabel?: string;
+  uploadProgress?: number | null;
 };
 
 export function NationalCardUploadStep({
@@ -39,6 +39,8 @@ export function NationalCardUploadStep({
   onContinue,
   continueDisabled = false,
   continuePending = false,
+  continuePendingLabel = 'ادامه',
+  uploadProgress = null,
 }: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,7 +91,6 @@ export function NationalCardUploadStep({
   }
 
   const showServerPreview = !file && serverCardArtifactId != null;
-  const showTips = !file && !showServerPreview;
 
   return (
     <div className="panel-identity-card-upload">
@@ -97,11 +98,9 @@ export function NationalCardUploadStep({
         <span className="panel-identity-card-upload__icon" aria-hidden>
           <CreditCard size={20} strokeWidth={2} />
         </span>
-        <div>
-          <h3 className="panel-identity-card-upload__title">بارگذاری تصویر کارت ملی</h3>
-          <p className="panel-identity-card-upload__lead">
-            تصویر روی کارت ملی را بارگذاری کنید. این تصویر فقط برای تأیید هویت استفاده می‌شود.
-          </p>
+        <div className="panel-identity-card-upload__heading">
+          <h3 className="panel-identity-card-upload__title">بارگذاری تصویر کارت ملی / شناسنامه</h3>
+          <p className="panel-identity-card-upload__subtitle">{GUIDANCE}</p>
         </div>
       </div>
 
@@ -123,17 +122,6 @@ export function NationalCardUploadStep({
               تصویر کارت ملی قبلاً ذخیره شده است. در صورت نیاز می‌توانید تصویر جدید انتخاب کنید.
             </p>
           </div>
-        ) : null}
-
-        {showTips ? (
-          <ul className="panel-identity-card-upload__tips">
-            {TIPS.map((tip) => (
-              <li key={tip}>
-                <CheckCircle2 size={14} aria-hidden />
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
         ) : null}
 
         <input
@@ -170,9 +158,9 @@ export function NationalCardUploadStep({
               <span className="panel-identity-card-upload__zone-icon" aria-hidden>
                 <Upload size={22} strokeWidth={2} />
               </span>
-              <span className="panel-identity-card-upload__zone-title">انتخاب یا رها کردن تصویر</span>
+              <span className="panel-identity-card-upload__zone-title">کارت ملی / شناسنامه</span>
               <span className="panel-identity-card-upload__zone-hint">
-                JPG، PNG یا WEBP — حداکثر {MAX_MB.toLocaleString('fa-IR')} مگابایت
+                حداکثر {MAX_MB.toLocaleString('fa-IR')} مگابایت
               </span>
               <span className="btn btn-secondary panel-identity-card-upload__zone-btn">
                 <ImagePlus size={16} aria-hidden />
@@ -194,12 +182,7 @@ export function NationalCardUploadStep({
                 </span>
               </div>
               <div className="panel-identity-card-upload__preview-footer">
-                <div className="panel-identity-card-upload__meta">
-                  <p className="panel-identity-card-upload__filename" title={file.name}>
-                    {file.name}
-                  </p>
-                  <p className="panel-identity-card-upload__filesize">{formatFileSize(file.size)}</p>
-                </div>
+                <p className="panel-identity-card-upload__filesize">{formatFileSize(file.size)}</p>
                 <div className="panel-identity-card-upload__preview-actions">
                   <label htmlFor={inputId} className="btn btn-secondary">
                     <ImagePlus size={16} aria-hidden />
@@ -218,9 +201,14 @@ export function NationalCardUploadStep({
             </div>
           </div>
         )}
+
       </div>
 
       {localError ? <p className="panel-identity-card-upload__error">{localError}</p> : null}
+
+      {uploadProgress != null ? (
+        <IdentityUploadProgress percent={uploadProgress} label="در حال بارگذاری تصویر کارت ملی…" />
+      ) : null}
 
       <div className="panel-identity-step__actions">
         <button type="button" className="btn btn-secondary" onClick={onBack}>
@@ -233,7 +221,7 @@ export function NationalCardUploadStep({
           onClick={onContinue}
         >
           {continuePending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-          {continuePending ? 'در انتظار تأیید دسترسی…' : 'ادامه'}
+          {continuePending ? continuePendingLabel : 'ادامه'}
         </button>
       </div>
     </div>

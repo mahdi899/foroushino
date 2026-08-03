@@ -5,12 +5,9 @@ import { CheckCircle2, ClipboardCheck, CreditCard, Loader2, Video } from 'lucide
 import { formatDateFa } from '@/lib/persian';
 import { primeVideoElement } from '@/lib/media/recorder';
 import { studentIdentityArtifactStreamUrl } from '@/lib/student/identityArtifacts';
+import { IdentityUploadProgress } from './IdentityUploadProgress';
 
-const GENDER_FA: Record<string, string> = {
-  male: 'مرد',
-  female: 'زن',
-};
-
+import { identityGenderLabel } from '@/lib/student/identityLabels';
 type Draft = {
   first_name: string;
   last_name: string;
@@ -28,6 +25,7 @@ type Props = {
   videoBlob: Blob | null;
   pending: boolean;
   pendingLabel?: string;
+  uploadProgress?: number | null;
   onBack: () => void;
   onSubmit: () => void;
 };
@@ -40,6 +38,7 @@ export function IdentityReviewStep({
   videoBlob,
   pending,
   pendingLabel = 'ارسال برای بررسی',
+  uploadProgress = null,
   onBack,
   onSubmit,
 }: Props) {
@@ -87,7 +86,7 @@ export function IdentityReviewStep({
       label: 'تاریخ تولد',
       value: draft.date_of_birth ? formatDateFa(draft.date_of_birth) : '—',
     },
-    { key: 'gender', label: 'جنسیت', value: (GENDER_FA[draft.gender] ?? draft.gender) || '—' },
+    { key: 'gender', label: 'جنسیت', value: identityGenderLabel(draft.gender) || '—' },
     { key: 'city', label: 'شهر', value: draft.city || '—' },
   ];
 
@@ -164,6 +163,10 @@ export function IdentityReviewStep({
           </article>
         </div>
       </section>
+
+      {uploadProgress != null ? (
+        <IdentityUploadProgress percent={uploadProgress} label={pendingLabel} />
+      ) : null}
 
       <div className="panel-identity-step__actions">
         <button type="button" className="btn btn-secondary" onClick={onBack}>

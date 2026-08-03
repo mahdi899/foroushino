@@ -223,8 +223,10 @@ Route::prefix('student')->group(function () {
             ->whereNumber('bankAccount');
 
         Route::get('identity-verification', [StudentIdentityVerificationController::class, 'show']);
-        Route::post('identity-verification/draft', [StudentIdentityVerificationController::class, 'draft']);
-        Route::post('identity-verification/artifacts', [StudentIdentityVerificationController::class, 'uploadArtifact']);
+        Route::post('identity-verification/draft', [StudentIdentityVerificationController::class, 'draft'])
+            ->middleware('throttle:identity-draft');
+        Route::post('identity-verification/artifacts', [StudentIdentityVerificationController::class, 'uploadArtifact'])
+            ->middleware('throttle:identity-upload');
         Route::get('identity-verification/artifacts/{artifact}/stream', [StudentIdentityVerificationController::class, 'streamArtifact'])
             ->whereNumber('artifact');
         Route::get('identity-verification/video-prompt', [StudentIdentityVerificationController::class, 'videoPrompt']);

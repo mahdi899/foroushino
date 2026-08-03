@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export type PanelSheetOption = {
@@ -23,6 +23,7 @@ type PanelOptionSheetFieldProps = {
   className?: string;
   /** Compact grid of options (good for few choices). Default: list. */
   layout?: 'list' | 'grid';
+  invalid?: boolean;
 };
 
 export function PanelOptionSheetField({
@@ -37,6 +38,7 @@ export function PanelOptionSheetField({
   required,
   className,
   layout = 'list',
+  invalid = false,
 }: PanelOptionSheetFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
@@ -80,7 +82,7 @@ export function PanelOptionSheetField({
         ref={triggerRef}
         id={fieldId}
         type="button"
-        className="jalali-date-input-wrap"
+        className={cn('jalali-date-input-wrap', invalid && 'field-input--error')}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-labelledby={labelId}
@@ -102,11 +104,21 @@ export function PanelOptionSheetField({
                 aria-label={title}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="wheel-date-sheet__header">
-                  <span className="wheel-date-sheet__title">{title}</span>
-                  {selectedLabel ? (
-                    <span className="wheel-date-sheet__preview">{selectedLabel}</span>
-                  ) : null}
+                <div className="wheel-date-sheet__header panel-option-sheet__header">
+                  <div className="panel-option-sheet__header-main">
+                    <span className="wheel-date-sheet__title">{title}</span>
+                    {selectedLabel ? (
+                      <span className="wheel-date-sheet__preview">{selectedLabel}</span>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="panel-option-sheet__close"
+                    aria-label="بستن"
+                    onClick={() => setOpen(false)}
+                  >
+                    <X className="h-4 w-4" aria-hidden />
+                  </button>
                 </div>
 
                 <div
@@ -135,11 +147,6 @@ export function PanelOptionSheetField({
                   })}
                 </div>
 
-                <div className="wheel-date-sheet__actions wheel-date-sheet__actions--single">
-                  <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
-                    بستن
-                  </button>
-                </div>
               </div>
             </div>,
             portalTarget,

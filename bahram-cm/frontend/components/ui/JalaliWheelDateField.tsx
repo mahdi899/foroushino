@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { CalendarDays } from 'lucide-react';
 import DateObject from 'react-date-object';
 import { persian, persian_fa } from '@/lib/jalali-datetime';
+import { cn } from '@/lib/cn';
 
 const ITEM_HEIGHT = 40;
 const VISIBLE_ITEMS = 5;
@@ -183,6 +184,7 @@ type JalaliWheelDateFieldProps = {
   placeholder?: string;
   minDate?: Date;
   maxDate?: Date;
+  invalid?: boolean;
 };
 
 export function JalaliWheelDateField({
@@ -192,6 +194,7 @@ export function JalaliWheelDateField({
   placeholder = 'انتخاب تاریخ',
   minDate,
   maxDate,
+  invalid = false,
 }: JalaliWheelDateFieldProps) {
   const [open, setOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -275,9 +278,7 @@ export function JalaliWheelDateField({
     triggerRef.current?.focus();
   }
 
-  const displayValue = selectedParts
-    ? `${toFaDigits(selectedParts.year)} / ${JALALI_MONTHS[selectedParts.month - 1]} / ${toFaDigits(selectedParts.day)}`
-    : '';
+  const displayValue = selectedParts ? toNumericJalaliLabel(selectedParts) : '';
 
   const draftLabel = toNumericJalaliLabel(draft);
 
@@ -292,13 +293,16 @@ export function JalaliWheelDateField({
         ref={triggerRef}
         id={id}
         type="button"
-        className="jalali-date-input-wrap"
+        className={cn('jalali-date-input-wrap', invalid && 'field-input--error')}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-labelledby={id ? `${id}-label` : undefined}
         onClick={() => setOpen(true)}
       >
-        <span className={`jalali-date-input ${displayValue ? '' : 'jalali-date-input--empty'}`}>
+        <span
+          className={`jalali-date-input ${displayValue ? 'jalali-date-input--value' : 'jalali-date-input--empty'}`}
+          dir="ltr"
+        >
           {displayValue || placeholder}
         </span>
         <CalendarDays className="jalali-date-input__icon" aria-hidden />

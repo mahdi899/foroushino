@@ -1,4 +1,7 @@
 import { isIdentityBirthDateAllowed } from '@/lib/student/age';
+import { isPersianNameValid } from '@/lib/persian/persianName';
+import { isPersianCityValid } from '@/lib/persian/persianCity';
+import { isValidIranNationalCode } from '@/lib/iran/nationalCode';
 
 export const IDENTITY_ERROR_BY_CODE: Record<string, string> = {
   invalid_national_code:
@@ -33,13 +36,18 @@ export const IDENTITY_CLIENT_ERROR_TITLES = {
 
 export const IDENTITY_CLIENT_ERRORS = {
   step1Incomplete: 'لطفاً همهٔ فیلدهای مرحلهٔ اطلاعات هویتی را تکمیل کنید.',
-  firstName: 'نام (مطابق کارت ملی) را وارد کنید.',
-  lastName: 'نام خانوادگی (مطابق کارت ملی) را وارد کنید.',
+  firstName: 'نام را وارد کنید.',
+  firstNamePersian: 'نام باید فقط با حروف فارسی نوشته شود.',
+  lastName: 'نام خانوادگی را وارد کنید.',
+  lastNamePersian: 'نام خانوادگی باید فقط با حروف فارسی نوشته شود.',
+  persianNameOnly: 'فقط حروف فارسی مجاز است.',
   nationalCodeLength: 'کد ملی باید ۱۰ رقم باشد.',
+  nationalCodeInvalid: 'کد ملی واردشده معتبر نیست.',
   dateOfBirth: 'تاریخ تولد را انتخاب کنید.',
   dateOfBirthTooYoung: 'حداقل سن برای ثبت‌نام ۱۰ سال است. تاریخ تولد را اصلاح کنید.',
   gender: 'جنسیت را انتخاب کنید.',
   city: 'شهر محل سکونت را وارد کنید.',
+  cityPersian: 'شهر باید با حروف فارسی نوشته شود. استفاده از عدد هم مجاز است.',
   artifacts: 'برای ارسال پرونده، تصویر کارت ملی و ویدیوی سلفی را تکمیل کنید.',
   cardMissing: 'تصویر کارت ملی را بارگذاری کنید.',
   videoMissing: 'ویدیوی سلفی را ضبط و تأیید کنید.',
@@ -164,12 +172,64 @@ export function validateIdentityStep1(draft: {
   gender: string;
   city: string;
 }): string | null {
-  if (!draft.first_name.trim()) return IDENTITY_CLIENT_ERRORS.firstName;
-  if (!draft.last_name.trim()) return IDENTITY_CLIENT_ERRORS.lastName;
-  if (draft.national_code.replace(/\D/g, '').length !== 10) return IDENTITY_CLIENT_ERRORS.nationalCodeLength;
-  if (!draft.date_of_birth.trim()) return IDENTITY_CLIENT_ERRORS.dateOfBirth;
-  if (!isIdentityBirthDateAllowed(draft.date_of_birth)) return IDENTITY_CLIENT_ERRORS.dateOfBirthTooYoung;
-  if (!draft.gender.trim()) return IDENTITY_CLIENT_ERRORS.gender;
-  if (!draft.city.trim()) return IDENTITY_CLIENT_ERRORS.city;
-  return null;
+  const errors = getIdentityStep1FieldErrors(draft);
+  const first = IDENTITY_STEP1_FIELDS.find((field) => errors[field]);
+  return first ? errors[first]! : null;
+}
+
+export type IdentityStep1Field =
+  | 'first_name'
+  | 'last_name'
+  | 'national_code'
+  | 'date_of_birth'
+  | 'gender'
+  | 'city';
+
+export const IDENTITY_STEP1_FIELDS: IdentityStep1Field[] = [
+  'first_name',
+  'last_name',
+  'national_code',
+  'date_of_birth',
+  'gender',
+  'city',
+];
+
+export function getIdentityStep1FieldErrors(draft: {
+  first_name: string;
+  last_name: string;
+  national_code: string;
+  date_of_birth: string;
+  gender: string;
+  city: string;
+}): Partial<Record<IdentityStep1Field, string>> {
+  const errors: Partial<Record<IdentityStep1Field, string>> = {};
+
+  if (!draft.first_name.trim()) {
+    errors.first_name = IDENTITY_CLIENT_ERRORS.firstName;
+  } else if (!isPersianNameValid(draft.first_name)) {
+    errors.first_name = IDENTITY_CLIENT_ERRORS.firstNamePersian;
+  }
+  if (!draft.last_name.trim()) {
+    errors.last_name = IDENTITY_CLIENT_ERRORS.lastName;
+  } else if (!isPersianNameValid(draft.last_name)) {
+    errors.last_name = IDENTITY_CLIENT_ERRORS.lastNamePersian;
+  }
+  if (draft.national_code.replace(/\D/g, '').length !== 10) {
+    errors.national_code = IDENTITY_CLIENT_ERRORS.nationalCodeLength;
+  } else if (!isValidIranNationalCode(draft.national_code)) {
+    errors.national_code = IDENTITY_CLIENT_ERRORS.nationalCodeInvalid;
+  }
+  if (!draft.date_of_birth.trim()) {
+    errors.date_of_birth = IDENTITY_CLIENT_ERRORS.dateOfBirth;
+  } else if (!isIdentityBirthDateAllowed(draft.date_of_birth)) {
+    errors.date_of_birth = IDENTITY_CLIENT_ERRORS.dateOfBirthTooYoung;
+  }
+  if (!draft.gender.trim()) errors.gender = IDENTITY_CLIENT_ERRORS.gender;
+  if (!draft.city.trim()) {
+    errors.city = IDENTITY_CLIENT_ERRORS.city;
+  } else if (!isPersianCityValid(draft.city)) {
+    errors.city = IDENTITY_CLIENT_ERRORS.cityPersian;
+  }
+
+  return errors;
 }
