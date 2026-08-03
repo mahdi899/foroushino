@@ -119,7 +119,7 @@ function AdminShellInner({
         </>
       )}
 
-      <div className={cn('admin-main', focusMode && 'min-w-0 flex-1')}>
+      <div className={cn('admin-main w-full max-w-full min-w-0', focusMode && 'min-w-0 flex-1')}>
         {!focusMode && <AdminHeader />}
 
         <div className={cn('admin-main-scroll', focusMode && 'flex-1')}>{children}</div>

@@ -35,6 +35,7 @@ export function AdminMobileMenu({
         aria-modal="true"
         aria-label="منوی پنل ادمین"
         aria-hidden={!open}
+        inert={!open ? true : undefined}
       >
         <div className="admin-mobile-menu__handle" aria-hidden />
         <div className="admin-mobile-menu__header">
@@ -47,7 +48,7 @@ export function AdminMobileMenu({
               <p className="admin-section-subtitle">دسترسی سریع به بخش‌ها</p>
             </div>
           </div>
-          <button type="button" className="admin-header__icon-btn" onClick={onClose} aria-label="بستن منو">
+          <button type="button" className="admin-mobile-menu__close" onClick={onClose} aria-label="بستن منو">
             <X size={20} />
           </button>
         </div>
@@ -56,7 +57,7 @@ export function AdminMobileMenu({
           {nav.map((group) => (
             <div key={group.group} className="admin-mobile-nav-group">
               <p className="admin-mobile-nav-group__label">{group.group}</p>
-              <ul className="space-y-0.5">
+              <ul className="admin-mobile-nav-group__list">
                 {group.items.map((item) => {
                   const active = isAdminNavActive(pathname, item.href, item.matchPrefix);
                   const navAlertCount = adminNavBadgeCountForHref(item.href, navBadgeCounts);

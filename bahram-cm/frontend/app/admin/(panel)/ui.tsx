@@ -107,20 +107,37 @@ export function Table({
   headCells,
   children,
   mobile,
+  stackBelow = 'md',
+  tableClassName,
 }: {
   head: string[];
   headCells?: React.ReactNode[];
   children: React.ReactNode;
-  /** Card list for viewports below `md` — avoids horizontal scroll */
+  /** Card list for viewports below `stackBelow` — avoids horizontal scroll */
   mobile?: React.ReactNode;
+  stackBelow?: 'md' | 'lg';
+  tableClassName?: string;
 }) {
   const cells = headCells ?? head;
+  const tableHiddenClass = stackBelow === 'lg' ? 'hidden lg:block' : 'hidden md:block';
 
   return (
     <>
-      {mobile ? <AdminTableCardList>{mobile}</AdminTableCardList> : null}
-      <div className={cn('admin-table-wrap overflow-x-auto', mobile && 'hidden md:block')}>
-        <table className="admin-table admin-text-body w-full min-w-[32rem] text-right">
+      {mobile ? (
+        <AdminTableCardList stackBelow={stackBelow}>{mobile}</AdminTableCardList>
+      ) : null}
+      <div
+        className={cn(
+          'admin-table-wrap min-w-0 max-w-full overflow-x-auto',
+          mobile && tableHiddenClass,
+        )}
+      >
+        <table
+          className={cn(
+            'admin-table admin-text-body w-full text-right',
+            tableClassName ?? 'min-w-[32rem]',
+          )}
+        >
           <thead>
             <tr>
               {cells.map((cell, index) => (

@@ -49,6 +49,8 @@
   --admin-line-height-body: 1.6;
   --admin-line-height-caption: 1.5;
 
+  width: 100%;
+  max-width: 100%;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -76,12 +78,15 @@ body:has(.admin-root .admin-login-screen) {
 html:has(.admin-root):not(:has(.admin-login-screen)),
 body:has(.admin-root):not(:has(.admin-login-screen)) {
   height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
 .admin-root .admin-shell {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -89,11 +94,14 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 .admin-root .admin-main {
   display: flex;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: hidden;
 }
 
 .admin-root .admin-main-scroll {
@@ -856,9 +864,14 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 }
 
 .admin-root .admin-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 0.75rem;
   border: 1px solid var(--admin-border-section);
   background: var(--color-surface);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .admin-root .admin-table {
@@ -1614,17 +1627,23 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   bottom: 0;
   z-index: 50;
   display: flex;
-  max-height: min(78dvh, 32rem);
+  max-height: min(92dvh, 42rem);
   flex-direction: column;
   overflow: hidden;
   border-radius: 1.35rem 1.35rem 0 0;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
   background: var(--color-surface);
   box-shadow: 0 -18px 48px rgba(2, 6, 7, 0.28);
-  transform: translateY(105%);
+  transform: translateY(105%) translateZ(0);
+  -webkit-transform: translateY(105%) translateZ(0);
   transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.35rem);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
   pointer-events: none;
+  visibility: hidden;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  isolation: isolate;
 }
 
 .admin-root[data-admin-theme='dark'] .admin-mobile-menu {
@@ -1636,8 +1655,17 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 }
 
 .admin-root .admin-mobile-menu--open {
-  transform: translateY(0);
+  transform: translateY(0) translateZ(0);
+  -webkit-transform: translateY(0) translateZ(0);
   pointer-events: auto;
+  visibility: visible;
+}
+
+@media (min-width: 1024px) {
+  .admin-root .admin-mobile-menu,
+  .admin-root .admin-mobile-menu__scrim {
+    display: none !important;
+  }
 }
 
 .admin-root .admin-mobile-menu__handle {
@@ -1655,18 +1683,83 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.65rem 0.85rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.admin-root .admin-mobile-menu__close {
+  display: grid;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.admin-root .admin-mobile-menu__close:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .admin-root .admin-mobile-menu__body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 0.25rem 0.75rem 0.5rem;
+  touch-action: pan-y;
+  padding: 0.25rem 0.75rem 0.65rem;
+}
+
+.admin-root .admin-mobile-nav-group__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .admin-root .admin-mobile-nav-group {
   margin-bottom: 0.75rem;
+}
+
+@media (max-width: 1023px) {
+  .admin-root .admin-mobile-nav-group__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .admin-root .admin-mobile-nav-item {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 4.5rem;
+    padding: 0.5rem 0.35rem;
+    text-align: center;
+  }
+
+  .admin-root .admin-mobile-nav-item > .min-w-0.flex-1 {
+    flex: none;
+    width: 100%;
+    font-size: var(--admin-text-caption);
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .admin-root .admin-mobile-nav-item > .admin-nav-item__badge {
+    position: absolute;
+    top: 0.35rem;
+    inset-inline-end: 0.35rem;
+  }
+
+  .admin-root .admin-mobile-nav-item {
+    position: relative;
+  }
 }
 
 .admin-root .admin-mobile-nav-group__label {
@@ -1829,6 +1922,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   font-size: var(--admin-text-body);
   line-height: var(--admin-line-height-body);
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
 }
 
 /* Mobile table cards */
@@ -1849,6 +1943,9 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 .admin-root .admin-table-card-list {
   margin-bottom: 0.25rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* Scrollable tab bars */

@@ -45,8 +45,8 @@ export function AdminTableCard({
                 <dt className="admin-text-meta shrink-0 text-text-muted">{field.label}</dt>
                 <dd
                   className={cn(
-                    'admin-text-body min-w-0 text-end font-medium text-text',
-                    field.mono && 'font-mono admin-text-meta',
+                    'admin-text-body min-w-0 max-w-[65%] text-end font-medium text-text break-words',
+                    field.mono && 'font-mono admin-text-meta break-all',
                   )}
                 >
                   {field.value}
@@ -55,7 +55,7 @@ export function AdminTableCard({
             ))}
           </dl>
           {footer ? (
-            <div className="admin-table-card__footer flex flex-wrap items-center justify-end gap-2 pt-3">{footer}</div>
+            <div className="admin-table-card__footer w-full min-w-0 pt-3">{footer}</div>
           ) : null}
         </div>
       </div>
@@ -67,9 +67,12 @@ export function AdminTableCard({
 export function AdminTableCardList({
   children,
   className,
+  stackBelow = 'md',
 }: {
   children: React.ReactNode;
   className?: string;
+  stackBelow?: 'md' | 'lg';
 }) {
-  return <div className={cn('admin-table-card-list space-y-3 md:hidden', className)}>{children}</div>;
+  const hideClass = stackBelow === 'lg' ? 'lg:hidden' : 'md:hidden';
+  return <div className={cn('admin-table-card-list min-w-0 max-w-full space-y-3', hideClass, className)}>{children}</div>;
 }
