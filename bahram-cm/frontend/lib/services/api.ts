@@ -120,7 +120,9 @@ export async function postJson<T>(
           message?: string;
         };
         const captchaMsg = extractValidationMessage(payload, 'captcha');
+        const phoneMsg = extractValidationMessage(payload, 'phone');
         if (captchaMsg) message = captchaMsg;
+        else if (phoneMsg) message = phoneMsg;
         else if (payload?.error?.message_fa) message = payload.error.message_fa;
         else if (payload?.errors?.captcha?.[0]) message = payload.errors.captcha[0];
         else if (payload?.message) message = payload.message;

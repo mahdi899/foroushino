@@ -1,7 +1,6 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { blurActiveElement } from '@/lib/admin/blurActiveElement';
 import { cn } from '@/lib/utils';
 import type { AdminRoleEditor } from './useAdminRoleEditor';
 
@@ -19,7 +18,7 @@ export function AdminRoleCheckboxPanel({ editor }: { editor: AdminRoleEditor }) 
         </div>
 
         <div
-          className="max-h-28 overflow-y-auto overscroll-contain px-1 py-1 [scrollbar-width:thin]"
+          className="max-h-44 overflow-y-auto overscroll-contain px-1 py-1 [scrollbar-width:thin]"
           role="group"
           aria-label="انتخاب نقش‌های مدیر"
         >
@@ -27,13 +26,18 @@ export function AdminRoleCheckboxPanel({ editor }: { editor: AdminRoleEditor }) 
             {options.map((role) => {
               const on = selected.includes(role.name);
               return (
-                <label
+                <button
                   key={role.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  disabled={disabled}
                   title={role.label}
+                  onClick={() => toggleRole(role.name)}
                   className={cn(
-                    'flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-[0.72rem] leading-tight transition',
+                    'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-right text-[0.72rem] leading-tight transition',
                     on ? 'bg-accent/12 text-text' : 'text-text-muted hover:bg-surface hover:text-text',
-                    disabled && 'cursor-default opacity-60',
+                    disabled ? 'cursor-default opacity-60' : 'cursor-pointer',
                   )}
                 >
                   <span
@@ -41,21 +45,12 @@ export function AdminRoleCheckboxPanel({ editor }: { editor: AdminRoleEditor }) 
                       'grid h-3.5 w-3.5 shrink-0 place-items-center rounded border transition',
                       on ? 'border-accent bg-accent text-white' : 'border-border/80 bg-surface',
                     )}
+                    aria-hidden
                   >
                     {on ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : null}
                   </span>
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={on}
-                    disabled={disabled}
-                    onChange={() => {
-                      toggleRole(role.name);
-                      blurActiveElement();
-                    }}
-                  />
                   <span className="min-w-0 flex-1 truncate">{role.label}</span>
-                </label>
+                </button>
               );
             })}
           </div>

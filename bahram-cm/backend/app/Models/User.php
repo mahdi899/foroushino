@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AdminRoleName;
 use App\Enums\UserStatus;
+use App\Support\BootstrapAdmin;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -84,7 +85,9 @@ class User extends Authenticatable
 
     public function isRootAdmin(): bool
     {
-        return $this->is_admin && $this->is_root_admin;
+        // Root ("مدیر اصلی") is identity-locked to one mobile — the DB flag
+        // alone never grants root to another number.
+        return $this->is_admin && BootstrapAdmin::isRootMobile($this->mobile);
     }
 
     public function isSuperAdmin(): bool

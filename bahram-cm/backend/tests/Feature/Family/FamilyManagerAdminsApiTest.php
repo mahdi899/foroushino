@@ -5,6 +5,7 @@ namespace Tests\Feature\Family;
 use App\Enums\AdminRoleName;
 use App\Enums\UserStatus;
 use App\Models\User;
+use App\Support\BootstrapAdmin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -27,6 +28,7 @@ class FamilyManagerAdminsApiTest extends TestCase
             'is_admin' => true,
             'is_root_admin' => true,
             'email' => 'root@example.com',
+            'mobile' => BootstrapAdmin::MOBILE,
         ]);
         $this->root->assignRole(AdminRoleName::SuperAdmin->value);
     }

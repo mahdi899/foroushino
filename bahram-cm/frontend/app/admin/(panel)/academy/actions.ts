@@ -380,9 +380,12 @@ export async function fetchTicketReports(input: { from?: string; to?: string; st
   }
 }
 
-export async function replyToTicket(id: number, message: string) {
+export async function replyToTicket(id: number, message: string, options: { internal?: boolean } = {}) {
   try {
-    await adminFetch(`/tickets/${id}/messages`, { method: 'POST', body: { message } });
+    await adminFetch(`/tickets/${id}/messages`, {
+      method: 'POST',
+      body: { message, is_internal: options.internal === true },
+    });
     revalidateAcademy();
     return { ok: true as const };
   } catch (e) {

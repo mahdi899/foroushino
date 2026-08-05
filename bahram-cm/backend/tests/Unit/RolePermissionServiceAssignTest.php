@@ -119,4 +119,111 @@ class RolePermissionServiceAssignTest extends TestCase
 
         $this->assertNull(User::query()->where('email', 'blocked-super@bahram.test')->first());
     }
+
+    public function test_create_admin_requires_confirm_to_promote_existing_user(): void
+    {
+        $actor = User::factory()->create([
+            'email' => Str::uuid().'@bahram.test',
+            'is_admin' => true,
+        ]);
+        $actor->assignRole(AdminRoleName::SuperAdmin->value);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $actor = $actor->fresh();
+
+        $existing = User::factory()->create([
+            'name' => 'دانشجوی قدیمی',
+            'email' => 'student.promote@bahram.test',
+            'mobile' => '09121112233',
+            'is_admin' => false,
+        ]);
+
+        try {
+            app(RolePermissionService::class)->createAdmin(
+                $actor,
+                'مدیر جدید',
+                'student.promote@bahram.test',
+                'password12345',
+                AdminRoleName::Support->value,
+                '09121112233',
+            );
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertNotEmpty($e->errors()['confirm_promote'] ?? []);
+        }
+
+        $this->assertFalse($existing->fresh()->is_admin);
+    }
+
+    public function test_create_admin_promotes_existing_user_when_confirmed(): void
+    {
+        $actor = User::factory()->create([
+            'email' => Str::uuid().'@bahram.test',
+            'is_admin' => true,
+        ]);
+        $actor->assignRole(AdminRoleName::SuperAdmin->value);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $actor = $actor->fresh();
+
+        $existing = User::factory()->create([
+            'name' => 'دانشجوی قدیمی',
+            'email' => 'student.ok@bahram.test',
+            'mobile' => '09121112244',
+            'is_admin' => false,
+        ]);
+
+        $admin = app(RolePermissionService::class)->createAdmin(
+            $actor,
+            'مدیر ارتقا یافته',
+            'student.ok@bahram.test',
+            'password12345',
+            AdminRoleName::Support->value,
+            '09121112244',
+            true,
+        );
+
+        $this->assertSame($existing->id, $admin->id);
+        $this->assertTrue($admin->is_admin);
+        $this->assertTrue($admin->hasRole(AdminRoleName::Support->value));
+        $this->assertSame('مدیر ارتقا یافته', $admin->name);
+        $this->assertSame(1, User::query()->where('email', 'student.ok@bahram.test')->count());
+    }
+
+    public function test_create_admin_rejects_existing_admin_without_promote(): void
+    {
+        $actor = User::factory()->create([
+            'email' => Str::uuid().'@bahram.test',
+            'is_admin' => true,
+        ]);
+        $actor->assignRole(AdminRoleName::SuperAdmin->value);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $actor = $actor->fresh();
+
+        $existingAdmin = User::factory()->create([
+            'email' => 'already.admin@bahram.test',
+            'mobile' => '09121112255',
+            'is_admin' => true,
+        ]);
+        $existingAdmin->assignRole(AdminRoleName::Finance->value);
+
+        try {
+            app(RolePermissionService::class)->createAdmin(
+                $actor,
+                'تلاش دوباره',
+                'already.admin@bahram.test',
+                'password12345',
+                AdminRoleName::Support->value,
+                '09121112255',
+                true,
+            );
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertSame(
+                'این کاربر از قبل مدیر است. نقش را از لیست مدیران تغییر دهید.',
+                $e->errors()['user'][0] ?? null,
+            );
+        }
+
+        $this->assertTrue($existingAdmin->fresh()->hasRole(AdminRoleName::Finance->value));
+        $this->assertFalse($existingAdmin->fresh()->hasRole(AdminRoleName::Support->value));
+    }
 }

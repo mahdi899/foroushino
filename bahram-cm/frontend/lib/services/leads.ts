@@ -120,3 +120,63 @@ export async function submitContact(input: ContactInput): Promise<ApiResult<Lead
   if (!result.ok) return result;
   return { ok: true, data: result.data.data };
 }
+
+/** Lead-capture form on a `/l/[slug]` landing page built from the admin panel. */
+export type LandingLeadInput = {
+  name: string;
+  phone: string;
+  message?: string;
+  email?: string;
+  landing_slug: string;
+};
+
+export type LandingLeadFieldErrors = Partial<Record<'name' | 'phone' | 'email', string>>;
+
+/** Iranian mobile: exactly 11 digits, must start with 0 (e.g. 09xxxxxxxxx). */
+const LANDING_PHONE_RE = /^0\d{10}$/;
+
+function toLatinDigits(value: string): string {
+  return value
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - "۰".charCodeAt(0)))
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - "٠".charCodeAt(0)));
+}
+
+/** Digits only, max 11 — for controlled phone input on landing forms. */
+export function normalizeLandingPhoneInput(raw: string): string {
+  return toLatinDigits(raw).replace(/\D/g, "").slice(0, 11);
+}
+
+/** Name + phone are always required; email is only validated when the page collects it. */
+export function validateLandingLead(input: {
+  name: string;
+  phone: string;
+  email?: string;
+  requireEmail?: boolean;
+}): LandingLeadFieldErrors {
+  const errors: LandingLeadFieldErrors = {};
+  if (!input.name || input.name.trim().length < 2) {
+    errors.name = "نام و نام خانوادگی را کامل وارد کن.";
+  }
+  const phone = normalizeLandingPhoneInput(input.phone);
+  if (!LANDING_PHONE_RE.test(phone)) {
+    errors.phone = "شماره باید ۱۱ رقم باشد و با ۰ شروع شود.";
+  }
+  if (input.requireEmail && (!input.email || !EMAIL_RE.test(input.email.trim()))) {
+    errors.email = "ایمیل را درست وارد کن.";
+  }
+  return errors;
+}
+
+export async function submitLandingLead(input: LandingLeadInput): Promise<ApiResult<LeadResult>> {
+  const result = await postJson<LeadResponse>("/leads", {
+    name: input.name.trim(),
+    phone: normalizeLandingPhoneInput(input.phone),
+    email: input.email?.trim() || undefined,
+    message: input.message?.trim() || undefined,
+    landing_slug: input.landing_slug,
+    page_url: typeof window !== "undefined" ? window.location.href : undefined,
+  });
+
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.data };
+}

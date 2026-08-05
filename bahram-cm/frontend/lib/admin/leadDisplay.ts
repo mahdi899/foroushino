@@ -13,6 +13,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   web_apply: 'درخواست دسترسی',
   web_contact: 'تماس با ما',
   web_newsletter: 'خبرنامه',
+  web_landing: 'لندینگ ثبت‌شماره',
   website: 'سایت',
   chatbot: 'چت‌بات',
 };

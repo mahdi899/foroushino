@@ -232,6 +232,15 @@ class AdminTelegramLogService
         ]);
     }
 
+    public function notifyTicketInternalNote(Ticket $ticket, string $message, string $senderName): void
+    {
+        $this->notify(AdminTelegramEventKey::TicketInternalNote, [
+            'ticket_id' => $ticket->id,
+            'message' => $message,
+            'sender_name' => $senderName,
+        ]);
+    }
+
     public function notifyStudentRegistered(User $user): void
     {
         $this->notify(AdminTelegramEventKey::StudentRegistered, ['user_id' => $user->id]);
@@ -295,7 +304,8 @@ class AdminTelegramLogService
             AdminTelegramEventKey::OrderUpdated => $this->orderUpdatedLines($context['order'] ?? null, $context['changes'] ?? []),
             AdminTelegramEventKey::TicketCreated,
             AdminTelegramEventKey::TicketStudentReply,
-            AdminTelegramEventKey::TicketAdminReply => $this->ticketLines($context['ticket'] ?? null, $context),
+            AdminTelegramEventKey::TicketAdminReply,
+            AdminTelegramEventKey::TicketInternalNote => $this->ticketLines($context['ticket'] ?? null, $context),
             AdminTelegramEventKey::StudentRegistered,
             AdminTelegramEventKey::StudentFirstLogin,
             AdminTelegramEventKey::ProfileUpdated => $this->userLines($context['user'] ?? null),
@@ -386,6 +396,10 @@ class AdminTelegramLogService
         if ($user) {
             $lines[] = $this->field('دانشجو', $user->name ?: '—');
             $lines[] = $this->field('موبایل', $user->mobile ?? '—', true);
+        }
+
+        if (! empty($context['sender_name'])) {
+            $lines[] = $this->field('فرستنده', (string) $context['sender_name']);
         }
 
         if (! empty($context['message'])) {

@@ -24,6 +24,9 @@ class DemoRoleAdminSeeder extends Seeder
             [AdminRoleName::ReadOnly, 'role.readonly@bahram.local', 'ناظر (تست)', '09121000006'],
             [AdminRoleName::StudentManager, 'role.students@bahram.local', 'مدیر دانشجویان (تست)', '09121000007'],
             [AdminRoleName::Support, 'role.support@bahram.local', 'پشتیبانی (تست)', '09121000008'],
+            [AdminRoleName::TechSupport, 'role.tech-support@bahram.local', 'پشتیبان فنی (تست)', '09121000009'],
+            [AdminRoleName::TechManager, 'role.tech-manager@bahram.local', 'مدیر فنی (تست)', '09121000010'],
+            [AdminRoleName::FamilyManager, 'role.family@bahram.local', 'مدیر خانواده (تست)', '09121000011'],
         ];
 
         foreach ($accounts as [$role, $email, $name, $mobile]) {

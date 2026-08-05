@@ -16,6 +16,7 @@ enum AdminTelegramEventKey: string
     case TicketCreated = 'ticket_created';
     case TicketStudentReply = 'ticket_student_reply';
     case TicketAdminReply = 'ticket_admin_reply';
+    case TicketInternalNote = 'ticket_internal_note';
     case StudentRegistered = 'student_registered';
     case StudentFirstLogin = 'student_first_login';
     case ProfileUpdated = 'profile_updated';
@@ -37,6 +38,7 @@ enum AdminTelegramEventKey: string
             self::TicketCreated => 'تیکت جدید',
             self::TicketStudentReply => 'پاسخ دانشجو به تیکت',
             self::TicketAdminReply => 'پاسخ ادمین به تیکت',
+            self::TicketInternalNote => 'پیام داخلی تیم پشتیبانی',
             self::StudentRegistered => 'ثبت‌نام دانشجو جدید',
             self::StudentFirstLogin => 'اولین ورود دانشجو',
             self::ProfileUpdated => 'به‌روزرسانی پروفایل',
@@ -60,6 +62,7 @@ enum AdminTelegramEventKey: string
             self::TicketCreated => 'وقتی دانشجو تیکت پشتیبانی ثبت می‌کند',
             self::TicketStudentReply => 'وقتی دانشجو به تیکت پاسخ می‌دهد',
             self::TicketAdminReply => 'وقتی ادمین به تیکت پاسخ می‌دهد',
+            self::TicketInternalNote => 'وقتی پیام داخلی بین پشتیبانی و تیم فنی روی تیکت ثبت می‌شود',
             self::StudentRegistered => 'وقتی دانشجو برای اولین بار ثبت‌نام می‌کند',
             self::StudentFirstLogin => 'وقتی دانشجو برای اولین بار وارد پنل می‌شود',
             self::ProfileUpdated => 'وقتی دانشجو پروفایل خود را ویرایش می‌کند',
@@ -83,6 +86,7 @@ enum AdminTelegramEventKey: string
             self::TicketCreated => '🎫',
             self::TicketStudentReply => '💬',
             self::TicketAdminReply => '🛡️',
+            self::TicketInternalNote => '🔒',
             self::StudentRegistered => '🆕',
             self::StudentFirstLogin => '🎉',
             self::ProfileUpdated => '✏️',
@@ -102,7 +106,7 @@ enum AdminTelegramEventKey: string
             self::OrderCreated, self::PaymentStarted, self::OrderPaid, self::OrderFulfilled,
             self::PaymentCancelled, self::PaymentFailed, self::OrderUpdated, self::LicenseIssued,
             self::ProfileCompleted => AdminTelegramEventCategory::Commerce,
-            self::TicketCreated, self::TicketStudentReply, self::TicketAdminReply => AdminTelegramEventCategory::Support,
+            self::TicketCreated, self::TicketStudentReply, self::TicketAdminReply, self::TicketInternalNote => AdminTelegramEventCategory::Support,
             self::StudentRegistered, self::StudentFirstLogin, self::ProfileUpdated,
             self::SatApplicationSubmitted, self::DestinationMemberLeft => AdminTelegramEventCategory::Users,
         };

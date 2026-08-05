@@ -2,12 +2,16 @@ import 'package:flutter/foundation.dart';
 
 /// Default super-admin for the Bahram admin panel, Family web, and this manager app.
 /// Created via `php artisan app:create-admin` — OTP exempt on the backend.
+///
+/// Root admin ("مدیر اصلی") is locked to [mobile] only on the backend
+/// (`BootstrapAdmin::MOBILE`); the DB flag alone does not grant root to anyone else.
 class BootstrapAdmin {
   BootstrapAdmin._();
 
   static const name = 'Mehdi Akbari Joghal';
   static const email = 'shokspy@gmail.com';
   static const password = 'NacP#i3Wqt9edhJlvgkj';
+  /// Canonical root-admin mobile — must match backend BootstrapAdmin::MOBILE
   static const mobile = '09367018089';
   static const role = 'super-admin';
   static const otpExempt = true;

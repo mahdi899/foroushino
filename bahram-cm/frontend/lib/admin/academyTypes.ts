@@ -275,7 +275,7 @@ export type AdminTicket = {
   tech_resolved_at?: string | null;
   tech_resolved_by?: number | null;
   tech_resolver_name?: string | null;
-  status: 'open' | 'answered' | 'waiting_user' | 'closed';
+  status: 'open' | 'in_review' | 'answered' | 'waiting_user' | 'closed';
   priority: 'low' | 'normal' | 'high';
   user_id?: number;
   user_name: string | null;
@@ -288,7 +288,9 @@ export type AdminTicketMessage = {
   id: number;
   message: string;
   is_admin_reply: boolean;
+  is_internal?: boolean;
   sender_name?: string | null;
+  sender_role_label?: string | null;
   has_attachment: boolean;
   created_at: string | null;
 };
@@ -296,6 +298,8 @@ export type AdminTicketMessage = {
 export type AdminTicketDetail = AdminTicket & {
   user_id: number;
   messages: AdminTicketMessage[];
+  can_reply_to_user?: boolean;
+  must_use_internal?: boolean;
 };
 
 export type AdminTicketUserGroup = {
@@ -308,7 +312,7 @@ export type AdminTicketUserGroup = {
 };
 
 export type AdminTicketReport = {
-  summary: { total: number; open: number; answered: number; waiting_user: number; closed: number };
+  summary: { total: number; open: number; in_review?: number; answered: number; waiting_user: number; closed: number };
   by_department: { department: string; count: number }[];
   by_day: { date: string; created: number; closed: number }[];
   top_users: { user_id: number; name: string | null; mobile: string | null; count: number }[];
@@ -374,6 +378,7 @@ export const SAT_STATUS_LABELS: Record<string, string> = {
 
 export const TICKET_STATUS_LABELS: Record<string, string> = {
   open: 'باز',
+  in_review: 'در حال بررسی',
   answered: 'پاسخ داده شده',
   waiting_user: 'در انتظار پاسخ کاربر',
   closed: 'بسته شده',

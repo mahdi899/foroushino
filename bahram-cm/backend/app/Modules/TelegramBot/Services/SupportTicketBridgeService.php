@@ -48,7 +48,7 @@ class SupportTicketBridgeService
 
         $open = Ticket::query()
             ->where('user_id', $account->user_id)
-            ->whereIn('status', ['open', 'answered', 'waiting_user'])
+            ->whereIn('status', ['open', 'in_review', 'answered', 'waiting_user'])
             ->latest('id')
             ->first();
 
@@ -65,13 +65,19 @@ class SupportTicketBridgeService
         ]);
     }
 
-    public function appendUserMessage(Ticket $ticket, string $body, bool $isAdmin = false, ?int $adminUserId = null): TicketMessage
-    {
+    public function appendUserMessage(
+        Ticket $ticket,
+        string $body,
+        bool $isAdmin = false,
+        ?int $adminUserId = null,
+        bool $isInternal = false,
+    ): TicketMessage {
         return TicketMessage::query()->create([
             'ticket_id' => $ticket->id,
             'user_id' => $adminUserId,
             'message' => $body,
             'is_admin_reply' => $isAdmin,
+            'is_internal' => $isInternal,
         ]);
     }
 

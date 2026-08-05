@@ -26,6 +26,7 @@ use App\Services\Identity\Contracts\MobileOwnershipVerificationProvider;
 use App\Services\Identity\DTOs\MobileOwnershipVerificationResult;
 use App\Services\Identity\DTOs\ProviderConnectionResult;
 use App\Services\Identity\IdentityVerificationProviderRegistry;
+use App\Support\BootstrapAdmin;
 use App\Support\NationalCode;
 use App\Support\PermissionCatalog;
 use Database\Seeders\RolePermissionSeeder;
@@ -582,6 +583,52 @@ class RbacAndIdentityTest extends TestCase
         ]);
     }
 
+    public function test_super_admin_can_promote_existing_user_to_admin(): void
+    {
+        $super = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        Sanctum::actingAs($super);
+
+        User::factory()->create([
+            'name' => 'دانشجو',
+            'email' => 'promote.me@bahram.test',
+            'mobile' => '09129876543',
+            'is_admin' => false,
+        ]);
+
+        $this->postJson('/api/v1/roles/admins', [
+            'name' => 'مدیر ارتقا',
+            'email' => 'promote.me@bahram.test',
+            'mobile' => '09129876543',
+            'password' => 'password123',
+            'role' => AdminRoleName::Finance->value,
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'validation_error')
+            ->assertJsonStructure(['error' => ['details' => ['confirm_promote']]]);
+
+        $this->postJson('/api/v1/roles/admins', [
+            'name' => 'مدیر ارتقا',
+            'email' => 'promote.me@bahram.test',
+            'mobile' => '09129876543',
+            'password' => 'password123',
+            'role' => AdminRoleName::Finance->value,
+            'confirm_promote' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.email', 'promote.me@bahram.test')
+            ->assertJsonPath('data.roles.0', 'finance');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'promote.me@bahram.test',
+            'is_admin' => true,
+        ]);
+
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $super->id,
+            'action' => 'admin.promoted',
+        ]);
+    }
+
     public function test_support_cannot_create_admin_user(): void
     {
         $support = $this->makeAdmin(AdminRoleName::Support);
@@ -637,7 +684,7 @@ class RbacAndIdentityTest extends TestCase
     public function test_root_admin_cannot_be_deleted(): void
     {
         $root = $this->makeAdmin(AdminRoleName::SuperAdmin, isRootAdmin: true);
-        $other = $this->makeAdmin(AdminRoleName::SuperAdmin, isRootAdmin: true);
+        $other = $this->makeAdmin(AdminRoleName::SuperAdmin);
         Sanctum::actingAs($other);
 
         $this->deleteJson('/api/v1/roles/admins/'.$root->id)
@@ -645,14 +692,30 @@ class RbacAndIdentityTest extends TestCase
             ->assertJsonPath('error.details.user.0', 'مدیر اصلی سیستم قابل حذف نیست.');
     }
 
+    public function test_is_root_admin_flag_alone_does_not_grant_root_without_canonical_mobile(): void
+    {
+        $imposter = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        $imposter->forceFill([
+            'is_root_admin' => true,
+            'mobile' => '09104085688',
+        ])->save();
+
+        $this->assertFalse($imposter->fresh()->isRootAdmin());
+    }
+
     private function makeAdmin(AdminRoleName $role, bool $isRootAdmin = false): User
     {
-        $user = User::factory()->create([
+        $attrs = [
             'email' => Str::uuid().'@bahram.test',
             'password' => Hash::make('password'),
             'is_admin' => true,
             'is_root_admin' => $isRootAdmin,
-        ]);
+        ];
+        if ($isRootAdmin) {
+            $attrs['mobile'] = BootstrapAdmin::MOBILE;
+        }
+
+        $user = User::factory()->create($attrs);
         $user->assignRole($role->value);
 
         return $user;

@@ -28,7 +28,7 @@ function orderTone(status: string) {
 }
 
 function ticketTone(status: string) {
-  if (status === 'open') return 'warning' as const;
+  if (status === 'open' || status === 'in_review' || status === 'waiting_user') return 'warning' as const;
   if (status === 'closed') return 'default' as const;
   return 'success' as const;
 }

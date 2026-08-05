@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -51,7 +52,7 @@ class _FamilyAdminsScreenState extends State<FamilyAdminsScreen> {
     });
   }
 
-  Future<void> _createAdmin() async {
+  Future<void> _createAdmin({bool confirmPromote = false}) async {
     if (_nameCtrl.text.trim().isEmpty ||
         _emailCtrl.text.trim().isEmpty ||
         _mobileCtrl.text.trim().isEmpty ||
@@ -67,19 +68,43 @@ class _FamilyAdminsScreenState extends State<FamilyAdminsScreen> {
             email: _emailCtrl.text.trim(),
             mobile: _mobileCtrl.text.trim(),
             password: _passwordCtrl.text,
+            confirmPromote: confirmPromote,
           );
       _nameCtrl.clear();
       _emailCtrl.clear();
       _mobileCtrl.clear();
       _passwordCtrl.clear();
       if (mounted) {
-        showAppSnackBar(context, 'مدیر خانواده ساخته شد.');
+        showAppSnackBar(
+          context,
+          confirmPromote ? 'کاربر موجود به مدیر خانواده ارتقا یافت.' : 'مدیر خانواده ساخته شد.',
+        );
         _reload();
       }
     } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      if (!mounted) return;
+      if (!confirmPromote && e is ApiException && e.fieldErrors?.containsKey('confirm_promote') == true) {
+        final msg = e.fieldErrors!['confirm_promote']!.first;
+        setState(() => _creating = false);
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('ارتقا به مدیر'),
+            content: Text(msg),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('انصراف')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تأیید ارتقا')),
+            ],
+          ),
+        );
+        if (ok == true && mounted) {
+          await _createAdmin(confirmPromote: true);
+        }
+        return;
+      }
+      showAppSnackBar(context, messageOf(e));
     } finally {
-      if (mounted) setState(() => _creating = false);
+      if (mounted && _creating) setState(() => _creating = false);
     }
   }
 

@@ -12,6 +12,7 @@ class LeadService
     public function create(array $data): Lead
     {
         return Lead::create([
+            'landing_page_id' => $data['landing_page_id'] ?? null,
             'name' => $data['name'] ?? null,
             'phone' => $data['phone'] ?? null,
             'email' => $data['email'] ?? null,

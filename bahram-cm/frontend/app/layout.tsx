@@ -67,6 +67,8 @@ export default async function RootLayout({
     isAdminRoute ||
     pathname.startsWith("/panel") ||
     pathname.startsWith("/family") ||
+    pathname.startsWith("/l/") ||
+    pathname === "/l" ||
     onFamilyHost;
   const hidePromoRoute = pathname.startsWith("/seminars/") || pathname.startsWith("/purchase/");
   // Marketing ISR paths must not call cookies()/getCurrentStudent() or the

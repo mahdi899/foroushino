@@ -63,8 +63,17 @@ export function TicketDetailPanel({ ticket }: { ticket: AdminTicketDetail }) {
           {ticket.messages.map((m) => (
             <div
               key={m.id}
-              className={`max-w-2xl rounded-lg p-3 text-small ${m.is_admin_reply ? 'mr-auto bg-accent-soft text-primary-dark' : 'ml-auto bg-surface-soft'}`}
+              className={`max-w-2xl rounded-lg p-3 text-small ${
+                m.is_internal
+                  ? 'border border-dashed border-warning/50 bg-warning/10 text-primary-dark'
+                  : m.is_admin_reply
+                    ? 'mr-auto bg-accent-soft text-primary-dark'
+                    : 'ml-auto bg-surface-soft'
+              }`}
             >
+              {m.is_internal ? (
+                <p className="mb-1 text-caption font-medium text-warning">پیام داخلی · تیکت #{ticket.id}</p>
+              ) : null}
               <p>{m.message}</p>
               <p className="mt-1 text-caption text-text-muted">{formatDateTime(m.created_at)}</p>
             </div>

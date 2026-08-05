@@ -655,12 +655,14 @@ class FamilyManagerService {
     required String email,
     required String mobile,
     required String password,
+    bool confirmPromote = false,
   }) async {
     final res = await api.post('$_base/admins', data: {
       'name': name,
       'email': email,
       'mobile': mobile,
       'password': password,
+      if (confirmPromote) 'confirm_promote': true,
     });
     return FamilyManagerAdmin.fromJson((res['data'] as Map).cast<String, dynamic>());
   }

@@ -232,7 +232,11 @@ trait BotAdminPanelFeatureHandlers
 
         $thread = '';
         foreach ($messages as $msg) {
-            $who = $msg->is_admin_reply ? 'ادمین' : 'کاربر';
+            if ($msg->is_internal) {
+                $who = 'داخلی';
+            } else {
+                $who = $msg->is_admin_reply ? 'ادمین' : 'کاربر';
+            }
             $thread .= "• [{$who}] ".mb_substr((string) $msg->message, 0, 200)."\n";
         }
 

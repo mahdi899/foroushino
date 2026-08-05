@@ -36,7 +36,7 @@ class BotTicketDeliveryService
         return Ticket::query()
             ->with(['user:id,name,mobile'])
             ->whereIn('user_id', $userIds)
-            ->whereIn('status', ['open', 'answered', 'waiting_user'])
+            ->whereIn('status', ['open', 'in_review', 'answered', 'waiting_user'])
             ->latest('id')
             ->skip($offset)
             ->take($limit)
@@ -56,7 +56,7 @@ class BotTicketDeliveryService
 
         return Ticket::query()
             ->whereIn('user_id', $userIds)
-            ->whereIn('status', ['open', 'answered', 'waiting_user'])
+            ->whereIn('status', ['open', 'in_review', 'answered', 'waiting_user'])
             ->count();
     }
 
@@ -127,6 +127,7 @@ class BotTicketDeliveryService
         $name = $user?->name ?? 'کاربر';
         $last = TicketMessage::query()
             ->where('ticket_id', $ticket->id)
+            ->where('is_internal', false)
             ->latest('id')
             ->first();
 

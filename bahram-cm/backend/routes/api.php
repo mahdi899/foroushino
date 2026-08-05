@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\ContentCommentController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\StudentTestimonialController;
+use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\MiniCourseCommentController;
 use App\Http\Controllers\Api\MiniCourseController;
@@ -109,6 +110,9 @@ Route::match(['get', 'post'], '/payments/telegram/{token}', [TelegramPaymentLink
 
 // Leads
 Route::post('/leads', [LeadController::class, 'store'])->middleware('throttle:leads');
+
+// Landing pages (lead-capture pages built from the admin panel)
+Route::get('/landing-pages/{slug}', [LandingPageController::class, 'show']);
 
 // Chatbot
 Route::get('/chatbot/settings', [ChatbotController::class, 'settings']);

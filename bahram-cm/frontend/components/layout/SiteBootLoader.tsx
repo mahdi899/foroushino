@@ -16,7 +16,9 @@ function isBareShellPath(pathname: string | null | undefined): boolean {
   return Boolean(
     pathname?.startsWith('/admin') ||
       pathname?.startsWith('/panel') ||
-      pathname?.startsWith('/family'),
+      pathname?.startsWith('/family') ||
+      pathname?.startsWith('/l/') ||
+      pathname === '/l',
   );
 }
 

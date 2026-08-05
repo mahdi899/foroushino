@@ -82,6 +82,7 @@ class RoleAdminController extends Controller
             'mobile' => ['required', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:8', 'max:128'],
             'role' => ['required', 'string', Rule::exists('roles', 'name')->where('guard_name', 'web')],
+            'confirm_promote' => ['sometimes', 'boolean'],
         ]);
 
         $admin = $this->roles->createAdmin(
@@ -91,6 +92,7 @@ class RoleAdminController extends Controller
             $data['password'],
             $data['role'],
             $data['mobile'],
+            (bool) ($data['confirm_promote'] ?? false),
         );
 
         return response()->json(['data' => $this->adminPayload($admin, $request->user())], 201);

@@ -41,6 +41,7 @@ class DashboardController extends Controller
 
     private const TICKET_STATUS_LABELS = [
         'open' => 'باز',
+        'in_review' => 'در حال بررسی',
         'answered' => 'پاسخ داده شده',
         'waiting_user' => 'در انتظار پاسخ کاربر',
         'closed' => 'بسته شده',

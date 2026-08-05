@@ -134,29 +134,31 @@ function PermissionModuleSection({
                 <li key={perm.name}>
                   <label
                     className={cn(
-                      'group flex cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 text-small transition',
+                      'group relative flex cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 text-small transition',
                       on
                         ? cn('border-accent/35 shadow-soft', ui.soft)
                         : 'border-border bg-surface hover:border-border/80 hover:bg-surface-soft/50',
                       (disabled || isSuper || locked) && 'cursor-default',
                     )}
                   >
-                    <span
-                      className={cn(
-                        'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border transition',
-                        on ? 'border-accent bg-accent text-white' : 'border-border bg-surface group-hover:border-accent/40',
-                      )}
-                    >
-                      {on ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : null}
-                    </span>
+                    {/* Keep focus target inside the label — `sr-only` causes scroll jump to blank space. */}
                     <input
                       type="checkbox"
-                      className="sr-only"
+                      className="absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
                       checked={on}
                       disabled={disabled || isSuper || locked}
                       onChange={() => onToggle(perm.name, perm.reserved)}
                     />
-                    <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        'pointer-events-none mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border transition',
+                        on ? 'border-accent bg-accent text-white' : 'border-border bg-surface group-hover:border-accent/40',
+                      )}
+                      aria-hidden
+                    >
+                      {on ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> : null}
+                    </span>
+                    <span className="pointer-events-none min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-text">{perm.label}</span>
                         {perm.reserved ? (
@@ -182,6 +184,12 @@ function PermissionModuleSection({
 }
 
 function ModuleJumpNav({ groups }: { groups: PermissionGroup[] }) {
+  function jumpToModule(module: string) {
+    const el = document.getElementById(moduleAnchorId(module));
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
     <nav
       aria-label="پرش به ماژول‌ها"
@@ -193,8 +201,9 @@ function ModuleJumpNav({ groups }: { groups: PermissionGroup[] }) {
           const label = MODULE_LABELS_FA[group.module] ?? group.module;
           return (
             <li key={group.module}>
-              <a
-                href={`#${moduleAnchorId(group.module)}`}
+              <button
+                type="button"
+                onClick={() => jumpToModule(group.module)}
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-caption font-medium text-text-muted transition hover:bg-surface-soft hover:text-text"
               >
                 <span
@@ -206,7 +215,7 @@ function ModuleJumpNav({ groups }: { groups: PermissionGroup[] }) {
                   <ui.icon className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </span>
                 {label}
-              </a>
+              </button>
             </li>
           );
         })}

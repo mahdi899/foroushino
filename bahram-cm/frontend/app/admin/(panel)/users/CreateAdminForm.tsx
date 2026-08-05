@@ -23,12 +23,12 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [promotePrompt, setPromotePrompt] = useState<string | null>(null);
 
   const assignableRoles = roles.filter((r) => isSuperAdmin || r.name !== 'super-admin');
   const defaultRole = assignableRoles[0]?.name ?? '';
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(confirmPromote: boolean) {
     setPending(true);
     setError('');
     setMessage('');
@@ -45,21 +45,39 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
       mobile: mobile.trim(),
       password,
       role: role || defaultRole,
+      confirm_promote: confirmPromote || undefined,
     });
 
     setPending(false);
 
     if (res.ok) {
-      setMessage(`مدیر «${res.name}» با نقش انتخاب‌شده ساخته شد.`);
+      setPromotePrompt(null);
+      setMessage(
+        confirmPromote
+          ? `کاربر موجود به مدیر «${res.name}» ارتقا یافت.`
+          : `مدیر «${res.name}» با نقش انتخاب‌شده ساخته شد.`,
+      );
       setName('');
       setEmail('');
       setMobile('');
       setPassword('');
       setRole(defaultRole);
       router.refresh();
-    } else {
-      setError(res.error);
+      return;
     }
+
+    if ('needsPromoteConfirm' in res) {
+      setPromotePrompt(res.message);
+      return;
+    }
+
+    setPromotePrompt(null);
+    setError(res.error);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await submit(false);
   }
 
   if (!open) {
@@ -80,7 +98,8 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
             افزودن مدیر
           </h2>
           <p className="mt-1 text-caption text-text-muted">
-            نام، ایمیل، شماره موبایل و رمز عبور را وارد کنید و یکی از نقش‌های تعریف‌شده را اختصاص دهید.
+            نام، ایمیل، شماره موبایل و رمز عبور را وارد کنید و یکی از نقش‌های تعریف‌شده را اختصاص دهید. اگر
+            کاربر از قبل در سیستم باشد، پس از تأیید ارتقا داده می‌شود.
           </p>
         </div>
         <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary text-caption">
@@ -94,7 +113,10 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
           <input
             required
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setPromotePrompt(null);
+            }}
             className="field-input w-full"
             placeholder="مثلاً علی رضایی"
             autoComplete="name"
@@ -106,7 +128,10 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
             required
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setPromotePrompt(null);
+            }}
             className="field-input w-full"
             placeholder="admin@example.com"
             dir="ltr"
@@ -119,7 +144,10 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
             required
             type="tel"
             value={mobile}
-            onChange={(e) => setMobile(sanitizePhoneInput(e.target.value))}
+            onChange={(e) => {
+              setMobile(sanitizePhoneInput(e.target.value));
+              setPromotePrompt(null);
+            }}
             className="field-input w-full"
             placeholder="۰۹۱۲۱۲۳۴۵۶۷"
             dir="ltr"
@@ -158,14 +186,40 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
         </label>
       </div>
 
+      {promotePrompt ? (
+        <div className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-3 text-small text-amber-950">
+          <p>{promotePrompt}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void submit(true)}
+              className="btn btn-primary min-h-11"
+            >
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تأیید ارتقا به مدیر'}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setPromotePrompt(null)}
+              className="btn btn-secondary min-h-11"
+            >
+              انصراف
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {message ? <p className="text-small text-success">{message}</p> : null}
       {error ? <p className="text-small text-error">{error}</p> : null}
 
-      <div className="flex flex-wrap gap-2">
-        <button type="submit" disabled={pending} className="btn btn-primary min-h-11">
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ساخت مدیر'}
-        </button>
-      </div>
+      {!promotePrompt ? (
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" disabled={pending} className="btn btn-primary min-h-11">
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ساخت مدیر'}
+          </button>
+        </div>
+      ) : null}
     </form>
   );
 }
