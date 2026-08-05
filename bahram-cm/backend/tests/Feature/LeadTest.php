@@ -84,4 +84,31 @@ class LeadTest extends TestCase
             'source' => 'web_newsletter',
         ]);
     }
+
+    public function test_landing_lead_rejects_duplicate_phone_on_same_page(): void
+    {
+        $page = \App\Models\LandingPage::query()->create([
+            'slug' => 'test-landing',
+            'title' => 'لندینگ تست',
+            'is_published' => true,
+            'published_at' => now(),
+            'form_fields' => ['message' => false, 'email' => false],
+        ]);
+
+        $this->postJson('/api/leads', [
+            'name' => 'علی',
+            'phone' => '09123456789',
+            'landing_slug' => $page->slug,
+        ])->assertCreated();
+
+        $this->postJson('/api/leads', [
+            'name' => 'رضا',
+            'phone' => '0912 345 6789',
+            'landing_slug' => $page->slug,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.message_fa', 'این شماره قبلاً در این صفحه ثبت شده است.');
+
+        $this->assertSame(1, \App\Models\Lead::query()->where('landing_page_id', $page->id)->count());
+    }
 }

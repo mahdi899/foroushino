@@ -2,20 +2,25 @@
 
 import { ArrowLeft, Loader2, Mail, MessageSquare, Phone, User2 } from "lucide-react";
 import { useId, useState } from "react";
-import { useFormSecurity } from "@/components/captcha/FormCaptcha";
+import { flushSync } from "react-dom";
 import { cn } from "@/lib/cn";
 import {
   submitLandingLead,
   validateLandingLead,
   type LandingLeadFieldErrors,
 } from "@/lib/services/leads";
-import { captchaToRequestFields } from "@/lib/captcha/types";
 import type { PublicLandingPage } from "@/lib/services/landingPages";
 
 type Status = "idle" | "loading" | "ok" | "err";
 
 const inputClass =
-  "mt-2 block w-full rounded-tile border border-bone/12 bg-ink/60 px-4 py-3 text-sm text-bone placeholder:text-mist focus:border-emerald/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30";
+  "mt-2.5 block w-full rounded-2xl border border-bone/20 bg-ink/45 px-4 py-4 text-center text-lg leading-normal text-bone placeholder:text-center placeholder:text-mist/80 focus:border-emerald/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30 md:rounded-tile md:py-3.5 md:ps-12 md:text-start md:text-base md:placeholder:text-start";
+
+const iconClass =
+  "pointer-events-none absolute inset-y-0 start-3.5 hidden items-center text-mist md:flex";
+
+const labelClass =
+  "block text-center text-lg font-medium text-bone md:text-start md:text-sm";
 
 export function LandingLeadForm({
   slug,
@@ -39,16 +44,15 @@ export function LandingLeadForm({
   const [feedback, setFeedback] = useState("");
   const [fieldErrors, setFieldErrors] = useState<LandingLeadFieldErrors>({});
 
-  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload, resetCaptcha } =
-    useFormSecurity("leads", { captchaInline: false });
-
   const resetErrors = () => {
+    if (status === "ok" || status === "loading") return;
     if (Object.keys(fieldErrors).length) setFieldErrors({});
     if (status !== "idle") setStatus("idle");
   };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (status === "ok" || status === "loading") return;
 
     const errors = validateLandingLead({ name, phone });
     if (Object.keys(errors).length) {
@@ -58,15 +62,11 @@ export function LandingLeadForm({
       return;
     }
 
-    const { captcha, website } = getSecurityPayload();
-    if (captchaRequired && !captcha) {
-      setStatus("err");
-      setFeedback("لطفاً تأیید امنیتی را تکمیل کن.");
-      return;
-    }
-
-    setStatus("loading");
-    setFeedback("");
+    flushSync(() => {
+      setStatus("loading");
+      setFeedback("");
+      setFieldErrors({});
+    });
 
     const result = await submitLandingLead({
       name,
@@ -74,46 +74,33 @@ export function LandingLeadForm({
       message: formFields.message ? message : undefined,
       email: formFields.email ? email : undefined,
       landing_slug: slug,
-      ...captchaToRequestFields(captcha),
-      website,
     });
 
     if (result.ok) {
-      setStatus("ok");
-      setFeedback(successMessage?.trim() || "ثبت شد. به‌زودی با تو تماس می‌گیریم.");
-      setName("");
-      setPhone("");
-      setMessage("");
-      setEmail("");
-      setFieldErrors({});
+      flushSync(() => {
+        setStatus("ok");
+        setFeedback(successMessage?.trim() || "ثبت شد. به‌زودی با تو تماس می‌گیریم.");
+      });
       return;
     }
 
+    const duplicate = /قبلاً|تکرار/i.test(result.error);
     setStatus("err");
     setFeedback(result.error);
-    if (captchaRequired && /تأیید امنیتی|کپچا/i.test(result.error)) {
-      resetCaptcha();
+    if (duplicate) {
+      setFieldErrors({ phone: result.error });
     }
   };
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className={cn(
-        "landing-lead-form neon-surface-static relative rounded-card-lg border border-bone/10 bg-charcoal/55 p-5 md:p-7",
-        className,
-      )}
-      noValidate
-    >
-      {honeypotField}
-
-      <div className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={onSubmit} className={cn("landing-lead-form relative w-full", className)} noValidate>
+      <div className="space-y-7 md:space-y-4">
+        <div className="grid gap-7 sm:grid-cols-2 sm:gap-4">
           <label htmlFor={`${formId}-name`} className="block min-w-0">
-            <span className="block text-caption text-bone">نام *</span>
+            <span className={labelClass}>نام و نام خانوادگی</span>
             <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-                <User2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              <span className={iconClass}>
+                <User2 className="h-5 w-5" strokeWidth={1.5} aria-hidden />
               </span>
               <input
                 id={`${formId}-name`}
@@ -125,22 +112,23 @@ export function LandingLeadForm({
                   setName(e.target.value);
                   resetErrors();
                 }}
-                disabled={status === "loading"}
-                className={cn(inputClass, "ps-10", fieldErrors.name && "border-gold/60")}
+                disabled={status === "loading" || status === "ok"}
+                placeholder="مثلاً علی محمدی"
+                className={cn(inputClass, fieldErrors.name && "border-gold/60")}
               />
             </div>
             {fieldErrors.name ? (
-              <span role="alert" className="mt-1.5 block text-caption text-gold">
+              <span role="alert" className="mt-1.5 block text-center text-sm text-gold md:text-start">
                 {fieldErrors.name}
               </span>
             ) : null}
           </label>
 
           <label htmlFor={`${formId}-phone`} className="block min-w-0">
-            <span className="block text-caption text-bone">شماره *</span>
+            <span className={labelClass}>شماره تماس</span>
             <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-                <Phone className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              <span className={iconClass}>
+                <Phone className="h-5 w-5" strokeWidth={1.5} aria-hidden />
               </span>
               <input
                 id={`${formId}-phone`}
@@ -153,13 +141,13 @@ export function LandingLeadForm({
                   setPhone(e.target.value);
                   resetErrors();
                 }}
-                disabled={status === "loading"}
+                disabled={status === "loading" || status === "ok"}
                 placeholder="۰۹۱۲..."
-                className={cn(inputClass, "ps-10 num-latin", fieldErrors.phone && "border-gold/60")}
+                className={cn(inputClass, "num-latin", fieldErrors.phone && "border-gold/60")}
               />
             </div>
             {fieldErrors.phone ? (
-              <span role="alert" className="mt-1.5 block text-caption text-gold">
+              <span role="alert" className="mt-1.5 block text-center text-sm text-gold md:text-start">
                 {fieldErrors.phone}
               </span>
             ) : null}
@@ -168,10 +156,10 @@ export function LandingLeadForm({
 
         {formFields.email ? (
           <label htmlFor={`${formId}-email`} className="block">
-            <span className="block text-caption text-bone">ایمیل</span>
+            <span className={labelClass}>ایمیل</span>
             <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-                <Mail className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              <span className={iconClass}>
+                <Mail className="h-5 w-5" strokeWidth={1.5} aria-hidden />
               </span>
               <input
                 id={`${formId}-email`}
@@ -182,8 +170,8 @@ export function LandingLeadForm({
                   setEmail(e.target.value);
                   resetErrors();
                 }}
-                disabled={status === "loading"}
-                className={cn(inputClass, "ps-10")}
+                disabled={status === "loading" || status === "ok"}
+                className={inputClass}
               />
             </div>
           </label>
@@ -191,67 +179,77 @@ export function LandingLeadForm({
 
         {formFields.message ? (
           <label htmlFor={`${formId}-message`} className="block">
-            <span className="block text-caption text-bone">توضیحات</span>
+            <span className={labelClass}>توضیحات</span>
             <div className="relative">
-              <span className="pointer-events-none absolute start-3 top-3.5 text-mist">
-                <MessageSquare className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              <span className="pointer-events-none absolute start-3.5 top-4 hidden text-mist md:block">
+                <MessageSquare className="h-5 w-5" strokeWidth={1.5} aria-hidden />
               </span>
               <textarea
                 id={`${formId}-message`}
-                rows={4}
+                rows={2}
                 value={message}
                 onChange={(e) => {
                   setMessage(e.target.value);
                   resetErrors();
                 }}
-                disabled={status === "loading"}
+                disabled={status === "loading" || status === "ok"}
                 placeholder="اگر نکته‌ای هست بنویس…"
-                className={cn(inputClass, "min-h-[7rem] resize-y ps-10")}
+                className={cn(inputClass, "min-h-[5rem] resize-y")}
               />
             </div>
           </label>
         ) : null}
 
-        {captchaRequired ? (
-          <div className="block min-w-0">
-            <span className="block text-caption text-bone">تأیید امنیتی *</span>
-            <div className="mt-2 min-w-0 rounded-tile border border-bone/12 bg-ink/60 px-3 py-3">
-              {captchaField}
-            </div>
-          </div>
-        ) : null}
+        {status === "ok" ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className="flex min-h-14 w-full items-center justify-center rounded-pill border border-emerald/35 bg-emerald/15 px-5 py-3.5 text-center text-lg font-semibold text-emerald-glow md:min-h-12 md:text-base"
+          >
+            {feedback}
+          </p>
+        ) : (
+          <>
+            <button
+              type="submit"
+              disabled={status === "loading"}
+              aria-busy={status === "loading"}
+              className={cn(
+                "group neon-btn-primary inline-flex h-14 min-h-14 w-full items-center justify-center gap-2 rounded-pill bg-emerald px-6 text-lg font-semibold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] md:h-12 md:min-h-12 md:text-base",
+                status === "loading"
+                  ? "cursor-wait opacity-100"
+                  : "hover:-translate-y-px hover:bg-emerald-glow disabled:cursor-not-allowed disabled:opacity-70",
+              )}
+            >
+              {status === "loading" ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  <span>در حال ثبت…</span>
+                </>
+              ) : (
+                <>
+                  <span>{submitLabel?.trim() || "ارسال"}</span>
+                  <ArrowLeft
+                    className="rtl-flip h-5 w-5 transition-transform group-hover:-translate-x-0.5"
+                    aria-hidden
+                  />
+                </>
+              )}
+            </button>
 
-        <button
-          type="submit"
-          disabled={status === "loading" || securityLoading || !captchaReady}
-          aria-busy={status === "loading"}
-          className="group neon-btn-primary inline-flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-pill bg-emerald px-6 text-sm font-semibold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] hover:bg-emerald-glow hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {status === "loading" ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : (
-            <>
-              <span>{submitLabel?.trim() || "ارسال"}</span>
-              <ArrowLeft
-                className="rtl-flip h-4 w-4 transition-transform group-hover:-translate-x-0.5"
-                aria-hidden
-              />
-            </>
-          )}
-        </button>
-
-        <p
-          role="status"
-          aria-live="polite"
-          className={cn(
-            "text-center text-caption transition-opacity",
-            status === "idle" && "hidden",
-            status === "ok" && "text-emerald-glow",
-            status === "err" && "text-gold",
-          )}
-        >
-          {feedback}
-        </p>
+            <p
+              role="status"
+              aria-live="polite"
+              className={cn(
+                "text-center text-base transition-opacity",
+                status === "idle" && "hidden",
+                status === "err" && "text-gold",
+              )}
+            >
+              {feedback}
+            </p>
+          </>
+        )}
       </div>
     </form>
   );

@@ -6,6 +6,7 @@ import { AdminListEmpty } from '@/components/admin/layout/AdminListEmpty';
 import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { AdminPage, StatCard, Table } from '../../../ui';
 import { getLandingPageSubmissions } from '@/lib/admin/landingPagesData';
+import { LandingSubmissionsExportButtons } from './LandingSubmissionsExportButtons';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,7 @@ export default async function LandingPageSubmissionsPage({
       headerVariant="leads"
       backHref={`/admin/landing-pages/${landingPage.id}`}
       backLabel="بازگشت به لندینگ"
+      action={meta.total > 0 ? <LandingSubmissionsExportButtons landingPageId={landingPage.id} /> : undefined}
     >
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <StatCard label="کل ثبت‌نام‌ها" value={meta.total.toLocaleString('fa-IR')} icon="Inbox" tone="gold" />

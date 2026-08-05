@@ -339,6 +339,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::match(['put', 'patch'], 'landing-pages/{landingPage}', [LandingPageController::class, 'update'])->whereNumber('landingPage');
     Route::delete('landing-pages/{landingPage}', [LandingPageController::class, 'destroy'])->whereNumber('landingPage');
     Route::get('landing-pages/{landingPage}/submissions', [LandingPageController::class, 'submissions'])->whereNumber('landingPage');
+    Route::get('landing-pages/{landingPage}/submissions/export', [LandingPageController::class, 'exportSubmissions'])->whereNumber('landingPage');
 
     Route::get('analytics/summary', [DashboardController::class, 'summary']);
 

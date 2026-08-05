@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Reveal } from "@/components/motion/Reveal";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { LandingLeadForm } from "@/components/forms/LandingLeadForm";
 import { getPublicLandingPage } from "@/lib/services/landingPages";
@@ -39,70 +38,58 @@ export default async function LandingLeadPage({
   }
 
   const page = result.data;
+  const hasHero = Boolean(page.hero_image);
 
   return (
-    <main id="main-content" className="landing-lead-page relative min-w-0 max-w-full">
-      {page.hero_image ? (
-        <section className="relative isolate w-full overflow-hidden bg-ink">
-          <div className="relative aspect-[16/10] w-full sm:aspect-[16/8] md:aspect-[16/6]">
+    <main
+      id="main-content"
+      className="landing-lead-page fixed inset-0 z-[60] min-h-dvh w-full overflow-hidden bg-ink"
+    >
+      <section className="relative isolate flex h-dvh w-full flex-col overflow-hidden">
+        {hasHero ? (
+          <div className="absolute inset-0">
             <SiteImage
-              src={page.hero_image}
+              src={page.hero_image!}
               alt={page.title}
               fallbackAlt={page.title}
               fill
               priority
-              className="object-cover"
+              className="object-cover object-center"
               sizes="100vw"
             />
-            <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/10" />
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-b from-ink/45 via-ink/50 to-ink/80"
+            />
           </div>
-          <div className="absolute inset-x-0 bottom-0 pb-8 pt-16 md:pb-12">
-            <div className="container-luxe">
-              <Reveal>
-                <div className="mx-auto max-w-2xl text-center">
-                  <h1 className="font-display text-h2 text-balance text-bone">{page.title}</h1>
-                  {page.subtitle ? (
-                    <p className="mt-3 text-sm leading-relaxed text-bone-dim md:text-base">{page.subtitle}</p>
-                  ) : null}
-                </div>
-              </Reveal>
-            </div>
-          </div>
-        </section>
-      ) : (
-        <section className="pt-8 md:pt-10 lg:pt-12">
-          <div className="container-luxe">
-            <Reveal>
-              <div className="mx-auto max-w-2xl text-center">
-                <h1 className="font-display text-h2 text-balance text-bone">{page.title}</h1>
-                {page.subtitle ? (
-                  <p className="mt-3 text-sm leading-relaxed text-bone-dim md:text-base">{page.subtitle}</p>
-                ) : null}
-              </div>
-            </Reveal>
-          </div>
-        </section>
-      )}
+        ) : null}
 
-      <section className="pb-section-sm md:pb-section">
-        <div className="container-luxe">
-          <div className="mx-auto grid max-w-3xl gap-6 pt-8 md:pt-10">
-            {page.body ? (
-              <Reveal>
-                <p className="whitespace-pre-line text-center text-sm leading-relaxed text-bone-dim md:text-base">
+        <div className="relative z-10 flex h-full min-h-0 flex-col justify-center px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 md:px-10 md:py-12">
+          <div className="mx-auto flex w-full max-w-lg flex-col justify-center md:max-w-xl">
+            <header className="shrink-0 text-center">
+              <h1 className="font-display text-balance text-[2.75rem] leading-[1.15] text-bone drop-shadow-sm sm:text-[3rem] md:text-[2.75rem] lg:text-[3.25rem]">
+                {page.title}
+              </h1>
+              {page.subtitle ? (
+                <p className="mt-3 text-center text-xl leading-relaxed text-bone-dim drop-shadow-sm sm:text-[1.35rem] md:text-xl">
+                  {page.subtitle}
+                </p>
+              ) : null}
+              {page.body ? (
+                <p className="mt-2.5 line-clamp-3 whitespace-pre-line text-center text-base leading-relaxed text-bone-dim sm:mt-3 sm:line-clamp-none sm:text-lg">
                   {page.body}
                 </p>
-              </Reveal>
-            ) : null}
+              ) : null}
+            </header>
 
-            <Reveal delay={0.06}>
+            <div className="mt-4 sm:mt-6 md:mt-8">
               <LandingLeadForm
                 slug={page.slug}
                 formFields={page.form_fields}
                 submitLabel={page.submit_label}
                 successMessage={page.success_message}
               />
-            </Reveal>
+            </div>
           </div>
         </div>
       </section>

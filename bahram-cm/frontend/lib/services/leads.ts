@@ -128,11 +128,6 @@ export type LandingLeadInput = {
   message?: string;
   email?: string;
   landing_slug: string;
-  captcha_token?: string;
-  captcha_provider?: 'turnstile' | 'recaptcha' | 'math';
-  captcha_id?: string;
-  captcha_answer?: string;
-  website?: string;
 };
 
 export type LandingLeadFieldErrors = Partial<Record<'name' | 'phone' | 'email', string>>;
@@ -146,7 +141,7 @@ export function validateLandingLead(input: {
 }): LandingLeadFieldErrors {
   const errors: LandingLeadFieldErrors = {};
   if (!input.name || input.name.trim().length < 2) {
-    errors.name = "نام را کامل وارد کن.";
+    errors.name = "نام و نام خانوادگی را کامل وارد کن.";
   }
   if (!input.phone || !PHONE_RE.test(input.phone.trim())) {
     errors.phone = "شماره تماس معتبر وارد کن.";
@@ -165,10 +160,6 @@ export async function submitLandingLead(input: LandingLeadInput): Promise<ApiRes
     message: input.message?.trim() || undefined,
     landing_slug: input.landing_slug,
     page_url: typeof window !== "undefined" ? window.location.href : undefined,
-    captcha_token: input.captcha_token,
-    captcha_id: input.captcha_id,
-    captcha_answer: input.captcha_answer,
-    website: input.website || undefined,
   });
 
   if (!result.ok) return result;

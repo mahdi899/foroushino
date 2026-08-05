@@ -7,6 +7,7 @@ use App\Http\Requests\StoreLeadRequest;
 use App\Models\LandingPage;
 use App\Services\LeadService;
 use App\Support\ApiResponse;
+use App\Support\Mobile;
 
 class LeadController extends Controller
 {
@@ -24,6 +25,10 @@ class LeadController extends Controller
         }
 
         unset($data['landing_slug']);
+
+        if ($landingPage && ! empty($data['phone'])) {
+            $data['phone'] = Mobile::normalize((string) $data['phone']) ?? $data['phone'];
+        }
 
         $lead = $this->leads->create([
             ...$data,

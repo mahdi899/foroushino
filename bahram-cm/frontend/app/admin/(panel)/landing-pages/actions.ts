@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminFetch } from '@/lib/auth/session';
+import { adminFetch, getToken } from '@/lib/auth/session';
+import { SERVER_API_URL } from '@/lib/api/config';
 import type { AdminLandingPage, LandingPageFormFields } from '@/lib/admin/landingPagesData';
 
 export interface SaveLandingPageInput {
@@ -64,5 +65,43 @@ export async function deleteLandingPage(id: number, slug?: string): Promise<{ ok
     return { ok: true };
   } catch {
     return { ok: false, error: 'حذف لندینگ ناموفق بود.' };
+  }
+}
+
+export async function exportLandingSubmissions(
+  landingPageId: number,
+  format: 'csv' | 'xlsx',
+): Promise<{ ok: true; blob: Blob; filename: string } | { ok: false; error: string }> {
+  try {
+    const token = await getToken();
+    const url = new URL(`${SERVER_API_URL}/landing-pages/${landingPageId}/submissions/export`);
+    url.searchParams.set('format', format);
+
+    const accept =
+      format === 'csv'
+        ? 'text/csv'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    const res = await fetch(url, {
+      headers: {
+        Accept: accept,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      return { ok: false, error: 'خروجی گرفتن از شماره‌ها ناموفق بود.' };
+    }
+
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)"?/i);
+    const fallback = `landing-submissions-${new Date().toISOString().slice(0, 10)}.${format}`;
+    const filename = match?.[1] ? decodeURIComponent(match[1]) : fallback;
+
+    return { ok: true, blob, filename };
+  } catch {
+    return { ok: false, error: 'خروجی گرفتن از شماره‌ها ناموفق بود.' };
   }
 }

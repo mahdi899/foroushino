@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exports\LandingPageSubmissionsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\LandingPage;
+use App\Support\Csv;
 use App\Support\MediaUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LandingPageController extends Controller
 {
@@ -96,6 +101,37 @@ class LandingPageController extends Controller
             ],
             'landing_page' => $this->payload($landingPage),
         ]);
+    }
+
+    public function exportSubmissions(Request $request, LandingPage $landingPage): BinaryFileResponse|StreamedResponse
+    {
+        $validated = $request->validate([
+            'format' => ['sometimes', 'string', Rule::in(['csv', 'xlsx'])],
+        ]);
+        $format = $validated['format'] ?? 'xlsx';
+
+        $query = $landingPage->leads()->orderByDesc('id');
+        $slug = Str::slug($landingPage->slug) ?: 'landing';
+        $stamp = now()->format('Y-m-d');
+
+        if ($format === 'csv') {
+            $rows = $query->cursor()->map(fn (Lead $lead) => [
+                $lead->name,
+                $lead->phone,
+                $lead->email,
+                $lead->message,
+                $lead->created_at?->format('Y-m-d H:i:s'),
+            ]);
+
+            return Csv::download("{$slug}-submissions-{$stamp}.csv", [
+                'نام', 'شماره تماس', 'ایمیل', 'توضیحات', 'تاریخ ثبت',
+            ], $rows);
+        }
+
+        return Excel::download(
+            new LandingPageSubmissionsExport($query),
+            "{$slug}-submissions-{$stamp}.xlsx",
+        );
     }
 
     /** @return array<string, mixed> */
