@@ -582,6 +582,52 @@ class RbacAndIdentityTest extends TestCase
         ]);
     }
 
+    public function test_super_admin_can_promote_existing_user_to_admin(): void
+    {
+        $super = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        Sanctum::actingAs($super);
+
+        User::factory()->create([
+            'name' => 'دانشجو',
+            'email' => 'promote.me@bahram.test',
+            'mobile' => '09129876543',
+            'is_admin' => false,
+        ]);
+
+        $this->postJson('/api/v1/roles/admins', [
+            'name' => 'مدیر ارتقا',
+            'email' => 'promote.me@bahram.test',
+            'mobile' => '09129876543',
+            'password' => 'password123',
+            'role' => AdminRoleName::Finance->value,
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'validation_error')
+            ->assertJsonStructure(['error' => ['details' => ['confirm_promote']]]);
+
+        $this->postJson('/api/v1/roles/admins', [
+            'name' => 'مدیر ارتقا',
+            'email' => 'promote.me@bahram.test',
+            'mobile' => '09129876543',
+            'password' => 'password123',
+            'role' => AdminRoleName::Finance->value,
+            'confirm_promote' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.email', 'promote.me@bahram.test')
+            ->assertJsonPath('data.roles.0', 'finance');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'promote.me@bahram.test',
+            'is_admin' => true,
+        ]);
+
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $super->id,
+            'action' => 'admin.promoted',
+        ]);
+    }
+
     public function test_support_cannot_create_admin_user(): void
     {
         $support = $this->makeAdmin(AdminRoleName::Support);

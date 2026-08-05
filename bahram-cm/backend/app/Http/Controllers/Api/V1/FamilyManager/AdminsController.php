@@ -34,6 +34,7 @@ class AdminsController extends Controller
             'email' => ['required', 'email', 'max:255'],
             'mobile' => ['required', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:8', 'max:128'],
+            'confirm_promote' => ['sometimes', 'boolean'],
         ]);
 
         $admin = $this->admins->create(
@@ -42,6 +43,7 @@ class AdminsController extends Controller
             $data['email'],
             $data['mobile'],
             $data['password'],
+            (bool) ($data['confirm_promote'] ?? false),
         );
 
         return ApiResponse::success($this->payload($admin, $request->user()), 201);

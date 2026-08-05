@@ -116,8 +116,15 @@ class RolePermissionService
         return $this->rolePayload($role->load('permissions'));
     }
 
-    public function createAdmin(User $actor, string $name, string $email, string $password, string $roleName, string $mobile): User
-    {
+    public function createAdmin(
+        User $actor,
+        string $name,
+        string $email,
+        string $password,
+        string $roleName,
+        string $mobile,
+        bool $confirmPromote = false,
+    ): User {
         $this->assertAdminPermission($actor, 'admins.create');
 
         if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
@@ -135,16 +142,28 @@ class RolePermissionService
             ]);
         }
 
-        if (User::query()->where('email', $email)->exists()) {
+        $byEmail = User::query()->where('email', $email)->first();
+        $byMobile = User::query()->where('mobile', $normalizedMobile)->first();
+
+        if ($byEmail && $byMobile && $byEmail->id !== $byMobile->id) {
             throw ValidationException::withMessages([
-                'email' => ['این ایمیل قبلاً ثبت شده است.'],
+                'email' => ['این ایمیل و شماره موبایل متعلق به دو کاربر متفاوت هستند.'],
             ]);
         }
 
-        if (User::query()->where('mobile', $normalizedMobile)->exists()) {
-            throw ValidationException::withMessages([
-                'mobile' => ['این شماره موبایل قبلاً ثبت شده است.'],
-            ]);
+        $existing = $byEmail ?? $byMobile;
+
+        if ($existing) {
+            return $this->promoteExistingUserToAdmin(
+                $actor,
+                $existing,
+                $name,
+                $email,
+                $password,
+                $roleName,
+                $normalizedMobile,
+                $confirmPromote,
+            );
         }
 
         $admin = DB::transaction(function () use ($name, $email, $password, $roleName, $normalizedMobile) {
@@ -165,6 +184,63 @@ class RolePermissionService
             'email' => $email,
             'mobile' => $normalizedMobile,
             'role' => $roleName,
+        ]);
+
+        return $admin->fresh();
+    }
+
+    private function promoteExistingUserToAdmin(
+        User $actor,
+        User $existing,
+        string $name,
+        string $email,
+        string $password,
+        string $roleName,
+        string $normalizedMobile,
+        bool $confirmPromote,
+    ): User {
+        if ($existing->is_admin) {
+            throw ValidationException::withMessages([
+                'user' => ['این کاربر از قبل مدیر است. نقش را از لیست مدیران تغییر دهید.'],
+            ]);
+        }
+
+        if ($existing->isRootAdmin()) {
+            throw ValidationException::withMessages([
+                'user' => ['حساب مدیر اصلی سیستم قابل تغییر از این مسیر نیست.'],
+            ]);
+        }
+
+        if (! $confirmPromote) {
+            $label = trim((string) $existing->name) !== '' ? $existing->name : 'بدون نام';
+            throw ValidationException::withMessages([
+                'confirm_promote' => [
+                    "کاربر «{$label}» با این مشخصات در سیستم موجود است. برای ارتقا به مدیر تأیید کنید.",
+                ],
+            ]);
+        }
+
+        $admin = DB::transaction(function () use ($existing, $name, $email, $password, $roleName, $normalizedMobile) {
+            $existing->update([
+                'name' => $name,
+                'email' => $email,
+                'mobile' => $normalizedMobile,
+                'mobile_verified_at' => now(),
+                'password' => $password,
+                'is_admin' => true,
+            ]);
+            $existing->syncRoles([$roleName]);
+            $existing->tokens()->delete();
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            return $existing;
+        });
+
+        $this->audit->log($actor, 'admin.promoted', $admin, [
+            'email' => $email,
+            'mobile' => $normalizedMobile,
+            'role' => $roleName,
+            'previous_user_id' => $existing->id,
         ]);
 
         return $admin->fresh();

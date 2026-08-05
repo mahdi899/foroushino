@@ -40,8 +40,14 @@ final class FamilyManagerAdminService
             ->all();
     }
 
-    public function create(User $actor, string $name, string $email, string $mobile, string $password): User
-    {
+    public function create(
+        User $actor,
+        string $name,
+        string $email,
+        string $mobile,
+        string $password,
+        bool $confirmPromote = false,
+    ): User {
         $this->assertCanManage($actor);
 
         return $this->roles->createAdmin(
@@ -51,6 +57,7 @@ final class FamilyManagerAdminService
             $password,
             AdminRoleName::FamilyManager->value,
             $mobile,
+            $confirmPromote,
         );
     }
 
