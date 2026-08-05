@@ -15,7 +15,7 @@ import type { PublicLandingPage } from "@/lib/services/landingPages";
 type Status = "idle" | "loading" | "ok" | "err";
 
 const inputClass =
-  "mt-2.5 block w-full rounded-2xl border border-bone/20 bg-ink/45 px-4 py-4 text-center text-lg leading-normal text-bone placeholder:text-center placeholder:text-mist/80 focus:border-emerald/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30 md:rounded-tile md:py-3.5 md:ps-12 md:text-start md:text-base md:placeholder:text-start";
+  "mt-2.5 block w-full rounded-2xl border border-bone/20 bg-ink px-4 py-4 text-center text-lg leading-normal text-bone placeholder:text-center placeholder:text-mist/80 focus:border-emerald/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30 md:rounded-tile md:py-3.5 md:ps-12 md:text-start md:text-base md:placeholder:text-start";
 
 const iconClass =
   "pointer-events-none absolute inset-y-0 start-3.5 hidden items-center text-mist md:flex";
