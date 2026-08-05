@@ -66,7 +66,7 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
       return;
     }
 
-    if ('needsPromoteConfirm' in res && res.needsPromoteConfirm) {
+    if ('needsPromoteConfirm' in res) {
       setPromotePrompt(res.message);
       return;
     }

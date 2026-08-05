@@ -216,7 +216,7 @@ export function PanelCitySheetField({
     <div ref={rootRef} className="panel-city-combobox">
       {name ? <input type="hidden" name={name} value={value} required={required && !value} /> : null}
 
-      {suggestionsList ? createPortal(suggestionsList, portalTarget) : null}
+      {suggestionsList && portalTarget ? createPortal(suggestionsList, portalTarget) : null}
 
       <div className="panel-city-combobox__input-wrap">
         <input
