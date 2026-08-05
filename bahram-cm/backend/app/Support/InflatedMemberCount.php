@@ -2,31 +2,33 @@
 
 namespace App\Support;
 
-use DateTimeImmutable;
-use DateTimeInterface;
-use DateTimeZone;
-
 /**
- * Public-facing member count: real count × 10, ones digit = Iran hour % 10 (e.g. 9 → 90 at 00:xx).
+ * Public-facing member count: real + bonus (bonus shrinks as members grow).
+ * O(1), deterministic — same formula as frontend displayedFamilyCount.ts.
  */
 final class InflatedMemberCount
 {
-    public static function hourInIran(?DateTimeInterface $at = null): int
+    public static function calculate(int $memberCount): int
     {
-        $tz = new DateTimeZone('Asia/Tehran');
+        $count = max(0, (int) floor($memberCount));
 
-        if ($at !== null) {
-            return (int) DateTimeImmutable::createFromInterface($at)->setTimezone($tz)->format('G');
+        if ($count === 0) {
+            return 0;
         }
 
-        return (int) (new DateTimeImmutable('now', $tz))->format('G');
-    }
+        if ($count >= 1000) {
+            return $count;
+        }
 
-    public static function calculate(int $memberCount, ?int $hour = null): int
-    {
-        $base = max(0, (int) floor($memberCount));
-        $hour ??= self::hourInIran();
+        $bonus = $count < 10
+            ? 100 - $count
+            : ($count < 100
+                ? 500 - $count
+                : max(0, 550 - intdiv($count, 2)));
 
-        return $base * 10 + ($hour % 10);
+        $raw = $count + $bonus;
+        $rounded = (int) (round($raw / 10) * 10);
+
+        return min(990, max(100, $rounded));
     }
 }

@@ -20,6 +20,8 @@ class AdminMenuKeyboard
 
     public const DESTINATIONS = 'مقاصد';
 
+    public const MERGE_LINES = 'ادغام خط مقاصد';
+
     public const DISCOUNTS = 'کد تخفیف';
 
     public const TICKETS = 'تیکت‌ها';
@@ -54,6 +56,7 @@ class AdminMenuKeyboard
         self::BROADCAST => 'channel',
         self::REQUIRED_CHATS => 'tv',
         self::DESTINATIONS => 'pin',
+        self::MERGE_LINES => 'pin',
         self::DISCOUNTS => 'ticket',
         self::TICKETS => 'support',
         self::MESSAGES => 'chat',
@@ -97,6 +100,7 @@ class AdminMenuKeyboard
         self::BROADCAST => ['📣 پیام همگانی'],
         self::REQUIRED_CHATS => ['📻 کانال اجباری'],
         self::DESTINATIONS => ['📍 مقاصد'],
+        self::MERGE_LINES => ['🔗 ادغام خط مقاصد', 'ادغام خط'],
         self::DISCOUNTS => ['🎟 کد تخفیف'],
         self::TICKETS => ['🎫 تیکت‌ها'],
         self::MESSAGES => ['💬 پیام‌ها'],
@@ -128,6 +132,7 @@ class AdminMenuKeyboard
             self::BROADCAST => BotAdminPermission::Broadcast,
             self::REQUIRED_CHATS => BotAdminPermission::ForcedJoin,
             self::DESTINATIONS => BotAdminPermission::Menus,
+            self::MERGE_LINES => BotAdminPermission::UserInfo,
             self::DISCOUNTS => BotAdminPermission::Discount,
             self::TICKETS => BotAdminPermission::Tickets,
             self::MESSAGES => BotAdminPermission::Messages,
@@ -154,6 +159,7 @@ class AdminMenuKeyboard
             [self::SEMINARS, self::MESSAGES],
             [self::TICKETS, self::DISCOUNTS],
             [self::REQUIRED_CHATS, self::DESTINATIONS],
+            [self::MERGE_LINES],
             [self::EXPORT, self::PROFILE],
             [self::SETTINGS, self::LOGS],
             [self::EVENTS, self::HOME],

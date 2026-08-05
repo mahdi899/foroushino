@@ -281,6 +281,7 @@ class BotAdminPanelService
                 'sem_sale' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_sale'),
                 'dm_add_canonical' => $this->onDestinationMergeCanonicalInput($bot, $account, $conversation, $client, $chatId, $text),
                 'dm_add_telegram' => $this->onDestinationMergeTelegramInput($bot, $account, $conversation, $client, $chatId, $text),
+                'dm_search' => $this->onDestinationMergeSearchInput($bot, $account, $conversation, $client, $chatId, $text),
                 'sem_cap' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_cap'),
                 'sem_loc' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_loc'),
                 'sem_date' => $this->onSeminarFieldInput($bot, $account, $conversation, $client, $chatId, $text, 'sem_date'),
@@ -310,6 +311,7 @@ class BotAdminPanelService
             AdminMenuKeyboard::BROADCAST => \App\Modules\TelegramBot\Enums\BotAdminPermission::Broadcast,
             AdminMenuKeyboard::REQUIRED_CHATS => \App\Modules\TelegramBot\Enums\BotAdminPermission::ForcedJoin,
             AdminMenuKeyboard::DESTINATIONS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Menus,
+            AdminMenuKeyboard::MERGE_LINES => \App\Modules\TelegramBot\Enums\BotAdminPermission::UserInfo,
             AdminMenuKeyboard::DISCOUNTS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Discount,
             AdminMenuKeyboard::TICKETS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Tickets,
             AdminMenuKeyboard::MESSAGES => \App\Modules\TelegramBot\Enums\BotAdminPermission::Messages,
@@ -347,6 +349,7 @@ class BotAdminPanelService
             AdminMenuKeyboard::BROADCAST => $this->startBroadcastFlow($bot, $account, $client, $chatId),
             AdminMenuKeyboard::REQUIRED_CHATS => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, 0, 'admin:rc:p:0'),
             AdminMenuKeyboard::DESTINATIONS => $this->handleDestinationsCallback($bot, $account, $client, $chatId, 0, 'admin:d:list'),
+            AdminMenuKeyboard::MERGE_LINES => $this->handleDestinationMergeCallback($bot, $account, $client, $chatId, 0, 'admin:dm:hub'),
             AdminMenuKeyboard::DISCOUNTS => $this->handleDiscountsCallback($bot, $account, $client, $chatId, 0, 'admin:dc:list'),
             AdminMenuKeyboard::TICKETS => $this->openTicketsSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::MESSAGES => $this->openMessagesSection($bot, $account, $client, $chatId),
@@ -572,7 +575,7 @@ class BotAdminPanelService
             .$e('shield')." ادمین‌های بات: {$admins}\n"
             .$e('tv')." کانال اجباری فعال: {$requiredChats}\n\n"
             .'از دکمه‌های پایین برای مدیریت استفاده کنید.'."\n"
-            .'🔗 ادغام خط مقاصد و 🔄 ریست ثبت‌نام هاست: دکمه‌های inline بالا.'."\n"
+            .'ادغام خط مقاصد: دکمه «ادغام خط مقاصد» در منوی پایین.'."\n"
             .'برای لغو هر مرحله «لغو» بنویسید.';
     }
 
@@ -586,7 +589,7 @@ class BotAdminPanelService
         $rows = [];
         if ($canUserInfo) {
             $rows[] = [
-                AdminMenuKeyboard::inlineButton('🔗 ادغام خط مقاصد', 'admin:dm:list'),
+                AdminMenuKeyboard::inlineButton('🔗 ادغام خط مقاصد', 'admin:dm:hub'),
                 AdminMenuKeyboard::inlineButton('👥 کاربر / ریست هاست', 'admin:u:s', 'user'),
             ];
         }
@@ -848,13 +851,11 @@ class BotAdminPanelService
             $text .= "\n\n🔄 ریست ثبت‌نام هاست: بعد از جستجو، در پروفایل کاربر دکمه «ریست ثبت‌نام هاست» را بزنید.";
         }
 
-        $keyboard = [];
-        if ($canUserInfo) {
-            $keyboard[] = [['text' => '🔗 ادغام خط مقاصد', 'callback_data' => 'admin:dm:list']];
-        }
-        $keyboard[] = [
-            ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
-            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+        $keyboard = [
+            [
+                ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
+                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+            ],
         ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
@@ -2742,7 +2743,6 @@ class BotAdminPanelService
 
         $keyboard = [
             [['text' => '➕ افزودن', 'callback_data' => 'admin:d:add']],
-            [['text' => '🔗 ادغام خط مقاصد', 'callback_data' => 'admin:dm:list']],
             [
                 ['text' => 'حذف', 'callback_data' => 'admin:d:noop'],
                 ['text' => 'تغییر نام', 'callback_data' => 'admin:d:noop'],
