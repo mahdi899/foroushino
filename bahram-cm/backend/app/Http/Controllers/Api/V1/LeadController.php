@@ -18,7 +18,7 @@ class LeadController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Lead::query()->orderByDesc('id');
+        $query = Lead::query()->with('landingPage')->orderByDesc('id');
 
         if ($source = $request->string('filter')->toString() ?: $request->string('filter[form_type]')->toString()) {
             $query->where('source', $source);
@@ -26,6 +26,10 @@ class LeadController extends Controller
 
         if ($status = $request->string('filter[status]')->toString()) {
             $query->where('status', $status);
+        }
+
+        if ($landingPageId = $request->input('landing_page_id')) {
+            $query->where('landing_page_id', $landingPageId);
         }
 
         $leads = $query->limit((int) $request->input('per_page', 100))->get();
@@ -88,6 +92,11 @@ class LeadController extends Controller
             'preferred_contact' => null,
             'budget_pref' => null,
             'best_call_time' => null,
+            'landing_page' => $lead->landingPage ? [
+                'id' => $lead->landingPage->id,
+                'title' => $lead->landingPage->title,
+                'slug' => $lead->landingPage->slug,
+            ] : null,
             'campaign' => $meta['utm_campaign'] ?? null,
             'utm' => [
                 'source' => $meta['utm_source'] ?? null,

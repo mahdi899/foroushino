@@ -120,3 +120,57 @@ export async function submitContact(input: ContactInput): Promise<ApiResult<Lead
   if (!result.ok) return result;
   return { ok: true, data: result.data.data };
 }
+
+/** Lead-capture form on a `/l/[slug]` landing page built from the admin panel. */
+export type LandingLeadInput = {
+  name: string;
+  phone: string;
+  message?: string;
+  email?: string;
+  landing_slug: string;
+  captcha_token?: string;
+  captcha_provider?: 'turnstile' | 'recaptcha' | 'math';
+  captcha_id?: string;
+  captcha_answer?: string;
+  website?: string;
+};
+
+export type LandingLeadFieldErrors = Partial<Record<'name' | 'phone' | 'email', string>>;
+
+/** Name + phone are always required; email is only validated when the page collects it. */
+export function validateLandingLead(input: {
+  name: string;
+  phone: string;
+  email?: string;
+  requireEmail?: boolean;
+}): LandingLeadFieldErrors {
+  const errors: LandingLeadFieldErrors = {};
+  if (!input.name || input.name.trim().length < 2) {
+    errors.name = "نام را کامل وارد کن.";
+  }
+  if (!input.phone || !PHONE_RE.test(input.phone.trim())) {
+    errors.phone = "شماره تماس معتبر وارد کن.";
+  }
+  if (input.requireEmail && (!input.email || !EMAIL_RE.test(input.email.trim()))) {
+    errors.email = "ایمیل را درست وارد کن.";
+  }
+  return errors;
+}
+
+export async function submitLandingLead(input: LandingLeadInput): Promise<ApiResult<LeadResult>> {
+  const result = await postJson<LeadResponse>("/leads", {
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    email: input.email?.trim() || undefined,
+    message: input.message?.trim() || undefined,
+    landing_slug: input.landing_slug,
+    page_url: typeof window !== "undefined" ? window.location.href : undefined,
+    captcha_token: input.captcha_token,
+    captcha_id: input.captcha_id,
+    captcha_answer: input.captcha_answer,
+    website: input.website || undefined,
+  });
+
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.data };
+}

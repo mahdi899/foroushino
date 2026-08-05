@@ -41,6 +41,7 @@ export const adminNav: {
     group: 'فروش و عملیات',
     items: [
       { href: '/admin/leads', label: 'لیدها و فرم‌ها', icon: 'Inbox', permission: 'orders.view' },
+      { href: '/admin/landing-pages', label: 'لندینگ ثبت‌شماره', icon: 'LayoutTemplate', matchPrefix: true, permission: 'orders.view' },
       ...commerceModules.map((m) => ({
         href: m.href,
         label: m.label,

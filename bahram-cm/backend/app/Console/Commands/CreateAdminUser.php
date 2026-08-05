@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\AdminRoleName;
 use App\Models\User;
 use App\Support\BootstrapAdmin;
+use App\Support\Mobile;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -24,7 +25,7 @@ class CreateAdminUser extends Command
         {--name= : Display name}
         {--password= : Password (min 12 chars; omit for interactive prompt)}
         {--skip-otp : Skip SMS OTP on admin/sat/flutter login for this account}
-        {--root : Mark as root super-admin (full access, can delete other super-admins)}';
+        {--root : Only allowed when mobile is the canonical root number}';
 
     protected $description = 'Create (or promote) a super-admin user — interactive password prompt, never logged.';
 
@@ -74,7 +75,14 @@ class CreateAdminUser extends Command
         }
 
         $skipOtp = $this->option('skip-otp');
-        $isRoot = $this->option('root') || BootstrapAdmin::isRootEmail($email);
+        $normalizedMobile = (string) (Mobile::normalize($mobile) ?? $mobile);
+        $isRoot = BootstrapAdmin::isRootMobile($normalizedMobile);
+
+        if ($this->option('root') && ! $isRoot) {
+            $this->error('مدیر اصلی فقط برای شماره '.BootstrapAdmin::MOBILE.' مجاز است.');
+
+            return self::FAILURE;
+        }
 
         $lookup = $existing ? ['id' => $existing->id] : ['email' => $email];
 
@@ -83,7 +91,7 @@ class CreateAdminUser extends Command
             [
                 'name' => $name,
                 'email' => $email,
-                'mobile' => $mobile,
+                'mobile' => $normalizedMobile,
                 'mobile_verified_at' => now(),
                 'password' => Hash::make($password),
                 'is_admin' => true,
@@ -97,12 +105,14 @@ class CreateAdminUser extends Command
             $admin->syncRoles([AdminRoleName::SuperAdmin->value]);
         }
 
+        BootstrapAdmin::syncRootAdminFlags();
+
         $this->info("ادمین ساخته/به‌روزرسانی شد: {$admin->email}");
         if ($skipOtp) {
             $this->line('ورود بدون OTP فعال است (admin_login_otp_exempt).');
         }
         if ($isRoot) {
-            $this->line('Root super-admin فعال است (is_root_admin).');
+            $this->line('مدیر اصلی (نقش ثابت) فعال است — '.BootstrapAdmin::MOBILE);
         }
 
         return self::SUCCESS;

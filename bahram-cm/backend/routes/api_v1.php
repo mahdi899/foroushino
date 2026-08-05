@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\V1\CommerceSmsSpotplayerController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DiscountCodeAdminController;
 use App\Http\Controllers\Api\V1\FaqController;
+use App\Http\Controllers\Api\V1\LandingPageController;
 use App\Http\Controllers\Api\V1\Family\ActionController as FamilyActionController;
 use App\Http\Controllers\Api\V1\Family\BrandingController as FamilyBrandingController;
 use App\Http\Controllers\Api\V1\Family\CommentController as FamilyCommentController;
@@ -331,6 +332,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('leads', [\App\Http\Controllers\Api\V1\LeadController::class, 'index']);
     Route::get('leads/{lead}', [\App\Http\Controllers\Api\V1\LeadController::class, 'show'])->whereNumber('lead');
     Route::patch('leads/{lead}', [\App\Http\Controllers\Api\V1\LeadController::class, 'update'])->whereNumber('lead');
+
+    Route::get('landing-pages', [LandingPageController::class, 'index']);
+    Route::post('landing-pages', [LandingPageController::class, 'store']);
+    Route::get('landing-pages/{landingPage}', [LandingPageController::class, 'show'])->whereNumber('landingPage');
+    Route::match(['put', 'patch'], 'landing-pages/{landingPage}', [LandingPageController::class, 'update'])->whereNumber('landingPage');
+    Route::delete('landing-pages/{landingPage}', [LandingPageController::class, 'destroy'])->whereNumber('landingPage');
+    Route::get('landing-pages/{landingPage}/submissions', [LandingPageController::class, 'submissions'])->whereNumber('landingPage');
 
     Route::get('analytics/summary', [DashboardController::class, 'summary']);
 

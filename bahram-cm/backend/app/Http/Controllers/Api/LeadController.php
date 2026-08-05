@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreLeadRequest;
+use App\Models\LandingPage;
 use App\Services\LeadService;
 use App\Support\ApiResponse;
 
@@ -13,9 +14,22 @@ class LeadController extends Controller
 
     public function store(StoreLeadRequest $request)
     {
+        $data = $request->validated();
+
+        $landingPage = null;
+        if (! empty($data['landing_slug'])) {
+            $landingPage = LandingPage::where('slug', $data['landing_slug'])
+                ->where('is_published', true)
+                ->first();
+        }
+
+        unset($data['landing_slug']);
+
         $lead = $this->leads->create([
-            ...$request->validated(),
-            'page_url' => $request->validated('page_url') ?? $request->header('referer'),
+            ...$data,
+            'landing_page_id' => $landingPage?->id,
+            'source' => $landingPage ? 'web_landing' : ($data['source'] ?? 'website'),
+            'page_url' => $data['page_url'] ?? $request->header('referer'),
             'meta' => [
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\RequiresCaptcha;
+use App\Models\LandingPage;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLeadRequest extends FormRequest
@@ -26,6 +27,7 @@ class StoreLeadRequest extends FormRequest
             'source' => ['nullable', 'string', 'max:100'],
             'message' => ['nullable', 'string', 'max:2000'],
             'page_url' => ['nullable', 'string', 'max:500'],
+            'landing_slug' => ['nullable', 'string', 'max:255'],
             ...$this->captchaRules(),
         ];
     }
@@ -40,6 +42,22 @@ class StoreLeadRequest extends FormRequest
         $this->appendCaptchaValidation($validator);
 
         $validator->after(function ($validator) {
+            $landingSlug = $this->input('landing_slug');
+
+            if (filled($landingSlug)) {
+                if (blank($this->input('name'))) {
+                    $validator->errors()->add('name', 'نام الزامی است.');
+                }
+                if (blank($this->input('phone'))) {
+                    $validator->errors()->add('phone', 'شماره تماس الزامی است.');
+                }
+                if (! LandingPage::where('slug', $landingSlug)->where('is_published', true)->exists()) {
+                    $validator->errors()->add('landing_slug', 'صفحه لندینگ نامعتبر یا غیرفعال است.');
+                }
+
+                return;
+            }
+
             if (blank($this->input('name')) && blank($this->input('phone')) && blank($this->input('email'))) {
                 $validator->errors()->add('name', 'حداقل یکی از فیلدهای نام، شماره تماس یا ایمیل باید تکمیل شود.');
             }

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\AdminRoleName;
 use App\Models\User;
+use App\Support\BootstrapAdmin;
 use App\Support\FamilyPermissionCatalog;
 use App\Support\PermissionCatalog;
 use Illuminate\Database\Seeder;
@@ -33,6 +34,7 @@ class RolePermissionSeeder extends Seeder
 
         $this->syncRolePermissions();
         $this->bootstrapOrphanAdmins();
+        BootstrapAdmin::syncRootAdminFlags();
     }
 
     private function syncRolePermissions(): void
