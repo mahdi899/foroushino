@@ -59,10 +59,14 @@ php artisan migrate --force
 # NOTE: intentionally NOT the full DatabaseSeeder — it seeds demo commerce,
 # seminars, mini-courses, and a Family with hardcoded weak passwords.
 # CacheIntegrationsSeeder / TelegramBotSeeder only wire settings (idempotent).
+# RolePermissionSeeder syncs system admin roles/permissions (idempotent; does
+# not change existing admin→role assignments except zero-role orphans).
 # Do NOT re-run StaffAdminSeeder here — it belongs to one-time bootstrap only;
 # create the first admin with: php artisan app:create-admin
 php artisan db:seed --class=CacheIntegrationsSeeder --force || true
 php artisan db:seed --class=TelegramBotSeeder --force || true
+# System admin roles/permissions (incl. tech-support / tech-manager); idempotent.
+php artisan db:seed --class=RolePermissionSeeder --force || true
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache

@@ -18,7 +18,7 @@ export function AdminRoleCheckboxPanel({ editor }: { editor: AdminRoleEditor }) 
         </div>
 
         <div
-          className="max-h-28 overflow-y-auto overscroll-contain px-1 py-1 [scrollbar-width:thin]"
+          className="max-h-44 overflow-y-auto overscroll-contain px-1 py-1 [scrollbar-width:thin]"
           role="group"
           aria-label="انتخاب نقش‌های مدیر"
         >

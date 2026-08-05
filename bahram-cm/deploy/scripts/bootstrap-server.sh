@@ -133,6 +133,7 @@ php artisan migrate --force
 # (first bootstrap). Prefer: php artisan app:create-admin
 php artisan db:seed --class=CacheIntegrationsSeeder --force || true
 php artisan db:seed --class=TelegramBotSeeder --force || true
+php artisan db:seed --class=RolePermissionSeeder --force || true
 ADMIN_COUNT="$(php -r "
 require 'vendor/autoload.php';
 \$app = require 'bootstrap/app.php';
