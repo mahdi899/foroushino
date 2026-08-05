@@ -197,6 +197,118 @@ class SupportAndKycRoleScopeTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_tech_support_can_only_post_internal_notes(): void
+    {
+        $techSupport = $this->makeAdmin(AdminRoleName::TechSupport);
+        $support = $this->makeAdmin(AdminRoleName::Support);
+        $student = User::factory()->create([
+            'is_admin' => false,
+            'mobile' => '09121115566',
+            'name' => 'دانشجو داخلی',
+        ]);
+
+        $ticket = Ticket::query()->create([
+            'user_id' => $student->id,
+            'department' => 'technical',
+            'tech_escalation' => 'tech_support',
+            'subject' => 'مشکل فنی برای پیام داخلی',
+            'status' => TicketStatus::Open,
+            'priority' => TicketPriority::Normal,
+        ]);
+        $ticket->messages()->create([
+            'user_id' => $student->id,
+            'message' => 'اپ باز نمی‌شود',
+            'is_admin_reply' => false,
+            'is_internal' => false,
+        ]);
+
+        Sanctum::actingAs($techSupport, ['*']);
+
+        $this->postJson("/api/v1/tickets/{$ticket->id}/messages", [
+            'message' => 'لاگ سرور را چک کردم؛ کش را پاک کنید',
+        ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('ticket_messages', [
+            'ticket_id' => $ticket->id,
+            'message' => 'لاگ سرور را چک کردم؛ کش را پاک کنید',
+            'is_admin_reply' => true,
+            'is_internal' => true,
+            'user_id' => $techSupport->id,
+        ]);
+
+        $this->postJson("/api/v1/tickets/{$ticket->id}/messages", [
+            'message' => 'نباید به کاربر برسد',
+            'is_internal' => false,
+        ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('ticket_messages', [
+            'ticket_id' => $ticket->id,
+            'message' => 'نباید به کاربر برسد',
+            'is_internal' => true,
+        ]);
+
+        Sanctum::actingAs($support, ['*']);
+        $detail = $this->getJson("/api/v1/tickets/{$ticket->id}")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertTrue(collect($detail['messages'])->contains(
+            fn ($m) => ($m['message'] ?? '') === 'لاگ سرور را چک کردم؛ کش را پاک کنید' && ($m['is_internal'] ?? false) === true
+        ));
+        $this->assertTrue($detail['can_reply_to_user']);
+        $this->assertFalse($detail['must_use_internal']);
+
+        // مخاطب نباید پیام‌های داخلی را در لود رابطهٔ عمومی ببیند
+        $publicCount = $ticket->messages()->where('is_internal', false)->count();
+        $internalCount = $ticket->messages()->where('is_internal', true)->count();
+        $this->assertSame(1, $publicCount);
+        $this->assertGreaterThanOrEqual(2, $internalCount);
+    }
+
+    public function test_support_can_send_public_and_internal_messages(): void
+    {
+        $support = $this->makeAdmin(AdminRoleName::Support);
+        $student = User::factory()->create([
+            'is_admin' => false,
+            'mobile' => '09121116677',
+        ]);
+
+        $ticket = Ticket::query()->create([
+            'user_id' => $student->id,
+            'department' => null,
+            'subject' => 'سؤال عمومی',
+            'status' => TicketStatus::Open,
+            'priority' => TicketPriority::Normal,
+        ]);
+
+        Sanctum::actingAs($support, ['*']);
+
+        $this->postJson("/api/v1/tickets/{$ticket->id}/messages", [
+            'message' => 'یادداشت برای تیم فنی',
+            'is_internal' => true,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('ticket_messages', [
+            'ticket_id' => $ticket->id,
+            'message' => 'یادداشت برای تیم فنی',
+            'is_internal' => true,
+        ]);
+
+        $this->postJson("/api/v1/tickets/{$ticket->id}/messages", [
+            'message' => 'پاسخ نهایی برای شما',
+            'is_internal' => false,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('ticket_messages', [
+            'ticket_id' => $ticket->id,
+            'message' => 'پاسخ نهایی برای شما',
+            'is_admin_reply' => true,
+            'is_internal' => false,
+        ]);
+    }
+
     public function test_admin_without_ticket_permission_is_forbidden(): void
     {
         $content = $this->makeAdmin(AdminRoleName::ContentManager);

@@ -57,7 +57,7 @@ type TicketRowVariant = 'closed' | 'answered' | 'pending';
 function ticketRowVariant(status: AdminTicket['status']): TicketRowVariant | null {
   if (status === 'closed') return 'closed';
   if (status === 'answered' || status === 'waiting_user') return 'answered';
-  if (status === 'open') return 'pending';
+  if (status === 'open' || status === 'in_review') return 'pending';
   return null;
 }
 
@@ -117,12 +117,16 @@ export function TicketsHubClient({
   showTechnicalQueue = false,
   showResolvedForSupport = false,
   techActorLevel = null,
+  canReplyToUser = true,
+  mustUseInternal = false,
 }: {
   canViewStudents?: boolean;
   canSearchStudents?: boolean;
   showTechnicalQueue?: boolean;
   showResolvedForSupport?: boolean;
   techActorLevel?: TicketTechActorLevel | null;
+  canReplyToUser?: boolean;
+  mustUseInternal?: boolean;
 }) {
   const [tab, setTab] = useState<TabId>(() => defaultTab(showTechnicalQueue, showResolvedForSupport));
   const [query, setQuery] = useState('');
@@ -147,7 +151,10 @@ export function TicketsHubClient({
   const ticketsBodyRef = useRef<HTMLDivElement>(null);
 
   const tabs: { id: TabId; label: string; icon: typeof MessageSquarePlus }[] = showTechnicalQueue
-    ? [{ id: 'technical', label: 'پشتیبانی فنی', icon: Wrench }, ...BASE_TABS]
+    ? [
+        { id: 'technical', label: 'پشتیبانی فنی', icon: Wrench },
+        ...(mustUseInternal ? BASE_TABS.filter((t) => t.id !== 'send') : BASE_TABS),
+      ]
     : showResolvedForSupport
       ? [{ id: 'resolved', label: 'آماده اعلام', icon: CheckCircle2 }, ...BASE_TABS]
       : BASE_TABS;
@@ -332,6 +339,8 @@ export function TicketsHubClient({
                       compact
                       canViewStudents={canViewStudents}
                       techActorLevel={techActorLevel}
+                      canReplyToUser={canReplyToUser}
+                      mustUseInternal={mustUseInternal}
                       onTechEscalationChanged={reloadCurrentTechnicalQueue}
                     />
                   </div>
@@ -403,6 +412,8 @@ export function TicketsHubClient({
                       compact
                       canViewStudents={canViewStudents}
                       techActorLevel={techActorLevel}
+                      canReplyToUser={canReplyToUser}
+                      mustUseInternal={mustUseInternal}
                       onTechEscalationChanged={reloadCurrentTechnicalQueue}
                     />
                   </div>
@@ -617,6 +628,8 @@ export function TicketsHubClient({
                   compact
                   canViewStudents={canViewStudents}
                   techActorLevel={techActorLevel}
+                  canReplyToUser={canReplyToUser}
+                  mustUseInternal={mustUseInternal}
                 />
               </div>
             ) : null}

@@ -15,12 +15,24 @@ function techActorLevelFor(user: Awaited<ReturnType<typeof getCurrentUser>>): Ti
   return null;
 }
 
+function ticketReplyCaps(user: Awaited<ReturnType<typeof getCurrentUser>>) {
+  if (!user) return { canReplyToUser: false, mustUseInternal: true };
+  const roles = user.roles;
+  const isTechOnly =
+    (roles.includes('tech-support') || roles.includes('tech-manager')) && !roles.includes('support');
+  return {
+    canReplyToUser: !isTechOnly,
+    mustUseInternal: isTechOnly,
+  };
+}
+
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ticket = await getTicket(Number(id));
   if (!ticket) notFound();
 
   const user = await getCurrentUser();
+  const { canReplyToUser, mustUseInternal } = ticketReplyCaps(user);
 
   return (
     <AdminPage title={`تیکت #${ticket.id}`} desc={ticket.subject} backHref="/admin/academy/tickets">
@@ -29,6 +41,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           ticket={ticket}
           canViewStudents={can(user, 'students.view')}
           techActorLevel={techActorLevelFor(user)}
+          canReplyToUser={canReplyToUser}
+          mustUseInternal={mustUseInternal}
         />
       </div>
     </AdminPage>

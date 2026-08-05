@@ -33,7 +33,7 @@ class TicketController extends Controller
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
         $this->authorizeOwnership($request, $ticket);
-        $ticket->load('messages');
+        $ticket->load(['messages' => fn ($q) => $q->where('is_internal', false)]);
 
         return ApiResponse::success($this->payload($ticket));
     }
@@ -54,9 +54,10 @@ class TicketController extends Controller
             'message' => $request->string('message'),
             'attachment_path' => $this->storeAttachment($request),
             'is_admin_reply' => false,
+            'is_internal' => false,
         ]);
 
-        $ticket->load('messages');
+        $ticket->load(['messages' => fn ($q) => $q->where('is_internal', false)]);
 
         app(SmsService::class)->sendTicketCreated($ticket);
         app(InAppNotificationService::class)->ticketCreated($ticket->loadMissing('user'));
@@ -78,12 +79,13 @@ class TicketController extends Controller
             'message' => $request->string('message'),
             'attachment_path' => $this->storeAttachment($request),
             'is_admin_reply' => false,
+            'is_internal' => false,
         ]);
 
         $message = (string) $request->string('message');
 
         $ticket->update(['status' => 'open']);
-        $ticket->load('messages');
+        $ticket->load(['messages' => fn ($q) => $q->where('is_internal', false)]);
 
         app(AdminTelegramLogService::class)->notifyTicketStudentReply($ticket->loadMissing('user'), $message);
 

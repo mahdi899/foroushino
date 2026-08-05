@@ -17,13 +17,15 @@ interface TicketListItem {
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'باز',
+  in_review: 'در حال بررسی',
   answered: 'پاسخ داده‌شده',
   waiting_user: 'در انتظار شما',
   closed: 'بسته‌شده',
 };
 
 const STATUS_BADGES: Record<string, string> = {
-  open: 'badge-success',
+  open: 'badge-warning',
+  in_review: 'badge-warning',
   answered: 'badge-success',
   waiting_user: 'badge-warning',
   closed: 'badge-neutral',

@@ -13,10 +13,12 @@ class TicketMessage extends Model
         'message',
         'attachment_path',
         'is_admin_reply',
+        'is_internal',
     ];
 
     protected $casts = [
         'is_admin_reply' => 'boolean',
+        'is_internal' => 'boolean',
     ];
 
     public function ticket(): BelongsTo

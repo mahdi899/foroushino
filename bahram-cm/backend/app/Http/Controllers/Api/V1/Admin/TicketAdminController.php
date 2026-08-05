@@ -6,6 +6,7 @@ use App\Enums\AdminRoleName;
 use App\Enums\TicketTechEscalation;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Models\TicketMessage;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
 use App\Services\InAppNotificationService;
@@ -26,7 +27,7 @@ class TicketAdminController extends Controller
 
         $query = Ticket::query()
             ->with(['user', 'techResolver'])
-            ->orderByRaw("CASE status WHEN 'open' THEN 0 WHEN 'answered' THEN 1 WHEN 'waiting_user' THEN 2 WHEN 'closed' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE status WHEN 'open' THEN 0 WHEN 'in_review' THEN 1 WHEN 'answered' THEN 2 WHEN 'waiting_user' THEN 3 WHEN 'closed' THEN 4 ELSE 5 END")
             ->orderByDesc('id');
 
         if ($status = $request->string('status')->toString()) {
@@ -63,6 +64,15 @@ class TicketAdminController extends Controller
     {
         abort_unless($request->user()->hasPermission('tickets.manage'), 403);
 
+        if ($this->mustUseInternalOnly($request->user())) {
+            return response()->json([
+                'error' => [
+                    'code' => 'forbidden',
+                    'message_fa' => 'پشتیبان فنی نمی‌تواند تیکت جدید برای مخاطب باز کند؛ فقط پشتیبانی مجاز است.',
+                ],
+            ], 403);
+        }
+
         $data = $request->validate([
             'user_id' => ['required_without:mobile', 'integer', 'exists:users,id'],
             'mobile' => ['required_without:user_id', 'string'],
@@ -98,6 +108,7 @@ class TicketAdminController extends Controller
             'user_id' => $request->user()->id,
             'message' => $data['message'],
             'is_admin_reply' => true,
+            'is_internal' => false,
         ]);
 
         $ticket->load(['user', 'messages.user', 'techResolver']);
@@ -117,14 +128,9 @@ class TicketAdminController extends Controller
 
         return response()->json(['data' => [
             ...$this->listPayload($ticket),
-            'messages' => $ticket->messages->map(fn ($m) => [
-                'id' => $m->id,
-                'message' => $m->message,
-                'is_admin_reply' => $m->is_admin_reply,
-                'sender_name' => $m->user?->name ?? ($m->is_admin_reply ? 'پشتیبان' : 'دانشجو'),
-                'has_attachment' => filled($m->attachment_path),
-                'created_at' => $m->created_at?->toIso8601String(),
-            ]),
+            'messages' => $ticket->messages->map(fn ($m) => $this->messagePayload($m)),
+            'can_reply_to_user' => $this->canReplyToUser($request->user()),
+            'must_use_internal' => $this->mustUseInternalOnly($request->user()),
         ]]);
     }
 
@@ -132,10 +138,53 @@ class TicketAdminController extends Controller
     {
         abort_unless($request->user()->hasPermission('tickets.manage'), 403);
 
-        $data = $request->validate(['message' => ['required', 'string', 'max:5000']]);
+        $data = $request->validate([
+            'message' => ['required', 'string', 'max:5000'],
+            'is_internal' => ['sometimes', 'boolean'],
+        ]);
+
+        $actor = $request->user();
+        $wantsInternal = (bool) ($data['is_internal'] ?? false);
+
+        if ($this->mustUseInternalOnly($actor)) {
+            $wantsInternal = true;
+        }
+
+        if (! $wantsInternal && ! $this->canReplyToUser($actor)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'forbidden',
+                    'message_fa' => 'پشتیبان فنی و مدیر فنی فقط می‌توانند پیام داخلی برای پشتیبانی بفرستند؛ پاسخ به مخاطب فقط توسط پشتیبانی انجام می‌شود.',
+                ],
+            ], 403);
+        }
+
+        if ($wantsInternal) {
+            $ticket->messages()->create([
+                'user_id' => $actor->id,
+                'message' => $data['message'],
+                'is_admin_reply' => true,
+                'is_internal' => true,
+            ]);
+
+            $ticket->load(['user', 'messages.user', 'techResolver']);
+
+            app(AdminTelegramLogService::class)->notifyTicketInternalNote(
+                $ticket,
+                $data['message'],
+                $actor->name ?? 'همکار',
+            );
+
+            return response()->json(['data' => [
+                ...$this->listPayload($ticket),
+                'messages' => $ticket->messages->map(fn ($m) => $this->messagePayload($m)),
+                'can_reply_to_user' => $this->canReplyToUser($actor),
+                'must_use_internal' => $this->mustUseInternalOnly($actor),
+            ]]);
+        }
 
         app(\App\Modules\TelegramBot\Services\BotTicketDeliveryService::class)
-            ->deliverAdminReply($ticket, $data['message'], null, (int) $request->user()->id);
+            ->deliverAdminReply($ticket, $data['message'], null, (int) $actor->id);
 
         $ticket->load(['user', 'messages.user', 'techResolver']);
 
@@ -143,7 +192,12 @@ class TicketAdminController extends Controller
         app(InAppNotificationService::class)->ticketReply($ticket);
         app(AdminTelegramLogService::class)->notifyTicketAdminReply($ticket, $data['message']);
 
-        return response()->json(['data' => $this->listPayload($ticket)]);
+        return response()->json(['data' => [
+            ...$this->listPayload($ticket),
+            'messages' => $ticket->messages->map(fn ($m) => $this->messagePayload($m)),
+            'can_reply_to_user' => $this->canReplyToUser($actor),
+            'must_use_internal' => $this->mustUseInternalOnly($actor),
+        ]]);
     }
 
     public function update(Request $request, Ticket $ticket): JsonResponse
@@ -151,7 +205,7 @@ class TicketAdminController extends Controller
         abort_unless($request->user()->hasPermission('tickets.manage'), 403);
 
         $data = $request->validate([
-            'status' => ['sometimes', 'required', 'string', 'in:open,answered,waiting_user,closed'],
+            'status' => ['sometimes', 'required', 'string', 'in:open,in_review,answered,waiting_user,closed'],
             'department' => ['sometimes', 'nullable', 'string', Rule::in(self::DEPARTMENTS)],
             'tech_escalation' => ['sometimes', 'required', 'string', Rule::in(TicketTechEscalation::values())],
         ]);
@@ -283,6 +337,7 @@ class TicketAdminController extends Controller
         $summary = [
             'total' => (clone $base)->count(),
             'open' => (clone $base)->where('status', 'open')->count(),
+            'in_review' => (clone $base)->where('status', 'in_review')->count(),
             'answered' => (clone $base)->where('status', 'answered')->count(),
             'waiting_user' => (clone $base)->where('status', 'waiting_user')->count(),
             'closed' => (clone $base)->where('status', 'closed')->count(),
@@ -409,6 +464,61 @@ class TicketAdminController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * پشتیبان فنی و مدیر فنی فقط پیام داخلی می‌فرستند؛ پاسخ به مخاطب فقط برای پشتیبانی.
+     */
+    private function mustUseInternalOnly(User $actor): bool
+    {
+        if ($actor->hasRole(AdminRoleName::Support->value)) {
+            return false;
+        }
+
+        return $actor->hasRole(AdminRoleName::TechSupport->value)
+            || $actor->hasRole(AdminRoleName::TechManager->value);
+    }
+
+    private function canReplyToUser(User $actor): bool
+    {
+        return ! $this->mustUseInternalOnly($actor);
+    }
+
+    /** @return array<string, mixed> */
+    private function messagePayload(TicketMessage $m): array
+    {
+        $roleLabel = null;
+        if ($m->is_admin_reply && $m->user) {
+            $roleLabel = $this->primaryStaffRoleLabel($m->user);
+        }
+
+        return [
+            'id' => $m->id,
+            'message' => $m->message,
+            'is_admin_reply' => $m->is_admin_reply,
+            'is_internal' => (bool) $m->is_internal,
+            'sender_name' => $m->user?->name ?? ($m->is_admin_reply ? 'پشتیبان' : 'دانشجو'),
+            'sender_role_label' => $roleLabel,
+            'has_attachment' => filled($m->attachment_path),
+            'created_at' => $m->created_at?->toIso8601String(),
+        ];
+    }
+
+    private function primaryStaffRoleLabel(User $user): string
+    {
+        foreach ([
+            AdminRoleName::SuperAdmin,
+            AdminRoleName::TechManager,
+            AdminRoleName::TechSupport,
+            AdminRoleName::Support,
+            AdminRoleName::Admin,
+        ] as $role) {
+            if ($user->hasRole($role->value)) {
+                return $role->label();
+            }
+        }
+
+        return 'پشتیبان';
     }
 
     /** @return array<string, mixed> */

@@ -9,6 +9,7 @@ import type { AdminTicketReport } from '@/lib/admin/academyTypes';
 const STATUS_OPTIONS = [
   { value: '', label: 'همه وضعیت‌ها' },
   { value: 'open', label: 'باز' },
+  { value: 'in_review', label: 'در حال بررسی' },
   { value: 'answered', label: 'پاسخ داده شده' },
   { value: 'waiting_user', label: 'در انتظار کاربر' },
   { value: 'closed', label: 'بسته' },
@@ -103,9 +104,10 @@ export function TicketReportPanel() {
 
       {report && !loading && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard label="کل تیکت‌ها" value={report.summary.total} icon="Ticket" />
             <StatCard label="باز" value={report.summary.open} icon="AlertCircle" />
+            <StatCard label="در حال بررسی" value={report.summary.in_review ?? 0} icon="Clock" />
             <StatCard label="پاسخ داده" value={report.summary.answered} icon="CheckCircle" />
             <StatCard label="بسته" value={report.summary.closed} icon="XCircle" />
           </div>
