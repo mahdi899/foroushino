@@ -15,6 +15,25 @@ export const getFamilyToken = cache(async (): Promise<string | undefined> => {
   return jar.get(STUDENT_TOKEN_COOKIE)?.value;
 });
 
+async function familyRequestHeaders(
+  token: string | undefined,
+  extra: Record<string, string> = {},
+): Promise<Record<string, string>> {
+  let forwarded: Record<string, string> = {};
+  try {
+    forwarded = await forwardedClientHeaders();
+  } catch {
+    // Some server-action invocations may not have a request scope.
+  }
+
+  return {
+    Accept: 'application/json',
+    ...forwarded,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
 export async function familyFetch<T = unknown>(
   path: string,
   options: { method?: string; body?: unknown; ifNoneMatch?: string | null } = {},
@@ -22,12 +41,9 @@ export async function familyFetch<T = unknown>(
   const token = await getFamilyToken();
   const url = `${SERVER_API_URL}/family${path.startsWith('/') ? path : `/${path}`}`;
 
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...(await forwardedClientHeaders()),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  const headers = await familyRequestHeaders(token, {
     ...(options.ifNoneMatch ? { 'If-None-Match': options.ifNoneMatch } : {}),
-  };
+  });
   let body: BodyInit | undefined;
 
   if (options.body !== undefined) {
@@ -69,12 +85,9 @@ export async function familyFetchConditional<T = unknown>(
   const token = await getFamilyToken();
   const url = `${SERVER_API_URL}/family${path.startsWith('/') ? path : `/${path}`}`;
 
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...(await forwardedClientHeaders()),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  const headers = await familyRequestHeaders(token, {
     ...(ifNoneMatch ? { 'If-None-Match': ifNoneMatch } : {}),
-  };
+  });
 
   const res = await fetch(url, {
     method: 'GET',

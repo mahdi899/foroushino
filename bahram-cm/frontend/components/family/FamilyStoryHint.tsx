@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { formatFa } from '@/lib/persian';
-import { inflatedMemberCount } from '@/lib/family/inflatedMemberCount';
+import { useDisplayedFamilyCount } from '@/lib/family/useDisplayedFamilyCount';
 import { warmupUrls } from '@/lib/family/feedMediaWarmup';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 
@@ -32,15 +32,6 @@ export function FamilyStoryHint({
   onMaskedMemberCountClick,
   nested = false,
 }: FamilyStoryHintProps) {
-  const [hour, setHour] = useState<number | null>(null);
-
-  useEffect(() => {
-    const syncHour = () => setHour(new Date().getHours());
-    syncHour();
-    const id = window.setInterval(syncHour, 60_000);
-    return () => window.clearInterval(id);
-  }, []);
-
   // Warm the stories list + first couple of media in the background as soon as
   // the hint mounts, so opening the viewer never shows a black flash. The
   // family API module is a server-action file, so it's imported lazily to
@@ -76,10 +67,8 @@ export function FamilyStoryHint({
   }, [hasUnseen]);
 
   const hasMembers = typeof memberCount === 'number';
-  const displayReady = hasMembers && hour !== null;
-  const showMemberStat = maskMemberCount || displayReady;
-  const displayMemberCount =
-    displayReady && !maskMemberCount ? inflatedMemberCount(memberCount, hour) : null;
+  const showMemberStat = maskMemberCount || hasMembers;
+  const displayMemberCount = useDisplayedFamilyCount(maskMemberCount ? undefined : memberCount);
 
   if (!showMemberStat && !hasUnseen) return null;
 

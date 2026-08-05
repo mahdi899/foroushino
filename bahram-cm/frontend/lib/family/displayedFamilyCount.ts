@@ -1,6 +1,23 @@
-const REFRESH_MS = 10 * 60 * 1000;
+/** Client cache TTL — recompute at most once per tab every 10 minutes. */
+export const DISPLAYED_FAMILY_COUNT_CACHE_MS = 10 * 60 * 1000;
 
-/** Logarithmic growth curve: early boost, eases toward real count at 1000+. */
+type DisplayedFamilyCountCache = {
+  realCount: number;
+  value: number;
+  expiresAt: number;
+};
+
+let displayedFamilyCountCache: DisplayedFamilyCountCache | null = null;
+
+/** Test-only: clear in-memory cache between cases. */
+export function resetDisplayedFamilyCountCache(): void {
+  displayedFamilyCountCache = null;
+}
+
+/**
+ * Public-facing member count: real + bonus (bonus shrinks as members grow).
+ * O(1), no log/pow/random — same output everywhere when inputs match.
+ */
 export function getDisplayedFamilyCount(realCount: number): number {
   const count = Math.max(0, Math.floor(realCount));
 
@@ -12,31 +29,40 @@ export function getDisplayedFamilyCount(realCount: number): number {
     return count;
   }
 
-  const ln = Math.log(count);
-  const calculated =
-    100 + 65.633131677 * ln + 9.359800729 * ln * ln;
-  const rounded = Math.round(calculated / 10) * 10;
+  const bonus =
+    count < 10
+      ? 100 - count
+      : count < 100
+        ? 500 - count
+        : Math.max(0, 550 - Math.floor(count / 2));
+
+  const raw = count + bonus;
+  const rounded = Math.round(raw / 10) * 10;
 
   return Math.min(990, Math.max(100, rounded));
 }
 
-type CacheEntry = { value: number; until: number };
+/** Same formula, but memoized per real count for ~10 minutes in the browser tab. */
+export function getCachedDisplayedFamilyCount(
+  realCount: number,
+  now = Date.now(),
+): number {
+  const count = Math.max(0, Math.floor(realCount));
 
-const cache = new Map<number, CacheEntry>();
-
-/** Client-side cache: same real count reuses result for 10 minutes. */
-export function getCachedDisplayedFamilyCount(realCount: number, now = Date.now()): number {
-  const key = Math.max(0, Math.floor(realCount));
-  const hit = cache.get(key);
-  if (hit && hit.until > now) {
-    return hit.value;
+  if (
+    displayedFamilyCountCache &&
+    displayedFamilyCountCache.realCount === count &&
+    now < displayedFamilyCountCache.expiresAt
+  ) {
+    return displayedFamilyCountCache.value;
   }
 
-  const value = getDisplayedFamilyCount(key);
-  cache.set(key, { value, until: now + REFRESH_MS });
-  return value;
-}
+  const value = getDisplayedFamilyCount(count);
+  displayedFamilyCountCache = {
+    realCount: count,
+    value,
+    expiresAt: now + DISPLAYED_FAMILY_COUNT_CACHE_MS,
+  };
 
-export function displayedFamilyCountRefreshMs(): number {
-  return REFRESH_MS;
+  return value;
 }

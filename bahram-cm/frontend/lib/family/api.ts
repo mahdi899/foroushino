@@ -24,7 +24,10 @@ async function run<T>(fn: () => Promise<T>, fallback: string): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    const status = (err as { status?: number })?.status ?? 400;
+    const named = err as { status?: number; name?: string };
+    const status =
+      named.status ??
+      (named.name === 'TimeoutError' || named.name === 'AbortError' ? 504 : 400);
     throw new FamilyApiError(extractError(err, fallback), status);
   }
 }
