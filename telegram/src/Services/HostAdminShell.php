@@ -27,6 +27,8 @@ final class HostAdminShell
 
     public const DESTINATIONS = 'مقاصد';
 
+    public const MERGE_LINES = 'ادغام خط مقاصد';
+
     public const DISCOUNTS = 'کد تخفیف';
 
     public const TICKETS = 'تیکت‌ها';
@@ -61,6 +63,7 @@ final class HostAdminShell
         [self::SEMINARS, self::MESSAGES],
         [self::TICKETS, self::DISCOUNTS],
         [self::REQUIRED_CHATS, self::DESTINATIONS],
+        [self::MERGE_LINES],
         [self::EXPORT, self::PROFILE],
         [self::SETTINGS, self::LOGS],
         [self::EVENTS, self::HOME],
@@ -75,6 +78,7 @@ final class HostAdminShell
         self::BROADCAST => ['📣 پیام همگانی'],
         self::REQUIRED_CHATS => ['📻 کانال اجباری'],
         self::DESTINATIONS => ['📍 مقاصد'],
+        self::MERGE_LINES => ['🔗 ادغام خط مقاصد', 'ادغام خط'],
         self::DISCOUNTS => ['🎟 کد تخفیف'],
         self::TICKETS => ['🎫 تیکت‌ها'],
         self::MESSAGES => ['💬 پیام‌ها'],

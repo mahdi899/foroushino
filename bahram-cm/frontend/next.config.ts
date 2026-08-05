@@ -109,7 +109,11 @@ const serverActionAllowedOrigins = [
   "127.0.0.1",
   "localhost:3000",
   "localhost:3001",
+  // dev:local proxy sets x-forwarded-host to lvh.me while Origin may be 127.0.0.1 / LAN IP.
+  "127.0.0.1:3000",
+  "127.0.0.1:3001",
   "127.0.0.1:3010",
+  ...localNetworkHosts().flatMap((ip) => [`${ip}:3000`, `${ip}:3001`]),
   process.env.NEXT_PUBLIC_APP_DOMAIN,
   process.env.NEXT_PUBLIC_FAMILY_DOMAIN,
   ...(process.env.SERVER_ACTIONS_ALLOWED_ORIGINS?.split(",")
