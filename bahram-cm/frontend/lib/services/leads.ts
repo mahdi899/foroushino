@@ -132,6 +132,20 @@ export type LandingLeadInput = {
 
 export type LandingLeadFieldErrors = Partial<Record<'name' | 'phone' | 'email', string>>;
 
+/** Iranian mobile: exactly 11 digits, must start with 0 (e.g. 09xxxxxxxxx). */
+const LANDING_PHONE_RE = /^0\d{10}$/;
+
+function toLatinDigits(value: string): string {
+  return value
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - "۰".charCodeAt(0)))
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - "٠".charCodeAt(0)));
+}
+
+/** Digits only, max 11 — for controlled phone input on landing forms. */
+export function normalizeLandingPhoneInput(raw: string): string {
+  return toLatinDigits(raw).replace(/\D/g, "").slice(0, 11);
+}
+
 /** Name + phone are always required; email is only validated when the page collects it. */
 export function validateLandingLead(input: {
   name: string;
@@ -143,8 +157,9 @@ export function validateLandingLead(input: {
   if (!input.name || input.name.trim().length < 2) {
     errors.name = "نام و نام خانوادگی را کامل وارد کن.";
   }
-  if (!input.phone || !PHONE_RE.test(input.phone.trim())) {
-    errors.phone = "شماره تماس معتبر وارد کن.";
+  const phone = normalizeLandingPhoneInput(input.phone);
+  if (!LANDING_PHONE_RE.test(phone)) {
+    errors.phone = "شماره باید ۱۱ رقم باشد و با ۰ شروع شود.";
   }
   if (input.requireEmail && (!input.email || !EMAIL_RE.test(input.email.trim()))) {
     errors.email = "ایمیل را درست وارد کن.";
@@ -155,7 +170,7 @@ export function validateLandingLead(input: {
 export async function submitLandingLead(input: LandingLeadInput): Promise<ApiResult<LeadResult>> {
   const result = await postJson<LeadResponse>("/leads", {
     name: input.name.trim(),
-    phone: input.phone.trim(),
+    phone: normalizeLandingPhoneInput(input.phone),
     email: input.email?.trim() || undefined,
     message: input.message?.trim() || undefined,
     landing_slug: input.landing_slug,

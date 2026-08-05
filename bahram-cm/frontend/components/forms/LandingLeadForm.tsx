@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { flushSync } from "react-dom";
 import { cn } from "@/lib/cn";
 import {
+  normalizeLandingPhoneInput,
   submitLandingLead,
   validateLandingLead,
   type LandingLeadFieldErrors,
@@ -22,11 +23,13 @@ const iconClass =
 const labelClass =
   "block text-center text-lg font-medium text-bone md:text-start md:text-sm";
 
+const actionSlotClass =
+  "flex h-14 min-h-14 w-full items-center justify-center rounded-pill md:h-12 md:min-h-12";
+
 export function LandingLeadForm({
   slug,
   formFields,
   submitLabel,
-  successMessage,
   className,
 }: {
   slug: string;
@@ -47,7 +50,10 @@ export function LandingLeadForm({
   const resetErrors = () => {
     if (status === "ok" || status === "loading") return;
     if (Object.keys(fieldErrors).length) setFieldErrors({});
-    if (status !== "idle") setStatus("idle");
+    if (status !== "idle") {
+      setStatus("idle");
+      setFeedback("");
+    }
   };
 
   const onSubmit = async (event: React.FormEvent) => {
@@ -58,7 +64,7 @@ export function LandingLeadForm({
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
       setStatus("err");
-      setFeedback("لطفاً فیلدهای مشخص‌شده را اصلاح کن.");
+      setFeedback(errors.phone || errors.name || "لطفاً فیلدهای مشخص‌شده را اصلاح کن.");
       return;
     }
 
@@ -79,21 +85,22 @@ export function LandingLeadForm({
     if (result.ok) {
       flushSync(() => {
         setStatus("ok");
-        setFeedback(successMessage?.trim() || "ثبت شد. به‌زودی با تو تماس می‌گیریم.");
+        setFeedback("شماره شما ثبت شد");
       });
       return;
     }
 
-    const duplicate = /قبلاً|تکرار/i.test(result.error);
     setStatus("err");
     setFeedback(result.error);
-    if (duplicate) {
-      setFieldErrors({ phone: result.error });
-    }
   };
 
   return (
-    <form onSubmit={onSubmit} className={cn("landing-lead-form relative w-full", className)} noValidate>
+    <form
+      onSubmit={onSubmit}
+      className={cn("landing-lead-form relative w-full", className)}
+      noValidate
+      autoComplete="off"
+    >
       <div className="space-y-7 md:space-y-4">
         <div className="grid gap-7 sm:grid-cols-2 sm:gap-4">
           <label htmlFor={`${formId}-name`} className="block min-w-0">
@@ -104,8 +111,12 @@ export function LandingLeadForm({
               </span>
               <input
                 id={`${formId}-name`}
+                name="landing-full-name"
                 type="text"
-                autoComplete="name"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 required
                 value={name}
                 onChange={(e) => {
@@ -117,11 +128,6 @@ export function LandingLeadForm({
                 className={cn(inputClass, fieldErrors.name && "border-gold/60")}
               />
             </div>
-            {fieldErrors.name ? (
-              <span role="alert" className="mt-1.5 block text-center text-sm text-gold md:text-start">
-                {fieldErrors.name}
-              </span>
-            ) : null}
           </label>
 
           <label htmlFor={`${formId}-phone`} className="block min-w-0">
@@ -132,25 +138,26 @@ export function LandingLeadForm({
               </span>
               <input
                 id={`${formId}-phone`}
-                type="tel"
-                autoComplete="tel"
-                inputMode="tel"
+                name="landing-mobile"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 required
+                maxLength={11}
                 value={phone}
                 onChange={(e) => {
-                  setPhone(e.target.value);
+                  setPhone(normalizeLandingPhoneInput(e.target.value));
                   resetErrors();
                 }}
                 disabled={status === "loading" || status === "ok"}
-                placeholder="۰۹۱۲..."
+                placeholder="0912xxxxxxx"
                 className={cn(inputClass, "num-latin", fieldErrors.phone && "border-gold/60")}
               />
             </div>
-            {fieldErrors.phone ? (
-              <span role="alert" className="mt-1.5 block text-center text-sm text-gold md:text-start">
-                {fieldErrors.phone}
-              </span>
-            ) : null}
           </label>
         </div>
 
@@ -163,8 +170,11 @@ export function LandingLeadForm({
               </span>
               <input
                 id={`${formId}-email`}
+                name="landing-email"
                 type="email"
-                autoComplete="email"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -186,7 +196,11 @@ export function LandingLeadForm({
               </span>
               <textarea
                 id={`${formId}-message`}
+                name="landing-notes"
                 rows={2}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={message}
                 onChange={(e) => {
                   setMessage(e.target.value);
@@ -200,56 +214,57 @@ export function LandingLeadForm({
           </label>
         ) : null}
 
-        {status === "ok" ? (
-          <p
-            role="status"
-            aria-live="polite"
-            className="flex min-h-14 w-full items-center justify-center rounded-pill border border-emerald/35 bg-emerald/15 px-5 py-3.5 text-center text-lg font-semibold text-emerald-glow md:min-h-12 md:text-base"
-          >
-            {feedback}
-          </p>
-        ) : (
-          <>
+        {/* Fixed-height action slot — loading / success swap without layout jump */}
+        <div className="space-y-3">
+          {status === "ok" ? (
+            <p
+              role="status"
+              aria-live="polite"
+              className={cn(
+                actionSlotClass,
+                "border border-emerald/35 bg-emerald/15 px-5 text-center text-lg font-semibold text-emerald-glow md:text-base",
+              )}
+            >
+              {feedback}
+            </p>
+          ) : (
             <button
               type="submit"
               disabled={status === "loading"}
               aria-busy={status === "loading"}
               className={cn(
-                "group neon-btn-primary inline-flex h-14 min-h-14 w-full items-center justify-center gap-2 rounded-pill bg-emerald px-6 text-lg font-semibold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] md:h-12 md:min-h-12 md:text-base",
+                actionSlotClass,
+                "group neon-btn-primary gap-2 bg-emerald px-6 text-lg font-semibold transition-[background-color,box-shadow] duration-300 ease-[var(--ease-luxe)] md:text-base",
                 status === "loading"
                   ? "cursor-wait opacity-100"
-                  : "hover:-translate-y-px hover:bg-emerald-glow disabled:cursor-not-allowed disabled:opacity-70",
+                  : "hover:bg-emerald-glow disabled:cursor-not-allowed disabled:opacity-70",
               )}
             >
               {status === "loading" ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
                   <span>در حال ثبت…</span>
                 </>
               ) : (
                 <>
                   <span>{submitLabel?.trim() || "ارسال"}</span>
-                  <ArrowLeft
-                    className="rtl-flip h-5 w-5 transition-transform group-hover:-translate-x-0.5"
-                    aria-hidden
-                  />
+                  <ArrowLeft className="rtl-flip h-5 w-5 shrink-0" aria-hidden />
                 </>
               )}
             </button>
+          )}
 
-            <p
-              role="status"
-              aria-live="polite"
-              className={cn(
-                "text-center text-base transition-opacity",
-                status === "idle" && "hidden",
-                status === "err" && "text-gold",
-              )}
-            >
-              {feedback}
-            </p>
-          </>
-        )}
+          <p
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "min-h-[1.5rem] text-center text-base leading-snug",
+              status === "err" ? "text-gold" : "invisible",
+            )}
+          >
+            {feedback || "\u00a0"}
+          </p>
+        </div>
       </div>
     </form>
   );

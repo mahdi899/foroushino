@@ -31,7 +31,12 @@ export default async function TicketsPage() {
   const { canReplyToUser, mustUseInternal } = ticketReplyCaps(user);
 
   return (
-    <AdminPage title="مرکز تیکت" desc="ارسال تیکت، گفت‌وگو با دانشجوها و گزارش پشتیبانی" icon="LifeBuoy">
+    <AdminPage
+      title="مرکز تیکت"
+      desc="ارسال تیکت، گفت‌وگو با دانشجوها و گزارش پشتیبانی"
+      icon="LifeBuoy"
+      hideHeaderOnMobile
+    >
       <TicketsHubClient
         canViewStudents={can(user, 'students.view')}
         canSearchStudents={can(user, 'students.view')}

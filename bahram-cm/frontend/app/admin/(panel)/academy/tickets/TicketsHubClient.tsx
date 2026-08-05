@@ -300,11 +300,6 @@ export function TicketsHubClient({
             </button>
           ))}
         </div>
-        {tab === 'users' && usersMeta ? (
-          <span className="admin-period-summary">
-            {usersMeta.total.toLocaleString('fa-IR')} کاربر با تیکت
-          </span>
-        ) : null}
         {tab === 'technical' && technicalMeta ? (
           <span className="admin-period-summary">
             {technicalMeta.total.toLocaleString('fa-IR')} تیکت فنی
@@ -538,30 +533,37 @@ export function TicketsHubClient({
                 </ul>
               )}
 
-              {usersMeta && usersMeta.last_page > 1 ? (
+              {usersMeta ? (
                 <div className="admin-tickets-hub__pager">
-                  <button
-                    type="button"
-                    className="btn btn-secondary py-1.5 text-caption"
-                    disabled={usersMeta.current_page <= 1}
-                    onClick={() => void loadUsers(usersMeta.current_page - 1)}
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    قبلی
-                  </button>
-                  <span>
-                    {usersMeta.current_page.toLocaleString('fa-IR')}/
-                    {usersMeta.last_page.toLocaleString('fa-IR')}
+                  {usersMeta.last_page > 1 ? (
+                    <div className="admin-tickets-hub__pager-nav">
+                      <button
+                        type="button"
+                        className="btn btn-secondary py-1.5 text-caption"
+                        disabled={usersMeta.current_page <= 1}
+                        onClick={() => void loadUsers(usersMeta.current_page - 1)}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                        قبلی
+                      </button>
+                      <span>
+                        {usersMeta.current_page.toLocaleString('fa-IR')}/
+                        {usersMeta.last_page.toLocaleString('fa-IR')}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary py-1.5 text-caption"
+                        disabled={usersMeta.current_page >= usersMeta.last_page}
+                        onClick={() => void loadUsers(usersMeta.current_page + 1)}
+                      >
+                        بعدی
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : null}
+                  <span className="admin-period-summary admin-tickets-hub__pager-summary">
+                    {usersMeta.total.toLocaleString('fa-IR')} کاربر با تیکت
                   </span>
-                  <button
-                    type="button"
-                    className="btn btn-secondary py-1.5 text-caption"
-                    disabled={usersMeta.current_page >= usersMeta.last_page}
-                    onClick={() => void loadUsers(usersMeta.current_page + 1)}
-                  >
-                    بعدی
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </button>
                 </div>
               ) : null}
             </div>

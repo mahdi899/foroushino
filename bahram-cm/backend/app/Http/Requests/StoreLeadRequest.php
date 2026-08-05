@@ -57,8 +57,13 @@ class StoreLeadRequest extends FormRequest
                 $rawPhone = $this->input('phone');
                 if (blank($rawPhone)) {
                     $validator->errors()->add('phone', 'شماره تماس الزامی است.');
-                } elseif (! Mobile::isValid(is_string($rawPhone) ? $rawPhone : null)) {
-                    $validator->errors()->add('phone', 'شماره تماس معتبر وارد کن.');
+                } else {
+                    $digits = preg_replace('/\D/', '', (string) $rawPhone) ?? '';
+                    if (! preg_match('/^0\d{10}$/', $digits)) {
+                        $validator->errors()->add('phone', 'شماره باید ۱۱ رقم باشد و با ۰ شروع شود.');
+                    } elseif (! Mobile::isValid(is_string($rawPhone) ? $rawPhone : null)) {
+                        $validator->errors()->add('phone', 'شماره تماس معتبر وارد کن.');
+                    }
                 }
 
                 $landingPage = LandingPage::query()

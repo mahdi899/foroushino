@@ -95,6 +95,7 @@ export function TicketChatPanel({
   const [escalationPending, setEscalationPending] = useState(false);
   const [error, setError] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const replyToUserAllowed = ticket.can_reply_to_user ?? canReplyToUser;
   const internalOnly = ticket.must_use_internal ?? mustUseInternal;
@@ -133,6 +134,9 @@ export function TicketChatPanel({
       return;
     }
     setMessage('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     const refreshed = await fetchTicketDetail(ticket.id);
     if (refreshed.ok && refreshed.data) setTicket(refreshed.data);
     void refreshPendingCount();
@@ -370,65 +374,92 @@ export function TicketChatPanel({
           این تیکت بسته شده است.
         </div>
       ) : (
-        <form onSubmit={onReply} className="admin-ticket-chat__reply shrink-0 p-3">
-          {error && <p className="mb-2 text-caption text-error">{error}</p>}
+        <form onSubmit={onReply} className="admin-ticket-chat__reply shrink-0">
+          {error ? <p className="admin-ticket-chat__reply-error">{error}</p> : null}
+
           {replyToUserAllowed && !internalOnly ? (
-            <div className="mb-2 flex flex-wrap gap-2">
+            <div className="admin-ticket-chat__reply-modes" role="tablist" aria-label="نوع پیام">
               <button
                 type="button"
-                className={`rounded-lg px-3 py-1.5 text-caption transition ${
-                  !sendInternal ? 'bg-accent text-white' : 'bg-surface-soft text-text-muted hover:bg-border/40'
-                }`}
+                role="tab"
+                aria-selected={!sendInternal}
+                className="admin-ticket-chat__reply-mode"
+                data-active={!sendInternal ? 'true' : undefined}
+                data-tone="public"
                 onClick={() => setSendInternal(false)}
               >
-                پاسخ به مخاطب
+                <Send className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                <span>پاسخ به مخاطب</span>
               </button>
               <button
                 type="button"
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-caption transition ${
-                  sendInternal ? 'bg-warning text-white' : 'bg-surface-soft text-text-muted hover:bg-border/40'
-                }`}
+                role="tab"
+                aria-selected={sendInternal}
+                className="admin-ticket-chat__reply-mode"
+                data-active={sendInternal ? 'true' : undefined}
+                data-tone="internal"
                 onClick={() => setSendInternal(true)}
               >
-                <Lock className="h-3.5 w-3.5" />
-                پیام داخلی تیم
+                <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+                <span>پیام داخلی</span>
               </button>
             </div>
           ) : null}
-          <div className="admin-ticket-chat__composer flex items-end gap-2">
+
+          <div
+            className={`admin-ticket-chat__composer ${
+              composingInternal ? 'admin-ticket-chat__composer--internal' : ''
+            }`}
+          >
             <textarea
+              ref={textareaRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                const el = e.currentTarget;
+                el.style.height = 'auto';
+                el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   e.currentTarget.form?.requestSubmit();
                 }
               }}
-              rows={2}
-              className="field-input admin-ticket-chat__control min-h-11 flex-1 resize-none"
+              rows={1}
+              className="admin-ticket-chat__control admin-ticket-chat__textarea"
               placeholder={
                 composingInternal
-                  ? 'پیام داخلی برای پشتیبانی / تیم فنی... Enter برای ارسال'
-                  : 'پاسخ به مخاطب... Enter برای ارسال'
+                  ? 'یادداشت داخلی برای تیم…'
+                  : 'پاسخ به مخاطب را بنویسید…'
               }
               disabled={pending}
             />
             <button
               type="submit"
               disabled={pending || !message.trim()}
-              className={`btn inline-flex h-11 shrink-0 items-center gap-1.5 px-3.5 sm:px-4 ${
-                composingInternal ? 'btn-secondary' : 'btn-primary'
+              className={`admin-ticket-chat__send ${
+                composingInternal ? 'admin-ticket-chat__send--internal' : ''
               }`}
               aria-label={composingInternal ? 'ارسال پیام داخلی' : 'ارسال پاسخ'}
             >
-              {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : composingInternal ? <Lock className="h-5 w-5" /> : <Send className="h-5 w-5" />}
-              <span className="hidden sm:inline">{composingInternal ? 'داخلی' : 'ارسال'}</span>
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : composingInternal ? (
+                <Lock className="h-4 w-4" strokeWidth={2} />
+              ) : (
+                <Send className="h-4 w-4" strokeWidth={2} />
+              )}
+              <span className="admin-ticket-chat__send-label">
+                {composingInternal ? 'داخلی' : 'ارسال'}
+              </span>
             </button>
           </div>
+
           {composingInternal ? (
-            <p className="mt-1.5 text-caption text-text-muted">
-              این پیام فقط برای تیم پشتیبانی دیده می‌شود و برای مخاطب ارسال نمی‌شود · تیکت #{ticket.id}
+            <p className="admin-ticket-chat__reply-hint">
+              <Lock className="h-3 w-3 shrink-0" strokeWidth={2} />
+              فقط برای تیم پشتیبانی — مخاطب نمی‌بیند
             </p>
           ) : null}
         </form>

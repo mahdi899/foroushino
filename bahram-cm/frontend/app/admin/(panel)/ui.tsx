@@ -15,6 +15,7 @@ export function AdminPage({
   stackHeader = false,
   fullWidthAction = false,
   compactHeader = false,
+  hideHeaderOnMobile = false,
   backHref,
   backLabel,
 }: {
@@ -30,6 +31,8 @@ export function AdminPage({
   fullWidthAction?: boolean;
   /** Single-line compact header — title and actions on one row */
   compactHeader?: boolean;
+  /** Hide page title/header below the lg breakpoint (more room for content) */
+  hideHeaderOnMobile?: boolean;
   /** Mobile-only back link shown above the page header */
   backHref?: string;
   backLabel?: string;
@@ -48,6 +51,7 @@ export function AdminPage({
         className={cn(
           !compactHeader && (stackHeader ? 'mb-5 sm:mb-5' : 'mb-5 sm:mb-6'),
           !compactHeader && stackHeader && 'flex-col gap-3',
+          hideHeaderOnMobile && 'admin-page-header--hide-mobile',
         )}
       />
       <div className="min-w-0">{children}</div>
