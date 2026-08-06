@@ -1308,10 +1308,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                       children: [
                         VoiceRecorderPanel(
                           enabled: !_saving,
-                          onRecorded: (result) => _uploadVoiceBytes(
-                            result.bytes,
-                            result.filename,
-                          ),
+                          onRecorded: (result) async {
+                            if (result.localPath != null && mounted) {
+                              showAppSnackBar(context, 'ویس در حافظه دستگاه ذخیره شد.');
+                            }
+                            await _uploadVoiceBytes(result.bytes, result.filename);
+                          },
                           onError: (message) => showAppSnackBar(context, message),
                         ),
                         const SizedBox(height: AppSpacing.sm),

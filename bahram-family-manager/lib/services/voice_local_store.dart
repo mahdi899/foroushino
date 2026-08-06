@@ -1,0 +1,72 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+/// Persisted voice capture on device (app documents — survives app restarts).
+class SavedVoiceRecording {
+  const SavedVoiceRecording({
+    required this.filename,
+    required this.absolutePath,
+    required this.savedAt,
+    required this.sizeBytes,
+  });
+
+  final String filename;
+  final String absolutePath;
+  final DateTime savedAt;
+  final int sizeBytes;
+}
+
+/// Local folder for recorded voices (`…/voice_recordings/`).
+class VoiceLocalStore {
+  VoiceLocalStore._();
+
+  static const recordingsSubdir = 'voice_recordings';
+
+  static Future<Directory?> recordingsDirectory() async {
+    if (kIsWeb) return null;
+    final base = await getApplicationDocumentsDirectory();
+    final dir = Directory(p.join(base.path, recordingsSubdir));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  /// Writes [bytes] under the recordings folder and returns metadata.
+  static Future<SavedVoiceRecording?> save(Uint8List bytes, String filename) async {
+    if (kIsWeb || bytes.isEmpty) return null;
+
+    final dir = await recordingsDirectory();
+    if (dir == null) return null;
+
+    final safeName = _uniqueFilename(dir, _sanitizeFilename(filename));
+    final file = File(p.join(dir.path, safeName));
+    await file.writeAsBytes(bytes, flush: true);
+
+    final stat = await file.stat();
+    return SavedVoiceRecording(
+      filename: safeName,
+      absolutePath: file.path,
+      savedAt: stat.modified,
+      sizeBytes: stat.size,
+    );
+  }
+
+  static String _sanitizeFilename(String filename) {
+    final base = p.basename(filename.trim());
+    if (base.isEmpty) return 'voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+    final cleaned = base.replaceAll(RegExp(r'[^\w.\-]'), '_');
+    return cleaned.isEmpty ? 'voice_${DateTime.now().millisecondsSinceEpoch}.wav' : cleaned;
+  }
+
+  static String _uniqueFilename(Directory dir, String filename) {
+    if (!File(p.join(dir.path, filename)).existsSync()) return filename;
+    final ext = p.extension(filename);
+    final stem = p.basenameWithoutExtension(filename);
+    return '${stem}_${DateTime.now().millisecondsSinceEpoch}$ext';
+  }
+}

@@ -18,13 +18,21 @@ import 'package:bahram_family_manager/core/utils/media_playback_source.dart';
 import 'package:bahram_family_manager/core/utils/read_file_bytes.dart';
 import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/core/utils/wav_audio_edit.dart';
+import 'package:bahram_family_manager/services/voice_local_store.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 class VoiceRecordingResult {
-  const VoiceRecordingResult({required this.bytes, required this.filename});
+  const VoiceRecordingResult({
+    required this.bytes,
+    required this.filename,
+    this.localPath,
+  });
 
   final Uint8List bytes;
   final String filename;
+
+  /// Absolute path when saved under app documents (`voice_recordings/`).
+  final String? localPath;
 }
 
 enum _VoicePhase { idle, recording, reviewing }
@@ -314,13 +322,30 @@ class _VoiceRecorderPanelState extends State<VoiceRecorderPanel>
     });
   }
 
-  void _confirmDraft(Uint8List bytes, String filename) {
+  Future<void> _confirmDraft(Uint8List bytes, String filename) async {
+    SavedVoiceRecording? saved;
+    if (!kIsWeb) {
+      try {
+        saved = await VoiceLocalStore.save(bytes, filename);
+      } catch (_) {
+        widget.onError?.call('ذخیره ویس روی دستگاه ناموفق بود.');
+        return;
+      }
+    }
+
+    if (!mounted) return;
     setState(() {
       _draftBytes = null;
       _draftFilename = null;
       _phase = _VoicePhase.idle;
     });
-    widget.onRecorded(VoiceRecordingResult(bytes: bytes, filename: filename));
+    widget.onRecorded(
+      VoiceRecordingResult(
+        bytes: bytes,
+        filename: saved?.filename ?? filename,
+        localPath: saved?.absolutePath,
+      ),
+    );
   }
 
   String get _timerLabel {
@@ -448,7 +473,7 @@ class _VoiceReviewEditor extends StatefulWidget {
   final Uint8List bytes;
   final String filename;
   final List<double> livePeaks;
-  final void Function(Uint8List bytes, String filename) onConfirm;
+  final Future<void> Function(Uint8List bytes, String filename) onConfirm;
   final VoidCallback onRetake;
   final ValueChanged<String>? onError;
 
@@ -586,7 +611,7 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
         if (mounted) setState(() => _busy = false);
         return;
       }
-      widget.onConfirm(out, name);
+      await widget.onConfirm(out, name);
     } catch (_) {
       widget.onError?.call('اعمال ویرایش ویس ناموفق بود.');
       if (mounted) setState(() => _busy = false);
