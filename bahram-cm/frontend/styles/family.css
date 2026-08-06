@@ -734,14 +734,30 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-comment-view-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   align-self: flex-start;
   border: 0;
   background: transparent;
-  padding: 0.125rem 0;
+  padding: 0.25rem 0;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--family-tg-subtitle);
   cursor: pointer;
+}
+
+.family-comment-view-more__line {
+  display: inline-block;
+  width: 1.5rem;
+  height: 0;
+  border-top: 1px solid color-mix(in oklab, var(--family-text) 22%, transparent);
+  flex-shrink: 0;
+}
+
+.family-comment-view-more__meta {
+  font-weight: 600;
+  opacity: 0.72;
 }
 
 .family-comment-view-more:hover {

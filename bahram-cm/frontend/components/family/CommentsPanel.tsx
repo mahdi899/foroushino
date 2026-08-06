@@ -35,8 +35,10 @@ type ReplyTarget = {
 };
 
 const TEXTAREA_MAX_PX = 120;
-/** Instagram-style: collapsed thread shows one preview reply. */
-const COLLAPSED_REPLY_PREVIEW = 1;
+/** Default: one preview reply (Bahram floated first via sort). */
+const REPLY_PREVIEW_COUNT = 1;
+/** Reveal more replies in batches — keeps long threads usable. */
+const REPLY_PAGE_SIZE = 5;
 
 function CommentRichText({
   text,
@@ -131,16 +133,31 @@ function CommentRow({
   avatarSize: 'sm' | 'md';
   onReply: (target: ReplyTarget) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(REPLY_PREVIEW_COUNT);
   const sortedReplies = useMemo(
     () => sortRepliesForDisplay(comment.replies ?? []),
     [comment.replies],
   );
-  const hasReplies = sortedReplies.length > 0;
-  const hiddenCount = Math.max(0, sortedReplies.length - COLLAPSED_REPLY_PREVIEW);
-  const visibleReplies = expanded || hiddenCount === 0
-    ? sortedReplies
-    : sortedReplies.slice(0, COLLAPSED_REPLY_PREVIEW);
+  const totalReplies = sortedReplies.length;
+  const hasReplies = totalReplies > 0;
+
+  // New thread → reset; if replies grow while already expanded, keep progress.
+  useEffect(() => {
+    setVisibleCount(REPLY_PREVIEW_COUNT);
+  }, [comment.id]);
+
+  useEffect(() => {
+    setVisibleCount((prev) => {
+      if (totalReplies <= REPLY_PREVIEW_COUNT) return Math.max(totalReplies, REPLY_PREVIEW_COUNT);
+      return Math.min(Math.max(prev, REPLY_PREVIEW_COUNT), totalReplies);
+    });
+  }, [totalReplies]);
+
+  const shownCount = Math.min(visibleCount, totalReplies);
+  const visibleReplies = sortedReplies.slice(0, shownCount);
+  const remaining = Math.max(0, totalReplies - shownCount);
+  const nextBatch = Math.min(REPLY_PAGE_SIZE, remaining);
+  const isExpanded = shownCount > REPLY_PREVIEW_COUNT;
 
   const startReply = (target: FamilyComment, rootId: number) => {
     onReply({
@@ -207,20 +224,31 @@ function CommentRow({
                   onReply={() => startReply(reply, comment.id)}
                 />
               ))}
-              {hiddenCount > 0 && !expanded ? (
+              {remaining > 0 ? (
                 <button
                   type="button"
                   className="family-comment-view-more"
-                  onClick={() => setExpanded(true)}
+                  onClick={() =>
+                    setVisibleCount((n) => Math.min(n + REPLY_PAGE_SIZE, totalReplies))
+                  }
                 >
-                  مشاهده {hiddenCount.toLocaleString('fa-IR')} پاسخ دیگر
+                  <span className="family-comment-view-more__line" aria-hidden />
+                  <span>
+                    مشاهده {nextBatch.toLocaleString('fa-IR')} پاسخ دیگر
+                    {totalReplies > REPLY_PREVIEW_COUNT + REPLY_PAGE_SIZE ? (
+                      <span className="family-comment-view-more__meta">
+                        {' '}
+                        · {(shownCount).toLocaleString('fa-IR')} از {totalReplies.toLocaleString('fa-IR')}
+                      </span>
+                    ) : null}
+                  </span>
                 </button>
               ) : null}
-              {expanded && hiddenCount > 0 ? (
+              {isExpanded && remaining === 0 && totalReplies > REPLY_PREVIEW_COUNT ? (
                 <button
                   type="button"
                   className="family-comment-view-more"
-                  onClick={() => setExpanded(false)}
+                  onClick={() => setVisibleCount(REPLY_PREVIEW_COUNT)}
                 >
                   پنهان کردن پاسخ‌ها
                 </button>
