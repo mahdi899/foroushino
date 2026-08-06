@@ -45,7 +45,7 @@ class FamilyPostResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type?->value ?? $this->type,
             'is_important' => (bool) $this->is_important,
-            'comments_enabled' => (bool) ($this->comments_enabled ?? true),
+            'comments_enabled' => (bool) ($this->comments_enabled ?? false),
             'is_pinned' => (bool) $this->is_pinned,
             'published_at' => FamilyDateTime::toApi($this->published_at),
             'author' => [

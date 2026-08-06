@@ -22,7 +22,7 @@ final class FamilyManagerPostPresenter
             'audience_mode' => $post->audience_mode?->value ?? $post->audience_mode,
             'audience_summary' => self::audienceSummary($post),
             'is_important' => (bool) $post->is_important,
-            'comments_enabled' => (bool) ($post->comments_enabled ?? true),
+            'comments_enabled' => (bool) ($post->comments_enabled ?? false),
             'is_pinned' => (bool) $post->is_pinned,
             'pinned_at' => FamilyDateTime::toApi($post->pinned_at),
             'published_at' => FamilyDateTime::toApi($post->published_at),

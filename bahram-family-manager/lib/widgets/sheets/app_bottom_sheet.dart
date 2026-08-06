@@ -29,6 +29,8 @@ Future<T?> showAppBottomSheet<T>({
     showDragHandle: false,
     builder: (context) {
       final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+      final systemBottom = MediaQuery.viewPaddingOf(context).bottom;
+      final bottomPad = bottomInset + systemBottom + AppSpacing.lg;
       final scheme = Theme.of(context).colorScheme;
 
       Widget header() => Column(
@@ -87,7 +89,7 @@ Future<T?> showAppBottomSheet<T>({
                               AppSpacing.lg,
                               0,
                               AppSpacing.lg,
-                              bottomInset + AppSpacing.xl,
+                              bottomPad,
                             ),
                             child: child,
                           ),
@@ -107,7 +109,7 @@ Future<T?> showAppBottomSheet<T>({
         child: GlassPanel(
           borderRadius: AppRadius.sheet,
           blur: AppGlass.sheetBlur,
-          padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, bottomInset + AppSpacing.lg),
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, bottomPad),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

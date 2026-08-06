@@ -296,9 +296,9 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
               ),
             ),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
+              child: IndexedStack(
+                index: _tabController.index,
+                sizing: StackFit.expand,
                 children: [
                   ListView(
                     padding: isDesktop ? EdgeInsets.zero : padding,
@@ -347,10 +347,13 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
                   ),
                   Padding(
                     padding: isDesktop ? EdgeInsets.zero : padding.copyWith(top: AppSpacing.sm),
-                    child: _KeepAliveMembersTab(
+                    child: FamilyMembersPanel(
+                      key: ValueKey('members-${widget.family.id}'),
                       familyId: widget.family.id,
                       familyName: widget.family.internalName,
-                      canManage: widget.canManage,
+                      compact: true,
+                      showAttribution: true,
+                      canManageMembers: widget.canManage,
                       onMembersChanged: widget.onMembersChanged,
                     ),
                   ),
@@ -360,41 +363,6 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
           ],
         ),
       ),
-    );
-  }
-}
-
-class _KeepAliveMembersTab extends StatefulWidget {
-  const _KeepAliveMembersTab({
-    required this.familyId,
-    required this.familyName,
-    required this.canManage,
-    required this.onMembersChanged,
-  });
-
-  final int familyId;
-  final String familyName;
-  final bool canManage;
-  final VoidCallback onMembersChanged;
-
-  @override
-  State<_KeepAliveMembersTab> createState() => _KeepAliveMembersTabState();
-}
-
-class _KeepAliveMembersTabState extends State<_KeepAliveMembersTab> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return FamilyMembersPanel(
-      key: ValueKey('members-${widget.familyId}'),
-      familyId: widget.familyId,
-      familyName: widget.familyName,
-      showAttribution: true,
-      canManageMembers: widget.canManage,
-      onMembersChanged: widget.onMembersChanged,
     );
   }
 }
@@ -542,40 +510,11 @@ class _FamilySummarySection extends StatelessWidget {
           ),
         ],
         const SizedBox(height: AppSpacing.lg),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 600 ? 3 : 1;
-            if (columns == 1) {
-              return Column(
-                children: [
-                  _StatTile(
-                    title: 'اعضا',
-                    value: toFaDigits(family.memberCount.toString()),
-                    onTap: onOpenMembers,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _StatTile(title: 'ظرفیت هدف', value: toFaDigits(family.capacityTarget.toString())),
-                  const SizedBox(height: AppSpacing.sm),
-                  _StatTile(title: 'عضو جدید (۷ روز)', value: toFaDigits(family.newMembers7d.toString())),
-                ],
-              );
-            }
-            return Row(
-              children: [
-                Expanded(
-                  child: _StatTile(
-                    title: 'اعضا',
-                    value: toFaDigits(family.memberCount.toString()),
-                    onTap: onOpenMembers,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(child: _StatTile(title: 'ظرفیت هدف', value: toFaDigits(family.capacityTarget.toString()))),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(child: _StatTile(title: 'عضو جدید (۷ روز)', value: toFaDigits(family.newMembers7d.toString()))),
-              ],
-            );
-          },
+        _FamilyStatsRow(
+          memberCount: family.memberCount,
+          capacityTarget: family.capacityTarget,
+          newMembers7d: family.newMembers7d,
+          onMembersTap: onOpenMembers,
         ),
         if (family.primarySource != null || family.entryEvent != null) ...[
           const SizedBox(height: AppSpacing.lg),
@@ -598,24 +537,125 @@ class _FamilySummarySection extends StatelessWidget {
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.title, required this.value, this.onTap});
+class _FamilyStatsRow extends StatelessWidget {
+  const _FamilyStatsRow({
+    required this.memberCount,
+    required this.capacityTarget,
+    required this.newMembers7d,
+    required this.onMembersTap,
+  });
+
+  final int memberCount;
+  final int capacityTarget;
+  final int newMembers7d;
+  final VoidCallback onMembersTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final divider = VerticalDivider(
+      width: 1,
+      thickness: 1,
+      indent: 6,
+      endIndent: 6,
+      color: scheme.outline.withValues(alpha: 0.28),
+    );
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              child: _StatCell(
+                title: 'اعضا',
+                value: toFaDigits(memberCount.toString()),
+                icon: Icons.people_rounded,
+                onTap: onMembersTap,
+              ),
+            ),
+            divider,
+            Expanded(
+              child: _StatCell(
+                title: 'ظرفیت هدف',
+                value: toFaDigits(capacityTarget.toString()),
+                icon: Icons.flag_rounded,
+              ),
+            ),
+            divider,
+            Expanded(
+              child: _StatCell(
+                title: 'عضو جدید',
+                subtitle: '۷ روز',
+                value: toFaDigits(newMembers7d.toString()),
+                icon: Icons.person_add_alt_1_rounded,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCell extends StatelessWidget {
+  const _StatCell({
+    required this.title,
+    required this.value,
+    required this.icon,
+    this.subtitle,
+    this.onTap,
+  });
 
   final String title;
   final String value;
+  final IconData icon;
+  final String? subtitle;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      onTap: onTap,
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 2),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+          Icon(icon, size: 18, color: AppColors.primary),
           const SizedBox(height: AppSpacing.xs),
-          Text(title, style: const TextStyle(color: AppColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600, height: 1.2),
+          ),
+          if (subtitle != null)
+            Text(
+              subtitle!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.85), fontSize: 10, height: 1.2),
+            ),
         ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        child: content,
       ),
     );
   }

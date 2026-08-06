@@ -42,7 +42,7 @@ class FamilyPostPublisher
                 'is_important' => (bool) ($payload['is_important'] ?? false),
                 'comments_enabled' => array_key_exists('comments_enabled', $payload)
                     ? (bool) $payload['comments_enabled']
-                    : true,
+                    : false,
                 'reply_to_comment_id' => $payload['reply_to_comment_id'] ?? null,
             ]);
 

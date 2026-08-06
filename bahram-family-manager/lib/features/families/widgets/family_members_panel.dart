@@ -11,7 +11,6 @@ import 'package:bahram_family_manager/core/utils/paginated_scroll.dart';
 import 'package:bahram_family_manager/features/families/family_members_cache.dart';
 import 'package:bahram_family_manager/features/families/widgets/add_family_member_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
-import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 
@@ -234,132 +233,126 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final hasBoundedHeight =
-            constraints.hasBoundedHeight && constraints.maxHeight.isFinite && constraints.maxHeight > 0;
-
-        final header = <Widget>[
-          if (!widget.compact) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title ?? (widget.familyId == null ? 'اعضای کانال خانواده' : 'اعضای این خانواده'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                if (_total > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(left: AppSpacing.sm),
-                    child: Text(
-                      toFaDigits(_total.toString()),
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                if (_canManage) ...[
-                  const SizedBox(width: AppSpacing.sm),
-                  FilledButton.icon(
-                    onPressed: _addMember,
-                    icon: const Icon(Icons.person_add_rounded, size: 18),
-                    label: const Text('افزودن'),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          TextField(
-            controller: _searchCtrl,
-            decoration: InputDecoration(
-              hintText: 'جستجو نام یا موبایل',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: IconButton(
-                onPressed: _loadFirstPage,
-                icon: const Icon(Icons.refresh_rounded),
-              ),
-              isDense: widget.compact,
-            ),
-            onSubmitted: (_) => _loadFirstPage(),
-          ),
-          if (_canManage && widget.compact) ...[
-            const SizedBox(height: AppSpacing.sm),
-            PrimaryButton(
-              label: 'افزودن عضو',
-              icon: Icons.person_add_rounded,
-              onPressed: _addMember,
-            ),
-          ],
-          const SizedBox(height: AppSpacing.md),
-        ];
-
-        if (hasBoundedHeight) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ...header,
-              Expanded(child: _buildMembersBody()),
-            ],
-          );
-        }
-
-        // Fallback when parent (e.g. misconfigured TabBarView) gives unbounded height.
-        return ListView(
-          controller: _scrollCtrl,
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            ...header,
-            SizedBox(
-              height: 420,
-              child: _buildMembersBody(embedScroll: false),
-            ),
-          ],
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadFirstPage,
+      child: CustomScrollView(
+        controller: _scrollCtrl,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader(context)),
+          ..._buildBodySlivers(context),
+        ],
+      ),
     );
   }
 
-  Widget _buildMembersBody({bool embedScroll = true}) {
+  Widget _buildHeader(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!widget.compact) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title ?? (widget.familyId == null ? 'اعضای کانال خانواده' : 'اعضای این خانواده'),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (_total > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.sm),
+                  child: Text(
+                    toFaDigits(_total.toString()),
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              if (_canManage) ...[
+                const SizedBox(width: AppSpacing.sm),
+                FilledButton.icon(
+                  onPressed: _addMember,
+                  icon: const Icon(Icons.person_add_rounded, size: 18),
+                  label: const Text('افزودن'),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        if (_canManage && widget.compact) ...[
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.icon(
+              onPressed: _addMember,
+              icon: const Icon(Icons.person_add_rounded, size: 18),
+              label: const Text('افزودن عضو'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+        TextField(
+          controller: _searchCtrl,
+          decoration: InputDecoration(
+            hintText: 'جستجو نام یا موبایل',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: IconButton(
+              onPressed: _loadFirstPage,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            isDense: true,
+          ),
+          onSubmitted: (_) => _loadFirstPage(),
+        ),
+        const SizedBox(height: AppSpacing.md),
+      ],
+    );
+  }
+
+  List<Widget> _buildBodySlivers(BuildContext context) {
     if (_initialLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return [
+        const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
     }
 
     if (_error != null && _members.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          EmptyState(
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: EmptyState(
             icon: Icons.error_outline_rounded,
             title: 'خطا در بارگذاری اعضا',
             subtitle: _error!,
             actionLabel: 'تلاش مجدد',
             onAction: _loadFirstPage,
           ),
-        ],
-      );
+        ),
+      ];
     }
 
     if (_members.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          EmptyState(
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: EmptyState(
             title: 'عضوی یافت نشد',
             subtitle: _canManage ? 'با دکمه افزودن، عضو جدید اضافه کنید.' : 'هنوز کسی به این خانواده نپیوسته.',
             icon: Icons.people_outline_rounded,
             actionLabel: _canManage ? 'افزودن عضو' : null,
             onAction: _canManage ? _addMember : null,
           ),
-        ],
-      );
+        ),
+      ];
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadFirstPage,
-      child: ListView.separated(
-        controller: embedScroll ? _scrollCtrl : null,
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: _members.length + (_hasMore || _loadingMore ? 1 : 0),
+    final itemCount = _members.length + (_hasMore || _loadingMore ? 1 : 0);
+
+    return [
+      SliverList.separated(
+        itemCount: itemCount,
         separatorBuilder: (_, index) {
           if (index >= _members.length - 1) return const SizedBox.shrink();
           return const SizedBox(height: AppSpacing.sm);
@@ -382,7 +375,8 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
           );
         },
       ),
-    );
+      const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
+    ];
   }
 }
 
@@ -411,7 +405,9 @@ class _MemberTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
+    final muted = scheme.onSurface.withValues(alpha: 0.55);
     final initial = member.name?.isNotEmpty == true ? member.name!.substring(0, 1) : '؟';
+    final sourceLabel = member.entrySource != null ? labelOf(entrySourceLabels, member.entrySource!) : null;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -420,8 +416,9 @@ class _MemberTile extends StatelessWidget {
         border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             CircleAvatar(
               radius: 22,
@@ -433,24 +430,33 @@ class _MemberTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(member.name ?? 'بدون نام', style: const TextStyle(fontWeight: FontWeight.w700)),
-                  if (_displayMobile != null)
+                  Text(
+                    member.name ?? 'بدون نام',
+                    style: const TextStyle(fontWeight: FontWeight.w700, height: 1.3),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (_displayMobile != null) ...[
+                    const SizedBox(height: 2),
                     Row(
                       children: [
-                        Expanded(
+                        Flexible(
                           child: SelectableText(
                             _displayMobile!,
                             style: TextStyle(
                               color: scheme.onSurface.withValues(alpha: 0.9),
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
+                              letterSpacing: 0.4,
+                              height: 1.3,
                             ),
                           ),
                         ),
                         IconButton(
                           tooltip: 'کپی شماره',
                           visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                           onPressed: () {
                             final raw = member.displayMobile;
                             if (raw == null) return;
@@ -459,45 +465,54 @@ class _MemberTile extends StatelessWidget {
                               const SnackBar(content: Text('شماره کپی شد')),
                             );
                           },
-                          icon: Icon(Icons.copy_rounded, size: 18, color: scheme.primary),
+                          icon: Icon(Icons.copy_rounded, size: 16, color: scheme.primary),
                         ),
                       ],
                     ),
-                  if (showFamilyName && member.familyName != null)
-                    Text(member.familyName!, style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), fontSize: 12)),
-                  if (showAttribution && member.entrySource != null)
-                    Text(
-                      labelOf(entrySourceLabels, member.entrySource!),
-                      style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                  ],
+                  if (showFamilyName && member.familyName != null) ...[
+                    const SizedBox(height: 2),
+                    Text(member.familyName!, style: TextStyle(color: muted, fontSize: 12)),
+                  ],
+                  if (member.joinedAt != null || sourceLabel != null) ...[
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (sourceLabel != null)
+                          Text(
+                            sourceLabel,
+                            style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        if (member.joinedAt != null)
+                          Text(
+                            formatDateTime(member.joinedAt!),
+                            style: TextStyle(color: muted, fontSize: 11),
+                          ),
+                      ],
                     ),
-                  if (showAttribution && member.entryEventName != null)
+                  ],
+                  if (showAttribution && member.entryEventName != null) ...[
+                    const SizedBox(height: 2),
                     Text(
                       member.entryEventName!,
-                      style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 11),
+                      style: TextStyle(color: muted, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ],
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (member.joinedAt != null)
-                  Text(formatDateTime(member.joinedAt!), style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
-                if (!showAttribution && member.entrySource != null)
-                  Text(
-                    labelOf(entrySourceLabels, member.entrySource!),
-                    style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
-                  ),
-              ],
-            ),
-            if (canRemove) ...[
-              const SizedBox(width: AppSpacing.xs),
+            if (canRemove)
               IconButton(
                 tooltip: 'حذف از خانواده',
+                visualDensity: VisualDensity.compact,
                 onPressed: onRemove,
                 icon: const Icon(Icons.person_remove_rounded, color: AppColors.error),
               ),
-            ],
           ],
         ),
       ),
