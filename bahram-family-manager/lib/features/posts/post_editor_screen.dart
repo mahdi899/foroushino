@@ -30,6 +30,7 @@ import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_progress_overlay.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/media/voice_recorder_panel.dart';
+import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_dialog.dart';
 import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
@@ -1507,14 +1508,38 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     );
   }
 
+  Future<void> _pickActionType() async {
+    final picked = await showAppBottomSheet<String>(
+      context: context,
+      title: 'نوع اکشن',
+      subtitle: 'نوع تعامل اعضا با این پست را انتخاب کنید.',
+      scrollable: true,
+      initialChildSize: 0.62,
+      child: _ActionTypePickerList(selected: _actionType),
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _actionType = picked);
+  }
+
   List<Widget> _buildActionFields() {
+    final actionTypeLabel = labelOf(actionTypeLabels, _actionType);
+
     return [
       const SizedBox(height: AppSpacing.md),
-      DropdownButtonFormField<String>(
-        value: _actionType,
-        decoration: const InputDecoration(labelText: 'نوع اکشن'),
-        items: actionTypeLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-        onChanged: (v) => setState(() => _actionType = v ?? 'commitment'),
+      InkWell(
+        onTap: _pickActionType,
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        child: InputDecorator(
+          decoration: const InputDecoration(
+            labelText: 'نوع اکشن',
+            suffixIcon: Icon(Icons.keyboard_arrow_down_rounded),
+          ),
+          child: Text(
+            actionTypeLabel,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
       ),
       const SizedBox(height: AppSpacing.md),
       TextField(
@@ -1765,6 +1790,32 @@ class _ImageThumb extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ActionTypePickerList extends StatelessWidget {
+  const _ActionTypePickerList({required this.selected});
+
+  final String selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final entry in actionTypeLabels.entries)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(entry.value),
+            trailing: selected == entry.key
+                ? Icon(Icons.check_rounded, color: scheme.primary)
+                : null,
+            onTap: () => Navigator.of(context).pop(entry.key),
+          ),
+      ],
     );
   }
 }
