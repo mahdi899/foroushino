@@ -1,30 +1,22 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:bahram_family_manager/core/labels.dart';
+import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/paginated_scroll.dart';
-import 'package:bahram_family_manager/core/theme/app_theme.dart';
-import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/features/comments/post_comments_screen.dart';
+import 'package:bahram_family_manager/features/posts/widgets/post_family_filter_bar.dart';
+import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/state/app_state.dart'; // messageOf
+import 'package:bahram_family_manager/widgets/comments/comment_thread_card.dart';
+import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
-import 'package:bahram_family_manager/models/models.dart';
-import 'package:bahram_family_manager/models/upload_progress.dart';
-import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
-import 'package:bahram_family_manager/state/app_state.dart';
-import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
-import 'package:bahram_family_manager/widgets/comments/comment_card.dart';
-import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
-import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
-import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
-import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
-import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 
-class _CommentsTabData {
-  final items = <FamilyCommentModel>[];
+class _ThreadsTabData {
+  final items = <CommentThreadModel>[];
   var page = 0;
   var hasMore = true;
   var initialLoading = false;
@@ -32,6 +24,7 @@ class _CommentsTabData {
   String? error;
 }
 
+/// Comments hub: posts with comments, grouped by family — open detail via «مشاهده کامنت‌ها».
 class CommentsScreen extends StatefulWidget {
   const CommentsScreen({super.key});
 
@@ -52,19 +45,28 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
 
   late final TabController _tabController;
   final _scrollCtrl = ScrollController();
-  final _tabData = List.generate(_tabs.length, (_) => _CommentsTabData());
-  final Set<int> _selectedPendingIds = {};
+  final _tabData = List.generate(_tabs.length, (_) => _ThreadsTabData());
+  List<FamilySummaryModel> _families = [];
+  int? _familyFilter;
 
-  _CommentsTabData get _currentTab => _tabData[_tabController.index];
+  _ThreadsTabData get _currentTab => _tabData[_tabController.index];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this)..addListener(_onTabChanged);
     _scrollCtrl.addListener(_onScroll);
+    _loadFamilies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadFirstPage();
     });
+  }
+
+  Future<void> _loadFamilies() async {
+    try {
+      final data = await context.read<AppState>().cachedFamilies();
+      if (mounted) setState(() => _families = data);
+    } catch (_) {}
   }
 
   void _onScroll() {
@@ -78,7 +80,6 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
-      setState(_selectedPendingIds.clear);
       final tab = _currentTab;
       if (tab.items.isEmpty && !tab.initialLoading) {
         _loadFirstPage();
@@ -111,8 +112,9 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
   Future<void> _fetchPage(int page, {required bool replace}) async {
     final tab = _currentTab;
     try {
-      final result = await context.read<AppState>().manager.listComments(
+      final result = await context.read<AppState>().manager.listCommentThreads(
             tab: _tabs[_tabController.index],
+            familyId: _familyFilter,
             page: page,
           );
       if (!mounted) return;
@@ -155,83 +157,47 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  Future<void> _approve(FamilyCommentModel comment) async {
-    try {
-      await context.read<AppState>().manager.approveComment(comment.id);
-      _loadFirstPage();
-    } catch (e) {
-      showAppSnackBar(context, messageOf(e));
-    }
-  }
-
-  Future<void> _reject(FamilyCommentModel comment) async {
-    final result = await showAppBottomSheet<({String reason, String note})>(
-      context: context,
-      title: 'رد نظر',
-      child: _RejectSheetContent(),
+  void _openThread(CommentThreadModel thread) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PostCommentsScreen(
+          thread: thread,
+          initialTab: _tabs[_tabController.index],
+        ),
+      ),
     );
-    if (result == null) return;
-
-    try {
-      await context.read<AppState>().manager.rejectComment(comment.id, reason: result.reason, note: result.note);
-      _loadFirstPage();
-    } catch (e) {
-      showAppSnackBar(context, messageOf(e));
-    }
   }
 
-  Future<void> _toggleImportant(FamilyCommentModel comment) async {
-    try {
-      await context.read<AppState>().manager.toggleImportant(comment.id);
-      _loadFirstPage();
-    } catch (e) {
-      showAppSnackBar(context, messageOf(e));
-    }
-  }
+  /// Preserve hub sort order while grouping rows under family headers.
+  List<({String title, List<CommentThreadModel> threads})> _groupedThreads(
+    List<CommentThreadModel> threads,
+  ) {
+    final order = <int>[];
+    final map = <int, List<CommentThreadModel>>{};
+    final names = <int, String>{};
 
-  Future<void> _togglePulse(FamilyCommentModel comment) async {
-    try {
-      await context.read<AppState>().manager.togglePulse(comment.id);
-      _loadFirstPage();
-    } catch (e) {
-      showAppSnackBar(context, messageOf(e));
-    }
-  }
-
-  Future<void> _reply(FamilyCommentModel comment) async {
-    final replied = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => ReplySheet(comment: comment),
-    );
-    if (replied == true) _loadFirstPage();
-  }
-
-  Future<void> _batchApprove() async {
-    if (_selectedPendingIds.isEmpty) return;
-    try {
-      final count = await context.read<AppState>().manager.batchApprove(_selectedPendingIds.toList());
-      if (mounted) {
-        showAppSnackBar(context, '${toFaDigits(count.toString())} نظر تأیید شد.');
-        setState(_selectedPendingIds.clear);
-        _loadFirstPage();
+    for (final thread in threads) {
+      if (!map.containsKey(thread.familyId)) {
+        order.add(thread.familyId);
+        names[thread.familyId] = thread.familyInternalName ?? 'خانواده ${toFaDigits(thread.familyId.toString())}';
       }
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      map.putIfAbsent(thread.familyId, () => []).add(thread);
     }
+
+    return order
+        .map((id) => (title: names[id]!, threads: map[id]!))
+        .toList(growable: false);
   }
 
-  Widget _buildCommentsBody() {
+  Widget _buildBody() {
     final tab = _currentTab;
-    final comments = tab.items;
-    final isPendingTab = _tabs[_tabController.index] == 'pending';
+    final threads = tab.items;
 
     if (tab.initialLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (tab.error != null && comments.isEmpty) {
+    if (tab.error != null && threads.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -246,67 +212,76 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
       );
     }
 
-    if (comments.isEmpty) {
-      return ListView(
-        controller: _scrollCtrl,
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: const [EmptyState(title: 'نظری وجود ندارد', icon: Icons.forum_outlined)],
-      );
-    }
+    final pagePad = AppBreakpoints.pagePadding(context);
+    final groups = _groupedThreads(threads);
 
-    final itemCount = comments.length + (tab.hasMore || tab.loadingMore ? 1 : 0);
-
-    return ListView.separated(
+    return ListView(
       controller: _scrollCtrl,
-      padding: AppBreakpoints.pagePadding(context),
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: itemCount,
-      separatorBuilder: (_, index) {
-        if (index >= comments.length - 1) return const SizedBox.shrink();
-        return const SizedBox(height: AppSpacing.md);
-      },
-      itemBuilder: (context, index) {
-        if (index >= comments.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final c = comments[index];
-        final selected = _selectedPendingIds.contains(c.id);
-        return CommentCard(
-          comment: c,
-          selectable: isPendingTab,
-          selected: selected,
-          onSelectedChanged: isPendingTab
-              ? (value) => setState(() {
-                    if (value) {
-                      _selectedPendingIds.add(c.id);
-                    } else {
-                      _selectedPendingIds.remove(c.id);
-                    }
-                  })
-              : null,
-          onApprove: () => _approve(c),
-          onReject: () => _reject(c),
-          onToggleImportant: () => _toggleImportant(c),
-          onTogglePulse: () => _togglePulse(c),
-          onReply: () => _reply(c),
-        );
-      },
+      padding: pagePad,
+      children: [
+        if (_families.isNotEmpty) ...[
+          PostFamilyFilterBar(
+            families: _families,
+            selectedFamilyId: _familyFilter,
+            onChanged: (id) {
+              setState(() => _familyFilter = id);
+              for (final t in _tabData) {
+                t.items.clear();
+                t.page = 0;
+                t.hasMore = true;
+              }
+              _loadFirstPage();
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        if (threads.isEmpty)
+          const EmptyState(title: 'پستی با نظر در این بخش نیست', icon: Icons.forum_outlined)
+        else ...[
+          for (final group in groups) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm, top: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(Icons.groups_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      group.title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Text(
+                    toFaDigits(group.threads.length.toString()),
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ),
+            for (final thread in group.threads) ...[
+              CommentThreadCard(
+                thread: thread,
+                onViewComments: () => _openThread(thread),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+          ],
+          if (tab.hasMore || tab.loadingMore)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isPendingTab = _tabs[_tabController.index] == 'pending';
-
     return AdaptiveScaffold(
       appBar: ManagerAppBar(
-        title: Text(_selectedPendingIds.isEmpty
-            ? 'نظرات خانواده'
-            : '${toFaDigits(_selectedPendingIds.length.toString())} انتخاب‌شده'),
+        title: const Text('نظرات خانواده'),
         showShellActions: true,
         actions: [
           IconButton(
@@ -314,12 +289,6 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'بروزرسانی',
           ),
-          if (isPendingTab && _selectedPendingIds.isNotEmpty)
-            IconButton(
-              tooltip: 'تأیید گروهی',
-              onPressed: _batchApprove,
-              icon: const Icon(Icons.done_all_rounded),
-            ),
         ],
         bottom: AppTabBar(
           controller: _tabController,
@@ -337,193 +306,7 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
       ),
       body: RefreshIndicator(
         onRefresh: _loadFirstPage,
-        child: _buildCommentsBody(),
-      ),
-    );
-  }
-}
-
-class _RejectSheetContent extends StatefulWidget {
-  @override
-  State<_RejectSheetContent> createState() => _RejectSheetContentState();
-}
-
-class _RejectSheetContentState extends State<_RejectSheetContent> {
-  String _reason = 'other';
-  final _noteCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _noteCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DropdownButtonFormField<String>(
-          value: _reason,
-          items: rejectionReasonLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-          onChanged: (v) => setState(() => _reason = v ?? 'other'),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        TextField(
-          controller: _noteCtrl,
-          decoration: const InputDecoration(labelText: 'یادداشت (اختیاری)'),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        PrimaryButton(
-          label: 'رد نظر',
-          onPressed: () => Navigator.pop(context, (reason: _reason, note: _noteCtrl.text.trim())),
-        ),
-      ],
-    );
-  }
-}
-
-class ReplySheet extends StatefulWidget {
-  const ReplySheet({super.key, required this.comment});
-
-  final FamilyCommentModel comment;
-
-  @override
-  State<ReplySheet> createState() => _ReplySheetState();
-}
-
-class _ReplySheetState extends State<ReplySheet> {
-  var _mode = 'text';
-  final _textCtrl = TextEditingController();
-  FamilyMediaRef? _voice;
-  var _uploading = false;
-  double _uploadProgress = 0;
-  int _uploadSentBytes = 0;
-  int _uploadTotalBytes = 0;
-  MediaUploadPhase _uploadPhase = MediaUploadPhase.idle;
-  var _sending = false;
-
-  @override
-  void dispose() {
-    _textCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickVoice() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.audio, withData: true);
-    final picked = result?.files.singleOrNull;
-    if (picked == null) return;
-
-    final bytes = picked.bytes;
-    if (bytes == null) {
-      showAppSnackBar(context, 'خواندن فایل صوتی ناموفق بود.');
-      return;
-    }
-
-    setState(() {
-      _uploading = true;
-      _uploadProgress = 0;
-      _uploadSentBytes = 0;
-      _uploadTotalBytes = bytes.length;
-      _uploadPhase = MediaUploadPhase.uploading;
-    });
-    try {
-      final media = await context.read<AppState>().manager.uploadMedia(
-            bytes: bytes,
-            filename: picked.name,
-            type: 'voice',
-            onUploadState: (upload) {
-              if (!mounted) return;
-              setState(() {
-                _uploadPhase = upload.phase;
-                _uploadProgress = upload.fraction;
-                _uploadSentBytes = upload.sentBytes;
-                _uploadTotalBytes = upload.totalBytes;
-              });
-            },
-          );
-      setState(() => _voice = media);
-    } catch (e) {
-      showAppSnackBar(context, messageOf(e));
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
-  }
-
-  Future<void> _send() async {
-    if (_mode == 'text' && _textCtrl.text.trim().isEmpty) {
-      showAppSnackBar(context, 'متن پاسخ را وارد کنید.');
-      return;
-    }
-    if (_mode == 'voice' && _voice == null) {
-      showAppSnackBar(context, 'ابتدا فایل صوتی را آپلود کنید.');
-      return;
-    }
-
-    setState(() => _sending = true);
-    try {
-      await context.read<AppState>().manager.replyToComment(
-            commentId: widget.comment.id,
-            type: _mode,
-            text: _mode == 'text' ? _textCtrl.text.trim() : null,
-            mediaId: _mode == 'voice' ? _voice!.id : null,
-          );
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      showAppSnackBar(context, messageOf(e));
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.lg,
-        right: AppSpacing.lg,
-        top: 0,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('پاسخ بهرام به نظر', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.xs),
-          Text(widget.comment.body, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textMuted)),
-          const SizedBox(height: AppSpacing.lg),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'text', label: Text('متنی'), icon: Icon(Icons.text_fields_rounded, size: 18)),
-              ButtonSegment(value: 'voice', label: Text('صوتی'), icon: Icon(Icons.mic_rounded, size: 18)),
-            ],
-            selected: {_mode},
-            onSelectionChanged: (s) => setState(() => _mode = s.first),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          if (_mode == 'text')
-            TextField(
-              controller: _textCtrl,
-              maxLines: 4,
-              decoration: const InputDecoration(labelText: 'متن پاسخ'),
-            )
-          else if (_voice == null)
-            UploadZone(
-              label: 'انتخاب و آپلود فایل صوتی',
-              uploading: _uploading,
-              progress: _uploadProgress,
-              sentBytes: _uploadSentBytes,
-              totalBytes: _uploadTotalBytes,
-              phase: _uploadPhase,
-              onTap: _pickVoice,
-            )
-          else
-            FamilyMediaView(media: _voice!, compact: true),
-          const SizedBox(height: AppSpacing.lg),
-          PrimaryButton(label: 'ارسال پاسخ', loading: _sending, onPressed: _send),
-        ],
+        child: _buildBody(),
       ),
     );
   }

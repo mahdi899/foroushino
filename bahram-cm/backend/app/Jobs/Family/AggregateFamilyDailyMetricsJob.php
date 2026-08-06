@@ -10,9 +10,8 @@ use App\Models\FamilyDailyMetric;
 use App\Models\FamilyEntryEventDailyMetric;
 use App\Models\FamilyMediaProgress;
 use App\Models\FamilyMembership;
-use App\Models\FamilyPost;
-use App\Models\FamilyReaction;
 use App\Models\FamilySourceDailyMetric;
+use App\Services\Family\FamilyAnalyticsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,7 +20,8 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Idempotent daily rollup — safe to re-run for the same date (upserts).
- * Reads raw event tables ONCE per day here so dashboards never scan them directly.
+ * Posts/reactions use live filters (published posts still present) so re-runs
+ * stay aligned with FamilyAnalyticsService dashboard counts.
  */
 class AggregateFamilyDailyMetricsJob implements ShouldQueue
 {
@@ -31,25 +31,25 @@ class AggregateFamilyDailyMetricsJob implements ShouldQueue
 
     public function __construct(public ?string $date = null) {}
 
-    public function handle(): void
+    public function handle(FamilyAnalyticsService $analytics): void
     {
         $date = $this->date ? \Carbon\Carbon::parse($this->date)->startOfDay() : now()->subDay()->startOfDay();
         $end = $date->copy()->endOfDay();
 
-        $this->aggregateGlobal($date, $end);
-        $this->aggregatePerFamily($date, $end);
+        $this->aggregateGlobal($date, $end, $analytics);
+        $this->aggregatePerFamily($date, $end, $analytics);
         $this->aggregateSources($date, $end);
         $this->aggregateEntryEvents($date, $end);
     }
 
-    private function aggregateGlobal(\Carbon\Carbon $date, \Carbon\Carbon $end): void
+    private function aggregateGlobal(\Carbon\Carbon $date, \Carbon\Carbon $end, FamilyAnalyticsService $analytics): void
     {
         FamilyDailyMetric::query()->updateOrCreate(
             ['family_id' => null, 'date' => $date->toDateString()],
             [
                 'new_members' => FamilyMembership::query()->whereBetween('joined_at', [$date, $end])->count(),
-                'posts_published' => FamilyPost::query()->whereBetween('published_at', [$date, $end])->count(),
-                'reactions' => FamilyReaction::query()->whereBetween('created_at', [$date, $end])->count(),
+                'posts_published' => $analytics->countLivePublishedPosts($date, $end),
+                'reactions' => $analytics->countLiveReactions($date, $end),
                 'comments_approved' => FamilyComment::query()->where('status', FamilyCommentStatus::Approved->value)->whereBetween('approved_at', [$date, $end])->count(),
                 'comments_pending' => FamilyComment::query()->whereBetween('created_at', [$date, $end])->count(),
                 'actions_completed' => FamilyActionResponse::query()->whereBetween('created_at', [$date, $end])->count(),
@@ -59,15 +59,15 @@ class AggregateFamilyDailyMetricsJob implements ShouldQueue
         );
     }
 
-    private function aggregatePerFamily(\Carbon\Carbon $date, \Carbon\Carbon $end): void
+    private function aggregatePerFamily(\Carbon\Carbon $date, \Carbon\Carbon $end, FamilyAnalyticsService $analytics): void
     {
-        Family::query()->select('id')->chunkById(200, function ($families) use ($date, $end) {
+        Family::query()->select('id')->chunkById(200, function ($families) use ($date, $end, $analytics) {
             foreach ($families as $family) {
                 FamilyDailyMetric::query()->updateOrCreate(
                     ['family_id' => $family->id, 'date' => $date->toDateString()],
                     [
                         'new_members' => FamilyMembership::query()->where('family_id', $family->id)->whereBetween('joined_at', [$date, $end])->count(),
-                        'reactions' => FamilyReaction::query()->where('family_id', $family->id)->whereBetween('created_at', [$date, $end])->count(),
+                        'reactions' => $analytics->countLiveReactions($date, $end, (int) $family->id),
                         'comments_approved' => FamilyComment::query()->where('family_id', $family->id)->where('status', FamilyCommentStatus::Approved->value)->whereBetween('approved_at', [$date, $end])->count(),
                         'comments_pending' => FamilyComment::query()->where('family_id', $family->id)->whereBetween('created_at', [$date, $end])->count(),
                         'actions_completed' => FamilyActionResponse::query()->where('family_id', $family->id)->whereBetween('created_at', [$date, $end])->count(),

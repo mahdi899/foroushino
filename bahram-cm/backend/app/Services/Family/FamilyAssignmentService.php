@@ -87,7 +87,7 @@ class FamilyAssignmentService
                 $joined = $familyLock->block($lockSeconds, function () use ($user, $family, $context, $score) {
                     $family->refresh();
 
-                    if (! $family->hasCapacity() || ! $family->accepting_members) {
+                    if (! $family->isActive() || ! $family->hasCapacity() || ! $family->accepting_members) {
                         return null;
                     }
 
@@ -123,7 +123,7 @@ class FamilyAssignmentService
             return null;
         }
 
-        if (! in_array($family->lifecycle, [FamilyLifecycle::Forming, FamilyLifecycle::Active, FamilyLifecycle::Cooling], true)) {
+        if (! $family->isActive()) {
             return null;
         }
 
@@ -136,7 +136,7 @@ class FamilyAssignmentService
         return $familyLock->block($lockSeconds, function () use ($user, $family, $context) {
             $family->refresh();
 
-            if (! $family->accepting_members || ! $family->hasCapacity()) {
+            if (! $family->isActive() || ! $family->accepting_members || ! $family->hasCapacity()) {
                 return null;
             }
 
@@ -158,10 +158,7 @@ class FamilyAssignmentService
     private function candidateFamilies()
     {
         return Family::query()
-            ->whereIn('lifecycle', [
-                FamilyLifecycle::Forming->value,
-                FamilyLifecycle::Active->value,
-            ])
+            ->where('lifecycle', FamilyLifecycle::Active->value)
             ->where('accepting_members', true)
             ->whereColumn('member_count', '<', 'capacity_max')
             ->orderBy('member_count')
@@ -195,11 +192,6 @@ class FamilyAssignmentService
 
             if ($family->member_count > $family->capacity_max) {
                 throw new RuntimeException('Family capacity exceeded during join.');
-            }
-
-            if ($family->lifecycle === FamilyLifecycle::Forming
-                && $family->member_count >= (int) ($family->capacity_min * 0.5)) {
-                $family->update(['lifecycle' => FamilyLifecycle::Active]);
             }
 
             return $membership->fresh(['family']);

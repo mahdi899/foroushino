@@ -89,8 +89,9 @@ void main() {
         'in_pulse': false,
         'seen_by_bahram': true,
         'user': {'name': 'علی'},
-        'family': {'internal_name': 'F-001'},
         'post_id': 10,
+        'family_id': 3,
+        'family': {'id': 3, 'internal_name': 'F-001'},
         'ai': {
           'risk_score': 0.85,
           'sentiment': 'negative',
@@ -107,6 +108,29 @@ void main() {
       expect(comment.signals, ['advertising', 'spam']);
       expect(comment.rejectionReason, 'advertisement');
       expect(comment.seenByBahram, isTrue);
+      expect(comment.familyId, 3);
+    });
+  });
+
+  group('CommentThreadModel.fromJson', () {
+    test('parses hub thread row', () {
+      final thread = CommentThreadModel.fromJson({
+        'post_id': 10,
+        'family_id': 3,
+        'family_internal_name': 'نور',
+        'post_type': 'text',
+        'post_preview': 'سلام',
+        'matching_count': 4,
+        'pending_count': 2,
+        'latest_comment_at': '2026-08-06T10:00:00+00:00',
+        'latest_comment_preview': 'عالی',
+      });
+
+      expect(thread.postId, 10);
+      expect(thread.familyId, 3);
+      expect(thread.matchingCount, 4);
+      expect(thread.pendingCount, 2);
+      expect(thread.familyInternalName, 'نور');
     });
   });
 

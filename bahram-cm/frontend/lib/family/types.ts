@@ -189,6 +189,9 @@ export interface FamilyFeedMeta {
   needs_name?: boolean;
   is_staff?: boolean;
   feed_revision?: number;
+  /** True when the member's family lifecycle is inactive — feed posts are hidden. */
+  family_inactive?: boolean;
+  inactive_message?: string | null;
 }
 
 export interface FamilyFeedResponse {
@@ -201,6 +204,7 @@ export interface FamilyComment {
   body: string;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  is_important?: boolean;
   user: { name: string; avatar: string | null; avatar_version?: number | null };
   rejection_reason?: string | null;
   is_pending_mine: boolean;
@@ -227,6 +231,8 @@ export interface FamilyMeResponse {
   needs_name?: boolean;
   joined_at?: string;
   is_staff?: boolean;
+  family_inactive?: boolean;
+  inactive_message?: string | null;
 }
 
 export interface FamilyPulseItem {

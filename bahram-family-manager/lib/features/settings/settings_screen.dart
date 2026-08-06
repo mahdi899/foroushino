@@ -373,7 +373,7 @@ class _MediaPipelinePanelState extends State<_MediaPipelinePanel> {
     try {
       await context.read<AppState>().manager.updateMediaPipeline({key: value});
       widget.onChanged();
-      if (mounted) showAppSnackBar(context, '╪¬┘å╪╕█î┘à╪º╪¬ ╪▒╪│╪º┘å┘ç ╪░╪«█î╪▒┘ç ╪┤╪».');
+      if (mounted) showAppSnackBar(context, 'تنظیمات رسانه ذخیره شد.');
     } catch (e) {
       if (mounted) {
         setState(() => readValue());
@@ -392,14 +392,14 @@ class _MediaPipelinePanelState extends State<_MediaPipelinePanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          '╪»█î╪│┌⌐ ╪ó┘╛┘ä┘ê╪»: ${widget.initial.uploadDisk} ┬╖ ┌⌐╪¬╪º╪¿╪«╪º┘å┘ç ╪│╪º█î╪¬: ${widget.initial.siteLibraryDisk}',
+          'دیسک آپلود: ${widget.initial.uploadDisk} · کتابخانه سایت: ${widget.initial.siteLibraryDisk}',
           style: TextStyle(color: muted, fontSize: 12),
         ),
         const SizedBox(height: AppSpacing.md),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('╪¿┘ç█î┘å┘çΓÇî╪│╪º╪▓█î ╪«┘ê╪»┌⌐╪º╪▒ ╪¬╪╡╪º┘ê█î╪▒ (WebP)'),
-          subtitle: const Text('┘é╪¿┘ä ╪º╪▓ ╪░╪«█î╪▒┘ç╪î ╪¬╪╡┘ê█î╪▒ ┘ü╪┤╪▒╪»┘ç ┘ê ╪¿┘ç█î┘å┘ç ┘à█îΓÇî╪┤┘ê╪»'),
+          title: const Text('بهینه‌سازی خودکار تصاویر (WebP)'),
+          subtitle: const Text('قبل از ذخیره، تصویر فشرده و بهینه می‌شود'),
           value: _optimize,
           onChanged: _saving
               ? null
@@ -410,8 +410,8 @@ class _MediaPipelinePanelState extends State<_MediaPipelinePanel> {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('┘ç┘à┌»╪º┘àΓÇî╪│╪º╪▓█î ╪¿╪º ┌⌐╪¬╪º╪¿╪«╪º┘å┘ç ╪▒╪│╪º┘å┘ç ╪│╪º█î╪¬'),
-          subtitle: const Text('┘ç╪▒ ╪╣┌⌐╪│ ╪ó┘╛┘ä┘ê╪»╪┤╪»┘ç ╪»╪▒ ┘╛┘å┘ä ╪º╪»┘à█î┘å ╪▒╪│╪º┘å┘ç ╪│╪º█î╪¬ ┘ç┘à ╪½╪¿╪¬ ┘à█îΓÇî╪┤┘ê╪»'),
+          title: const Text('همگام‌سازی با کتابخانه رسانه سایت'),
+          subtitle: const Text('هر عکس آپلودشده در پنل ادمین رسانه سایت هم ثبت می‌شود'),
           value: _sync,
           onChanged: _saving
               ? null
@@ -422,8 +422,8 @@ class _MediaPipelinePanelState extends State<_MediaPipelinePanel> {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('╪ó┘╛┘ä┘ê╪» ╪▒┘ê█î FTP'),
-          subtitle: const Text('╪«╪º┘à┘ê╪┤ = ╪░╪«█î╪▒┘ç ┘à╪¡┘ä█î public ╪¿╪▒╪º█î ╪¬┘ê╪│╪╣┘ç'),
+          title: const Text('آپلود روی FTP'),
+          subtitle: const Text('خاموش = ذخیره محلی public برای توسعه'),
           value: _ftp,
           onChanged: _saving
               ? null

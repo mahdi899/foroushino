@@ -38,8 +38,17 @@ class FamilyReactionAndCommentTest extends TestCase
             'type' => 'text',
             'status' => FamilyPostStatus::Published,
             'audience_mode' => 'all',
+            'comments_enabled' => true,
             'published_at' => now(),
         ]);
+    }
+
+    private function managerAdmin(): User
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $admin->assignRole(AdminRoleName::SuperAdmin->value);
+
+        return $admin;
     }
 
     public function test_member_can_react_and_toggle_reaction(): void
@@ -115,6 +124,113 @@ class FamilyReactionAndCommentTest extends TestCase
         $this->actingAs($admin, 'sanctum')
             ->postJson("/api/v1/family-manager/comments/{$comment['id']}/approve")
             ->assertStatus(422);
+    }
+
+    public function test_manager_comment_threads_groups_by_post_and_family(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'اولین نظر'])
+            ->assertCreated();
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.post_id', $post->id)
+            ->assertJsonPath('data.0.matching_count', 1)
+            ->assertJsonStructure([
+                'data' => [
+                    [
+                        'post_id',
+                        'family_id',
+                        'family_internal_name',
+                        'matching_count',
+                        'pending_count',
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_manager_can_filter_comments_by_post_and_family(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $comment = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'نظر فیلتر'])
+            ->assertCreated()
+            ->json('data');
+
+        $familyId = \App\Models\FamilyComment::query()->findOrFail($comment['id'])->family_id;
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments?tab=approved&post_id='.$post->id.'&family_id='.$familyId)
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $comment['id']);
+    }
+
+    public function test_manager_mark_important_is_visible_on_family_comment_payload(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $comment = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'نظر مهم'])
+            ->assertCreated()
+            ->json('data');
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/family-manager/comments/{$comment['id']}/mark-important")
+            ->assertOk()
+            ->assertJsonPath('data.is_important', true);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/family/posts/{$post->id}/comments")
+            ->assertOk()
+            ->assertJsonPath('data.0.is_important', true);
+    }
+
+    public function test_manager_can_reply_to_comment_with_text(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $comment = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'سؤالی داشتم'])
+            ->assertCreated()
+            ->json('data');
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$comment['id']}/reply", [
+                'type' => 'text',
+                'text' => 'پاسخ بهرام به شما',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'reply')
+            ->assertJsonPath('data.status', FamilyPostStatus::Published->value);
+
+        $this->assertDatabaseHas('family_posts', [
+            'type' => 'reply',
+            'reply_to_comment_id' => $comment['id'],
+            'status' => FamilyPostStatus::Published->value,
+        ]);
     }
 
     public function test_comment_includes_resolved_student_avatar_url(): void

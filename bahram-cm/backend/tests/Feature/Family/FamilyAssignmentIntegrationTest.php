@@ -28,7 +28,7 @@ class FamilyAssignmentIntegrationTest extends TestCase
 
         $match = Family::query()->create([
             'internal_name' => 'سپهر',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 100,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -40,7 +40,7 @@ class FamilyAssignmentIntegrationTest extends TestCase
 
         $other = Family::query()->create([
             'internal_name' => 'آبان',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,

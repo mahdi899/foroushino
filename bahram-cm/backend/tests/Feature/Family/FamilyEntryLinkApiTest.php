@@ -31,7 +31,7 @@ class FamilyEntryLinkApiTest extends TestCase
     {
         $family = \App\Models\Family::query()->create([
             'internal_name' => 'سپهر',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -74,7 +74,7 @@ class FamilyEntryLinkApiTest extends TestCase
     {
         $family = \App\Models\Family::query()->create([
             'internal_name' => 'هدف ریلز',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -84,7 +84,7 @@ class FamilyEntryLinkApiTest extends TestCase
 
         $other = \App\Models\Family::query()->create([
             'internal_name' => 'دیگر',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -108,7 +108,7 @@ class FamilyEntryLinkApiTest extends TestCase
     {
         $family = \App\Models\Family::query()->create([
             'internal_name' => 'از رویداد ورود',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -118,7 +118,7 @@ class FamilyEntryLinkApiTest extends TestCase
 
         $other = \App\Models\Family::query()->create([
             'internal_name' => 'دیگر',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -151,7 +151,7 @@ class FamilyEntryLinkApiTest extends TestCase
     {
         $family = \App\Models\Family::query()->create([
             'internal_name' => 'اولیه',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -161,7 +161,7 @@ class FamilyEntryLinkApiTest extends TestCase
 
         $otherFamily = \App\Models\Family::query()->create([
             'internal_name' => 'جدید',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -207,7 +207,7 @@ class FamilyEntryLinkApiTest extends TestCase
     {
         $familyA = \App\Models\Family::query()->create([
             'internal_name' => 'الف',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,
@@ -217,7 +217,7 @@ class FamilyEntryLinkApiTest extends TestCase
 
         $familyB = \App\Models\Family::query()->create([
             'internal_name' => 'ب',
-            'lifecycle' => 'forming',
+            'lifecycle' => 'active',
             'member_count' => 0,
             'capacity_target' => 5000,
             'capacity_min' => 4500,

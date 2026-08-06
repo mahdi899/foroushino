@@ -440,7 +440,7 @@ class _FamilySummarySection extends StatelessWidget {
                     runSpacing: AppSpacing.xs,
                     children: [
                       StatusChip(
-                        label: labelOf(lifecycleLabels, family.lifecycle),
+                        label: lifecycleLabel(family.lifecycle),
                         color: AppColors.primary,
                         icon: Icons.groups_rounded,
                       ),

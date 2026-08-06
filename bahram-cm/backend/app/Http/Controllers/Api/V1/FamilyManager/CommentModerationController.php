@@ -4,15 +4,18 @@ namespace App\Http\Controllers\Api\V1\FamilyManager;
 
 use App\Enums\Family\FamilyCommentRejectionReason;
 use App\Enums\Family\FamilyCommentStatus;
+use App\Enums\Family\FamilyPostBlockType;
 use App\Http\Controllers\Controller;
 use App\Models\FamilyComment;
 use App\Services\AdminAuditLogger;
 use App\Services\Family\FamilyNotificationService;
 use App\Services\Family\FamilyStatsService;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CommentModerationController extends Controller
@@ -25,19 +28,20 @@ class CommentModerationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $tab = $request->query('tab', 'pending');
+        $tab = (string) $request->query('tab', 'pending');
 
         $query = FamilyComment::query()
             ->with(['user:id,name', 'family:id,internal_name', 'post:id,type']);
 
-        match ($tab) {
-            'approved' => $query->where('status', FamilyCommentStatus::Approved->value),
-            'rejected' => $query->where('status', FamilyCommentStatus::Rejected->value),
-            'important' => $query->where('is_important', true),
-            'unread' => $query->whereNull('seen_by_bahram_at'),
-            'coaching_questions' => $query->whereJsonContains('ai_signals', 'coaching_question'),
-            default => $query->where('status', FamilyCommentStatus::Pending->value),
-        };
+        $this->applyTabFilter($query, $tab);
+
+        if ($request->filled('post_id')) {
+            $query->where('post_id', (int) $request->query('post_id'));
+        }
+
+        if ($request->filled('family_id')) {
+            $query->where('family_id', (int) $request->query('family_id'));
+        }
 
         $comments = $query->orderByDesc('id')->paginate(min(50, (int) $request->query('per_page', 20)));
 
@@ -47,6 +51,114 @@ class CommentModerationController extends Controller
             'current_page' => $comments->currentPage(),
             'last_page' => $comments->lastPage(),
             'total' => $comments->total(),
+        ]);
+    }
+
+    /**
+     * Posts that have comments matching the moderation tab, keyed by (post, family).
+     * Used by Family Manager hub: group by family, open «مشاهده کامنت‌ها» per row.
+     */
+    public function threads(Request $request): JsonResponse
+    {
+        $tab = (string) $request->query('tab', 'pending');
+        $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
+
+        $base = FamilyComment::query();
+        $this->applyTabFilter($base, $tab);
+
+        if ($request->filled('family_id')) {
+            $base->where('family_id', (int) $request->query('family_id'));
+        }
+
+        $pendingStatus = FamilyCommentStatus::Pending->value;
+
+        $paginator = (clone $base)
+            ->select([
+                'post_id',
+                'family_id',
+                DB::raw('COUNT(*) as matching_count'),
+                DB::raw('MAX(created_at) as latest_comment_at'),
+                DB::raw('MAX(id) as latest_comment_id'),
+                DB::raw(
+                    'SUM(CASE WHEN status = '.DB::getPdo()->quote($pendingStatus).' THEN 1 ELSE 0 END) as pending_count'
+                ),
+            ])
+            ->groupBy('post_id', 'family_id')
+            ->orderByDesc('latest_comment_at')
+            ->paginate($perPage);
+
+        $rows = collect($paginator->items());
+        $postIds = $rows->pluck('post_id')->unique()->values();
+        $familyIds = $rows->pluck('family_id')->unique()->values();
+        $latestIds = $rows->pluck('latest_comment_id')->filter()->values();
+
+        $posts = \App\Models\FamilyPost::query()
+            ->whereIn('id', $postIds)
+            ->with(['blocks' => fn ($q) => $q->orderBy('position')])
+            ->get()
+            ->keyBy('id');
+
+        $families = \App\Models\Family::query()
+            ->whereIn('id', $familyIds)
+            ->get(['id', 'internal_name'])
+            ->keyBy('id');
+
+        $latestComments = FamilyComment::query()
+            ->whereIn('id', $latestIds)
+            ->get(['id', 'body', 'created_at', 'status'])
+            ->keyBy('id');
+
+        // Pending counts for groups when tab is not pending (matching_count only covers tab filter).
+        $pendingByKey = [];
+        if ($tab !== 'pending' && $rows->isNotEmpty()) {
+            $pendingRows = FamilyComment::query()
+                ->select(['post_id', 'family_id', DB::raw('COUNT(*) as pending_count')])
+                ->where('status', $pendingStatus)
+                ->where(function (Builder $q) use ($rows) {
+                    foreach ($rows as $row) {
+                        $q->orWhere(function (Builder $inner) use ($row) {
+                            $inner->where('post_id', $row->post_id)->where('family_id', $row->family_id);
+                        });
+                    }
+                })
+                ->groupBy('post_id', 'family_id')
+                ->get();
+
+            foreach ($pendingRows as $pendingRow) {
+                $pendingByKey[$pendingRow->post_id.':'.$pendingRow->family_id] = (int) $pendingRow->pending_count;
+            }
+        }
+
+        $items = $rows->map(function ($row) use ($posts, $families, $latestComments, $tab, $pendingByKey) {
+            $post = $posts->get($row->post_id);
+            $family = $families->get($row->family_id);
+            $latest = $latestComments->get($row->latest_comment_id);
+            $key = $row->post_id.':'.$row->family_id;
+
+            $pendingCount = $tab === 'pending'
+                ? (int) $row->matching_count
+                : (int) ($pendingByKey[$key] ?? $row->pending_count ?? 0);
+
+            return [
+                'post_id' => (int) $row->post_id,
+                'family_id' => (int) $row->family_id,
+                'family_internal_name' => $family?->internal_name,
+                'post_type' => $post?->type?->value ?? $post?->type,
+                'post_preview' => $this->postPreview($post),
+                'published_at' => $post?->published_at?->toIso8601String(),
+                'matching_count' => (int) $row->matching_count,
+                'pending_count' => $pendingCount,
+                'latest_comment_at' => $row->latest_comment_at
+                    ? \Illuminate\Support\Carbon::parse($row->latest_comment_at)->toIso8601String()
+                    : null,
+                'latest_comment_preview' => $latest?->body,
+            ];
+        })->values();
+
+        return ApiResponse::success($items, 200, [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'total' => $paginator->total(),
         ]);
     }
 
@@ -136,13 +248,15 @@ class CommentModerationController extends Controller
 
     public function markImportant(Request $request, FamilyComment $comment): JsonResponse
     {
+        $important = ! (bool) $comment->is_important;
+
         $comment->update([
-            'is_important' => ! $comment->is_important,
-            'featured_at' => ! $comment->is_important ? now() : null,
+            'is_important' => $important,
+            'featured_at' => $important ? now() : null,
         ]);
 
         $this->audit->log($request->user(), 'family.comment_marked_important', $comment, [
-            'is_important' => $comment->is_important,
+            'is_important' => $important,
         ]);
 
         return ApiResponse::success($this->present($comment->fresh(['user', 'family'])));
@@ -174,6 +288,36 @@ class CommentModerationController extends Controller
         return ApiResponse::success(['seen' => true]);
     }
 
+    private function applyTabFilter(Builder $query, string $tab): void
+    {
+        match ($tab) {
+            'approved' => $query->where('status', FamilyCommentStatus::Approved->value),
+            'rejected' => $query->where('status', FamilyCommentStatus::Rejected->value),
+            'important' => $query->where('is_important', true),
+            'unread' => $query->whereNull('seen_by_bahram_at'),
+            'coaching_questions' => $query->whereJsonContains('ai_signals', 'coaching_question'),
+            default => $query->where('status', FamilyCommentStatus::Pending->value),
+        };
+    }
+
+    private function postPreview(?\App\Models\FamilyPost $post): ?string
+    {
+        if (! $post) {
+            return null;
+        }
+
+        $textBlock = $post->blocks->first(
+            fn ($block) => ($block->type === FamilyPostBlockType::Text || ($block->type?->value ?? $block->type) === 'text')
+                && filled($block->text_content)
+        );
+
+        if ($textBlock) {
+            return mb_substr(trim((string) $textBlock->text_content), 0, 160);
+        }
+
+        return null;
+    }
+
     /** @return array<string, mixed> */
     private function present(FamilyComment $comment): array
     {
@@ -189,9 +333,11 @@ class CommentModerationController extends Controller
                 'name' => $comment->user?->name,
             ],
             'family' => [
+                'id' => $comment->family_id,
                 'internal_name' => $comment->family?->internal_name,
             ],
             'post_id' => $comment->post_id,
+            'family_id' => $comment->family_id,
             'ai' => [
                 'risk_score' => $comment->ai_risk_score !== null ? (float) $comment->ai_risk_score : null,
                 'sentiment' => $comment->ai_sentiment,

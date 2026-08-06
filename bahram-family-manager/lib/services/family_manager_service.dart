@@ -200,14 +200,11 @@ class FamilyManagerService {
 
   Future<FamilyPostModel> replyToComment({
     required int commentId,
-    required String type,
-    String? text,
-    int? mediaId,
+    required String text,
   }) async {
     final res = await api.post('$_base/posts/$commentId/reply', data: {
-      'type': type,
-      if (text != null) 'text': text,
-      if (mediaId != null) 'media_id': mediaId,
+      'type': 'text',
+      'text': text,
     });
     return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
@@ -216,8 +213,31 @@ class FamilyManagerService {
   // Comment moderation
   // ---------------------------------------------------------------------
 
-  Future<PaginatedResult<FamilyCommentModel>> listComments({String tab = 'pending', int page = 1}) async {
-    final res = await api.get('$_base/comments', query: {'tab': tab, 'page': page});
+  Future<PaginatedResult<CommentThreadModel>> listCommentThreads({
+    String tab = 'pending',
+    int? familyId,
+    int page = 1,
+  }) async {
+    final res = await api.get('$_base/comments/threads', query: {
+      'tab': tab,
+      'page': page,
+      if (familyId != null) 'family_id': familyId,
+    });
+    return PaginatedResult.fromEnvelope(res, CommentThreadModel.fromJson);
+  }
+
+  Future<PaginatedResult<FamilyCommentModel>> listComments({
+    String tab = 'pending',
+    int? postId,
+    int? familyId,
+    int page = 1,
+  }) async {
+    final res = await api.get('$_base/comments', query: {
+      'tab': tab,
+      'page': page,
+      if (postId != null) 'post_id': postId,
+      if (familyId != null) 'family_id': familyId,
+    });
     return PaginatedResult.fromEnvelope(res, FamilyCommentModel.fromJson);
   }
 

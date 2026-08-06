@@ -41,9 +41,17 @@ function CommentRow({
         avatarVersion={comment.user.avatar_version}
         size={avatarSize}
       />
-      <div className="family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2">
+      <div
+        className={cn(
+          'family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2',
+          comment.is_important && 'family-comment-bubble--important',
+        )}
+      >
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="family-comment-bubble__author">{comment.user.name}</span>
+          {comment.is_important && (
+            <span className="family-comment-bubble__important-badge">مهم</span>
+          )}
           {comment.is_pending_mine && (
             <span className="rounded-full bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)] px-2 py-0.5 text-[10px] text-[var(--family-tg-subtitle)]">
               در انتظار بررسی

@@ -27,7 +27,7 @@ class FamilyManagementService
 
         return Family::query()->create([
             'internal_name' => $internalName,
-            'lifecycle' => FamilyLifecycle::tryFrom((string) ($data['lifecycle'] ?? '')) ?? FamilyLifecycle::Forming,
+            'lifecycle' => FamilyLifecycle::tryFrom((string) ($data['lifecycle'] ?? '')) ?? FamilyLifecycle::Active,
             'member_count' => 0,
             'capacity_target' => (int) ($data['capacity_target'] ?? config('family.capacity.target', 5000)),
             'capacity_min' => (int) ($data['capacity_min'] ?? config('family.capacity.min', 4500)),

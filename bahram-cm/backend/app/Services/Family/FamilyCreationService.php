@@ -15,7 +15,7 @@ class FamilyCreationService
 
             return Family::query()->create([
                 'internal_name' => $name,
-                'lifecycle' => FamilyLifecycle::Forming,
+                'lifecycle' => FamilyLifecycle::Active,
                 'member_count' => 0,
                 'capacity_target' => (int) config('family.capacity.target', 5000),
                 'capacity_min' => (int) config('family.capacity.min', 4500),

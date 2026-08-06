@@ -24,6 +24,7 @@ class FamilyCommentResource extends JsonResource
             'body' => $this->body,
             'status' => $this->status?->value ?? $this->status,
             'created_at' => FamilyDateTime::toApi($this->created_at),
+            'is_important' => (bool) $this->is_important,
             'user' => [
                 'name' => $this->user
                     ? StudentDisplayName::fromUser($this->user)

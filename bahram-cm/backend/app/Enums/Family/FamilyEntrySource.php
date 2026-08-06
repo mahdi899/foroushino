@@ -16,6 +16,9 @@ enum FamilyEntrySource: string
     case Article = 'article';
     case Seminar = 'seminar';
     case Campaign = 'campaign';
+    case Telegram = 'telegram';
+    case Landings = 'landings';
+    /** @deprecated Not offered in manager pickers; kept for existing records / internal fallbacks. */
     case Direct = 'direct';
 
     public function label(): string
@@ -29,6 +32,8 @@ enum FamilyEntrySource: string
             self::Article => 'مقاله',
             self::Seminar => 'سمینار',
             self::Campaign => 'کمپین',
+            self::Telegram => 'تلگرام',
+            self::Landings => 'لندینگ‌ها',
             self::Direct => 'ورود مستقیم',
         };
     }

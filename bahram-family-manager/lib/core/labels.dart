@@ -64,15 +64,31 @@ const Map<String, String> entrySourceLabels = {
   'article': 'مقاله',
   'seminar': 'سمینار',
   'campaign': 'کمپین',
+  'telegram': 'تلگرام',
+  'landings': 'لندینگ‌ها',
+  // Legacy — retained for display of existing records; not offered in pickers.
   'direct': 'ورود مستقیم',
 };
 
+/// Sources offered in manager pickers (excludes legacy `direct`).
+Iterable<MapEntry<String, String>> get selectableEntrySources =>
+    entrySourceLabels.entries.where((e) => e.key != 'direct');
+
 const Map<String, String> lifecycleLabels = {
-  'forming': 'در حال تشکیل',
   'active': 'فعال',
-  'cooling': 'کم‌فعال',
-  'dormant': 'غیرفعال',
+  'inactive': 'غیر فعال',
 };
+
+/// Legacy lifecycle keys still present until backend migration runs.
+const Map<String, String> lifecycleLegacyAliases = {
+  'forming': 'active',
+  'cooling': 'active',
+  'dormant': 'inactive',
+};
+
+String normalizeLifecycle(String key) => lifecycleLegacyAliases[key] ?? key;
+
+String lifecycleLabel(String key) => labelOf(lifecycleLabels, normalizeLifecycle(key));
 
 const Map<String, String> actionTypeLabels = {
   'commitment': 'تعهد',

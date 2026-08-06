@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
-import 'package:bahram_family_manager/features/entry_links/entry_links_panel.dart';
-import 'package:bahram_family_manager/features/entry_links/entry_links_screen.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
@@ -44,18 +42,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final bottomPad = isDesktop ? 0.0 : 24.0;
 
     return AdaptiveScaffold(
-      appBar: ManagerAppBar(
-        title: const Text('تحلیل خانواده'),
-        actions: [
-          if (context.watch<AppState>().user?.can('family.entry_links.manage') ?? false)
-            IconButton(
-              tooltip: 'لینک‌های ورود',
-              icon: const Icon(Icons.link_rounded),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const EntryLinksScreen()),
-              ),
-            ),
-        ],
+      appBar: const ManagerAppBar(
+        title: Text('تحلیل خانواده'),
       ),
       body: RefreshIndicator(
         onRefresh: () async => _load(),
@@ -105,10 +93,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       StatCard(title: 'اکشن تکمیل‌شده', value: totals.actionsCompleted, icon: Icons.task_alt_rounded, color: AppColors.gold),
                     ],
                   ),
-                  if (context.watch<AppState>().user?.can('family.entry_links.manage') ?? false) ...[
-                    const SizedBox(height: AppSpacing.xl),
-                    const EntryLinksPanel(maxItems: 6),
-                  ],
                   const SizedBox(height: AppSpacing.xl),
                   PanelSectionCard(
                     title: 'منابع ورودی',

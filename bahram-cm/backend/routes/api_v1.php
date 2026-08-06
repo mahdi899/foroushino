@@ -658,6 +658,7 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::post('posts/{comment}/reply', [FamilyManagerPostController::class, 'reply'])->whereNumber('comment')->middleware('family.manage:family.comments.reply');
 
     Route::get('comments', [FamilyManagerCommentModerationController::class, 'index'])->middleware('family.manage:family.comments.moderate');
+    Route::get('comments/threads', [FamilyManagerCommentModerationController::class, 'threads'])->middleware('family.manage:family.comments.moderate');
     Route::post('comments/{comment}/approve', [FamilyManagerCommentModerationController::class, 'approve'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
     Route::post('comments/{comment}/reject', [FamilyManagerCommentModerationController::class, 'reject'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
     Route::post('comments/batch-approve', [FamilyManagerCommentModerationController::class, 'batchApprove'])->middleware('family.manage:family.comments.moderate');

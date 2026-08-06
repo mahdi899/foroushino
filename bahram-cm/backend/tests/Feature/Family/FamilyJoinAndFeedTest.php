@@ -142,4 +142,30 @@ class FamilyJoinAndFeedTest extends TestCase
             ->getJson('/api/v1/family/me')
             ->assertJsonPath('data.needs_name', false);
     }
+
+    public function test_inactive_family_hides_feed_posts(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/family/join')->assertOk();
+
+        $family = Family::query()->first();
+        $this->assertNotNull($family);
+
+        FamilyPost::create([
+            'author_id' => User::factory()->create()->id,
+            'type' => 'text',
+            'status' => FamilyPostStatus::Published,
+            'audience_mode' => 'all',
+            'published_at' => now(),
+        ]);
+
+        $family->update(['lifecycle' => 'inactive']);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/family/feed')
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('meta.family_inactive', true)
+            ->assertJsonPath('meta.inactive_message', 'خانواده غیرفعال شده است');
+    }
 }

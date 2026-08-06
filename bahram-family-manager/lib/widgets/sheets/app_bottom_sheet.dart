@@ -22,15 +22,18 @@ Future<T?> showAppBottomSheet<T>({
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
+    // Custom chrome handles insets — avoid double SafeArea from the modal.
+    useSafeArea: false,
     backgroundColor: Colors.transparent,
     barrierColor: Theme.of(context).brightness == Brightness.dark
         ? const Color(0xCC000000)
         : AppColors.scrim,
     showDragHandle: false,
     builder: (context) {
-      final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+      final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
       final systemBottom = MediaQuery.viewPaddingOf(context).bottom;
-      final bottomPad = bottomInset + systemBottom + AppSpacing.lg;
+      // Keyboard already covers the nav gesture area — don't stack both.
+      final bottomPad = keyboardInset + (keyboardInset > 0 ? 0.0 : systemBottom) + AppSpacing.lg;
       final scheme = Theme.of(context).colorScheme;
 
       Widget header() => Column(

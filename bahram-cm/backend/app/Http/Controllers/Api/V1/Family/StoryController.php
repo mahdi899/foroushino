@@ -23,6 +23,12 @@ class StoryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $membership = $this->access->requireMembership($request->user());
+        $membership->loadMissing('family');
+
+        if ($membership->family?->isInactive()) {
+            return ApiResponse::success([]);
+        }
+
         $stories = $this->stories->activeStories((int) $membership->family_id);
 
         return ApiResponse::success(

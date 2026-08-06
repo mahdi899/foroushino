@@ -780,7 +780,7 @@ class _MobileFamilyCard extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     StatusChip(
-                      label: labelOf(lifecycleLabels, family.lifecycle),
+                      label: lifecycleLabel(family.lifecycle),
                       color: AppColors.accent,
                       icon: Icons.circle_rounded,
                     ),

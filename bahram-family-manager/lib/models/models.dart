@@ -371,6 +371,7 @@ class FamilyCommentModel {
     required this.inPulse,
     required this.seenByBahram,
     this.userName,
+    this.familyId,
     this.familyInternalName,
     required this.postId,
     this.riskScore,
@@ -389,6 +390,7 @@ class FamilyCommentModel {
   final bool inPulse;
   final bool seenByBahram;
   final String? userName;
+  final int? familyId;
   final String? familyInternalName;
   final int postId;
   final double? riskScore;
@@ -400,6 +402,7 @@ class FamilyCommentModel {
 
   factory FamilyCommentModel.fromJson(Map<String, dynamic> json) {
     final ai = (json['ai'] as Map?)?.cast<String, dynamic>() ?? {};
+    final family = (json['family'] as Map?)?.cast<String, dynamic>();
     return FamilyCommentModel(
       id: json['id'] as int,
       body: json['body']?.toString() ?? '',
@@ -409,7 +412,8 @@ class FamilyCommentModel {
       inPulse: json['in_pulse'] == true,
       seenByBahram: json['seen_by_bahram'] == true,
       userName: (json['user'] as Map?)?['name']?.toString(),
-      familyInternalName: (json['family'] as Map?)?['internal_name']?.toString(),
+      familyId: (json['family_id'] as num?)?.toInt() ?? (family?['id'] as num?)?.toInt(),
+      familyInternalName: family?['internal_name']?.toString(),
       postId: (json['post_id'] as num?)?.toInt() ?? 0,
       riskScore: (ai['risk_score'] as num?)?.toDouble(),
       sentiment: ai['sentiment']?.toString(),
@@ -417,6 +421,48 @@ class FamilyCommentModel {
       signals: (ai['signals'] as List? ?? []).map((e) => e.toString()).toList(),
       rejectionReason: json['rejection_reason']?.toString(),
       rejectionNote: json['rejection_note']?.toString(),
+    );
+  }
+}
+
+/// One post × family thread on the comments hub (posts with matching comments).
+class CommentThreadModel {
+  CommentThreadModel({
+    required this.postId,
+    required this.familyId,
+    this.familyInternalName,
+    this.postType,
+    this.postPreview,
+    this.publishedAt,
+    required this.matchingCount,
+    required this.pendingCount,
+    this.latestCommentAt,
+    this.latestCommentPreview,
+  });
+
+  final int postId;
+  final int familyId;
+  final String? familyInternalName;
+  final String? postType;
+  final String? postPreview;
+  final String? publishedAt;
+  final int matchingCount;
+  final int pendingCount;
+  final String? latestCommentAt;
+  final String? latestCommentPreview;
+
+  factory CommentThreadModel.fromJson(Map<String, dynamic> json) {
+    return CommentThreadModel(
+      postId: (json['post_id'] as num?)?.toInt() ?? 0,
+      familyId: (json['family_id'] as num?)?.toInt() ?? 0,
+      familyInternalName: json['family_internal_name']?.toString(),
+      postType: json['post_type']?.toString(),
+      postPreview: json['post_preview']?.toString(),
+      publishedAt: json['published_at']?.toString(),
+      matchingCount: (json['matching_count'] as num?)?.toInt() ?? 0,
+      pendingCount: (json['pending_count'] as num?)?.toInt() ?? 0,
+      latestCommentAt: json['latest_comment_at']?.toString(),
+      latestCommentPreview: json['latest_comment_preview']?.toString(),
     );
   }
 }

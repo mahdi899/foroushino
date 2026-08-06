@@ -3,7 +3,6 @@
 namespace App\Services\Family;
 
 use App\Enums\Family\FamilyEntrySource;
-use App\Enums\Family\FamilyLifecycle;
 use App\Models\Family;
 use App\Models\FamilyMembership;
 use App\Models\User;
@@ -61,11 +60,6 @@ class FamilyMembershipManagementService
             $this->memberCounts->bump();
 
             $family->refresh();
-
-            if ($family->lifecycle === FamilyLifecycle::Forming
-                && $family->member_count >= (int) ($family->capacity_min * 0.5)) {
-                $family->update(['lifecycle' => FamilyLifecycle::Active]);
-            }
 
             return $membership->fresh(['user:id,name,mobile', 'family:id,internal_name']);
         });

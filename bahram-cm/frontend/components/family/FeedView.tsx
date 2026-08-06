@@ -1923,7 +1923,9 @@ export function FeedView({
               ) : posts.length === 0 ? (
                 <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-6 py-16 text-center lg:min-h-[50vh]">
                   <p className="family-feed-empty max-w-sm text-sm lg:text-[15px]">
-                    هنوز پستی منتشر نشده. به‌زودی داداش بهرام اولین پیام رو می‌فرسته.
+                    {meta?.family_inactive
+                      ? (meta.inactive_message || 'خانواده غیرفعال شده است')
+                      : 'هنوز پستی منتشر نشده. به‌زودی داداش بهرام اولین پیام رو می‌فرسته.'}
                   </p>
                 </div>
               ) : (

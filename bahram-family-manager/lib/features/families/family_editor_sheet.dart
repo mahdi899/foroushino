@@ -43,7 +43,7 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
   final _minCtrl = TextEditingController(text: '4500');
   final _maxCtrl = TextEditingController(text: '5200');
 
-  String _lifecycle = 'forming';
+  String _lifecycle = 'active';
   String? _primarySource;
   int? _entryEventId;
   bool _acceptingMembers = true;
@@ -64,7 +64,7 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
       _targetCtrl.text = family.capacityTarget.toString();
       _minCtrl.text = family.capacityMin.toString();
       _maxCtrl.text = family.capacityMax.toString();
-      _lifecycle = family.lifecycle;
+      _lifecycle = normalizeLifecycle(family.lifecycle);
       _primarySource = family.primarySource;
       _entryEventId = family.entryEventId;
       _acceptingMembers = family.acceptingMembers;
@@ -136,9 +136,24 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
     }
   }
 
+  Future<void> _pickPrimarySource() async {
+    final picked = await showAppBottomSheet<_PrimarySourcePick>(
+      context: context,
+      title: 'منبع اصلی',
+      subtitle: 'منبع جذب اعضای این خانواده را انتخاب کنید.',
+      scrollable: true,
+      initialChildSize: 0.62,
+      child: _PrimarySourcePickerList(selected: _primarySource),
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _primarySource = picked.value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isNarrow = !AppBreakpoints.isDesktop(context);
+    final sourceLabel =
+        _primarySource == null ? '—' : labelOf(entrySourceLabels, _primarySource!);
 
     final capacityFields = [
       TextField(
@@ -176,17 +191,20 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
           onChanged: (v) => setState(() => _lifecycle = v ?? _lifecycle),
         ),
         const SizedBox(height: AppSpacing.md),
-        DropdownButtonFormField<String?>(
-          value: _primarySource,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'منبع اصلی'),
-          items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('—')),
-            ...entrySourceLabels.entries.map(
-              (e) => DropdownMenuItem(value: e.key, child: Text(e.value, overflow: TextOverflow.ellipsis)),
+        InkWell(
+          onTap: _pickPrimarySource,
+          borderRadius: BorderRadius.circular(AppRadius.tile),
+          child: InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'منبع اصلی',
+              suffixIcon: Icon(Icons.keyboard_arrow_down_rounded),
             ),
-          ],
-          onChanged: (v) => setState(() => _primarySource = v),
+            child: Text(
+              sourceLabel,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<int?>(
@@ -259,7 +277,44 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
           label: _pending ? 'در حال ذخیره…' : (_isEdit ? 'ذخیره تغییرات' : 'ایجاد خانواده'),
           onPressed: _pending ? null : _save,
         ),
-        SizedBox(height: MediaQuery.paddingOf(context).bottom + AppSpacing.md),
+        // Sheet already pads with viewPadding; keep a small gap above system nav.
+        SizedBox(height: MediaQuery.viewPaddingOf(context).bottom > 0 ? AppSpacing.sm : AppSpacing.md),
+      ],
+    );
+  }
+}
+
+/// Distinguishes barrier-dismiss (`null`) from an explicit clear (`value: null`).
+class _PrimarySourcePick {
+  const _PrimarySourcePick(this.value);
+  final String? value;
+}
+
+class _PrimarySourcePickerList extends StatelessWidget {
+  const _PrimarySourcePickerList({required this.selected});
+
+  final String? selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final options = [
+      const MapEntry<String?, String>(null, '—'),
+      ...selectableEntrySources.map((e) => MapEntry<String?, String>(e.key, e.value)),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final option in options)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(option.value),
+            trailing: selected == option.key
+                ? Icon(Icons.check_rounded, color: scheme.primary)
+                : null,
+            onTap: () => Navigator.of(context).pop(_PrimarySourcePick(option.key)),
+          ),
       ],
     );
   }

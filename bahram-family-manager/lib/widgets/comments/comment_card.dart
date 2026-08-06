@@ -17,28 +17,27 @@ class CommentCard extends StatelessWidget {
     required this.onApprove,
     required this.onReject,
     required this.onToggleImportant,
-    required this.onTogglePulse,
     required this.onReply,
     this.selectable = false,
     this.selected = false,
     this.onSelectedChanged,
+    this.showFamily = true,
   });
 
   final FamilyCommentModel comment;
   final CommentAction onApprove;
   final CommentAction onReject;
   final CommentAction onToggleImportant;
-  final CommentAction onTogglePulse;
   final CommentAction onReply;
   final bool selectable;
   final bool selected;
   final ValueChanged<bool>? onSelectedChanged;
+  final bool showFamily;
 
   Color get _accentColor {
     if (comment.status == 'pending') return AppColors.warning;
     if (comment.status == 'rejected') return AppColors.error;
     if (comment.isImportant) return AppColors.gold;
-    if (comment.inPulse) return AppColors.success;
     return AppColors.primary;
   }
 
@@ -106,7 +105,7 @@ class CommentCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          if (comment.familyInternalName != null) ...[
+                          if (showFamily && comment.familyInternalName != null) ...[
                             const SizedBox(height: 2),
                             Text(
                               comment.familyInternalName!,
@@ -125,7 +124,12 @@ class CommentCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: softFill,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
+                    border: Border.all(
+                      color: comment.isImportant
+                          ? AppColors.gold
+                          : scheme.outline.withValues(alpha: 0.45),
+                      width: comment.isImportant ? 1.5 : 1,
+                    ),
                   ),
                   child: Text(
                     comment.body,
@@ -147,8 +151,6 @@ class CommentCard extends StatelessWidget {
                       StatusChip(label: comment.topic!, color: AppColors.primary, icon: Icons.label_rounded),
                     if (comment.isImportant)
                       const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
-                    if (comment.inPulse)
-                      const StatusChip(label: 'پالس', color: AppColors.success, icon: Icons.sensors_rounded),
                     if (comment.status == 'rejected' && comment.rejectionReason != null)
                       StatusChip(
                         label: labelOf(rejectionReasonLabels, comment.rejectionReason!),
@@ -180,13 +182,6 @@ class CommentCard extends StatelessWidget {
                     color: AppColors.gold,
                     onTap: onToggleImportant,
                   ),
-                  if (comment.status == 'approved')
-                    _ActionChip(
-                      icon: Icons.sensors_rounded,
-                      label: comment.inPulse ? 'حذف پالس' : 'پالس',
-                      color: AppColors.accent,
-                      onTap: onTogglePulse,
-                    ),
                   _ActionChip(icon: Icons.reply_rounded, label: 'پاسخ', color: AppColors.primary, onTap: onReply),
                 ],
               ),

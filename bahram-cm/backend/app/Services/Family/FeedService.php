@@ -40,6 +40,19 @@ class FeedService
         int $after = 12,
     ): array {
         $membership = $membership ?? $this->access->requireMembership($user);
+        $membership->loadMissing('family');
+
+        if ($membership->family?->isInactive()) {
+            return [
+                'data' => collect(),
+                'next_cursor' => null,
+                'prev_cursor' => null,
+                'has_newer' => false,
+                'has_older' => false,
+                'membership' => $membership,
+            ];
+        }
+
         $familyId = (int) $membership->family_id;
 
         // Pass the Carbon instance (not a pre-formatted string) into query bindings — Laravel
@@ -157,6 +170,18 @@ class FeedService
         string $direction = 'older',
     ): array {
         $membership = $membership ?? $this->access->requireMembership($user);
+        $membership->loadMissing('family');
+
+        if ($membership->family?->isInactive()) {
+            return [
+                'data' => collect(),
+                'next_cursor' => null,
+                'prev_cursor' => null,
+                'has_newer' => false,
+                'membership' => $membership,
+            ];
+        }
+
         $familyId = (int) $membership->family_id;
         $limit = $limit ?? (int) config('family.feed.per_page', 4);
         $direction = $direction === 'newer' ? 'newer' : 'older';
@@ -431,6 +456,12 @@ class FeedService
     public function pinnedForMember(User $user, ?FamilyMembership $membership = null): Collection
     {
         $membership = $membership ?? $this->access->requireMembership($user);
+        $membership->loadMissing('family');
+
+        if ($membership->family?->isInactive()) {
+            return collect();
+        }
+
         $familyId = (int) $membership->family_id;
 
         $posts = Cache::remember(
@@ -627,6 +658,15 @@ class FeedService
     public function unreadSummary(int $afterId, ?User $user = null): array
     {
         $membership = $user ? $this->access->homeMembership($user) : null;
+        $membership?->loadMissing('family');
+
+        if ($membership?->family?->isInactive()) {
+            return $this->withFeedRevision([
+                'unread_count' => 0,
+                'latest_post_id' => 0,
+            ]);
+        }
+
         $familyId = $membership ? (int) $membership->family_id : 0;
         $revision = self::feedRevision();
         $cacheKey = "family:unread:{$familyId}:{$afterId}:r{$revision}";

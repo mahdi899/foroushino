@@ -55,6 +55,16 @@ class Family extends Model
         return $this->hasMany(FamilyDailyMetric::class);
     }
 
+    public function isActive(): bool
+    {
+        return $this->lifecycle === FamilyLifecycle::Active;
+    }
+
+    public function isInactive(): bool
+    {
+        return $this->lifecycle === FamilyLifecycle::Inactive;
+    }
+
     public function hasCapacity(): bool
     {
         return $this->member_count < $this->capacity_max;

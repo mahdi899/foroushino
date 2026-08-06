@@ -89,20 +89,10 @@ class FamilyIntelligenceService
 
         $suggestions[] = [
             'key' => 'low_activity',
-            'label' => 'خانواده‌های کم‌فعال',
+            'label' => 'خانواده‌های کم‌عضو',
             'family_ids' => Family::query()
-                ->where('lifecycle', FamilyLifecycle::Cooling->value)
-                ->limit(50)
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->all(),
-        ];
-
-        $suggestions[] = [
-            'key' => 'forming',
-            'label' => 'خانواده‌های تازه‌تشکیل',
-            'family_ids' => Family::query()
-                ->where('lifecycle', FamilyLifecycle::Forming->value)
+                ->where('lifecycle', FamilyLifecycle::Active->value)
+                ->orderBy('member_count')
                 ->limit(50)
                 ->pluck('id')
                 ->map(fn ($id) => (int) $id)

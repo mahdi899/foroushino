@@ -93,6 +93,7 @@ class FeedController extends Controller
         $family = $result['membership']->family;
         $branding = $this->branding->publicPayload();
         $revision = FeedService::feedRevision();
+        $inactive = $family?->isInactive() ?? false;
         $cursor = (string) $request->query('cursor', '');
         $resolvedLimit = $limit ?? (int) config('family.feed.per_page', 4);
         $tipId = (int) ($result['data']->first()?->id ?? 0);
@@ -105,6 +106,7 @@ class FeedController extends Controller
             $resolvedLimit,
             $tipId,
             (int) $user->id,
+            $inactive ? 'inactive' : 'active',
         );
         $cacheControl = HttpCache::privateMaxAge(0);
 
@@ -125,12 +127,14 @@ class FeedController extends Controller
                 'guest' => false,
                 'display_name' => $branding['display_name'],
                 'branding' => $branding,
-                'has_active_stories' => $this->stories->hasActiveStories((int) $family->id),
+                'has_active_stories' => $inactive ? false : $this->stories->hasActiveStories((int) $family->id),
                 'member_count' => (int) $family->member_count,
                 'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
                 'needs_name' => StudentDisplayName::needsDisplayName($user),
                 'is_staff' => $this->access->canManage($user),
                 'feed_revision' => $revision,
+                'family_inactive' => $inactive,
+                'inactive_message' => $inactive ? 'خانواده غیرفعال شده است' : null,
             ],
         )
             ->header('ETag', $etag)
@@ -194,6 +198,8 @@ class FeedController extends Controller
 
         if ($user) {
             $membership = $this->access->requireMembership($user);
+            $membership->loadMissing('family');
+            abort_if($membership->family?->isInactive(), 404);
             abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
 
             $post->load([
@@ -225,6 +231,8 @@ class FeedController extends Controller
 
         $membership = $this->access->requireMembership($user);
         abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
+        $membership->loadMissing('family');
+        abort_if($membership->family?->isInactive(), 404);
 
         $limit = $request->integer('limit');
         $half = $limit > 0 ? min(intdiv($limit, 2), 25) : 12;
@@ -338,17 +346,20 @@ class FeedController extends Controller
         }
 
         $branding = $this->branding->publicPayload();
+        $inactive = $membership->family?->isInactive() ?? false;
 
         return ApiResponse::success([
             'is_member' => true,
             'display_name' => $branding['display_name'],
             'branding' => $branding,
-            'has_active_stories' => $this->stories->hasActiveStories((int) $membership->family_id),
+            'has_active_stories' => $inactive ? false : $this->stories->hasActiveStories((int) $membership->family_id),
             'member_count' => (int) $membership->family->member_count,
             'onboarding_completed' => (bool) $membership->onboarding_completed,
             'needs_name' => StudentDisplayName::needsDisplayName($request->user()),
             'joined_at' => $membership->joined_at?->toIso8601String(),
             'is_staff' => $this->access->canManage($request->user()),
+            'family_inactive' => $inactive,
+            'inactive_message' => $inactive ? 'خانواده غیرفعال شده است' : null,
         ]);
     }
 }

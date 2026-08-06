@@ -219,8 +219,7 @@ class _EntryLinkFormState extends State<EntryLinkForm> {
           DropdownButtonFormField<String>(
             value: _source,
             decoration: const InputDecoration(labelText: 'منبع ورود'),
-            items: entrySourceLabels.entries
-                .where((e) => e.key != 'direct')
+            items: selectableEntrySources
                 .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
                 .toList(),
             onChanged: (v) => setState(() => _source = v ?? _source),
