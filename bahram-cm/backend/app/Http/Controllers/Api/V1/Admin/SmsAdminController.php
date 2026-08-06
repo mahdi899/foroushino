@@ -26,13 +26,7 @@ class SmsAdminController extends Controller
             403,
         );
 
-        $data = collect(AudienceSegmentService::SEGMENTS)->map(fn ($label, $key) => [
-            'key' => $key,
-            'label' => $label,
-            'count' => $this->segments->resolve($key)->count(),
-        ])->values();
-
-        return response()->json(['data' => $data]);
+        return response()->json(['data' => $this->segments->listForSms()]);
     }
 
     public function send(Request $request): JsonResponse
@@ -44,15 +38,23 @@ class SmsAdminController extends Controller
 
         $data = $request->validate([
             'message' => ['required', 'string', 'max:640'],
-            'segment' => ['nullable', 'string', 'in:'.implode(',', array_keys(AudienceSegmentService::SEGMENTS))],
+            'segment' => [
+                'nullable',
+                'string',
+                function ($attribute, $value, $fail) {
+                    if (! $this->segments->isValidSmsSegment($value)) {
+                        $fail('بخش مخاطب انتخاب‌شده نامعتبر است.');
+                    }
+                },
+            ],
             'manual_numbers' => ['nullable', 'string'],
         ]);
 
         $recipients = [];
 
         if (filled($data['segment'] ?? null)) {
-            foreach ($this->segments->resolve($data['segment']) as $user) {
-                $recipients[$user->mobile] = $user->id;
+            foreach ($this->segments->resolveSmsMobiles($data['segment']) as $mobile => $userId) {
+                $recipients[$mobile] = $userId;
             }
         }
 

@@ -55,7 +55,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   late String _type;
   late String _audienceMode;
   late bool _isImportant;
-  bool _commentsEnabled = true;
+  bool _commentsEnabled = false;
   final Set<int> _selectedFamilyIds = {};
   final _actionDaysCtrl = TextEditingController(text: '7');
   final _aiTopicCtrl = TextEditingController();
@@ -94,7 +94,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     _type = _post?.type ?? 'text';
     _audienceMode = _post?.audienceMode ?? 'all';
     _isImportant = _post?.isImportant ?? false;
-    _commentsEnabled = _post?.commentsEnabled ?? true;
+    _commentsEnabled = _post?.commentsEnabled ?? false;
     _selectedFamilyIds.addAll(_post?.targetFamilyIds ?? []);
 
     final textBlock = _post?.blocks.firstWhereOrNull((b) => b.type == 'text');
@@ -1374,7 +1374,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('نظرات فعال'),
-                  subtitle: const Text('می‌توانید برای هر پست نظردهی را ببندید'),
+                  subtitle: const Text('به‌صورت پیش‌فرض بسته است؛ در صورت نیاز روشن کنید'),
                   value: _commentsEnabled,
                   onChanged: (v) => setState(() => _commentsEnabled = v),
                 ),

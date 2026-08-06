@@ -38,6 +38,10 @@ export function SendSmsForm({
   const primary = config?.providers.find((p) => p.slug === config.global.primary_provider_slug);
   const messageMissingOptOut = message.trim().length > 0 && !hasSmsOptOutSuffix(message);
 
+  const isLandingSegment = (key: string) => key === 'landing_leads_all' || key.startsWith('landing:');
+  const studentSegments = segments.filter((s) => !isLandingSegment(s.key));
+  const landingSegments = segments.filter((s) => isLandingSegment(s.key));
+
   function validateMessage(): boolean {
     if (!message.trim()) {
       setFeedback({ tone: 'error', text: 'متن پیام را وارد کنید.' });
@@ -123,11 +127,24 @@ export function SendSmsForm({
           <span className="field-label text-caption">بخش مخاطب</span>
           <select value={segment} onChange={(e) => setSegment(e.target.value)} className="field-input text-small">
             <option value="">— همه / دستی —</option>
-            {segments.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label} ({s.count})
-              </option>
-            ))}
+            {studentSegments.length > 0 ? (
+              <optgroup label="دانشجویان">
+                {studentSegments.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label} ({s.count})
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {landingSegments.length > 0 ? (
+              <optgroup label="لندینگ">
+                {landingSegments.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label} ({s.count})
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
           </select>
         </label>
         <label>
