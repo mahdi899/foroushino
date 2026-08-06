@@ -23,6 +23,7 @@ export interface LeadDisplayInput {
   phone: string;
   formType: string | null;
   treatmentTags: string | string[] | null;
+  landingPage?: { id: number; title: string; slug: string } | null;
   selection?: Record<string, unknown> | null;
   preferredContact?: string | null;
   budgetPref?: string | null;
@@ -51,6 +52,10 @@ export function buildLeadSubmittedRows(lead: LeadDisplayInput): LeadDisplayRow[]
     { label: 'نام', value: lead.name },
     { label: 'شماره تماس', value: lead.phone },
   ];
+
+  if (lead.landingPage) {
+    rows.push({ label: 'صفحه لندینگ', value: lead.landingPage.title });
+  }
 
   if (lead.email) rows.push({ label: 'ایمیل', value: lead.email });
 

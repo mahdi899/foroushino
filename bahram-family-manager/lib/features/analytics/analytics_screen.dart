@@ -38,9 +38,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = AppBreakpoints.isDesktop(context);
-    final bottomPad = isDesktop ? 0.0 : 24.0;
-
     return AdaptiveScaffold(
       appBar: const ManagerAppBar(
         title: Text('تحلیل خانواده'),
@@ -53,10 +50,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             snapshot: snapshot,
             builder: (context, data) {
               final totals = _Totals.fromDaily(data.daily);
-              final padding = AppBreakpoints.pagePadding(context);
+              final padding = AppBreakpoints.shellTabPadding(context);
 
               return ListView(
-                padding: padding.copyWith(bottom: padding.bottom + bottomPad),
+                padding: padding,
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   PanelSectionCard(

@@ -46,6 +46,39 @@ class AppBreakpoints {
     }
     return const EdgeInsets.all(AppSpacing.lg);
   }
+
+  /// Matches [AppBottomNav] inner height when labels are shown.
+  static const double shellBottomNavHeight = 62;
+
+  /// Extra scroll space below a fixed editor action bar ([PostEditorActionBar]).
+  static const double editorActionBarInset = 88;
+
+  /// Scroll padding for tab bodies inside [RootShell] (clears mobile bottom nav).
+  static EdgeInsets shellTabPadding(BuildContext context, {double extraBottom = 0}) {
+    final base = pagePadding(context);
+    if (isDesktop(context)) {
+      return base.copyWith(bottom: base.bottom + extraBottom);
+    }
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    return base.copyWith(
+      bottom: base.bottom + shellBottomNavHeight + bottomInset + extraBottom,
+    );
+  }
+
+  /// Scroll padding for pushed/detail screens without shell bottom nav.
+  static EdgeInsets scrollPadding(BuildContext context, {double extraBottom = 0}) {
+    final base = pagePadding(context);
+    if (isDesktop(context)) {
+      return base.copyWith(bottom: base.bottom + extraBottom);
+    }
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    return base.copyWith(bottom: base.bottom + bottomInset + extraBottom);
+  }
+
+  /// Post editor and similar screens with a bottom action bar overlay.
+  static EdgeInsets editorScrollPadding(BuildContext context) {
+    return scrollPadding(context, extraBottom: editorActionBarInset);
+  }
 }
 
 /// Centers content and caps width on desktop/web.

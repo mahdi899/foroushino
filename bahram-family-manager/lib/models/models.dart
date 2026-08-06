@@ -1204,6 +1204,80 @@ class FamilyManagerAdmin {
       );
 }
 
+class LandingPageOptionModel {
+  LandingPageOptionModel({
+    required this.id,
+    required this.title,
+    required this.slug,
+    required this.unassignedCount,
+  });
+
+  final int id;
+  final String title;
+  final String slug;
+  final int unassignedCount;
+
+  factory LandingPageOptionModel.fromJson(Map<String, dynamic> json) => LandingPageOptionModel(
+        id: (json['id'] as num).toInt(),
+        title: json['title']?.toString() ?? '',
+        slug: json['slug']?.toString() ?? '',
+        unassignedCount: (json['unassigned_count'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class LandingLeadModel {
+  LandingLeadModel({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.phoneMasked,
+    this.status,
+    this.statusLabel,
+    required this.isAssigned,
+    this.assignedAt,
+    required this.createdAt,
+    this.landingPageTitle,
+    this.landingPageSlug,
+    this.familyId,
+    this.familyName,
+  });
+
+  final int id;
+  final String name;
+  final String? phone;
+  final String? phoneMasked;
+  final String? status;
+  final String? statusLabel;
+  final bool isAssigned;
+  final String? assignedAt;
+  final String createdAt;
+  final String? landingPageTitle;
+  final String? landingPageSlug;
+  final int? familyId;
+  final String? familyName;
+
+  factory LandingLeadModel.fromJson(Map<String, dynamic> json) {
+    final landing = (json['landing_page'] as Map?)?.cast<String, dynamic>();
+    final family = (json['family'] as Map?)?.cast<String, dynamic>();
+
+    return LandingLeadModel(
+      id: (json['id'] as num).toInt(),
+      name: json['name']?.toString() ?? '—',
+      phone: json['phone']?.toString(),
+      phoneMasked: json['phone_masked']?.toString(),
+      status: json['status']?.toString(),
+      statusLabel: json['status_label']?.toString(),
+      isAssigned: json['is_assigned'] == true,
+      assignedAt: json['assigned_at']?.toString(),
+      createdAt: json['created_at']?.toString() ?? '',
+      landingPageTitle: landing?['title']?.toString(),
+      landingPageSlug: landing?['slug']?.toString(),
+      familyId: (family?['id'] as num?)?.toInt(),
+      familyName: family?['internal_name']?.toString(),
+    );
+  }
+}
+
 class PaginatedResult<T> {
   PaginatedResult({required this.items, required this.currentPage, required this.lastPage, required this.total});
 

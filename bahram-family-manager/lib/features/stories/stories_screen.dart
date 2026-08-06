@@ -240,12 +240,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
     }
   }
 
-  EdgeInsets _listPadding(BuildContext context) {
-    final base = AppBreakpoints.pagePadding(context);
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final extraBottom = AppBreakpoints.isDesktop(context) ? 0.0 : 88 + bottomInset;
-    return base.copyWith(bottom: base.bottom + extraBottom);
-  }
+  EdgeInsets _listPadding(BuildContext context) => AppBreakpoints.shellTabPadding(context);
 
   @override
   Widget build(BuildContext context) {

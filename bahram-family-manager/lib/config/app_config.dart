@@ -25,8 +25,8 @@ class AppConfig {
   static const String appName = 'مدیر خانواده بهرام';
 
   /// Synced with pubspec `version` — update both when releasing.
-  static const String appVersion = '1.0.2';
-  static const int buildNumber = 3;
+  static const String appVersion = '1.0.5';
+  static const int buildNumber = 6;
 
   /// آدرس ثابت اپ وب در توسعه (همان پورت 7357).
   static String get webDevUrl => DevPorts.appUrl;

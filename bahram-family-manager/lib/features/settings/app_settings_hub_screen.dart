@@ -77,7 +77,7 @@ class AppSettingsHubScreen extends StatelessWidget {
     return AdaptiveScaffold(
       appBar: const ManagerAppBar(title: Text('تنظیمات')),
       body: ListView(
-        padding: AppBreakpoints.pagePadding(context),
+        padding: AppBreakpoints.scrollPadding(context),
         children: [
           Text(
             'ظاهر',

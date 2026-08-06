@@ -29,7 +29,9 @@ import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_progress_overlay.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
+import 'package:bahram_family_manager/widgets/media/voice_library_sheet.dart';
 import 'package:bahram_family_manager/widgets/media/voice_recorder_panel.dart';
+import 'package:bahram_family_manager/services/voice_local_store.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_dialog.dart';
@@ -587,6 +589,40 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   Future<void> _uploadVoiceBytes(Uint8List bytes, String filename) {
     return _uploadMediaBytes(bytes, filename);
+  }
+
+  Future<void> _pickFromVoiceLibrary() async {
+    final result = await showVoiceLibrarySheet(context);
+    if (result == null || !mounted) return;
+    await _uploadVoiceBytes(result.bytes, result.filename);
+  }
+
+  Future<void> _pickVoiceFromDevice() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+      withData: true,
+    );
+    final picked = result?.files.singleOrNull;
+    if (picked == null) return;
+
+    final size = picked.size;
+    if (size > 0 && _rejectOversizeMedia(size)) return;
+
+    final bytes = picked.bytes;
+    if (bytes == null) {
+      if (mounted) showAppSnackBar(context, 'خواندن فایل ناموفق بود.');
+      return;
+    }
+    if (_rejectOversizeMedia(bytes.length)) return;
+
+    try {
+      final saved = await VoiceLocalStore.save(bytes, picked.name);
+      if (saved != null && mounted) {
+        showAppSnackBar(context, 'ویس در کتابخانه ذخیره شد.');
+      }
+    } catch (_) {}
+
+    await _uploadVoiceBytes(bytes, picked.name);
   }
 
   Future<void> _pickAndUploadMedia() async {
@@ -1181,7 +1217,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView(
-            padding: AppBreakpoints.pagePadding(context).copyWith(bottom: 120),
+            padding: AppBreakpoints.editorScrollPadding(context),
             children: [
           if (_post == null)
             PanelGradientCard(
@@ -1318,16 +1354,32 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                           onError: (message) => showAppSnackBar(context, message),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Align(
-                          alignment: Alignment.center,
-                          child: TextButton.icon(
-                            onPressed: _saving ? null : _pickAndUploadMedia,
-                            icon: Icon(Icons.audio_file_outlined, size: 18, color: scheme.primary),
-                            label: Text(
-                              'انتخاب از فایل',
-                              style: TextStyle(color: scheme.primary),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          children: [
+                            TextButton.icon(
+                              onPressed: _saving
+                                  ? null
+                                  : () async => await _pickFromVoiceLibrary(),
+                              icon: Icon(Icons.library_music_outlined, size: 18, color: scheme.primary),
+                              label: Text(
+                                'کتابخانه ویس',
+                                style: TextStyle(color: scheme.primary),
+                              ),
                             ),
-                          ),
+                            TextButton.icon(
+                              onPressed: _saving
+                                  ? null
+                                  : () async => await _pickVoiceFromDevice(),
+                              icon: Icon(Icons.audio_file_outlined, size: 18, color: scheme.primary),
+                              label: Text(
+                                'انتخاب از فایل',
+                                style: TextStyle(color: scheme.primary),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     )

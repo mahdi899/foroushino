@@ -281,7 +281,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
       return ListView(
         controller: _scrollCtrl,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: AppBreakpoints.pagePadding(context),
+        padding: AppBreakpoints.scrollPadding(context),
         children: [
           _buildPostHeader(),
           const SizedBox(height: AppSpacing.lg),
@@ -294,7 +294,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
 
     return ListView.separated(
       controller: _scrollCtrl,
-      padding: AppBreakpoints.pagePadding(context),
+      padding: AppBreakpoints.scrollPadding(context),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: itemCount + 1,
       separatorBuilder: (_, index) {

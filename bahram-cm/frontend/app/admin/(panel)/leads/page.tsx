@@ -12,6 +12,7 @@ export default async function LeadsPage({
 }) {
   const sp = await searchParams;
   const formType = sp.type || undefined;
+  const isLandingFilter = formType === 'landing';
   const leads = await getLeads({ form_type: formType });
 
   const leadProps = leads.map((l) => ({
@@ -19,6 +20,7 @@ export default async function LeadsPage({
     name: l.name,
     phone: l.phone,
     formType: l.form_type,
+    landingPage: l.landing_page ?? null,
     treatmentTags: l.treatment_tags ?? null,
     selection: l.selection ?? null,
     preferredContact: l.preferred_contact ?? null,
@@ -48,13 +50,13 @@ export default async function LeadsPage({
       <LeadsFilter currentType={sp.type ?? ''} />
       {leads.length > 0 ? (
         <Table
-          head={['نام', 'تلفن', 'نوع فرم', 'علاقه', 'وضعیت', 'تاریخ', 'عملیات']}
+          head={['نام', 'تلفن', 'نوع فرم', isLandingFilter ? 'لندینگ' : 'علاقه', 'وضعیت', 'تاریخ', 'عملیات']}
           mobile={leadProps.map((lead) => (
-            <LeadRow key={lead.id} lead={lead} variant="card" />
+            <LeadRow key={lead.id} lead={lead} showLandingPage={isLandingFilter} variant="card" />
           ))}
         >
           {leadProps.map((lead) => (
-            <LeadRow key={lead.id} lead={lead} variant="row" />
+            <LeadRow key={lead.id} lead={lead} showLandingPage={isLandingFilter} variant="row" />
           ))}
         </Table>
       ) : (
@@ -63,9 +65,11 @@ export default async function LeadsPage({
             {formType ? 'لیدی در این دسته نیست' : 'هنوز سرنخی ثبت نشده'}
           </p>
           <p className="mx-auto mt-2 max-w-md text-small text-text-muted">
-            {formType
-              ? 'فرم‌های این دسته هنوز پر نشده‌اند یا فیلتر را تغییر دهید.'
-              : 'با اجرای بک‌اند Laravel و ارسال فرم از سایت، لیدها اینجا نمایش داده می‌شوند. مطمئن شوید migrate و seeder اجرا شده و NEXT_PUBLIC_API_URL درست تنظیم شده.'}
+            {formType === 'landing'
+              ? 'هنوز لیدی از صفحات لندینگ ثبت نشده. لندینگ‌ها را از بخش «صفحات لندینگ» بسازید و فرم را روی /l/... تست کنید.'
+              : formType
+                ? 'فرم‌های این دسته هنوز پر نشده‌اند یا فیلتر را تغییر دهید.'
+                : 'با اجرای بک‌اند Laravel و ارسال فرم از سایت، لیدها اینجا نمایش داده می‌شوند. مطمئن شوید migrate و seeder اجرا شده و NEXT_PUBLIC_API_URL درست تنظیم شده.'}
           </p>
         </div>
       )}

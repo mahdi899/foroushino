@@ -226,11 +226,13 @@ export function formatToman(amount: number): string {
   return `${formatPanelFa(amount)} تومان`;
 }
 
-/** Prefer final_amount; fall back to list price when legacy rows have final_amount = 0. */
-export function formatOrderAmount(order: { final_amount: number; amount?: number }): string {
-  const value = order.final_amount > 0 ? order.final_amount : (order.amount ?? 0);
+/** Payable / paid amount after discounts (0 for 100% coupon or free checkout). */
+export function formatOrderAmount(order: { final_amount: number }): string {
+  if (order.final_amount === 0) {
+    return 'رایگان';
+  }
 
-  return formatToman(value);
+  return formatToman(order.final_amount);
 }
 
 export type AdminDiscountType = 'percent' | 'fixed';

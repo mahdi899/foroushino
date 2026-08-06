@@ -16,15 +16,34 @@ class LeadController extends Controller
         'ignored' => 'رد شده',
     ];
 
+    /** Admin UI form_type filter → stored lead.source values. */
+    private const FORM_TYPE_SOURCES = [
+        'contact' => ['contact', 'web_contact'],
+        'service' => ['service', 'web_service'],
+        'consultation' => ['consultation', 'web_consultation', 'web_apply'],
+        'pricing' => ['pricing', 'web_pricing'],
+        'blog' => ['blog', 'web_blog'],
+        'case' => ['case', 'web_case'],
+        'chatbot' => ['chatbot'],
+        'local_appointment' => ['local_appointment', 'web_local_appointment'],
+        'landing' => ['landing', 'web_landing'],
+    ];
+
     public function index(Request $request): JsonResponse
     {
         $query = Lead::query()->with('landingPage')->orderByDesc('id');
 
-        if ($source = $request->string('filter')->toString() ?: $request->string('filter[form_type]')->toString()) {
-            $query->where('source', $source);
+        $formType = $request->input('filter.form_type');
+        if (! is_string($formType) || $formType === '') {
+            $rawFilter = $request->input('filter');
+            $formType = is_string($rawFilter) ? $rawFilter : '';
         }
 
-        if ($status = $request->string('filter[status]')->toString()) {
+        if ($formType !== '') {
+            $this->applyFormTypeFilter($query, $formType);
+        }
+
+        if ($status = $request->string('filter.status')->toString()) {
             $query->where('status', $status);
         }
 
@@ -70,6 +89,21 @@ class LeadController extends Controller
         $lead->save();
 
         return response()->json(['data' => $this->adminPayload($lead)]);
+    }
+
+    private function applyFormTypeFilter(\Illuminate\Database\Eloquent\Builder $query, string $formType): void
+    {
+        if ($formType === 'landing') {
+            $query->where(function ($q) {
+                $q->whereIn('source', self::FORM_TYPE_SOURCES['landing'])
+                    ->orWhereNotNull('landing_page_id');
+            });
+
+            return;
+        }
+
+        $sources = self::FORM_TYPE_SOURCES[$formType] ?? [$formType, "web_{$formType}"];
+        $query->whereIn('source', array_values(array_unique($sources)));
     }
 
     /** @return array<string, mixed> */

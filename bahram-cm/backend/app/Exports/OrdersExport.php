@@ -26,7 +26,7 @@ class OrdersExport implements FromGenerator, WithColumnFormatting, WithColumnWid
             'مشتری',
             'تلفن',
             'ایمیل',
-            'مبلغ (تومان)',
+            'مبلغ پرداختی (تومان)',
             'وضعیت',
             'کد لایسنس',
             'زمان ارسال پیامک',
@@ -103,10 +103,7 @@ class OrdersExport implements FromGenerator, WithColumnFormatting, WithColumnWid
 
     private function displayAmount(Order $order): int
     {
-        $final = (int) $order->final_amount;
-        $list = (int) $order->amount;
-
-        return $final > 0 ? $final : $list;
+        return (int) $order->final_amount;
     }
 
     private function statusLabel(string $status): string

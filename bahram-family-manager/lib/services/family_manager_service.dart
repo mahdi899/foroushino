@@ -218,12 +218,59 @@ class FamilyManagerService {
     int? familyId,
     int page = 1,
   }) async {
-    final res = await api.get('$_base/comments/threads', query: {
-      'tab': tab,
-      'page': page,
-      if (familyId != null) 'family_id': familyId,
-    });
-    return PaginatedResult.fromEnvelope(res, CommentThreadModel.fromJson);
+    try {
+      final res = await api.get('$_base/comments/threads', query: {
+        'tab': tab,
+        'page': page,
+        if (familyId != null) 'family_id': familyId,
+      });
+      return PaginatedResult.fromEnvelope(res, CommentThreadModel.fromJson);
+    } on ApiException catch (e) {
+      if (!_shouldFallbackCommentThreads(e)) rethrow;
+      return _commentThreadsFromComments(tab: tab, familyId: familyId, page: page);
+    }
+  }
+
+  /// Older production backends only expose `GET /comments`; aggregate threads
+  /// client-side so the hub still loads before deploy catches up.
+  bool _shouldFallbackCommentThreads(ApiException e) {
+    final status = e.statusCode;
+    if (status == 404 || status == 405 || status == 501) return true;
+    if (status != null && status >= 500) return true;
+    // Connection / timeout — threads may be missing or timing out on the server.
+    return status == null && e.code == null;
+  }
+
+  Future<PaginatedResult<CommentThreadModel>> _commentThreadsFromComments({
+    required String tab,
+    int? familyId,
+    required int page,
+  }) async {
+    final commentsResult = await listComments(tab: tab, familyId: familyId, page: page);
+    final accumulators = <String, _CommentThreadAccumulator>{};
+
+    for (final comment in commentsResult.items) {
+      final familyIdValue = comment.familyId ?? 0;
+      final key = '${comment.postId}:$familyIdValue';
+      accumulators.putIfAbsent(
+        key,
+        () => _CommentThreadAccumulator(
+          postId: comment.postId,
+          familyId: familyIdValue,
+          familyInternalName: comment.familyInternalName,
+        ),
+      ).add(comment, tab);
+    }
+
+    final items = accumulators.values.map((a) => a.toModel()).toList()
+      ..sort((a, b) => (b.latestCommentAt ?? '').compareTo(a.latestCommentAt ?? ''));
+
+    return PaginatedResult(
+      items: items,
+      currentPage: commentsResult.currentPage,
+      lastPage: commentsResult.lastPage,
+      total: commentsResult.total,
+    );
   }
 
   Future<PaginatedResult<FamilyCommentModel>> listComments({
@@ -381,6 +428,44 @@ class FamilyManagerService {
     final res = await api.get('$_base/audience-suggestions');
     final data = res['data'] as List? ?? [];
     return data.map((e) => AudienceSuggestion.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
+  // ---------------------------------------------------------------------
+  // Landing page leads
+  // ---------------------------------------------------------------------
+
+  Future<List<LandingPageOptionModel>> listLandingPagesForLeads() async {
+    final res = await api.get('$_base/landing-leads/landing-pages');
+    final data = res['data'] as List? ?? [];
+    return data.map((e) => LandingPageOptionModel.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
+  Future<PaginatedResult<LandingLeadModel>> listLandingLeads({
+    bool unassignedOnly = false,
+    int? landingPageId,
+    String? search,
+    int page = 1,
+    int perPage = 25,
+  }) async {
+    final res = await api.get('$_base/landing-leads', query: {
+      if (unassignedOnly) 'unassigned': 1,
+      if (landingPageId != null) 'landing_page_id': landingPageId,
+      if (search != null && search.isNotEmpty) 'search': search,
+      'page': page,
+      'per_page': perPage,
+    });
+    return PaginatedResult.fromEnvelope(res, LandingLeadModel.fromJson);
+  }
+
+  Future<LandingLeadModel> assignLandingLead({
+    required int leadId,
+    required int familyId,
+  }) async {
+    final res = await api.post('$_base/landing-leads/$leadId/assign', data: {
+      'family_id': familyId,
+    });
+    final data = (res['data'] as Map).cast<String, dynamic>();
+    return LandingLeadModel.fromJson((data['lead'] as Map).cast<String, dynamic>());
   }
 
   // ---------------------------------------------------------------------
@@ -711,4 +796,43 @@ class FamilyManagerService {
   }
 
   Future<void> deleteFamilyAdmin(int id) => api.delete('$_base/admins/$id');
+}
+
+class _CommentThreadAccumulator {
+  _CommentThreadAccumulator({
+    required this.postId,
+    required this.familyId,
+    this.familyInternalName,
+  });
+
+  final int postId;
+  final int familyId;
+  final String? familyInternalName;
+
+  var matchingCount = 0;
+  var pendingCount = 0;
+  String? latestCommentAt;
+  String? latestCommentPreview;
+
+  void add(FamilyCommentModel comment, String tab) {
+    matchingCount++;
+    if (comment.status == 'pending') pendingCount++;
+
+    final createdAt = comment.createdAt;
+    if (createdAt != null &&
+        (latestCommentAt == null || createdAt.compareTo(latestCommentAt!) > 0)) {
+      latestCommentAt = createdAt;
+      latestCommentPreview = comment.body;
+    }
+  }
+
+  CommentThreadModel toModel() => CommentThreadModel(
+        postId: postId,
+        familyId: familyId,
+        familyInternalName: familyInternalName,
+        matchingCount: matchingCount,
+        pendingCount: pendingCount,
+        latestCommentAt: latestCommentAt,
+        latestCommentPreview: latestCommentPreview,
+      );
 }

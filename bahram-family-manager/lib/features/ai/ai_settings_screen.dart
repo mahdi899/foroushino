@@ -58,8 +58,6 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = AppBreakpoints.isDesktop(context);
-
     return AdaptiveScaffold(
       appBar: const ManagerAppBar(title: Text('هوش مصنوعی')),
       body: FutureBuilder<FamilyBrandingSettings>(
@@ -77,10 +75,10 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
                 return const Center(child: Text('تنظیمات AI در دسترس نیست.'));
               }
 
-              final padding = AppBreakpoints.pagePadding(context);
+              final padding = AppBreakpoints.shellTabPadding(context);
 
               return ListView(
-                padding: padding.copyWith(bottom: padding.bottom + (isDesktop ? 0 : 24)),
+                padding: padding,
                 children: [
                   _AiHeroBanner(),
                   const SizedBox(height: AppSpacing.lg),

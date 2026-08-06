@@ -16,6 +16,12 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   }
 }
 
+export interface AdminLeadLandingPage {
+  id: number;
+  title: string;
+  slug: string;
+}
+
 export interface AdminLead {
   id: number;
   name: string;
@@ -27,6 +33,7 @@ export interface AdminLead {
   best_call_time?: string | null;
   source: string | null;
   form_type: string | null;
+  landing_page?: AdminLeadLandingPage | null;
   page_url?: string | null;
   status: { name: string; label: string; color: string } | null;
   campaign: string | null;

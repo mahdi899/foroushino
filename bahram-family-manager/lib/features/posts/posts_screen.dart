@@ -434,7 +434,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
       return ListView(
         controller: _scrollCtrl,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: AppBreakpoints.pagePadding(context),
+        padding: AppBreakpoints.shellTabPadding(context),
         children: [
           if (filterHeader != null) ...[
             filterHeader,
@@ -453,7 +453,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
 
     return ListView.separated(
       controller: _scrollCtrl,
-      padding: AppBreakpoints.pagePadding(context),
+      padding: AppBreakpoints.shellTabPadding(context),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: posts.length + headerCount + footerCount,
       separatorBuilder: (_, index) {

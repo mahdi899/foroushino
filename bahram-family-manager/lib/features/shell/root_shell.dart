@@ -6,6 +6,7 @@ import 'package:bahram_family_manager/features/analytics/analytics_screen.dart';
 import 'package:bahram_family_manager/features/comments/comments_screen.dart';
 import 'package:bahram_family_manager/features/families/families_screen.dart';
 import 'package:bahram_family_manager/features/home/home_screen.dart';
+import 'package:bahram_family_manager/features/landing_leads/landing_leads_screen.dart';
 import 'package:bahram_family_manager/features/posts/post_editor_screen.dart';
 import 'package:bahram_family_manager/features/posts/posts_screen.dart';
 import 'package:bahram_family_manager/features/settings/settings_screen.dart';
@@ -88,6 +89,12 @@ class _RootShellState extends State<RootShell> {
   ];
 
   static final _moreTabs = <_Tab>[
+    _Tab(
+      label: 'لندینگ',
+      icon: Icons.person_add_alt_1_rounded,
+      builder: (_) => const LandingLeadsScreen(),
+      permission: 'family.families.view',
+    ),
     _Tab(
       label: 'تحلیل',
       icon: Icons.insights_rounded,

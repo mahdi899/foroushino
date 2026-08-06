@@ -212,7 +212,7 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
       );
     }
 
-    final pagePad = AppBreakpoints.pagePadding(context);
+    final pagePad = AppBreakpoints.shellTabPadding(context);
     final groups = _groupedThreads(threads);
 
     return ListView(

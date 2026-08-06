@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Loader2, Pencil, Trash2, X } from 'lucide-react';
 import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
@@ -26,11 +27,26 @@ function formatTreatmentInterest(value: string | string[] | null | undefined): s
   return labels.length ? labels.join('، ') : '—';
 }
 
+function formatLandingPageLabel(
+  landingPage: LeadView['landingPage'],
+  showLandingPage: boolean,
+): string {
+  if (landingPage) return landingPage.title;
+  return showLandingPage ? '—' : formatTreatmentInterest(null);
+}
+
+interface LeadLandingPage {
+  id: number;
+  title: string;
+  slug: string;
+}
+
 interface LeadView {
   id: number;
   name: string;
   phone: string;
   formType: string | null;
+  landingPage?: LeadLandingPage | null;
   treatmentTags: string | string[] | null;
   selection?: Record<string, unknown> | null;
   preferredContact?: string | null;
@@ -52,7 +68,15 @@ interface LeadView {
   } | null;
 }
 
-export function LeadRow({ lead: initialLead, variant = 'row' }: { lead: LeadView; variant?: 'row' | 'card' }) {
+export function LeadRow({
+  lead: initialLead,
+  showLandingPage = false,
+  variant = 'row',
+}: {
+  lead: LeadView;
+  showLandingPage?: boolean;
+  variant?: 'row' | 'card';
+}) {
   const router = useRouter();
   const [lead, setLead] = useState(initialLead);
   const [open, setOpen] = useState(false);
@@ -64,6 +88,10 @@ export function LeadRow({ lead: initialLead, variant = 'row' }: { lead: LeadView
   const [removed, setRemoved] = useState(false);
 
   const submittedRows = useMemo(() => buildLeadSubmittedRows(lead), [lead]);
+  const interestLabel = showLandingPage ? 'لندینگ' : 'علاقه';
+  const interestValue = showLandingPage
+    ? formatLandingPageLabel(lead.landingPage, true)
+    : formatTreatmentInterest(lead.treatmentTags);
 
   if (removed) return null;
 
@@ -206,6 +234,19 @@ export function LeadRow({ lead: initialLead, variant = 'row' }: { lead: LeadView
             <li>
               <span className="text-text-muted">منبع:</span> {lead.source || 'organic'}
             </li>
+            {lead.landingPage && (
+              <li>
+                <span className="text-text-muted">لندینگ:</span>{' '}
+                <Link
+                  href={`/admin/landing-pages/${lead.landingPage.id}`}
+                  className="text-accent hover:text-primary"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {lead.landingPage.title}
+                </Link>
+                <span className="text-text-muted"> ({lead.landingPage.slug})</span>
+              </li>
+            )}
             {lead.pageUrl && (
               <li>
                 <span className="text-text-muted">صفحه:</span> {lead.pageUrl}
@@ -269,7 +310,7 @@ export function LeadRow({ lead: initialLead, variant = 'row' }: { lead: LeadView
         fields={[
           { label: 'تلفن', value: lead.phone, mono: true },
           { label: 'نوع فرم', value: <Badge tone="accent">{formTypeLabel(lead.formType)}</Badge> },
-          { label: 'علاقه', value: formatTreatmentInterest(lead.treatmentTags) },
+          { label: interestLabel, value: interestValue },
           {
             label: 'وضعیت',
             value: (
@@ -317,7 +358,7 @@ export function LeadRow({ lead: initialLead, variant = 'row' }: { lead: LeadView
         <td className="px-4 py-3">
           <Badge tone="accent">{formTypeLabel(lead.formType)}</Badge>
         </td>
-        <td className="px-4 py-3 text-text-muted">{formatTreatmentInterest(lead.treatmentTags)}</td>
+        <td className="px-4 py-3 text-text-muted">{interestValue}</td>
         <td className="px-4 py-3">
           <Badge tone={status === 'WON' ? 'success' : status === 'LOST' ? 'warning' : 'default'}>
             {leadStatusLabel(status, lead.statusLabel)}

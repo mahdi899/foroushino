@@ -202,9 +202,7 @@ class _FamilyAdminsScreenState extends State<FamilyAdminsScreen> {
           emptyMessage: 'هنوز مدیر دیگری ثبت نشده.',
           builder: (context, admins) {
             return ListView(
-              padding: AppBreakpoints.pagePadding(context).copyWith(
-                bottom: AppBreakpoints.pagePadding(context).bottom + 24,
-              ),
+              padding: AppBreakpoints.scrollPadding(context, extraBottom: 24),
               children: [
                 PanelSectionCard(
                   title: 'مدیر جدید',

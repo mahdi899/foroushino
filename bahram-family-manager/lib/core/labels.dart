@@ -90,6 +90,15 @@ String normalizeLifecycle(String key) => lifecycleLegacyAliases[key] ?? key;
 
 String lifecycleLabel(String key) => labelOf(lifecycleLabels, normalizeLifecycle(key));
 
+const Map<String, String> leadStatusLabels = {
+  'new': 'جدید',
+  'contacted': 'تماس گرفته شده',
+  'converted': 'تبدیل شده',
+  'ignored': 'رد شده',
+};
+
+String leadStatusLabel(String key) => labelOf(leadStatusLabels, key);
+
 const Map<String, String> actionTypeLabels = {
   'commitment': 'تعهد',
   'confirmation': 'تأیید',

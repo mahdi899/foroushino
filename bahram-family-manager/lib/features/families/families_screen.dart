@@ -13,6 +13,7 @@ import 'package:bahram_family_manager/features/families/family_detail_screen.dar
 import 'package:bahram_family_manager/features/families/family_members_screen.dart';
 import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/features/families/widgets/add_family_member_sheet.dart';
+import 'package:bahram_family_manager/features/landing_leads/landing_leads_screen.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
@@ -174,7 +175,7 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
 
   Future<void> _createFamily() async {
     final created = await showFamilyEditorSheet(context: context);
-    if (created == true && mounted) {
+    if (created != null && mounted) {
       context.read<AppState>().invalidateFamiliesCache();
       FamilyDetailCache.invalidate();
       FamilyMembersCache.invalidate();
@@ -236,6 +237,13 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
           automaticallyImplyLeading: false,
           showShellActions: false,
           actions: [
+            IconButton(
+              tooltip: 'ثبت‌نام‌های لندینگ',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LandingLeadsScreen()),
+              ),
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+            ),
             IconButton(
               tooltip: 'اعضای کانال',
               onPressed: () => Navigator.of(context).push(
@@ -301,6 +309,13 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
         title: const Text('خانواده‌ها'),
         showShellActions: true,
         actions: [
+          IconButton(
+            tooltip: 'ثبت‌نام‌های لندینگ',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LandingLeadsScreen()),
+            ),
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+          ),
           IconButton(
             tooltip: 'اعضای کانال',
             onPressed: () => Navigator.of(context).push(
@@ -597,12 +612,7 @@ class _FamiliesList extends StatelessWidget {
             )
           : ListView.separated(
               controller: scrollController,
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.sm,
-                AppSpacing.lg,
-                AppSpacing.xl + 72 + MediaQuery.paddingOf(context).bottom,
-              ),
+              padding: AppBreakpoints.shellTabPadding(context).copyWith(top: AppSpacing.sm),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: itemCount,
               separatorBuilder: (_, index) {
@@ -649,7 +659,7 @@ class _DesktopFamilyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fill = family.capacityTarget > 0 ? (family.memberCount / family.capacityTarget).clamp(0, 1.0) : 0.0;
+    final fill = family.capacityMax > 0 ? (family.memberCount / family.capacityMax).clamp(0, 1.0) : 0.0;
 
     return Material(
       color: selected ? AppColors.primarySoft : Colors.transparent,
@@ -694,7 +704,7 @@ class _DesktopFamilyTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${toFaDigits(family.memberCount.toString())} / ${toFaDigits(family.capacityTarget.toString())} عضو',
+                      '${toFaDigits(family.memberCount.toString())} / ${toFaDigits(family.capacityMax.toString())} عضو',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ],
@@ -750,7 +760,7 @@ class _MobileFamilyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fill = family.capacityTarget > 0 ? (family.memberCount / family.capacityTarget).clamp(0, 1.5) : 0.0;
+    final fill = family.capacityMax > 0 ? (family.memberCount / family.capacityMax).clamp(0, 1.5) : 0.0;
 
     return GlassPanel(
       borderRadius: 16,
@@ -775,7 +785,7 @@ class _MobileFamilyCard extends StatelessWidget {
                     Text(family.internalName, style: const TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
                     Text(
-                      '${toFaDigits(family.memberCount.toString())} / ${toFaDigits(family.capacityTarget.toString())} عضو',
+                      '${toFaDigits(family.memberCount.toString())} / ${toFaDigits(family.capacityMax.toString())} عضو',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                     const SizedBox(height: AppSpacing.sm),

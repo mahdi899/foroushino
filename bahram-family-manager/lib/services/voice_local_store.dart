@@ -56,6 +56,57 @@ class VoiceLocalStore {
     );
   }
 
+  /// All recordings in the library folder, newest first.
+  static Future<List<SavedVoiceRecording>> listAll() async {
+    if (kIsWeb) return [];
+
+    final dir = await recordingsDirectory();
+    if (dir == null) return [];
+
+    final entries = <SavedVoiceRecording>[];
+    await for (final entity in dir.list(followLinks: false)) {
+      if (entity is! File) continue;
+      try {
+        final stat = await entity.stat();
+        if (stat.size <= 0) continue;
+        entries.add(
+          SavedVoiceRecording(
+            filename: p.basename(entity.path),
+            absolutePath: entity.path,
+            savedAt: stat.modified,
+            sizeBytes: stat.size,
+          ),
+        );
+      } catch (_) {}
+    }
+
+    entries.sort((a, b) => b.savedAt.compareTo(a.savedAt));
+    return entries;
+  }
+
+  static Future<Uint8List?> readBytes(SavedVoiceRecording recording) async {
+    if (kIsWeb) return null;
+    try {
+      final file = File(recording.absolutePath);
+      if (!await file.exists()) return null;
+      return await file.readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> delete(SavedVoiceRecording recording) async {
+    if (kIsWeb) return false;
+    try {
+      final file = File(recording.absolutePath);
+      if (!await file.exists()) return true;
+      await file.delete();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static String _sanitizeFilename(String filename) {
     final base = p.basename(filename.trim());
     if (base.isEmpty) return 'voice_${DateTime.now().millisecondsSinceEpoch}.wav';

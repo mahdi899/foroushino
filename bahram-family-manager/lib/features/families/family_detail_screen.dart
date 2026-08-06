@@ -120,7 +120,7 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
 
   Future<void> _edit(FamilyDetailModel family) async {
     final saved = await showFamilyEditorSheet(context: context, family: family);
-    if (saved == true) {
+    if (saved != null) {
       FamilyDetailCache.invalidate(family.id);
       FamilyMembersCache.invalidate(family.id);
       await _load(quiet: true);
@@ -278,6 +278,7 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
   Widget build(BuildContext context) {
     final isDesktop = AppBreakpoints.isDesktop(context);
     final padding = AppBreakpoints.pagePadding(context);
+    final scrollPad = isDesktop ? padding : AppBreakpoints.scrollPadding(context);
 
     return SizedBox.expand(
       child: Padding(
@@ -301,7 +302,7 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
                 sizing: StackFit.expand,
                 children: [
                   ListView(
-                    padding: isDesktop ? EdgeInsets.zero : padding,
+                    padding: isDesktop ? EdgeInsets.zero : scrollPad,
                     children: [
                       _FamilySummarySection(
                         family: widget.family,
@@ -346,7 +347,7 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
                     ],
                   ),
                   Padding(
-                    padding: isDesktop ? EdgeInsets.zero : padding.copyWith(top: AppSpacing.sm),
+                    padding: isDesktop ? EdgeInsets.zero : scrollPad.copyWith(top: AppSpacing.sm),
                     child: FamilyMembersPanel(
                       key: ValueKey('members-${widget.family.id}'),
                       familyId: widget.family.id,
@@ -512,7 +513,7 @@ class _FamilySummarySection extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         _FamilyStatsRow(
           memberCount: family.memberCount,
-          capacityTarget: family.capacityTarget,
+          capacity: family.capacityMax,
           newMembers7d: family.newMembers7d,
           onMembersTap: onOpenMembers,
         ),
@@ -540,13 +541,13 @@ class _FamilySummarySection extends StatelessWidget {
 class _FamilyStatsRow extends StatelessWidget {
   const _FamilyStatsRow({
     required this.memberCount,
-    required this.capacityTarget,
+    required this.capacity,
     required this.newMembers7d,
     required this.onMembersTap,
   });
 
   final int memberCount;
-  final int capacityTarget;
+  final int capacity;
   final int newMembers7d;
   final VoidCallback onMembersTap;
 
@@ -578,7 +579,7 @@ class _FamilyStatsRow extends StatelessWidget {
             Expanded(
               child: _StatCell(
                 title: 'ظرفیت هدف',
-                value: toFaDigits(capacityTarget.toString()),
+                value: toFaDigits(capacity.toString()),
                 icon: Icons.flag_rounded,
               ),
             ),

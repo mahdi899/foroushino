@@ -16,7 +16,12 @@ class FamilyMembershipManagementService
         private readonly FamilyMemberCountService $memberCounts,
     ) {}
 
-    public function addMember(Family $family, User $user, ?string $name = null): FamilyMembership
+    public function addMember(
+        Family $family,
+        User $user,
+        ?string $name = null,
+        ?FamilyEntrySource $entrySource = null,
+    ): FamilyMembership
     {
         if ($name !== null && trim($name) !== '' && trim((string) $user->name) === '') {
             $user->update(['name' => trim($name)]);
@@ -48,7 +53,7 @@ class FamilyMembershipManagementService
             $membership = FamilyMembership::query()->create([
                 'user_id' => $user->id,
                 'family_id' => $family->id,
-                'entry_source' => FamilyEntrySource::Direct->value,
+                'entry_source' => ($entrySource ?? FamilyEntrySource::Direct)->value,
                 'joined_at' => now(),
             ]);
 
@@ -65,7 +70,12 @@ class FamilyMembershipManagementService
         });
     }
 
-    public function addMemberByMobile(Family $family, string $mobile, ?string $name = null): FamilyMembership
+    public function addMemberByMobile(
+        Family $family,
+        string $mobile,
+        ?string $name = null,
+        ?FamilyEntrySource $entrySource = null,
+    ): FamilyMembership
     {
         $normalized = Mobile::normalize($mobile);
 
@@ -93,7 +103,7 @@ class FamilyMembershipManagementService
             ]);
         }
 
-        return $this->addMember($family, $user, $name);
+        return $this->addMember($family, $user, $name, $entrySource);
     }
 
     public function removeMember(FamilyMembership $membership): void

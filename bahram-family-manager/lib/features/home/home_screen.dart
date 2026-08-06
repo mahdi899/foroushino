@@ -38,18 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  EdgeInsets _bodyPadding(BuildContext context) {
-    final isDesktop = AppBreakpoints.isDesktop(context);
-    if (isDesktop) return AppBreakpoints.pagePadding(context);
-
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-    return EdgeInsets.fromLTRB(
-      AppSpacing.md,
-      AppSpacing.md,
-      AppSpacing.md,
-      AppSpacing.xl + 56 + bottomInset,
-    );
-  }
+  EdgeInsets _bodyPadding(BuildContext context) => AppBreakpoints.shellTabPadding(context);
 
   @override
   Widget build(BuildContext context) {

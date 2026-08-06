@@ -52,7 +52,7 @@ use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManag
 use App\Http\Controllers\Api\V1\FamilyManager\CommentModerationController as FamilyManagerCommentModerationController;
 use App\Http\Controllers\Api\V1\FamilyManager\EntryLinksController as FamilyManagerEntryLinksController;
 use App\Http\Controllers\Api\V1\FamilyManager\FamiliesController as FamilyManagerFamiliesController;
-use App\Http\Controllers\Api\V1\FamilyManager\HomeController as FamilyManagerHomeController;
+use App\Http\Controllers\Api\V1\FamilyManager\LandingLeadsController as FamilyManagerLandingLeadsController;
 use App\Http\Controllers\Api\V1\FamilyManager\MediaController as FamilyManagerMediaController;
 use App\Http\Controllers\Api\V1\FamilyManager\PostController as FamilyManagerPostController;
 use App\Http\Controllers\Api\V1\FamilyManager\SettingsController as FamilyManagerSettingsController;
@@ -685,6 +685,10 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::delete('entry-links/{entryLink}', [FamilyManagerEntryLinksController::class, 'destroy'])->whereNumber('entryLink')->middleware('family.manage:family.entry_links.manage');
 
     Route::get('audience-suggestions', [FamilyManagerFamiliesController::class, 'audienceSuggestions'])->middleware('family.manage:family.families.view');
+
+    Route::get('landing-leads/landing-pages', [FamilyManagerLandingLeadsController::class, 'landingPages'])->middleware('family.manage:family.families.view');
+    Route::get('landing-leads', [FamilyManagerLandingLeadsController::class, 'index'])->middleware('family.manage:family.families.view');
+    Route::post('landing-leads/{lead}/assign', [FamilyManagerLandingLeadsController::class, 'assign'])->whereNumber('lead')->middleware('family.manage:family.families.manage');
 
     Route::get('analytics', [FamilyManagerAnalyticsController::class, 'index'])->middleware('family.manage:family.analytics.view');
     Route::get('analytics/daily-summary', [FamilyManagerAnalyticsController::class, 'dailySummary'])->middleware('family.manage:family.analytics.view');

@@ -7,6 +7,10 @@ export const FORM_TYPE_LABELS: Record<string, string> = {
   blog: 'مقاله',
   case: 'نمونه کار',
   landing: 'لندینگ',
+  web_landing: 'لندینگ',
+  web_contact: 'تماس با ما',
+  web_apply: 'درخواست / مشاوره',
+  web_newsletter: 'خبرنامه',
   local_appointment: 'رزرو نوبت (صفحه اصلی)',
   chatbot: 'چت‌بات',
 };

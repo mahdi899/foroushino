@@ -9,6 +9,7 @@ class Lead extends Model
 {
     protected $fillable = [
         'landing_page_id',
+        'family_id',
         'name',
         'phone',
         'email',
@@ -16,15 +17,22 @@ class Lead extends Model
         'message',
         'page_url',
         'status',
+        'assigned_at',
         'meta',
     ];
 
     protected $casts = [
         'meta' => 'array',
+        'assigned_at' => 'datetime',
     ];
 
     public function landingPage(): BelongsTo
     {
         return $this->belongsTo(LandingPage::class);
+    }
+
+    public function family(): BelongsTo
+    {
+        return $this->belongsTo(Family::class);
     }
 }

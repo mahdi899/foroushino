@@ -37,7 +37,7 @@ class FamilyMembersScreen extends StatelessWidget {
     return AdaptiveScaffold(
       appBar: ManagerAppBar(title: Text(title ?? 'اعضای کانال')),
       body: Padding(
-        padding: AppBreakpoints.pagePadding(context),
+        padding: AppBreakpoints.scrollPadding(context),
         child: SizedBox.expand(
           child: FamilyMembersPanel(
             familyId: familyId,
