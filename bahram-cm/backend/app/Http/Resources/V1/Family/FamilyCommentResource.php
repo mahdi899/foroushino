@@ -16,11 +16,12 @@ class FamilyCommentResource extends JsonResource
     {
         $user = $request->user();
         $isOwner = $user && (int) $user->id === (int) $this->user_id;
-        $isBahramReply = $this->parent_id !== null;
+        $isBahramReply = $this->parent_id !== null && (bool) ($this->user?->is_admin);
 
         $profile = $this->user?->profile;
+        $branding = $isBahramReply ? app(FamilyBrandingService::class)->publicPayload() : null;
         $avatarRef = $isBahramReply
-            ? app(FamilyBrandingService::class)->publicPayload()['profile_avatar'] ?? null
+            ? ($branding['profile_avatar'] ?? null)
             : $profile?->avatar;
 
         return [
@@ -33,7 +34,7 @@ class FamilyCommentResource extends JsonResource
             'is_bahram_reply' => $isBahramReply,
             'user' => [
                 'name' => $isBahramReply
-                    ? app(FamilyBrandingService::class)->publicPayload()['profile_name']
+                    ? ($branding['profile_name'] ?? 'بهرام')
                     : ($this->user
                         ? StudentDisplayName::fromUser($this->user)
                         : 'عضو خانواده'),
@@ -48,6 +49,7 @@ class FamilyCommentResource extends JsonResource
                 fn () => $this->rejection_reason?->label() ?? $this->rejection_note
             ),
             'is_pending_mine' => $isOwner && ($this->status?->value ?? $this->status) === 'pending',
+            'is_mine' => (bool) $isOwner,
         ];
     }
 }

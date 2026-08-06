@@ -211,6 +211,8 @@ export interface FamilyComment {
   user: { name: string; avatar: string | null; avatar_version?: number | null };
   rejection_reason?: string | null;
   is_pending_mine: boolean;
+  /** True when the authenticated viewer authored this comment. */
+  is_mine?: boolean;
 }
 
 export interface FamilyNotification {

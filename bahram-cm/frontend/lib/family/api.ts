@@ -180,8 +180,22 @@ export async function getComments(
   return run(() => familyFetch(`/posts/${postId}/comments${qs}`), 'دریافت نظرات ناموفق بود.');
 }
 
-export async function postComment(postId: number, body: string): Promise<{ data: FamilyComment }> {
-  return run(() => familyFetch(`/posts/${postId}/comments`, { method: 'POST', body: { body } }), 'ارسال نظر ناموفق بود.');
+export async function postComment(
+  postId: number,
+  body: string,
+  parentId?: number | null,
+): Promise<{ data: FamilyComment }> {
+  return run(
+    () =>
+      familyFetch(`/posts/${postId}/comments`, {
+        method: 'POST',
+        body: {
+          body,
+          ...(parentId != null ? { parent_id: parentId } : {}),
+        },
+      }),
+    'ارسال نظر ناموفق بود.',
+  );
 }
 
 export async function respondToAction(actionId: number, value: Record<string, unknown>): Promise<{ data: unknown }> {

@@ -22,14 +22,36 @@ export function useFamilyComments(postId: number, enabled: boolean) {
   }, [postId]);
 
   const submit = useCallback(
-    async (body: string) => {
+    async (body: string, parentId?: number | null) => {
       setSubmitting(true);
       try {
-        const res = (await postComment(postId, body)) as { data: FamilyComment };
-        await mutate((prev) =>
-          prev ? { ...prev, data: [res.data, ...prev.data] } : { data: [res.data], meta: { next_cursor: null } },
-        );
-        return res.data;
+        const res = (await postComment(postId, body, parentId)) as { data: FamilyComment };
+        const created = res.data;
+
+        if (parentId) {
+          const rootId = created.parent_id ?? parentId;
+          const attach = (list: FamilyComment[]) =>
+            list.map((c) =>
+              c.id === rootId
+                ? { ...c, replies: [...(c.replies ?? []), created] }
+                : c,
+            );
+
+          await mutate((prev) =>
+            prev
+              ? { ...prev, data: attach(prev.data) }
+              : { data: [], meta: { next_cursor: null } },
+          );
+          setExtraComments((prev) => attach(prev));
+        } else {
+          await mutate((prev) =>
+            prev
+              ? { ...prev, data: [created, ...prev.data] }
+              : { data: [created], meta: { next_cursor: null } },
+          );
+        }
+
+        return created;
       } finally {
         setSubmitting(false);
       }

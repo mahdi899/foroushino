@@ -13,6 +13,7 @@ use App\Services\Family\FamilyAiSettingsService;
 use App\Services\Family\FamilyStatsService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -38,21 +39,16 @@ class CommentController extends Controller
             ->where('family_id', $familyId)
             ->whereNull('parent_id')
             ->where(function ($q) use ($userId) {
-                $q->where('status', FamilyCommentStatus::Approved->value)
-                    ->orWhere(function ($mine) use ($userId) {
-                        $mine->where('user_id', $userId)
-                            ->whereIn('status', [
-                                FamilyCommentStatus::Pending->value,
-                                FamilyCommentStatus::Rejected->value,
-                            ]);
-                    });
+                $this->visibleToViewer($q, $userId);
             })
             ->with([
-                'user:id,name',
+                'user:id,name,is_admin',
                 'user.profile',
                 'replies' => fn ($q) => $q
-                    ->where('status', FamilyCommentStatus::Approved->value)
-                    ->with(['user:id,name', 'user.profile'])
+                    ->where(function ($inner) use ($userId) {
+                        $this->visibleToViewer($inner, $userId);
+                    })
+                    ->with(['user:id,name,is_admin', 'user.profile'])
                     ->orderBy('id'),
             ])
             ->orderByDesc('id');
@@ -83,7 +79,27 @@ class CommentController extends Controller
         $max = (int) config('family.comment.max_length', 1000);
         $data = $request->validate([
             'body' => ['required', 'string', 'min:2', "max:{$max}"],
+            'parent_id' => ['nullable', 'integer', 'exists:family_comments,id'],
         ]);
+
+        $parentId = null;
+        if (! empty($data['parent_id'])) {
+            $parent = FamilyComment::query()
+                ->where('id', (int) $data['parent_id'])
+                ->where('post_id', $post->id)
+                ->where('family_id', $membership->family_id)
+                ->first();
+
+            abort_if(! $parent, 422, 'نظر والد پیدا نشد.');
+
+            $viewerId = (int) $request->user()->id;
+            $parentVisible = $parent->status === FamilyCommentStatus::Approved
+                || (int) $parent->user_id === $viewerId;
+            abort_unless($parentVisible, 422, 'امکان پاسخ به این نظر وجود ندارد.');
+
+            // Instagram-style: one nesting level — replies attach to the root comment.
+            $parentId = $parent->parent_id ?: $parent->id;
+        }
 
         $aiSettings = app(FamilyAiSettingsService::class);
         $requireApproval = (bool) config('family.comment.require_approval', false)
@@ -94,6 +110,7 @@ class CommentController extends Controller
             'post_id' => $post->id,
             'family_id' => $membership->family_id,
             'user_id' => $request->user()->id,
+            'parent_id' => $parentId,
             'body' => trim($data['body']),
             'status' => $status,
             'approved_at' => $requireApproval ? null : now(),
@@ -103,7 +120,7 @@ class CommentController extends Controller
             $this->stats->incrementApprovedComments((int) $post->id, (int) $membership->family_id);
         }
 
-        $comment->load(['user:id,name', 'user.profile']);
+        $comment->load(['user:id,name,is_admin', 'user.profile']);
 
         AnalyzeFamilyCommentJob::dispatch($comment->id)
             ->onQueue(config('family.queues.ai', 'family-ai'));
@@ -112,5 +129,17 @@ class CommentController extends Controller
             (new FamilyCommentResource($comment))->resolve(),
             201
         );
+    }
+
+    private function visibleToViewer(Builder $query, int $userId): void
+    {
+        $query->where('status', FamilyCommentStatus::Approved->value)
+            ->orWhere(function ($mine) use ($userId) {
+                $mine->where('user_id', $userId)
+                    ->whereIn('status', [
+                        FamilyCommentStatus::Pending->value,
+                        FamilyCommentStatus::Rejected->value,
+                    ]);
+            });
     }
 }

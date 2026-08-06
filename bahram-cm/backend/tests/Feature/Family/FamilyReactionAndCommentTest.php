@@ -245,6 +245,49 @@ class FamilyReactionAndCommentTest extends TestCase
             ->assertJsonPath('data.0.replies.0.body', 'پاسخ بهرام به شما');
     }
 
+    public function test_member_can_reply_to_another_comment(): void
+    {
+        Queue::fake();
+
+        $author = $this->joinedUser();
+        $replier = User::factory()->create();
+        $this->actingAs($replier, 'sanctum')->postJson('/api/v1/family/join')->assertOk();
+        $post = $this->publishedPost();
+
+        $comment = $this->actingAs($author, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'نظر اصلی'])
+            ->assertCreated()
+            ->json('data');
+
+        $reply = $this->actingAs($replier, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", [
+                'body' => 'پاسخ عضو',
+                'parent_id' => $comment['id'],
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertSame($comment['id'], $reply['parent_id']);
+        $this->assertFalse($reply['is_bahram_reply']);
+
+        // Reply-to-reply still nests under the root comment.
+        $nested = $this->actingAs($author, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", [
+                'body' => 'پاسخ به پاسخ',
+                'parent_id' => $reply['id'],
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertSame($comment['id'], $nested['parent_id']);
+
+        $this->actingAs($author, 'sanctum')
+            ->getJson("/api/v1/family/posts/{$post->id}/comments")
+            ->assertOk()
+            ->assertJsonPath('data.0.replies.0.body', 'پاسخ عضو')
+            ->assertJsonPath('data.0.replies.1.body', 'پاسخ به پاسخ');
+    }
+
     public function test_comment_includes_resolved_student_avatar_url(): void
     {
         Queue::fake();

@@ -5,6 +5,7 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/core/utils/reply_tag.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
@@ -50,11 +51,13 @@ class _ReplySheetFormState extends State<_ReplySheetForm> {
       return;
     }
 
+    final tagged = encodeReplyBody(widget.comment.userName, text);
+
     setState(() => _sending = true);
     try {
       await context.read<AppState>().manager.replyToComment(
             commentId: widget.comment.id,
-            text: text,
+            text: tagged,
           );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {

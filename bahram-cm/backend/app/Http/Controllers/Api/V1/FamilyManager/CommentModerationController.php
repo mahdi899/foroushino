@@ -44,7 +44,7 @@ class CommentModerationController extends Controller
                 'post:id,type',
                 'replies' => fn ($q) => $q
                     ->where('status', FamilyCommentStatus::Approved->value)
-                    ->with('user:id,name')
+                    ->with('user:id,name,is_admin')
                     ->orderBy('id'),
             ]);
 
@@ -417,9 +417,9 @@ class CommentModerationController extends Controller
             'in_pulse' => $comment->family_pulse_at !== null,
             'seen_by_bahram' => $comment->seen_by_bahram_at !== null,
             'parent_id' => $comment->parent_id,
-            'is_bahram_reply' => $comment->parent_id !== null,
+            'is_bahram_reply' => $comment->parent_id !== null && (bool) ($comment->user?->is_admin),
             'user' => [
-                'name' => $comment->parent_id !== null
+                'name' => ($comment->parent_id !== null && (bool) ($comment->user?->is_admin))
                     ? $branding['profile_name']
                     : $comment->user?->name,
             ],
@@ -438,14 +438,26 @@ class CommentModerationController extends Controller
             'rejection_reason' => $comment->rejection_reason?->value,
             'rejection_note' => $comment->rejection_note,
             'replies' => $comment->relationLoaded('replies')
-                ? $comment->replies->map(fn (FamilyComment $reply) => [
-                    'id' => $reply->id,
-                    'body' => $reply->body,
-                    'status' => $reply->status?->value ?? $reply->status,
-                    'created_at' => $reply->created_at?->toIso8601String(),
-                    'is_bahram_reply' => true,
-                    'user' => ['name' => $branding['profile_name']],
-                ])->values()->all()
+                ? $comment->replies
+                    ->sortBy(fn (FamilyComment $reply) => [
+                        $reply->user?->is_admin ? 0 : 1,
+                        $reply->id,
+                    ])
+                    ->values()
+                    ->map(function (FamilyComment $reply) use ($branding) {
+                        $isBahram = (bool) ($reply->user?->is_admin);
+
+                        return [
+                            'id' => $reply->id,
+                            'body' => $reply->body,
+                            'status' => $reply->status?->value ?? $reply->status,
+                            'created_at' => $reply->created_at?->toIso8601String(),
+                            'is_bahram_reply' => $isBahram,
+                            'user' => [
+                                'name' => $isBahram ? $branding['profile_name'] : $reply->user?->name,
+                            ],
+                        ];
+                    })->all()
                 : [],
         ];
     }

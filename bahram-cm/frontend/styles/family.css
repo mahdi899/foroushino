@@ -107,7 +107,7 @@ html[data-family-host='1'] body {
     0 1px 2px rgba(16, 35, 47, 0.05),
     0 8px 28px rgba(16, 35, 47, 0.06);
   --family-bubble-important-bg: rgba(255, 255, 255, 0.84);
-  --family-bubble-important-accent: var(--family-brand);
+  --family-bubble-important-accent: #dc2626;
   --family-tg-subtitle: #707579;
   --family-tg-online: #4fae4e;
   --family-tg-date-pill-bg: rgba(0, 0, 0, 0.22);
@@ -240,7 +240,7 @@ html[data-theme='dark'] .family-app {
     0 2px 12px rgba(0, 0, 0, 0.32),
     0 0 0 0.5px rgba(255, 255, 255, 0.04);
   --family-bubble-important-bg: rgba(28, 40, 52, 0.9);
-  --family-bubble-important-accent: var(--family-brand-glow);
+  --family-bubble-important-accent: #f87171;
   --family-tg-subtitle: #8699a8;
   --family-tg-online: #6ab87a;
   --family-tg-date-pill-bg: rgba(0, 0, 0, 0.52);
@@ -602,9 +602,9 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-card--important {
-  border-color: color-mix(in oklab, var(--family-accent) 40%, var(--family-border));
-  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-elevated));
-  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--family-accent) 75%, transparent);
+  border-color: color-mix(in oklab, var(--family-bubble-important-accent) 55%, var(--family-border));
+  background: var(--family-surface-elevated);
+  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--family-bubble-important-accent) 85%, transparent);
 }
 
 .family-panel-header {
@@ -686,10 +686,10 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-comment-bubble--important {
-  border: 1.5px solid var(--family-gold);
-  background: color-mix(in oklab, var(--family-gold) 10%, var(--family-bubble-incoming));
+  border: 1.5px solid var(--family-bubble-important-accent);
+  background: var(--family-bubble-incoming);
   box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--family-gold) 28%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 28%, transparent),
     var(--family-bubble-shadow);
 }
 
@@ -697,28 +697,108 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding-bottom: 0.625rem;
 }
 
+.family-comment-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.family-comment-bubble__time--inline {
+  display: inline;
+  margin-top: 0;
+}
+
+.family-comment-reply-btn {
+  border: 0;
+  background: transparent;
+  padding: 0.125rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--family-tg-subtitle);
+  cursor: pointer;
+}
+
+.family-comment-reply-btn:hover {
+  color: var(--family-tg-channel-name);
+}
+
 .family-comment-replies {
   display: flex;
   flex-direction: column;
-  gap: 0.4375rem;
+  gap: 0.5rem;
   margin-top: 0.5625rem;
   padding-top: 0.5rem;
   border-top: 0.5px solid color-mix(in oklab, var(--family-text) 12%, transparent);
 }
 
+.family-comment-view-more {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  padding: 0.125rem 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--family-tg-subtitle);
+  cursor: pointer;
+}
+
+.family-comment-view-more:hover {
+  color: var(--family-tg-channel-name);
+}
+
 .family-comment-reply {
-  border-inline-start: 3px solid var(--family-tg-channel-name);
-  background: color-mix(in oklab, var(--family-tg-channel-name) 9%, var(--family-bubble-incoming));
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-inline-start: 2.5px solid color-mix(in oklab, var(--family-text) 22%, transparent);
+  background: color-mix(in oklab, var(--family-text) 5%, transparent);
   border-radius: 0.375rem;
-  padding: 0.4375rem 0.5625rem 0.3125rem;
+  padding: 0.4375rem 0.5rem 0.375rem;
+}
+
+.family-comment-reply--bahram {
+  border-inline-start-color: var(--family-tg-channel-name);
+  background: color-mix(in oklab, var(--family-tg-channel-name) 9%, transparent);
+}
+
+.family-comment-name-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin-inline-end: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.3125rem;
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--family-tg-channel-name);
+  background: color-mix(in oklab, var(--family-tg-channel-name) 12%, transparent);
+  vertical-align: baseline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .family-comment-reply__author {
-  display: block;
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.25;
+  color: var(--family-tg-pinned-accent);
+}
+
+.family-comment-reply--bahram .family-comment-reply__author {
   color: var(--family-tg-channel-name);
+}
+
+.family-comment-reply__badge {
+  border-radius: 999px;
+  padding: 0.0625rem 0.375rem;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--family-tg-channel-name);
+  background: color-mix(in oklab, var(--family-tg-channel-name) 14%, transparent);
 }
 
 .family-comment-reply__body {
@@ -729,15 +809,66 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   overflow-wrap: anywhere;
 }
 
-.family-comment-reply__time {
-  display: block;
+.family-comment-reply__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   margin-top: 0.25rem;
-  text-align: left;
+}
+
+.family-comment-reply__time {
   font-size: 0.625rem;
   line-height: 1.2;
   color: var(--family-tg-subtitle);
   direction: ltr;
   unicode-bidi: isolate;
+  text-align: left;
+}
+
+.family-comment-reply-target {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-inline-start: 3px solid var(--family-tg-channel-name);
+  background: color-mix(in oklab, var(--family-tg-channel-name) 10%, var(--family-bubble-incoming));
+  border-radius: 0.5rem;
+  padding: 0.4375rem 0.5rem;
+}
+
+.family-comment-reply-target__quote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.family-comment-reply-target__label {
+  font-size: 0.6875rem;
+  color: var(--family-tg-subtitle);
+}
+
+.family-comment-reply-target__name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--family-tg-channel-name);
+}
+
+.family-comment-reply-target__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--family-text) 8%, transparent);
+  color: var(--family-tg-subtitle);
+  cursor: pointer;
+}
+
+.family-comment-reply-target__close:hover {
+  color: var(--family-text);
 }
 
 .family-comment-bubble__important-badge {
@@ -745,8 +876,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding: 0.125rem 0.5rem;
   font-size: 10px;
   font-weight: 700;
-  color: var(--family-gold);
-  background: color-mix(in oklab, var(--family-gold) 16%, transparent);
+  color: var(--family-bubble-important-accent);
+  background: color-mix(in oklab, var(--family-bubble-important-accent) 16%, transparent);
 }
 
 .family-comment-bubble__author {
@@ -2514,9 +2645,11 @@ html[data-theme='dark'] .family-app .family-post-bubble {
 }
 
 .family-post-bubble--important {
+  border: 1.5px solid var(--family-bubble-important-accent);
   background: var(--family-bubble-important-bg);
   box-shadow:
     inset 2.5px 0 0 var(--family-bubble-important-accent),
+    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 22%, transparent),
     var(--family-bubble-shadow);
 }
 
@@ -2524,6 +2657,7 @@ html[data-theme='dark'] .family-app .family-post-bubble {
 html[data-theme='light'] .family-app .family-post-bubble--important {
   box-shadow:
     inset 2.5px 0 0 var(--family-bubble-important-accent),
+    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 22%, transparent),
     var(--family-bubble-shadow);
 }
 

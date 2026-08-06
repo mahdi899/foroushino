@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
@@ -10,6 +11,7 @@ import { formatPostDateTime } from '@/lib/family/datetime';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
+import { encodeReplyBody, parseReplyBody } from '@/lib/family/replyTag';
 import { cn } from '@/lib/cn';
 
 type CommentsPanelProps = {
@@ -24,23 +26,98 @@ type CommentsPanelProps = {
   keyboardInset?: number;
 };
 
-const TEXTAREA_MAX_PX = 120;
+type ReplyTarget = {
+  /** Root comment id for nesting (Instagram one-level thread). */
+  rootId: number;
+  /** Comment being answered (for banner label). */
+  commentId: number;
+  userName: string;
+};
 
-function BahramReplyInline({ reply }: { reply: FamilyComment }) {
+const TEXTAREA_MAX_PX = 120;
+/** Instagram-style: collapsed thread shows one preview reply. */
+const COLLAPSED_REPLY_PREVIEW = 1;
+
+function CommentRichText({
+  text,
+  className,
+  emojiSize,
+}: {
+  text: string;
+  className?: string;
+  emojiSize?: number;
+}) {
+  const { tag, body } = useMemo(() => parseReplyBody(text), [text]);
+
   return (
-    <div className="family-comment-reply">
-      <span className="family-comment-reply__author">{reply.user.name}</span>
-      <EmojiRichText
-        text={reply.body}
-        emojiSize={18}
-        emojiMode="static"
-        className="family-comment-reply__body"
+    <span className={cn('whitespace-pre-wrap break-words', className)}>
+      {tag ? <span className="family-comment-name-chip">{tag}</span> : null}
+      {body ? <EmojiRichText text={body} emojiSize={emojiSize} emojiMode="static" /> : null}
+    </span>
+  );
+}
+
+function sortRepliesForDisplay(replies: FamilyComment[]): FamilyComment[] {
+  // Bahram/manager replies float to the top; then chronological.
+  return [...replies].sort((a, b) => {
+    const bahramDiff = Number(Boolean(b.is_bahram_reply)) - Number(Boolean(a.is_bahram_reply));
+    if (bahramDiff !== 0) return bahramDiff;
+    return a.id - b.id;
+  });
+}
+
+function CommentReplyRow({
+  reply,
+  onReply,
+}: {
+  reply: FamilyComment;
+  onReply: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'family-comment-reply',
+        reply.is_bahram_reply && 'family-comment-reply--bahram',
+      )}
+    >
+      <CommentAvatar
+        name={reply.user.name}
+        avatar={reply.user.avatar}
+        avatarVersion={reply.user.avatar_version}
+        size="xs"
       />
-      {reply.created_at ? (
-        <time dateTime={reply.created_at} className="family-comment-reply__time">
-          {formatPostDateTime(reply.created_at)}
-        </time>
-      ) : null}
+      <div className="family-comment-reply__content min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="family-comment-reply__author">{reply.user.name}</span>
+          {reply.is_bahram_reply ? (
+            <span className="family-comment-reply__badge">بهرام</span>
+          ) : null}
+          {reply.is_pending_mine ? (
+            <span className="rounded-full bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)] px-1.5 py-0.5 text-[9px] text-[var(--family-tg-subtitle)]">
+              در انتظار بررسی
+            </span>
+          ) : null}
+        </div>
+        <CommentRichText
+          text={reply.body}
+          emojiSize={17}
+          className="family-comment-reply__body"
+        />
+        <div className="family-comment-reply__meta">
+          {reply.created_at ? (
+            <time dateTime={reply.created_at} className="family-comment-reply__time">
+              {formatPostDateTime(reply.created_at)}
+            </time>
+          ) : (
+            <span />
+          )}
+          {!reply.is_mine ? (
+            <button type="button" className="family-comment-reply-btn" onClick={onReply}>
+              پاسخ
+            </button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -48,11 +125,30 @@ function BahramReplyInline({ reply }: { reply: FamilyComment }) {
 function CommentRow({
   comment,
   avatarSize,
+  onReply,
 }: {
   comment: FamilyComment;
   avatarSize: 'sm' | 'md';
+  onReply: (target: ReplyTarget) => void;
 }) {
-  const hasReplies = (comment.replies?.length ?? 0) > 0;
+  const [expanded, setExpanded] = useState(false);
+  const sortedReplies = useMemo(
+    () => sortRepliesForDisplay(comment.replies ?? []),
+    [comment.replies],
+  );
+  const hasReplies = sortedReplies.length > 0;
+  const hiddenCount = Math.max(0, sortedReplies.length - COLLAPSED_REPLY_PREVIEW);
+  const visibleReplies = expanded || hiddenCount === 0
+    ? sortedReplies
+    : sortedReplies.slice(0, COLLAPSED_REPLY_PREVIEW);
+
+  const startReply = (target: FamilyComment, rootId: number) => {
+    onReply({
+      rootId,
+      commentId: target.id,
+      userName: target.user.name,
+    });
+  };
 
   return (
     <li className="py-1">
@@ -81,23 +177,55 @@ function CommentRow({
               </span>
             )}
           </div>
-          <EmojiRichText
+          <CommentRichText
             text={comment.body}
             emojiSize={20}
-            emojiMode="static"
             className="family-comment-body mt-1 text-[15px] leading-[1.35] text-[var(--family-text)]"
           />
+          <div className="family-comment-actions">
+            {comment.created_at ? (
+              <time dateTime={comment.created_at} className="family-comment-bubble__time family-comment-bubble__time--inline">
+                {formatPostDateTime(comment.created_at)}
+              </time>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              className="family-comment-reply-btn"
+              onClick={() => startReply(comment, comment.id)}
+            >
+              پاسخ
+            </button>
+          </div>
           {hasReplies ? (
             <div className="family-comment-replies">
-              {comment.replies!.map((reply) => (
-                <BahramReplyInline key={reply.id} reply={reply} />
+              {visibleReplies.map((reply) => (
+                <CommentReplyRow
+                  key={reply.id}
+                  reply={reply}
+                  onReply={() => startReply(reply, comment.id)}
+                />
               ))}
+              {hiddenCount > 0 && !expanded ? (
+                <button
+                  type="button"
+                  className="family-comment-view-more"
+                  onClick={() => setExpanded(true)}
+                >
+                  مشاهده {hiddenCount.toLocaleString('fa-IR')} پاسخ دیگر
+                </button>
+              ) : null}
+              {expanded && hiddenCount > 0 ? (
+                <button
+                  type="button"
+                  className="family-comment-view-more"
+                  onClick={() => setExpanded(false)}
+                >
+                  پنهان کردن پاسخ‌ها
+                </button>
+              ) : null}
             </div>
-          ) : null}
-          {comment.created_at ? (
-            <time dateTime={comment.created_at} className="family-comment-bubble__time">
-              {formatPostDateTime(comment.created_at)}
-            </time>
           ) : null}
         </div>
       </div>
@@ -120,6 +248,8 @@ export function CommentsPanel({
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
+  const [justSentWasReply, setJustSentWasReply] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -159,10 +289,26 @@ export function CommentsPanel({
     el.style.height = `${Math.max(40, next)}px`;
   }, []);
 
+  const beginReply = useCallback((target: ReplyTarget) => {
+    setReplyTarget(target);
+    // Keep only the user's typed text — name is shown as a chip, not @ in the input.
+    setValue((prev) => parseReplyBody(prev).body);
+    setError(null);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  }, []);
+
+  const clearReply = useCallback(() => {
+    setReplyTarget(null);
+  }, []);
+
   useEffect(() => {
     setValue('');
     setError(null);
     setJustSent(false);
+    setJustSentWasReply(false);
+    setReplyTarget(null);
   }, [postId]);
 
   useLayoutEffect(() => {
@@ -197,22 +343,31 @@ export function CommentsPanel({
   }, [pinLatestComment]);
 
   const handleSubmit = async () => {
-    const body = value.trim();
-    if (!body || submitting) return;
+    const typed = value.trim();
+    if (!typed || submitting) return;
+    const body = encodeReplyBody(replyTarget?.userName, typed);
     setError(null);
     familyFeedDebug.mark(`comment:${postId}`);
-    familyFeedDebug.info('comment', 'submit start', { postId, len: body.length });
+    familyFeedDebug.info('comment', 'submit start', {
+      postId,
+      len: body.length,
+      parentId: replyTarget?.rootId ?? null,
+    });
     try {
-      const created = await submit(body);
+      const wasReply = Boolean(replyTarget);
+      const created = await submit(body, replyTarget?.rootId ?? null);
       setValue('');
+      setReplyTarget(null);
+      setJustSentWasReply(wasReply);
       setJustSent(true);
       familyHaptic('success');
       familyFeedDebug.measure(`comment:${postId}`, 'comment', {
         postId,
         id: created?.id,
         pending: Boolean(created?.is_pending_mine),
+        reply: Boolean(created?.parent_id),
       });
-      if (created && !created.is_pending_mine) {
+      if (created && !created.is_pending_mine && !created.parent_id) {
         onCommentAdded?.(created);
       }
       setTimeout(() => setJustSent(false), 3000);
@@ -227,7 +382,27 @@ export function CommentsPanel({
   const composerBody = (
     <>
       {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
-      {justSent && !error && <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد.</p>}
+      {justSent && !error && (
+        <p className="mb-2 text-xs text-gold/80">
+          {justSentWasReply ? 'پاسخ شما ثبت شد.' : 'نظر شما ثبت شد.'}
+        </p>
+      )}
+      {replyTarget ? (
+        <div className="family-comment-reply-target mb-2" role="status">
+          <div className="family-comment-reply-target__quote min-w-0 flex-1">
+            <span className="family-comment-reply-target__label">پاسخ به</span>
+            <span className="family-comment-name-chip">{replyTarget.userName}</span>
+          </div>
+          <button
+            type="button"
+            onClick={clearReply}
+            className="family-comment-reply-target__close"
+            aria-label="لغو پاسخ"
+          >
+            <X className="h-4 w-4" strokeWidth={2} />
+          </button>
+        </div>
+      ) : null}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -248,7 +423,9 @@ export function CommentsPanel({
           }}
           maxLength={500}
           rows={1}
-          placeholder="نظرت رو بنویس…"
+          placeholder={
+            replyTarget ? `پاسخ به ${replyTarget.userName}…` : 'نظرت رو بنویس…'
+          }
           className="family-input family-comment-input min-h-10 flex-1 resize-none rounded-[1.25rem] px-4 py-2.5 text-sm leading-5"
         />
         <button
@@ -332,7 +509,12 @@ export function CommentsPanel({
               </li>
             )}
             {orderedComments.map((comment) => (
-              <CommentRow key={comment.id} comment={comment} avatarSize={avatarSize} />
+              <CommentRow
+                key={comment.id}
+                comment={comment}
+                avatarSize={avatarSize}
+                onReply={beginReply}
+              />
             ))}
             <div
               ref={bottomRef}
