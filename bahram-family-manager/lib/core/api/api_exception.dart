@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import 'package:bahram_family_manager/config/app_config.dart';
+
 /// Normalizes the two error envelope shapes used by the backend:
 ///   - Laravel's default validation error: { message, errors: { field: [msg] } }
 ///   - The custom Family envelope: { error: { code, message_fa, details? } }
@@ -55,7 +57,10 @@ class ApiException implements Exception {
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.connectionError) {
-      return ApiException(message: 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.', statusCode: statusCode);
+      return ApiException(
+        message: 'اتصال به سرور برقرار نشد (${AppConfig.apiBaseUrl}). اینترنت یا VPN را بررسی کنید.',
+        statusCode: statusCode,
+      );
     }
 
     return ApiException(message: 'خطای ناشناخته در ارتباط با سرور.', statusCode: statusCode);

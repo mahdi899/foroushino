@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/config/bootstrap_admin.dart';
-import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/config/app_config.dart';
+import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/services/auth_service.dart';
@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _captchaRequired = true;
         _captcha = null;
       });
-      showAppSnackBar(context, 'بارگذاری تأیید امنیتی ناموفق بود. دوباره تلاش کنید.');
+      showAppSnackBar(context, messageOf(e));
     } finally {
       if (mounted) setState(() => _captchaLoading = false);
     }
@@ -292,6 +292,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       }),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'سرور: ${AppConfig.apiBaseUrl}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: muted),
+                  ),
+                  Text(
+                    'نسخه ${AppConfig.appVersion} (${AppConfig.buildNumber})',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: muted),
+                  ),
                 ],
               ),
             ),
@@ -447,7 +458,7 @@ class _LoginForm extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'بارگذاری تأیید امنیتی ناموفق بود.',
+                  'اتصال به سرور ناموفق بود. اینترنت یا VPN را بررسی کنید.',
                   style: TextStyle(color: muted),
                 ),
               ),

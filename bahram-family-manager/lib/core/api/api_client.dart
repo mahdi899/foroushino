@@ -17,7 +17,10 @@ class ApiClient {
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 120),
         sendTimeout: const Duration(minutes: 5),
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'BahramFamilyManager/${AppConfig.appVersion}',
+        },
       ),
     );
 
