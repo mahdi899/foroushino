@@ -5,6 +5,7 @@ import { AlertCircle, Loader2, MessageSquare, Search } from 'lucide-react';
 import { fetchChatbotOperatorQueue } from './actions';
 import type { ChatbotOperatorProfile, ChatbotOperatorQueueEntry } from '@/lib/chatbot/types';
 import { SessionOperatorPanel } from './SessionOperatorPanel';
+import { OperatorQueueMobileCard } from './OperatorQueueMobileCard';
 import { Badge, Table } from '../ui';
 import { cn } from '@/lib/utils';
 
@@ -115,7 +116,7 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
       </div>
 
       <form
-        className="mb-4 flex gap-2"
+        className="mb-4 flex min-w-0 gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           currentPageRef.current = 1;
@@ -123,13 +124,14 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
         }}
       >
         <input
-          className="field-input flex-1"
+          className="field-input min-w-0 flex-1"
           placeholder="جستجو در پیام، session یا IP…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <button type="submit" className="btn btn-secondary px-4 py-2 text-small">
+        <button type="submit" className="btn btn-secondary shrink-0 px-4 py-2 text-small">
           <Search className="h-4 w-4" />
+          <span className="sr-only">جستجو</span>
         </button>
       </form>
 
@@ -144,7 +146,20 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
         </div>
       ) : (
         <>
-          <Table head={['زمان', 'پیام', 'کاربر', 'اپراتور', 'برچسب', 'تماس', '']}>
+          <Table
+            head={['زمان', 'پیام', 'کاربر', 'اپراتور', 'برچسب', 'تماس', '']}
+            mobile={items.map((item) => (
+              <OperatorQueueMobileCard
+                key={item.id}
+                item={item}
+                isOpen={selected?.logId === item.id}
+                onToggle={() => openItem(item)}
+                operatorProfiles={operatorProfiles}
+                onReplied={() => void loadQueue(currentPageRef.current, undefined, true)}
+                onConverted={() => void loadQueue(currentPageRef.current, undefined, true)}
+              />
+            ))}
+          >
             {items.map((item) => {
               const isOpen = selected?.logId === item.id;
               return (
@@ -217,9 +232,9 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
             })}
           </Table>
 
-          <div className="mt-4 flex items-center justify-between text-caption text-text-muted">
-            <span>{meta.total} پیام در صف</span>
-            <div className="flex gap-2">
+          <div className="mt-4 flex flex-col gap-3 text-caption text-text-muted sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-center sm:text-start">{meta.total} پیام در صف</span>
+            <div className="flex items-center justify-center gap-2">
               <button
                 type="button"
                 disabled={meta.current_page <= 1}

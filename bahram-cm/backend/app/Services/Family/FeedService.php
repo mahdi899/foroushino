@@ -535,6 +535,7 @@ class FeedService
             ->select('c1.id')
             ->whereIn('c1.post_id', $postIds)
             ->where('c1.family_id', $familyId)
+            ->whereNull('c1.parent_id')
             ->where('c1.status', $approved)
             ->whereRaw(
                 '(SELECT COUNT(*) FROM family_comments c2

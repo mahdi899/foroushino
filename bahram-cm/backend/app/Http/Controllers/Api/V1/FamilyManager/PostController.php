@@ -313,37 +313,4 @@ class PostController extends Controller
 
         return ApiResponse::success(FamilyManagerPostPresenter::present($fresh));
     }
-
-    public function reply(Request $request, FamilyComment $comment): JsonResponse
-    {
-        $data = $request->validate([
-            'type' => ['required', 'in:text,voice'],
-            'text' => ['required_if:type,text', 'nullable', 'string', 'max:2000'],
-            'media_id' => ['required_if:type,voice', 'nullable', 'integer', 'exists:family_media,id'],
-        ]);
-
-        // Reply context is rendered from the post's reply_to_comment_id relation
-        // (see FamilyPostResource::reply_context) — no separate block needed.
-        $blocks = $data['type'] === 'text'
-            ? [['type' => 'text', 'position' => 0, 'text' => $data['text']]]
-            : [['type' => 'audio', 'position' => 0, 'media_id' => $data['media_id']]];
-
-        $post = $this->publisher->createDraft($request->user(), [
-            'type' => FamilyPostType::Reply->value,
-            'audience_mode' => FamilyPostAudienceMode::Include->value,
-            'family_ids' => [$comment->family_id],
-            'blocks' => $blocks,
-            'reply_to_comment_id' => $comment->id,
-        ]);
-
-        $published = $this->publisher->publish($request->user(), $post);
-
-        $this->audit->log($request->user(), 'family.bahram_replied', $comment, ['post_id' => $published->id]);
-
-        if ($comment->user) {
-            $this->notifications->bahramReplied($comment->user, (int) $published->id);
-        }
-
-        return ApiResponse::success(FamilyManagerPostPresenter::present($published), 201);
-    }
 }

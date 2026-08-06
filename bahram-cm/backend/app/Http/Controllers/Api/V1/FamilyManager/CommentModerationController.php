@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Api\V1\FamilyManager;
 use App\Enums\Family\FamilyCommentRejectionReason;
 use App\Enums\Family\FamilyCommentStatus;
 use App\Enums\Family\FamilyPostBlockType;
+use App\Enums\Family\FamilyPostAudienceMode;
+use App\Enums\Family\FamilyPostType;
 use App\Http\Controllers\Controller;
 use App\Models\FamilyComment;
 use App\Services\AdminAuditLogger;
+use App\Services\Family\FamilyBrandingService;
 use App\Services\Family\FamilyNotificationService;
+use App\Services\Family\FamilyPostPublisher;
 use App\Services\Family\FamilyStatsService;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +28,8 @@ class CommentModerationController extends Controller
         private readonly FamilyStatsService $stats,
         private readonly AdminAuditLogger $audit,
         private readonly FamilyNotificationService $notifications,
+        private readonly FamilyBrandingService $branding,
+        private readonly FamilyPostPublisher $publisher,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -31,7 +37,16 @@ class CommentModerationController extends Controller
         $tab = (string) $request->query('tab', 'pending');
 
         $query = FamilyComment::query()
-            ->with(['user:id,name', 'family:id,internal_name', 'post:id,type']);
+            ->whereNull('parent_id')
+            ->with([
+                'user:id,name',
+                'family:id,internal_name',
+                'post:id,type',
+                'replies' => fn ($q) => $q
+                    ->where('status', FamilyCommentStatus::Approved->value)
+                    ->with('user:id,name')
+                    ->orderBy('id'),
+            ]);
 
         $this->applyTabFilter($query, $tab);
 
@@ -63,7 +78,7 @@ class CommentModerationController extends Controller
         $tab = (string) $request->query('tab', 'pending');
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
 
-        $base = FamilyComment::query();
+        $base = FamilyComment::query()->whereNull('parent_id');
         $this->applyTabFilter($base, $tab);
 
         if ($request->filled('family_id')) {
@@ -288,6 +303,76 @@ class CommentModerationController extends Controller
         return ApiResponse::success(['seen' => true]);
     }
 
+    public function reply(Request $request, FamilyComment $comment): JsonResponse
+    {
+        abort_if($comment->parent_id !== null, 422, 'فقط به نظر اصلی می‌توان پاسخ داد.');
+
+        $data = $request->validate([
+            'type' => ['required', 'in:text,voice'],
+            'text' => ['required_if:type,text', 'nullable', 'string', 'max:2000'],
+            'media_id' => ['required_if:type,voice', 'nullable', 'integer', 'exists:family_media,id'],
+        ]);
+
+        if ($data['type'] === 'voice') {
+            return $this->replyWithVoicePost($request, $comment, $data);
+        }
+
+        $reply = FamilyComment::query()->create([
+            'post_id' => $comment->post_id,
+            'family_id' => $comment->family_id,
+            'user_id' => $request->user()->id,
+            'parent_id' => $comment->id,
+            'body' => trim((string) $data['text']),
+            'status' => FamilyCommentStatus::Approved,
+            'approved_at' => now(),
+            'moderated_by' => $request->user()->id,
+        ]);
+
+        if (! $comment->seen_by_bahram_at) {
+            $comment->update(['seen_by_bahram_at' => now()]);
+        }
+
+        $this->stats->incrementApprovedComments((int) $comment->post_id, (int) $comment->family_id);
+
+        $this->audit->log($request->user(), 'family.bahram_replied', $comment, [
+            'reply_comment_id' => $reply->id,
+        ]);
+
+        if ($comment->user) {
+            $this->notifications->bahramReplied($comment->user, (int) $comment->post_id);
+        }
+
+        $reply->load(['user:id,name', 'family:id,internal_name']);
+
+        return ApiResponse::success($this->present($reply), 201);
+    }
+
+    /**
+     * Legacy voice replies still publish as feed posts (comments have no media field).
+     *
+     * @param  array{type: string, text?: ?string, media_id?: ?int}  $data
+     */
+    private function replyWithVoicePost(Request $request, FamilyComment $comment, array $data): JsonResponse
+    {
+        $post = $this->publisher->createDraft($request->user(), [
+            'type' => FamilyPostType::Reply->value,
+            'audience_mode' => FamilyPostAudienceMode::Include->value,
+            'family_ids' => [$comment->family_id],
+            'blocks' => [['type' => 'audio', 'position' => 0, 'media_id' => $data['media_id']]],
+            'reply_to_comment_id' => $comment->id,
+        ]);
+
+        $published = $this->publisher->publish($request->user(), $post);
+
+        $this->audit->log($request->user(), 'family.bahram_replied', $comment, ['post_id' => $published->id]);
+
+        if ($comment->user) {
+            $this->notifications->bahramReplied($comment->user, (int) $published->id);
+        }
+
+        return ApiResponse::success(\App\Support\FamilyManagerPostPresenter::present($published), 201);
+    }
+
     private function applyTabFilter(Builder $query, string $tab): void
     {
         match ($tab) {
@@ -321,6 +406,8 @@ class CommentModerationController extends Controller
     /** @return array<string, mixed> */
     private function present(FamilyComment $comment): array
     {
+        $branding = $this->branding->publicPayload();
+
         return [
             'id' => $comment->id,
             'body' => $comment->body,
@@ -329,8 +416,12 @@ class CommentModerationController extends Controller
             'is_important' => (bool) $comment->is_important,
             'in_pulse' => $comment->family_pulse_at !== null,
             'seen_by_bahram' => $comment->seen_by_bahram_at !== null,
+            'parent_id' => $comment->parent_id,
+            'is_bahram_reply' => $comment->parent_id !== null,
             'user' => [
-                'name' => $comment->user?->name,
+                'name' => $comment->parent_id !== null
+                    ? $branding['profile_name']
+                    : $comment->user?->name,
             ],
             'family' => [
                 'id' => $comment->family_id,
@@ -346,6 +437,16 @@ class CommentModerationController extends Controller
             ],
             'rejection_reason' => $comment->rejection_reason?->value,
             'rejection_note' => $comment->rejection_note,
+            'replies' => $comment->relationLoaded('replies')
+                ? $comment->replies->map(fn (FamilyComment $reply) => [
+                    'id' => $reply->id,
+                    'body' => $reply->body,
+                    'status' => $reply->status?->value ?? $reply->status,
+                    'created_at' => $reply->created_at?->toIso8601String(),
+                    'is_bahram_reply' => true,
+                    'user' => ['name' => $branding['profile_name']],
+                ])->values()->all()
+                : [],
         ];
     }
 }

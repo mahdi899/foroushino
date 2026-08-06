@@ -374,6 +374,9 @@ class FamilyCommentModel {
     this.familyId,
     this.familyInternalName,
     required this.postId,
+    this.parentId,
+    this.isBahramReply = false,
+    this.replies = const [],
     this.riskScore,
     this.sentiment,
     this.topic,
@@ -393,6 +396,9 @@ class FamilyCommentModel {
   final int? familyId;
   final String? familyInternalName;
   final int postId;
+  final int? parentId;
+  final bool isBahramReply;
+  final List<FamilyCommentModel> replies;
   final double? riskScore;
   final String? sentiment;
   final String? topic;
@@ -403,6 +409,9 @@ class FamilyCommentModel {
   factory FamilyCommentModel.fromJson(Map<String, dynamic> json) {
     final ai = (json['ai'] as Map?)?.cast<String, dynamic>() ?? {};
     final family = (json['family'] as Map?)?.cast<String, dynamic>();
+    final replies = (json['replies'] as List? ?? [])
+        .map((e) => FamilyCommentModel.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
     return FamilyCommentModel(
       id: json['id'] as int,
       body: json['body']?.toString() ?? '',
@@ -415,6 +424,9 @@ class FamilyCommentModel {
       familyId: (json['family_id'] as num?)?.toInt() ?? (family?['id'] as num?)?.toInt(),
       familyInternalName: family?['internal_name']?.toString(),
       postId: (json['post_id'] as num?)?.toInt() ?? 0,
+      parentId: (json['parent_id'] as num?)?.toInt(),
+      isBahramReply: json['is_bahram_reply'] == true,
+      replies: replies,
       riskScore: (ai['risk_score'] as num?)?.toDouble(),
       sentiment: ai['sentiment']?.toString(),
       topic: ai['topic']?.toString(),

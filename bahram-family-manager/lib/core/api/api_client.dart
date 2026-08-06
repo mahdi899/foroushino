@@ -10,13 +10,16 @@ import 'package:bahram_family_manager/services/secure_storage.dart';
 /// auth/verify-otp is the one exception returning `{ token, data }` at the
 /// top level (handled directly in AuthService).
 class ApiClient {
+  /// dio_web_adapter rejects sendTimeout on body-less requests (GET/DELETE).
+  static const _bodySendTimeout = Duration(minutes: 5);
+
   ApiClient({SecureStorage? storage}) : _storage = storage ?? SecureStorage() {
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConfig.apiBaseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 120),
-        sendTimeout: const Duration(minutes: 5),
+        sendTimeout: kIsWeb ? null : _bodySendTimeout,
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'BahramFamilyManager/${AppConfig.appVersion}',
@@ -95,16 +98,19 @@ class ApiClient {
 
   Dio get dio => _dio;
 
+  Options? get _webBodySendTimeout =>
+      kIsWeb ? Options(sendTimeout: _bodySendTimeout) : null;
+
   Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) {
     return _send(() => _dio.get(path, queryParameters: query));
   }
 
   Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? data}) {
-    return _send(() => _dio.post(path, data: data));
+    return _send(() => _dio.post(path, data: data, options: _webBodySendTimeout));
   }
 
   Future<Map<String, dynamic>> patch(String path, {Map<String, dynamic>? data}) {
-    return _send(() => _dio.patch(path, data: data));
+    return _send(() => _dio.patch(path, data: data, options: _webBodySendTimeout));
   }
 
   Future<Map<String, dynamic>> delete(String path) {
@@ -116,7 +122,12 @@ class ApiClient {
     FormData form, {
     void Function(int sent, int total)? onSendProgress,
   }) {
-    return _send(() => _dio.post(path, data: form, onSendProgress: onSendProgress));
+    return _send(() => _dio.post(
+          path,
+          data: form,
+          onSendProgress: onSendProgress,
+          options: _webBodySendTimeout,
+        ));
   }
 
   Future<Map<String, dynamic>> _send(Future<Response<dynamic>> Function() call) async {

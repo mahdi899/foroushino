@@ -693,6 +693,53 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
     var(--family-bubble-shadow);
 }
 
+.family-comment-bubble--threaded {
+  padding-bottom: 0.625rem;
+}
+
+.family-comment-replies {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  margin-top: 0.5625rem;
+  padding-top: 0.5rem;
+  border-top: 0.5px solid color-mix(in oklab, var(--family-text) 12%, transparent);
+}
+
+.family-comment-reply {
+  border-inline-start: 3px solid var(--family-tg-channel-name);
+  background: color-mix(in oklab, var(--family-tg-channel-name) 9%, var(--family-bubble-incoming));
+  border-radius: 0.375rem;
+  padding: 0.4375rem 0.5625rem 0.3125rem;
+}
+
+.family-comment-reply__author {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--family-tg-channel-name);
+}
+
+.family-comment-reply__body {
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--family-text);
+  overflow-wrap: anywhere;
+}
+
+.family-comment-reply__time {
+  display: block;
+  margin-top: 0.25rem;
+  text-align: left;
+  font-size: 0.625rem;
+  line-height: 1.2;
+  color: var(--family-tg-subtitle);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
 .family-comment-bubble__important-badge {
   border-radius: 999px;
   padding: 0.125rem 0.5rem;

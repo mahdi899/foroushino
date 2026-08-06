@@ -1964,6 +1964,22 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   min-width: 0;
 }
 
+/* Operator queue — mobile inbox cards */
+.admin-root .admin-queue-card {
+  border-radius: 1rem;
+  border-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-border));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.admin-root .admin-queue-card button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.admin-root .admin-queue-card .admin-queue-card__expanded,
+.admin-root .admin-queue-card > div:last-child:not(:first-child) {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Scrollable tab bars */
 .admin-root .admin-tab-bar__scroll,
 .admin-root .admin-underline-tab-bar__scroll {

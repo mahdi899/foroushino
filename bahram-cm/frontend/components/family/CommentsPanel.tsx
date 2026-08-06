@@ -26,6 +26,25 @@ type CommentsPanelProps = {
 
 const TEXTAREA_MAX_PX = 120;
 
+function BahramReplyInline({ reply }: { reply: FamilyComment }) {
+  return (
+    <div className="family-comment-reply">
+      <span className="family-comment-reply__author">{reply.user.name}</span>
+      <EmojiRichText
+        text={reply.body}
+        emojiSize={18}
+        emojiMode="static"
+        className="family-comment-reply__body"
+      />
+      {reply.created_at ? (
+        <time dateTime={reply.created_at} className="family-comment-reply__time">
+          {formatPostDateTime(reply.created_at)}
+        </time>
+      ) : null}
+    </div>
+  );
+}
+
 function CommentRow({
   comment,
   avatarSize,
@@ -33,42 +52,54 @@ function CommentRow({
   comment: FamilyComment;
   avatarSize: 'sm' | 'md';
 }) {
+  const hasReplies = (comment.replies?.length ?? 0) > 0;
+
   return (
-    <li className="flex items-start gap-3 py-1">
-      <CommentAvatar
-        name={comment.user.name}
-        avatar={comment.user.avatar}
-        avatarVersion={comment.user.avatar_version}
-        size={avatarSize}
-      />
-      <div
-        className={cn(
-          'family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2',
-          comment.is_important && 'family-comment-bubble--important',
-        )}
-      >
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="family-comment-bubble__author">{comment.user.name}</span>
-          {comment.is_important && (
-            <span className="family-comment-bubble__important-badge">مهم</span>
-          )}
-          {comment.is_pending_mine && (
-            <span className="rounded-full bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)] px-2 py-0.5 text-[10px] text-[var(--family-tg-subtitle)]">
-              در انتظار بررسی
-            </span>
-          )}
-        </div>
-        <EmojiRichText
-          text={comment.body}
-          emojiSize={20}
-          emojiMode="static"
-          className="family-comment-body mt-1 text-[15px] leading-[1.35] text-[var(--family-text)]"
+    <li className="py-1">
+      <div className="flex items-start gap-3">
+        <CommentAvatar
+          name={comment.user.name}
+          avatar={comment.user.avatar}
+          avatarVersion={comment.user.avatar_version}
+          size={avatarSize}
         />
-        {comment.created_at ? (
-          <time dateTime={comment.created_at} className="family-comment-bubble__time">
-            {formatPostDateTime(comment.created_at)}
-          </time>
-        ) : null}
+        <div
+          className={cn(
+            'family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2',
+            comment.is_important && 'family-comment-bubble--important',
+            hasReplies && 'family-comment-bubble--threaded',
+          )}
+        >
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="family-comment-bubble__author">{comment.user.name}</span>
+            {comment.is_important && (
+              <span className="family-comment-bubble__important-badge">مهم</span>
+            )}
+            {comment.is_pending_mine && (
+              <span className="rounded-full bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)] px-2 py-0.5 text-[10px] text-[var(--family-tg-subtitle)]">
+                در انتظار بررسی
+              </span>
+            )}
+          </div>
+          <EmojiRichText
+            text={comment.body}
+            emojiSize={20}
+            emojiMode="static"
+            className="family-comment-body mt-1 text-[15px] leading-[1.35] text-[var(--family-text)]"
+          />
+          {hasReplies ? (
+            <div className="family-comment-replies">
+              {comment.replies!.map((reply) => (
+                <BahramReplyInline key={reply.id} reply={reply} />
+              ))}
+            </div>
+          ) : null}
+          {comment.created_at ? (
+            <time dateTime={comment.created_at} className="family-comment-bubble__time">
+              {formatPostDateTime(comment.created_at)}
+            </time>
+          ) : null}
+        </div>
       </div>
     </li>
   );

@@ -198,7 +198,7 @@ class FamilyManagerService {
     return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
-  Future<FamilyPostModel> replyToComment({
+  Future<FamilyCommentModel> replyToComment({
     required int commentId,
     required String text,
   }) async {
@@ -206,7 +206,7 @@ class FamilyManagerService {
       'type': 'text',
       'text': text,
     });
-    return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+    return FamilyCommentModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
   // ---------------------------------------------------------------------

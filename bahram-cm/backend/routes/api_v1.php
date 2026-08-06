@@ -52,6 +52,7 @@ use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManag
 use App\Http\Controllers\Api\V1\FamilyManager\CommentModerationController as FamilyManagerCommentModerationController;
 use App\Http\Controllers\Api\V1\FamilyManager\EntryLinksController as FamilyManagerEntryLinksController;
 use App\Http\Controllers\Api\V1\FamilyManager\FamiliesController as FamilyManagerFamiliesController;
+use App\Http\Controllers\Api\V1\FamilyManager\HomeController as FamilyManagerHomeController;
 use App\Http\Controllers\Api\V1\FamilyManager\LandingLeadsController as FamilyManagerLandingLeadsController;
 use App\Http\Controllers\Api\V1\FamilyManager\MediaController as FamilyManagerMediaController;
 use App\Http\Controllers\Api\V1\FamilyManager\PostController as FamilyManagerPostController;
@@ -655,7 +656,7 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::post('posts/{post}/pin', [FamilyManagerPostController::class, 'pin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/unpin', [FamilyManagerPostController::class, 'unpin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::delete('posts/{post}', [FamilyManagerPostController::class, 'destroy'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
-    Route::post('posts/{comment}/reply', [FamilyManagerPostController::class, 'reply'])->whereNumber('comment')->middleware('family.manage:family.comments.reply');
+    Route::post('posts/{comment}/reply', [FamilyManagerCommentModerationController::class, 'reply'])->whereNumber('comment')->middleware('family.manage:family.comments.reply');
 
     Route::get('comments', [FamilyManagerCommentModerationController::class, 'index'])->middleware('family.manage:family.comments.moderate');
     Route::get('comments/threads', [FamilyManagerCommentModerationController::class, 'threads'])->middleware('family.manage:family.comments.moderate');
@@ -665,6 +666,7 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::post('comments/{comment}/mark-important', [FamilyManagerCommentModerationController::class, 'markImportant'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
     Route::post('comments/{comment}/pulse', [FamilyManagerCommentModerationController::class, 'togglePulse'])->whereNumber('comment')->middleware('family.manage:family.pulse.manage');
     Route::post('comments/{comment}/seen', [FamilyManagerCommentModerationController::class, 'markSeen'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
+    Route::post('comments/{comment}/reply', [FamilyManagerCommentModerationController::class, 'reply'])->whereNumber('comment')->middleware('family.manage:family.comments.reply');
 
     Route::get('families', [FamilyManagerFamiliesController::class, 'index'])->middleware('family.manage:family.families.view');
     Route::post('families', [FamilyManagerFamiliesController::class, 'store'])->middleware('family.manage:family.families.manage');

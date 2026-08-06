@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1\Family;
 
+use App\Services\Family\FamilyBrandingService;
 use App\Support\FamilyDateTime;
 use App\Support\MediaUrl;
 use App\Support\StudentDisplayName;
@@ -15,9 +16,12 @@ class FamilyCommentResource extends JsonResource
     {
         $user = $request->user();
         $isOwner = $user && (int) $user->id === (int) $this->user_id;
+        $isBahramReply = $this->parent_id !== null;
 
         $profile = $this->user?->profile;
-        $avatarRef = $profile?->avatar;
+        $avatarRef = $isBahramReply
+            ? app(FamilyBrandingService::class)->publicPayload()['profile_avatar'] ?? null
+            : $profile?->avatar;
 
         return [
             'id' => $this->id,
@@ -25,13 +29,20 @@ class FamilyCommentResource extends JsonResource
             'status' => $this->status?->value ?? $this->status,
             'created_at' => FamilyDateTime::toApi($this->created_at),
             'is_important' => (bool) $this->is_important,
+            'parent_id' => $this->parent_id,
+            'is_bahram_reply' => $isBahramReply,
             'user' => [
-                'name' => $this->user
-                    ? StudentDisplayName::fromUser($this->user)
-                    : 'عضو خانواده',
+                'name' => $isBahramReply
+                    ? app(FamilyBrandingService::class)->publicPayload()['profile_name']
+                    : ($this->user
+                        ? StudentDisplayName::fromUser($this->user)
+                        : 'عضو خانواده'),
                 'avatar' => $avatarRef ? MediaUrl::resolve($avatarRef) : null,
-                'avatar_version' => $avatarRef ? $profile?->updated_at?->getTimestamp() : null,
+                'avatar_version' => $avatarRef && ! $isBahramReply ? $profile?->updated_at?->getTimestamp() : null,
             ],
+            'replies' => FamilyCommentResource::collection(
+                $this->whenLoaded('replies'),
+            ),
             'rejection_reason' => $this->when(
                 $isOwner && ($this->status?->value ?? $this->status) === 'rejected',
                 fn () => $this->rejection_reason?->label() ?? $this->rejection_note

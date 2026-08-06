@@ -6,6 +6,7 @@ use App\Enums\Family\FamilyCommentRejectionReason;
 use App\Enums\Family\FamilyCommentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FamilyComment extends Model
 {
@@ -13,6 +14,7 @@ class FamilyComment extends Model
         'post_id',
         'family_id',
         'user_id',
+        'parent_id',
         'body',
         'status',
         'rejection_reason',
@@ -59,6 +61,17 @@ class FamilyComment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /** @return HasMany<FamilyComment, $this> */
+    public function replies(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('id');
     }
 
     public function moderator(): BelongsTo

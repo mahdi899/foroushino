@@ -205,6 +205,9 @@ export interface FamilyComment {
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   is_important?: boolean;
+  parent_id?: number | null;
+  is_bahram_reply?: boolean;
+  replies?: FamilyComment[];
   user: { name: string; avatar: string | null; avatar_version?: number | null };
   rejection_reason?: string | null;
   is_pending_mine: boolean;

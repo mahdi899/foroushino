@@ -151,6 +151,8 @@ class CommentCard extends StatelessWidget {
                       StatusChip(label: comment.topic!, color: AppColors.primary, icon: Icons.label_rounded),
                     if (comment.isImportant)
                       const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
+                    if (comment.isBahramReply)
+                      const StatusChip(label: 'پاسخ بهرام', color: AppColors.primary, icon: Icons.verified_rounded),
                     if (comment.status == 'rejected' && comment.rejectionReason != null)
                       StatusChip(
                         label: labelOf(rejectionReasonLabels, comment.rejectionReason!),
@@ -159,10 +161,20 @@ class CommentCard extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (comment.replies.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  ...comment.replies.map(
+                    (reply) => Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.lg, bottom: AppSpacing.sm),
+                      child: _BahramReplyBubble(reply: reply),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          Container(
+          if (!comment.isBahramReply)
+            Container(
             padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, AppSpacing.md),
             decoration: BoxDecoration(
               color: softFill.withValues(alpha: 0.65),
@@ -211,6 +223,50 @@ class _Avatar extends StatelessWidget {
       child: Text(
         name?.isNotEmpty == true ? name!.substring(0, 1) : 'ک',
         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _BahramReplyBubble extends StatelessWidget {
+  const _BahramReplyBubble({required this.reply});
+
+  final FamilyCommentModel reply;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final softFill = scheme.brightness == Brightness.dark
+        ? AppColors.surfaceSoftDark
+        : AppColors.surfaceSoft;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: softFill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                reply.userName ?? 'بهرام',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primary),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                formatDateTime(reply.createdAt),
+                style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.45), fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(reply.body, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6)),
+        ],
       ),
     );
   }

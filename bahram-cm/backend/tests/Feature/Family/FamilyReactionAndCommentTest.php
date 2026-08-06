@@ -223,14 +223,26 @@ class FamilyReactionAndCommentTest extends TestCase
                 'text' => 'پاسخ بهرام به شما',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.type', 'reply')
-            ->assertJsonPath('data.status', FamilyPostStatus::Published->value);
+            ->assertJsonPath('data.body', 'پاسخ بهرام به شما')
+            ->assertJsonPath('data.is_bahram_reply', true)
+            ->assertJsonPath('data.parent_id', $comment['id']);
 
-        $this->assertDatabaseHas('family_posts', [
+        $this->assertDatabaseHas('family_comments', [
+            'body' => 'پاسخ بهرام به شما',
+            'parent_id' => $comment['id'],
+            'post_id' => $post->id,
+            'status' => FamilyCommentStatus::Approved->value,
+        ]);
+
+        $this->assertDatabaseMissing('family_posts', [
             'type' => 'reply',
             'reply_to_comment_id' => $comment['id'],
-            'status' => FamilyPostStatus::Published->value,
         ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/family/posts/{$post->id}/comments")
+            ->assertOk()
+            ->assertJsonPath('data.0.replies.0.body', 'پاسخ بهرام به شما');
     }
 
     public function test_comment_includes_resolved_student_avatar_url(): void

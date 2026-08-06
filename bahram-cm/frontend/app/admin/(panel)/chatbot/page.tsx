@@ -309,20 +309,25 @@ export default function ChatbotAdminPage() {
       title="چت‌بات هوشمند"
       desc="دستیار AI سایت — تنظیمات، محدودیت نرخ، و گزارش مکالمات"
       action={
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
           <button
             type="button"
             onClick={() => void handleExport()}
             disabled={exporting}
-            className="btn btn-secondary px-4 py-2 text-small"
+            className="btn btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-small sm:px-4"
           >
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            خروجی CSV
+            <span className="hidden min-[400px]:inline">خروجی CSV</span>
           </button>
           {tab === 'settings' && (
-            <button type="button" onClick={() => void handleSave()} disabled={saving} className="btn btn-primary px-4 py-2 text-small">
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving}
+              className="btn btn-primary inline-flex items-center gap-1.5 px-3 py-2 text-small sm:px-4"
+            >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              ذخیره تنظیمات
+              <span className="hidden min-[400px]:inline">ذخیره تنظیمات</span>
             </button>
           )}
         </div>
@@ -540,20 +545,21 @@ export default function ChatbotAdminPage() {
             مکالمات قدیمی‌تر از ۶۰ روز به‌صورت خودکار و کامل حذف می‌شوند.
           </p>
           <form
-            className="mb-4 flex gap-2"
+            className="mb-4 flex min-w-0 gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               void loadSessions(1, logQ);
             }}
           >
             <input
-              className="field-input flex-1"
+              className="field-input min-w-0 flex-1"
               placeholder="جستجو session یا IP…"
               value={logQ}
               onChange={(e) => setLogQ(e.target.value)}
             />
-            <button type="submit" className="btn btn-secondary px-4 py-2 text-small">
+            <button type="submit" className="btn btn-secondary shrink-0 px-4 py-2 text-small">
               <Search className="h-4 w-4" />
+              <span className="sr-only">جستجو</span>
             </button>
           </form>
           {sessionsLoading ? (
@@ -706,9 +712,9 @@ export default function ChatbotAdminPage() {
                   </Fragment>
                 ))}
               </Table>
-              <div className="mt-4 flex items-center justify-between text-caption text-text-muted">
-                <span>{sessionMeta.total} مکالمه</span>
-                <div className="flex gap-2">
+              <div className="mt-4 flex flex-col gap-3 text-caption text-text-muted sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-center sm:text-start">{sessionMeta.total} مکالمه</span>
+                <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
                     disabled={sessionMeta.current_page <= 1}
@@ -739,21 +745,21 @@ export default function ChatbotAdminPage() {
             مکالمات قدیمی‌تر از ۶۰ روز به‌صورت خودکار و کامل حذف می‌شوند.
           </p>
           <form
-            className="mb-4 flex gap-2"
+            className="mb-4 flex min-w-0 gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               void loadLogs(1, logQ);
             }}
           >
             <input
-              className="field-input flex-1"
+              className="field-input min-w-0 flex-1"
               placeholder="جستجو در سؤال، پاسخ یا session…"
               value={logQ}
               onChange={(e) => setLogQ(e.target.value)}
             />
-            <button type="submit" className="btn btn-secondary px-4 py-2 text-small">
+            <button type="submit" className="btn btn-secondary shrink-0 px-4 py-2 text-small">
               <Search className="h-4 w-4" />
-              جستجو
+              <span className="hidden min-[400px]:inline">جستجو</span>
             </button>
           </form>
 
@@ -867,9 +873,9 @@ export default function ChatbotAdminPage() {
                   </Fragment>
                 ))}
               </Table>
-              <div className="mt-4 flex items-center justify-between text-caption text-text-muted">
-                <span>{logMeta.total} مکالمه</span>
-                <div className="flex gap-2">
+              <div className="mt-4 flex flex-col gap-3 text-caption text-text-muted sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-center sm:text-start">{logMeta.total} مکالمه</span>
+                <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
                     disabled={logMeta.current_page <= 1}

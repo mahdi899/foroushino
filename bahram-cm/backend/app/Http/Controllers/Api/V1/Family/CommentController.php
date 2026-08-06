@@ -36,6 +36,7 @@ class CommentController extends Controller
         $query = FamilyComment::query()
             ->where('post_id', $post->id)
             ->where('family_id', $familyId)
+            ->whereNull('parent_id')
             ->where(function ($q) use ($userId) {
                 $q->where('status', FamilyCommentStatus::Approved->value)
                     ->orWhere(function ($mine) use ($userId) {
@@ -46,7 +47,14 @@ class CommentController extends Controller
                             ]);
                     });
             })
-            ->with(['user:id,name', 'user.profile'])
+            ->with([
+                'user:id,name',
+                'user.profile',
+                'replies' => fn ($q) => $q
+                    ->where('status', FamilyCommentStatus::Approved->value)
+                    ->with(['user:id,name', 'user.profile'])
+                    ->orderBy('id'),
+            ])
             ->orderByDesc('id');
 
         if ($cursor = $request->query('cursor')) {
