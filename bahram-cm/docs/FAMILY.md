@@ -221,7 +221,17 @@ cd bahram-family-manager
 
 جزئیات: [`../../bahram-family-manager/README.md`](../../bahram-family-manager/README.md).
 
-> این پروژه با `flutter create` اسکافولد نشده (Flutter SDK در محیط توسعه‌دهنده در دسترس نبود)؛ فایل‌های Android به‌صورت دستی نوشته شده‌اند. پیش از اولین اجرا مراحل «راه‌اندازی» در README همان پروژه (اجرای یک‌بارهٔ `flutter create` برای تولید gradle wrapper/`ios/`) و سپس `flutter analyze` + `flutter test` را انجام دهید.
+> این پروژه Flutter با `flutter create` اسکافولد نشده (Flutter SDK در محیط توسعه‌دهنده در دسترس نبود)؛ فایل‌های Android به‌صورت دستی نوشته شده‌اند. پیش از اولین اجرا مراحل «راه‌اندازی» در README همان پروژه (اجرای یک‌بارهٔ `flutter create` برای تولید gradle wrapper/`ios/`) و سپس `flutter analyze` + `flutter test` را انجام دهید.
+
+### اپ اندروید اعضا (TWA)
+
+برای توزیع APK همان UI کلاب (`rostami.club`)، پروژه **Trusted Web Activity** در [`../../bahram-club-twa/README.md`](../../bahram-club-twa/README.md) است — شِل اندروید سبک روی PWA موجود (بدون بازنویسی React).
+
+- `packageId`: `club.rostami.family`
+- Digital Asset Links: `https://rostami.club/.well-known/assetlinks.json` (route در Next.js + nginx)
+- ساخت: `bahram-club-twa/scripts/init-keystore.ps1` سپس `npm run update && npm run build`
+
+> **تفاوت با Manager App:** TWA همان تجربه **عضو** (فید خانواده) است؛ Flutter Manager برای **ادمین** است.
 
 ---
 
