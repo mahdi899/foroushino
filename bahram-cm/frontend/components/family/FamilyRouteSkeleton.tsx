@@ -2,7 +2,7 @@
 export function FamilyRouteSkeleton() {
   return (
     <div className="flex h-full min-h-0 flex-1 animate-pulse">
-      <aside aria-hidden className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col lg:flex">
+      <aside aria-hidden className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col md:flex">
         <div className="family-sidebar__inner">
           <div className="family-sidebar__toolbar">
             <div className="family-skeleton h-9 w-9 shrink-0 rounded-full opacity-60" />

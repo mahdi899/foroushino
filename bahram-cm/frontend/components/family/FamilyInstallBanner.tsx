@@ -29,12 +29,17 @@ export function FamilyInstallPromoInline({
 
   if (pwa.isInstalled || !pwa.showMidFeedPromos) return null;
 
+  const fallbackHint =
+    !pwa.canPrompt && pwa.hintKind ? getFamilyPwaInstallHintText(pwa.hintKind) : null;
+
   const handleInstall = async () => {
     familyHaptic('medium');
     const outcome = await promptFamilyPwaInstall();
     if (outcome === 'accepted') return;
     if (outcome === 'unavailable') {
-      setHint(getFamilyPwaInstallHintText(pwa.hintKind) || getFamilyPwaInstallHintText('android-manual'));
+      setHint(
+        getFamilyPwaInstallHintText(pwa.hintKind) || getFamilyPwaInstallHintText('android-manual'),
+      );
     }
   };
 
@@ -43,11 +48,13 @@ export function FamilyInstallPromoInline({
       <div className="family-install-promo__body">
         <p className="family-install-promo__title">خانواده همیشه کنارته</p>
         <p className="family-install-promo__sub">برای دسترسی سریع‌تر، اپ خانواده را نصب کن.</p>
-        {hint ? <p className="family-install-promo__hint">{hint}</p> : null}
+        {hint || fallbackHint ? (
+          <p className="family-install-promo__hint">{hint ?? fallbackHint}</p>
+        ) : null}
         <div className="family-install-promo__actions">
           <button type="button" className="family-install-promo__cta" onClick={() => void handleInstall()}>
             <Download size={14} aria-hidden />
-            نصب اپ
+            {pwa.canPrompt ? 'نصب اپ' : pwa.isIos ? 'راهنمای نصب' : 'نصب اپ'}
           </button>
           <button
             type="button"

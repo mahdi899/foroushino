@@ -56,6 +56,12 @@ export async function unregisterBahramServiceWorkers(): Promise<void> {
 export const DEV_SERVICE_WORKER_CLEANUP_SCRIPT = `(function(){if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})});if('caches'in window){caches.keys().then(function(k){k.forEach(function(x){if(x.indexOf('bahram-')===0)caches.delete(x)})})}})();`;
 
 /**
+ * Capture `beforeinstallprompt` before React hydrates — prevents losing the event.
+ * Stored on `window.__familyDeferredInstall` for `bootstrapFamilyPwaInstall()`.
+ */
+export const FAMILY_PWA_EARLY_BOOT_SCRIPT = `(function(){if(typeof window==='undefined')return;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__familyDeferredInstall=e});window.addEventListener('appinstalled',function(){try{localStorage.setItem('family-pwa-installed','1')}catch(_){}});})();`;
+
+/**
  * rostami.club apex must never keep `sw-site` (scope `/`). Older builds registered
  * it on the club host and intercepts `/` with marketing-page fallbacks — breaks Family PWA.
  */

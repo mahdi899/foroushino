@@ -23,6 +23,7 @@ export function GET(request: NextRequest) {
   const manifestUrl = `${protocol}://${hostHeader}/family-manifest.webmanifest`;
 
   const manifest = {
+    id: isClubApex ? '/' : '/family',
     name: 'خانواده',
     short_name: 'خانواده',
     description: 'فضای نزدیک داداش بهرام — پست، صوت، ویدیو و گفتگو',

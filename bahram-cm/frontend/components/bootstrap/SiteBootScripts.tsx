@@ -16,12 +16,15 @@ export function SiteBootScripts({
   themeHtml,
   devCleanupHtml = null,
   familyHostCleanupHtml = null,
+  familyPwaBootHtml = null,
   chunkRecoveryHtml = null,
 }: {
   themeHtml: string;
   devCleanupHtml?: string | null;
   /** Production club apex — strip mistaken `sw-site` before React boots. */
   familyHostCleanupHtml?: string | null;
+  /** Club / family host — capture install prompt before React hydrates. */
+  familyPwaBootHtml?: string | null;
   /** Production — auto-reload once after deploy chunk mismatch. */
   chunkRecoveryHtml?: string | null;
 }) {
@@ -45,6 +48,12 @@ export function SiteBootScripts({
         <script
           id="bahram-family-host-sw-cleanup"
           dangerouslySetInnerHTML={{ __html: familyHostCleanupHtml }}
+        />
+      ) : null}
+      {familyPwaBootHtml ? (
+        <script
+          id="bahram-family-pwa-boot"
+          dangerouslySetInnerHTML={{ __html: familyPwaBootHtml }}
         />
       ) : null}
       {devCleanupHtml ? (

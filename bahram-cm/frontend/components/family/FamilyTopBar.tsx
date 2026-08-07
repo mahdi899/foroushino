@@ -191,7 +191,7 @@ export function FamilyTopBar({
                   </button>
                 ) : null}
                 <FamilyMenuButton
-                  className="lg:hidden"
+                  className="md:hidden"
                   isLoggedIn={isLoggedIn}
                   needsName={needsName}
                   initialFirstName={initialFirstName}

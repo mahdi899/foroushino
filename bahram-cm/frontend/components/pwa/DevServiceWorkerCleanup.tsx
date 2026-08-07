@@ -1,11 +1,19 @@
 'use client';
 
 import { useLayoutEffect } from 'react';
-import { unregisterBahramServiceWorkers } from '@/lib/pwa/unregisterBahramServiceWorkers';
+import { isFamilyHost } from '@/lib/domains';
+import {
+  unregisterBahramServiceWorkers,
+  unregisterSiteServiceWorker,
+} from '@/lib/pwa/unregisterBahramServiceWorkers';
 
 /** Unregister stale PWA workers in local dev (avoids Turbopack chunk errors). */
 export function DevServiceWorkerCleanup() {
   useLayoutEffect(() => {
+    if (isFamilyHost(window.location.hostname)) {
+      void unregisterSiteServiceWorker();
+      return;
+    }
     void unregisterBahramServiceWorkers();
   }, []);
 

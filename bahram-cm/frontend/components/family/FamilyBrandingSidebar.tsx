@@ -76,7 +76,7 @@ export function FamilyBrandingSidebar({
 
   return (
     <>
-      <aside className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col overflow-hidden lg:flex">
+      <aside className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col overflow-hidden md:flex">
         <div className="family-sidebar__inner">
           <nav className="family-sidebar__toolbar" aria-label="میانبرهای خانواده">
             <FamilyBackButton

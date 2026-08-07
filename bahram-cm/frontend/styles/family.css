@@ -288,7 +288,7 @@ html[data-theme='dark'] .family-app .family-app__frame {
     0 16px 48px rgba(0, 0, 0, 0.38);
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .family-app[data-family-theme='dark'] .family-app__frame,
   html[data-theme='dark'] .family-app .family-app__frame {
     box-shadow:
@@ -582,6 +582,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 .family-app__frame {
   height: 100dvh;
   max-height: 100dvh;
+  min-height: 0;
   flex-shrink: 0;
   background: transparent;
   border: 0.5px solid var(--family-tg-header-border);
@@ -593,19 +594,15 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 
 @media (min-width: 640px) {
   .family-app__frame {
+    height: 98dvh;
+    max-height: 98dvh;
     margin-inline: auto;
     border-radius: 1.125rem;
+    max-width: min(680px, calc(100% - 2rem));
   }
 }
 
-/* تبلت: ستون باریک‌تر وسط صفحه */
-@media (min-width: 640px) and (max-width: 1023.98px) {
-  .family-app__frame {
-    max-width: min(460px, calc(100% - 2.5rem));
-  }
-}
-
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .family-app__frame {
     max-width: min(1280px, calc(100% - 2rem));
     border-radius: 1.25rem;
@@ -623,6 +620,15 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   background-color: var(--family-chat-bg);
   background-image: none;
   color: var(--family-text);
+}
+
+@media (min-width: 640px) {
+  .family-app__canvas {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+  }
 }
 
 .family-app__canvas::before {
@@ -2714,29 +2720,31 @@ html[data-theme='dark'] .family-app .family-post-bubble {
 @keyframes family-important-border-pulse {
   0%,
   100% {
-    border-color: color-mix(in oklab, var(--family-bubble-important-accent) 65%, transparent);
+    border-color: var(--family-bubble-channel-border);
+    border-inline-start-color: color-mix(in oklab, var(--family-bubble-important-accent) 72%, transparent);
     box-shadow:
-      inset 2.5px 0 0 color-mix(in oklab, var(--family-bubble-important-accent) 88%, transparent),
-      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 18%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 14%, transparent),
       var(--family-bubble-shadow);
   }
   50% {
-    border-color: var(--family-bubble-important-accent);
+    border-color: color-mix(in oklab, var(--family-bubble-important-accent) 28%, var(--family-bubble-channel-border));
+    border-inline-start-color: var(--family-bubble-important-accent);
     box-shadow:
-      inset 2.5px 0 0 var(--family-bubble-important-accent),
-      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 34%, transparent),
-      0 0 0 3px color-mix(in oklab, var(--family-bubble-important-accent) 22%, transparent),
-      0 0 14px color-mix(in oklab, var(--family-bubble-important-accent) 26%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 28%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--family-bubble-important-accent) 16%, transparent),
+      0 0 12px color-mix(in oklab, var(--family-bubble-important-accent) 20%, transparent),
       var(--family-bubble-shadow);
   }
 }
 
 .family-post-bubble--important {
-  border: 1.5px solid var(--family-bubble-important-accent);
+  border: 0.5px solid var(--family-bubble-channel-border);
+  border-inline-start-width: 3px;
+  border-inline-start-style: solid;
+  border-inline-start-color: var(--family-bubble-important-accent);
   background: var(--family-bubble-important-bg);
   box-shadow:
-    inset 2.5px 0 0 var(--family-bubble-important-accent),
-    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 22%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 18%, transparent),
     var(--family-bubble-shadow);
   animation: family-important-border-pulse 2.6s ease-in-out infinite;
   transition: transform 200ms var(--family-tg-spring);

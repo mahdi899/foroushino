@@ -35,6 +35,7 @@ import { DevServiceWorkerCleanup } from "@/components/pwa/DevServiceWorkerCleanu
 import {
   DEV_SERVICE_WORKER_CLEANUP_SCRIPT,
   FAMILY_HOST_SITE_SW_CLEANUP_SCRIPT,
+  FAMILY_PWA_EARLY_BOOT_SCRIPT,
 } from "@/lib/pwa/unregisterBahramServiceWorkers";
 import { CHUNK_LOAD_RECOVERY_SCRIPT } from "@/lib/pwa/chunkLoadRecovery";
 import {
@@ -113,12 +114,13 @@ export default async function RootLayout({
         <SiteBootScripts
           themeHtml={siteThemeBootScript()}
           familyHostCleanupHtml={
-            onFamilyHost && process.env.NODE_ENV === "production"
-              ? FAMILY_HOST_SITE_SW_CLEANUP_SCRIPT
-              : null
+            onFamilyHost ? FAMILY_HOST_SITE_SW_CLEANUP_SCRIPT : null
           }
+          familyPwaBootHtml={onFamilyHost ? FAMILY_PWA_EARLY_BOOT_SCRIPT : null}
           devCleanupHtml={
-            process.env.NODE_ENV === "development" ? DEV_SERVICE_WORKER_CLEANUP_SCRIPT : null
+            process.env.NODE_ENV === "development" && !onFamilyHost
+              ? DEV_SERVICE_WORKER_CLEANUP_SCRIPT
+              : null
           }
           chunkRecoveryHtml={
             process.env.NODE_ENV === "production" ? CHUNK_LOAD_RECOVERY_SCRIPT : null

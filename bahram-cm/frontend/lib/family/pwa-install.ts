@@ -9,6 +9,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { ensureFamilyServiceWorkerRegistered } from '@/lib/family/pwa-service-worker';
 
 export type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -36,6 +37,38 @@ let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let installed = false;
 let bootstrapped = false;
 const listeners = new Set<Listener>();
+
+type FamilyEarlyWindow = Window & {
+  __familyDeferredInstall?: BeforeInstallPromptEvent | null;
+};
+
+function absorbEarlyDeferredPrompt(onBeforeInstall: (event: Event) => void): void {
+  const early = (window as FamilyEarlyWindow).__familyDeferredInstall;
+  if (early) {
+    (window as FamilyEarlyWindow).__familyDeferredInstall = null;
+    onBeforeInstall(early);
+  }
+}
+
+function waitForInstallPrompt(timeoutMs: number): Promise<void> {
+  if (deferredPrompt) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => {
+      listeners.delete(onMaybeReady);
+      resolve();
+    }, timeoutMs);
+
+    const onMaybeReady = () => {
+      if (!deferredPrompt) return;
+      window.clearTimeout(timer);
+      listeners.delete(onMaybeReady);
+      resolve();
+    };
+
+    listeners.add(onMaybeReady);
+  });
+}
 
 function notify() {
   listeners.forEach((listener) => listener());
@@ -152,6 +185,7 @@ export function bootstrapFamilyPwaInstall(): void {
 
   window.addEventListener('beforeinstallprompt', onBeforeInstall);
   window.addEventListener('appinstalled', onInstalled);
+  absorbEarlyDeferredPrompt(onBeforeInstall);
   for (const mode of INSTALLED_DISPLAY_MODES) {
     try {
       window.matchMedia(`(display-mode: ${mode})`).addEventListener('change', onDisplayMode);
@@ -161,6 +195,10 @@ export function bootstrapFamilyPwaInstall(): void {
   }
 
   void detectInstalledRelatedApps();
+  void ensureFamilyServiceWorkerRegistered().then(() => {
+    absorbEarlyDeferredPrompt(onBeforeInstall);
+    if (deferredPrompt) notify();
+  });
 }
 
 export function subscribeFamilyPwaInstall(listener: Listener): () => void {
@@ -242,9 +280,22 @@ export function getFamilyPwaInstallSnapshot(): FamilyPwaInstallSnapshot {
 
 export async function promptFamilyPwaInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
   bootstrapFamilyPwaInstall();
-  if (installed || readPersistedInstalled()) {
+  if (readStandalone()) {
     markInstalled();
     return 'accepted';
+  }
+  if (readPersistedInstalled()) {
+    try {
+      window.localStorage.removeItem(INSTALLED_KEY);
+    } catch {
+      /* ignore */
+    }
+    installed = false;
+  }
+
+  if (!deferredPrompt) {
+    await ensureFamilyServiceWorkerRegistered();
+    await waitForInstallPrompt(2500);
   }
   if (!deferredPrompt) return 'unavailable';
 
@@ -302,4 +353,8 @@ export function useFamilyPwaInstall(): FamilyPwaInstallSnapshot {
     getFamilyPwaInstallSnapshot,
     () => SSR_SNAPSHOT,
   );
+}
+
+if (typeof window !== 'undefined') {
+  bootstrapFamilyPwaInstall();
 }

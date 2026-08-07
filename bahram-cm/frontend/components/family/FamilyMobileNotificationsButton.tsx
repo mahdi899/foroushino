@@ -24,7 +24,7 @@ export function FamilyMobileNotificationsButton({
       aria-label={active ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
       title={active ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
       className={cn(
-        'family-mobile-notifications-btn fixed start-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 lg:hidden',
+        'family-mobile-notifications-btn fixed start-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 md:hidden',
         active && 'family-mobile-notifications-btn--active',
       )}
     >

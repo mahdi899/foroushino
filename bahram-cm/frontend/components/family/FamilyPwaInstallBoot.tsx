@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { bootstrapFamilyPwaInstall } from '@/lib/family/pwa-install';
+import { ensureFamilyServiceWorkerRegistered } from '@/lib/family/pwa-service-worker';
 import { enableFamilyDailyPush, isFamilyPwaStandalone } from '@/lib/family/pwa-push';
 
 /**
@@ -9,8 +10,9 @@ import { enableFamilyDailyPush, isFamilyPwaStandalone } from '@/lib/family/pwa-p
  * Also silently re-syncs Web Push subscription when permission is already granted.
  */
 export function FamilyPwaInstallBoot() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     bootstrapFamilyPwaInstall();
+    void ensureFamilyServiceWorkerRegistered();
 
     if (!isFamilyPwaStandalone()) return;
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;

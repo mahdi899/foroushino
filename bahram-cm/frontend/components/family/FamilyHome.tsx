@@ -111,7 +111,7 @@ export function FamilyHome({
   const feed = (
     <>
       {!overlayOpen ? (
-        <div className="lg:hidden">
+        <div className="md:hidden">
           <FamilyTopBar
             memberCount={resolvedMemberCount}
             initialBranding={initialBranding}

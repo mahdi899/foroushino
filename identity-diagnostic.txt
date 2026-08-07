@@ -1,9 +1,0 @@
-1048	1	draft	NULL
-1050	2	under_review	2026-08-02 03:06:51
-1050	national_card_front	identity-verifications/699d7a2b-56c4-4e78-924e-62f820cca847/f0f5eb63-753e-48fd-8a7a-4d5e9ae21628/national_card_front.jpg	2026-08-02 03:06:51
-1050	selfie_video	identity-verifications/699d7a2b-56c4-4e78-924e-62f820cca847/f0f5eb63-753e-48fd-8a7a-4d5e9ae21628/selfie_video.webm	2026-08-02 03:06:51
-
-
-FILE CHECKS:
-2026-08-02 03:06:51 -> MISSING
-2026-08-02 03:06:51 -> MISSING
