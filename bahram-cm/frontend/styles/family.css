@@ -119,8 +119,8 @@ html[data-family-host='1'] body {
   --family-tg-pattern-url: var(--family-chat-pattern);
   --family-tg-pattern-size: 420px;
   --family-tg-pattern-opacity: 0.3;
-  --family-tg-pattern-blur: 0.5px;
-  --family-feed-extra-blur: 18px;
+  --family-tg-pattern-blur: 2.5px;
+  --family-feed-extra-blur: 28px;
   --family-tg-glass-blur: none;
   --family-tg-compose-bg: #f7f7f7;
   --family-tg-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -254,8 +254,8 @@ html[data-theme='dark'] .family-app {
   --family-tg-pattern-url: var(--family-chat-pattern);
   --family-tg-pattern-size: 420px;
   --family-tg-pattern-opacity: 0.3;
-  --family-tg-pattern-blur: 0.5px;
-  --family-feed-extra-blur: 18px;
+  --family-tg-pattern-blur: 2.5px;
+  --family-feed-extra-blur: 28px;
   --family-tg-glass-blur: none;
   --family-tg-compose-bg: #17212b;
   --family-tg-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -347,8 +347,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  backdrop-filter: blur(var(--family-feed-extra-blur));
-  -webkit-backdrop-filter: blur(var(--family-feed-extra-blur));
+  backdrop-filter: blur(var(--family-feed-extra-blur)) saturate(1.1);
+  -webkit-backdrop-filter: blur(var(--family-feed-extra-blur)) saturate(1.1);
 }
 
 .family-feed-wallpaper {
@@ -2582,10 +2582,6 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
     row-gap: 0.3125rem;
     margin-top: 0.25rem;
   }
-
-  .family-post-bubble__meta-row {
-    max-width: min(48%, 9.75rem);
-  }
 }
 
 @media (min-width: 640px) {
@@ -2975,9 +2971,9 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
 
 .family-post-bubble__foot-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
   column-gap: 0.5rem;
   row-gap: 0.375rem;
   margin-top: 0.3125rem;
@@ -2996,7 +2992,7 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
 .family-post-bubble__reactions {
   display: flex;
   min-width: 0;
-  flex: 1 1 11rem;
+  flex: 1 1 auto;
   align-items: center;
   overflow: visible;
   min-height: 1.5rem;
@@ -3019,23 +3015,25 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
 }
 
 .family-post-bubble__meta-row {
-  display: inline-flex;
-  max-width: min(42%, 10.5rem);
-  flex: 0 1 auto;
+  display: flex;
+  flex: 0 0 auto;
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 0.3125rem;
   margin-inline-start: auto;
   overflow: hidden;
+  min-height: 1.5rem;
   font-size: 0.6875rem;
   line-height: 1.125rem;
   color: var(--family-tg-meta);
+  white-space: nowrap;
 }
 
 .family-post-bubble__meta-caption,
 .family-post-bubble__meta-author,
-.family-post-bubble__meta-time {
+.family-post-bubble__meta-time,
+.family-post-bubble__views {
   color: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -3045,9 +3043,6 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
   display: inline-flex;
   align-items: center;
   gap: 0.125rem;
-  color: inherit;
-  font-size: inherit;
-  line-height: 1;
 }
 
 .family-post-bubble__views-icon {
@@ -3055,6 +3050,7 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
   width: 0.75rem;
   height: 0.75rem;
   flex-shrink: 0;
+  align-self: center;
   opacity: 0.7;
 }
 

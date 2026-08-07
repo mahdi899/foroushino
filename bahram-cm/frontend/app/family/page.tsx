@@ -83,6 +83,9 @@ export default async function FamilyPage({
   const sp = await searchParams;
   const user = await getCurrentStudent();
 
+  const rawFocusPost = oneParam(sp, 'post');
+  const focusPostId = rawFocusPost && Number.isFinite(Number(rawFocusPost)) ? Number(rawFocusPost) : undefined;
+
   if (!user) {
     const [initialFeed, me] = await Promise.all([loadInitialFeed(), loadMe()]);
     const initialBranding = brandingFromMeAndFeed(me, initialFeed);
@@ -97,6 +100,7 @@ export default async function FamilyPage({
         initialBranding={initialBranding}
         initialMemberCount={initialMemberCount}
         viewerKey="guest"
+        focusPostId={focusPostId}
       />
     );
   }
@@ -117,8 +121,6 @@ export default async function FamilyPage({
     user && me.is_member && (me.needs_name ?? needsFamilyDisplayName(user)),
   );
   const nameParts = getStudentNameParts(user);
-  const rawFocusPost = oneParam(sp, 'post');
-  const focusPostId = rawFocusPost && Number.isFinite(Number(rawFocusPost)) ? Number(rawFocusPost) : undefined;
 
   if (!me.is_member) {
     return (
@@ -132,6 +134,7 @@ export default async function FamilyPage({
         initialBranding={initialBranding}
         initialMemberCount={initialMemberCount}
         viewerKey={viewerKey}
+        focusPostId={focusPostId}
       />
     );
   }

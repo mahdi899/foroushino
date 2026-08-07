@@ -34,7 +34,7 @@ function ReactionButton({
   compact = false,
   menuItem = false,
   pop = false,
-  animated = false,
+  playKey = 0,
   buttonRef,
   onClick,
 }: {
@@ -47,12 +47,8 @@ function ReactionButton({
   menuItem?: boolean;
   /** Brief, simple scale-in when this chip just appeared in the bar — no flight/impact. */
   pop?: boolean;
-  /**
-   * Load the Lottie icon. Off for feed chips: every mounted chip is a separate
-   * lottie-web SVG animation rebuilt on each virtual-row remount, which dominated
-   * scroll cost on low-end phones. Only the picker and a just-tapped chip animate.
-   */
-  animated?: boolean;
+  /** Increment on user tap to play the Noto Lottie once (0 = static unicode only). */
+  playKey?: number;
   buttonRef?: (el: HTMLButtonElement | null) => void;
   onClick: (source?: HTMLButtonElement) => void;
 }) {
@@ -81,7 +77,8 @@ function ReactionButton({
         <FamilyReactionLottie
           type={type}
           size={compact ? 22 : 16}
-          mode={animated ? 'inline' : 'static'}
+          mode={playKey > 0 ? 'reaction' : 'static'}
+          playKey={playKey}
         />
         {count > 0 && (
           <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
@@ -164,6 +161,8 @@ export const ReactionBar = forwardRef<
   const [pickerSession, setPickerSession] = useState(0);
   /** Chip currently playing its short pop-in — set right when a new reaction appears in the bar. */
   const [popType, setPopType] = useState<FamilyReactionType | null>(null);
+  /** Per-type play counter — Lottie loads and plays only after user taps that reaction. */
+  const [lottiePlayKeys, setLottiePlayKeys] = useState<Partial<Record<FamilyReactionType, number>>>({});
   const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
@@ -399,12 +398,22 @@ export const ReactionBar = forwardRef<
     [reduceMotion],
   );
 
+  const bumpReactionLottie = useCallback(
+    (type: FamilyReactionType) => {
+      if (reduceMotion) return;
+      setLottiePlayKeys((keys) => ({ ...keys, [type]: (keys[type] ?? 0) + 1 }));
+    },
+    [reduceMotion],
+  );
+
   const handleBarReaction = (type: FamilyReactionType) => {
     if (readOnly) {
       onLockedInteract?.();
       return;
     }
     if (isReactionBusy()) return;
+    const wasActive = activeRef.current === type;
+    if (!wasActive) bumpReactionLottie(type);
     void toggle(type);
     familyHaptic('light');
   };
@@ -429,6 +438,7 @@ export const ReactionBar = forwardRef<
       return;
     }
 
+    bumpReactionLottie(type);
     const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type);
     void persistReactionChange(type, false, prevActive, prevCounts);
     unlockReactionCommit();
@@ -477,6 +487,7 @@ export const ReactionBar = forwardRef<
         return;
       }
 
+      bumpReactionLottie(type);
       const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type);
       void persistReactionChange(type, false, prevActive, prevCounts);
       if (isNewSlot) playChipPop(type);
@@ -535,7 +546,7 @@ export const ReactionBar = forwardRef<
               disabled={isReactionBusy()}
               compact
               menuItem
-              animated
+              playKey={lottiePlayKeys[r.type] ?? 0}
               onClick={() => handlePick(r.type)}
             />
           ))}
@@ -556,7 +567,7 @@ export const ReactionBar = forwardRef<
             active={active === r.type}
             disabled={isReactionBusy()}
             pop={popType === r.type}
-            animated={popType === r.type}
+            playKey={lottiePlayKeys[r.type] ?? 0}
             buttonRef={(el) => {
               reactionBtnRefs.current[r.type] = el;
             }}

@@ -7,9 +7,11 @@ import {
   useMemo,
   useRef,
   useState,
+  Suspense,
   type KeyboardEvent as ReactKeyboardEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
 import { FeedJumpToLatest, type FeedJumpToLatestHandle } from '@/components/family/FeedJumpToLatest';
@@ -89,6 +91,7 @@ import {
   warmupFamilyPostsWindowDirectional,
 } from '@/lib/family/feedMediaWarmup';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
+import { parseFamilyPostId } from '@/lib/family/postLink';
 
 const FAMILY_FEED_USER_SCROLL_GUARD_MS = 600;
 
@@ -173,7 +176,36 @@ function buildFeedItems(
   return items;
 }
 
-export function FeedView({
+export function FeedView(props: FeedViewProps) {
+  return (
+    <Suspense fallback={null}>
+      <FeedViewInner {...props} />
+    </Suspense>
+  );
+}
+
+type FeedViewProps = {
+  memberCount?: number;
+  onMemberCountChange?: (memberCount?: number) => void;
+  previewMode?: 'guest' | 'join' | null;
+  showPinned?: boolean;
+  initialFeed?: FamilyFeedResponse | null;
+  initialBranding?: FamilyBranding;
+  viewerKey?: string | number;
+  commentsTarget?: CommentsTarget | null;
+  onOpenComments?: (target: CommentsTarget) => void;
+  onCloseComments?: () => void;
+  onRegisterScrollToPost?: (scrollToPost: ((postId: number) => Promise<void>) | null) => void;
+  notificationsOpen?: boolean;
+  onOpenNotifications?: () => void;
+  onCloseNotifications?: () => void;
+  focusPostId?: number;
+  needsName?: boolean;
+  initialFirstName?: string;
+  initialLastName?: string;
+};
+
+function FeedViewInner({
   memberCount,
   onMemberCountChange,
   previewMode = null,
@@ -192,27 +224,8 @@ export function FeedView({
   needsName = false,
   initialFirstName = '',
   initialLastName = '',
-}: {
-  memberCount?: number;
-  onMemberCountChange?: (memberCount?: number) => void;
-  previewMode?: 'guest' | 'join' | null;
-  showPinned?: boolean;
-  initialFeed?: FamilyFeedResponse | null;
-  initialBranding?: FamilyBranding;
-  /** Isolates SWR feed cache per viewer so login switches cannot leak `responded`. */
-  viewerKey?: string | number;
-  commentsTarget?: CommentsTarget | null;
-  onOpenComments?: (target: CommentsTarget) => void;
-  onCloseComments?: () => void;
-  onRegisterScrollToPost?: (scrollToPost: ((postId: number) => Promise<void>) | null) => void;
-  notificationsOpen?: boolean;
-  onOpenNotifications?: () => void;
-  onCloseNotifications?: () => void;
-  focusPostId?: number;
-  needsName?: boolean;
-  initialFirstName?: string;
-  initialLastName?: string;
-}) {
+}: FeedViewProps) {
+  const searchParams = useSearchParams();
   const isPreview = Boolean(previewMode);
   const pageVisible = usePageVisible();
   useFamilyDebugRender(isPreview ? 'FeedView:preview' : 'FeedView');
@@ -1245,14 +1258,21 @@ export function FeedView({
   }, [onRegisterScrollToPost, scrollToPost]);
 
   const focusedPostRef = useRef<number | null>(null);
+  const deepLinkPostId = useMemo(() => {
+    const fromQuery = parseFamilyPostId(searchParams.get('post'));
+    if (fromQuery) return fromQuery;
+    if (focusPostId && focusPostId > 0) return focusPostId;
+    return null;
+  }, [focusPostId, searchParams]);
+
   useEffect(() => {
-    if (!focusPostId || focusPostId <= 0 || isPreview) return;
-    if (focusedPostRef.current === focusPostId) return;
+    if (!deepLinkPostId) return;
+    if (focusedPostRef.current === deepLinkPostId) return;
     if (isLoading && posts.length === 0) return;
 
-    focusedPostRef.current = focusPostId;
-    void scrollToPost(focusPostId, { behavior: 'auto', highlight: true });
-  }, [focusPostId, isLoading, isPreview, posts.length, scrollToPost]);
+    focusedPostRef.current = deepLinkPostId;
+    void scrollToPost(deepLinkPostId, { behavior: 'auto', highlight: true });
+  }, [deepLinkPostId, isLoading, posts.length, scrollToPost]);
 
   useEffect(() => {
     if (isValidating) return;

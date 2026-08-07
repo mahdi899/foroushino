@@ -4,6 +4,7 @@ import {
   isFamilyHost,
   isLoopbackOrigin,
 } from '@/lib/domains';
+import { parseFamilyPostId } from '@/lib/family/postLink';
 
 function isClubNotificationHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
@@ -103,9 +104,5 @@ export function extractFamilyNotificationPostId(link: string | null | undefined)
 
   const query = href.includes('?') ? href.slice(href.indexOf('?') + 1) : '';
   const params = new URLSearchParams(query);
-  const raw = params.get('post');
-  if (!raw) return null;
-
-  const postId = Number(raw);
-  return Number.isFinite(postId) && postId > 0 ? postId : null;
+  return parseFamilyPostId(params.get('post'));
 }
