@@ -283,10 +283,21 @@ export function CommentsPanel({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
   const composerFocusedRef = useRef(false);
+  /** Only auto-pin to the latest comment once per post open — not after loading older pages. */
+  const initialPinnedForPostRef = useRef<number | null>(null);
+  /** Snapshot before older comments prepend — restore so the list doesn't jump to the tip. */
+  const pendingScrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
+  const loadingMoreRef = useRef(false);
+  const orderedLengthRef = useRef(0);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
 
   const orderedComments = useMemo(() => [...comments].reverse(), [comments]);
+  orderedLengthRef.current = orderedComments.length;
+
+  useEffect(() => {
+    loadingMoreRef.current = loadingMore;
+  }, [loadingMore]);
 
   const pinLatestComment = useCallback((behavior: ScrollBehavior = 'auto') => {
     const list = listRef.current;
@@ -308,6 +319,35 @@ export function CommentsPanel({
     },
     [pinLatestComment],
   );
+
+  const handleLoadOlder = useCallback(async () => {
+    const list = listRef.current;
+    const lengthBefore = orderedLengthRef.current;
+    if (list) {
+      pendingScrollRestoreRef.current = {
+        height: list.scrollHeight,
+        top: list.scrollTop,
+      };
+    }
+    try {
+      await loadMore();
+    } catch {
+      pendingScrollRestoreRef.current = null;
+      return;
+    }
+    // If nothing was prepended (no cursor / empty page), drop the snapshot so a
+    // later length change (e.g. sending a comment) doesn't apply a stale restore.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (
+          pendingScrollRestoreRef.current &&
+          orderedLengthRef.current === lengthBefore
+        ) {
+          pendingScrollRestoreRef.current = null;
+        }
+      });
+    });
+  }, [loadMore]);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -337,6 +377,8 @@ export function CommentsPanel({
     setJustSent(false);
     setJustSentWasReply(false);
     setReplyTarget(null);
+    initialPinnedForPostRef.current = null;
+    pendingScrollRestoreRef.current = null;
   }, [postId]);
 
   useLayoutEffect(() => {
@@ -345,6 +387,19 @@ export function CommentsPanel({
 
   useLayoutEffect(() => {
     if (isLoading || orderedComments.length === 0) return;
+
+    const list = listRef.current;
+    const pending = pendingScrollRestoreRef.current;
+    if (pending && list) {
+      // Older comments prepend above the fold — keep the same messages under the viewport.
+      list.scrollTop = pending.top + (list.scrollHeight - pending.height);
+      pendingScrollRestoreRef.current = null;
+      return;
+    }
+
+    // Initial open only — loading older must not yank to the tip.
+    if (initialPinnedForPostRef.current === postId) return;
+    initialPinnedForPostRef.current = postId;
     scrollToLatest('auto');
     const frame = requestAnimationFrame(() => scrollToLatest('auto'));
     return () => cancelAnimationFrame(frame);
@@ -364,6 +419,10 @@ export function CommentsPanel({
     if (!list || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
       if (!composerFocusedRef.current) return;
+      if (loadingMoreRef.current || pendingScrollRestoreRef.current) return;
+      const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+      // Only stick while the user is already reading the tip (composer focused).
+      if (distanceFromBottom > 80) return;
       pinLatestComment('auto');
     });
     ro.observe(list);
@@ -523,7 +582,7 @@ export function CommentsPanel({
               <li className="flex justify-center py-2">
                 <button
                   type="button"
-                  onClick={() => void loadMore()}
+                  onClick={() => void handleLoadOlder()}
                   disabled={loadingMore}
                   aria-label={loadingMore ? 'در حال بارگذاری' : 'نظرات قدیمی‌تر'}
                   className="flex min-h-8 min-w-[7.5rem] items-center justify-center rounded-full border border-[var(--family-border-subtle)] px-4 py-1.5 text-xs text-bone/65 transition hover:bg-white/[0.04] disabled:opacity-50"

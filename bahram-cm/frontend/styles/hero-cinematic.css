@@ -299,6 +299,21 @@
   object-position: center bottom;
 }
 
+/* iPhone Safari / iOS WebKit only — square hero + cover crops shoulders on
+   tall portrait panels. Other mobile browsers keep `cover` above. */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 639px) {
+    .hero-light-section .hero-light-media--mobile {
+      background-color: #050a0b;
+    }
+
+    .hero-light-section .hero-light-grid-img--mobile {
+      object-fit: contain;
+      object-position: center top;
+    }
+  }
+}
+
 .hero-light-section .hero-light-grid-img--desktop {
   object-position: center center;
 }
