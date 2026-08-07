@@ -38,6 +38,7 @@ const POST_QUICK_REACT_BLOCK_SELECTOR = [
   '.family-reaction-add',
   '.family-post-bubble__meta-row',
   '.family-post-bubble__comment-zone',
+  '.family-reply-quote',
   '.family-action-glass',
   '.family-inline-card',
   '.family-voice',
@@ -154,6 +155,7 @@ function FeedPostCard({
   viewerKey,
   onGuestGate,
   onOpenComments,
+  onOpenReplyTarget,
   commentCount,
   setCommentCount,
   commentPreview,
@@ -175,6 +177,7 @@ function FeedPostCard({
     postId: number,
     handlers: { onCommentAdded: (comment: FamilyComment) => void },
   ) => void;
+  onOpenReplyTarget?: (target: { postId: number; commentId?: number | null }) => void;
   commentCount: number;
   setCommentCount: Dispatch<SetStateAction<number>>;
   setCommentPreview: Dispatch<SetStateAction<FamilyComment[]>>;
@@ -226,6 +229,26 @@ function FeedPostCard({
     setCommentPreview,
   ]);
 
+  const openReplyTarget = useCallback(() => {
+    const targetPostId = post.reply_context?.post_id;
+    if (!targetPostId || targetPostId <= 0) return;
+    if (previewMode) {
+      onGuestGate?.('comment');
+      return;
+    }
+    familyHaptic('light');
+    onOpenReplyTarget?.({
+      postId: targetPostId,
+      commentId: post.reply_context?.comment_id ?? null,
+    });
+  }, [
+    onGuestGate,
+    onOpenReplyTarget,
+    post.reply_context?.comment_id,
+    post.reply_context?.post_id,
+    previewMode,
+  ]);
+
   const handleBubbleDoubleClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (!canQuickReactFromTarget(event.target, event.currentTarget)) return;
@@ -271,6 +294,9 @@ function FeedPostCard({
             <ReplyContextBlock
               commentBody={post.reply_context.comment_body}
               userName={post.reply_context.user_name}
+              onNavigate={
+                post.reply_context.post_id && onOpenReplyTarget ? openReplyTarget : undefined
+              }
             />
           )}
           {renderPostBodyBlocks(blocks, post.id, post.author.name, true)}
@@ -347,6 +373,7 @@ export const PostCard = memo(function PostCard({
   viewerKey = 'anon',
   onGuestGate,
   onOpenComments,
+  onOpenReplyTarget,
   anchorId,
   animateEnter = false,
   guestBlurred = false,
@@ -365,6 +392,7 @@ export const PostCard = memo(function PostCard({
     postId: number,
     handlers: { onCommentAdded: (comment: FamilyComment) => void },
   ) => void;
+  onOpenReplyTarget?: (target: { postId: number; commentId?: number | null }) => void;
   anchorId?: string;
   animateEnter?: boolean;
   guestBlurred?: boolean;
@@ -396,6 +424,7 @@ export const PostCard = memo(function PostCard({
         viewerKey={viewerKey}
         onGuestGate={onGuestGate}
         onOpenComments={onOpenComments}
+        onOpenReplyTarget={onOpenReplyTarget}
         commentCount={commentCount}
         setCommentCount={setCommentCount}
         commentPreview={commentPreview}
@@ -436,6 +465,21 @@ export const PostCard = memo(function PostCard({
           <ReplyContextBlock
             commentBody={post.reply_context.comment_body}
             userName={post.reply_context.user_name}
+            onNavigate={
+              post.reply_context.post_id && onOpenReplyTarget
+                ? () => {
+                    if (previewMode) {
+                      onGuestGate?.('comment');
+                      return;
+                    }
+                    familyHaptic('light');
+                    onOpenReplyTarget({
+                      postId: post.reply_context!.post_id!,
+                      commentId: post.reply_context!.comment_id ?? null,
+                    });
+                  }
+                : undefined
+            }
           />
         )}
         {renderPostBodyBlocks(blocks, post.id, post.author.name, constrainedMedia)}

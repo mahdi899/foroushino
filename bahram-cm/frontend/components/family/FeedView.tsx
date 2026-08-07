@@ -20,7 +20,6 @@ import { GUEST_BLURRED_POST_COUNT, type FamilyGuestAction } from '@/lib/family/g
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
-import { FamilyFeedWallpaper } from '@/components/family/FamilyFeedWallpaper';
 import { VirtualFeedList, type VirtualFeedListHandle } from '@/components/family/VirtualFeedList';
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
@@ -113,6 +112,7 @@ const FeedCommentsPanel = dynamic(
 
 type CommentsTarget = {
   postId: number;
+  focusCommentId?: number | null;
   onCommentAdded: (comment: FamilyComment) => void;
 };
 
@@ -1223,6 +1223,20 @@ export function FeedView({
     [getScrollCtx, jumpToPost, loadMore],
   );
 
+  const openReplyTarget = useCallback(
+    (target: { postId: number; commentId?: number | null }) => {
+      void (async () => {
+        await scrollToPost(target.postId, { behavior: 'smooth', highlight: true });
+        openComments({
+          postId: target.postId,
+          focusCommentId: target.commentId ?? null,
+          onCommentAdded: () => {},
+        });
+      })();
+    },
+    [openComments, scrollToPost],
+  );
+
   useEffect(() => {
     onRegisterScrollToPost?.(scrollToPost);
     return () => onRegisterScrollToPost?.(null);
@@ -1814,6 +1828,7 @@ export function FeedView({
           onGuestGate={scrollToPreviewCta}
           animateEnter={animateEnter}
           onOpenComments={isPreview ? undefined : openPostComments}
+          onOpenReplyTarget={isPreview ? undefined : openReplyTarget}
           guestBlurred={guestBlurredPostIds.has(item.post.id)}
           onGuestUnlock={unlockGuestPost}
         />
@@ -1826,6 +1841,7 @@ export function FeedView({
       isPreview,
       isStaff,
       openPostComments,
+      openReplyTarget,
       previewMode,
       resolvedMemberCount,
       scrollToPreviewCta,
@@ -1890,7 +1906,6 @@ export function FeedView({
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <FamilyFeedWallpaper />
           {!isPreview && notificationsOpen ? (
             <div className="family-feed-overlay absolute inset-0 z-50 flex min-h-0 flex-col overflow-hidden">
               <FamilyNotificationsPanel
@@ -1904,6 +1919,7 @@ export function FeedView({
           {commentsTarget ? (
             <FeedCommentsPanel
               postId={commentsTarget.postId}
+              focusCommentId={commentsTarget.focusCommentId}
               onClose={closeComments}
               onCommentAdded={commentsTarget.onCommentAdded}
               className="flex min-h-0 flex-1 flex-col"
@@ -1933,7 +1949,7 @@ export function FeedView({
 
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
               {!feedReady ? (
-                <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-[color-mix(in_oklab,var(--family-chat-wallpaper-base)_72%,transparent)]" />
+                <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-transparent" />
               ) : null}
               <FamilyFeedScroll
                 ref={feedScrollRef}

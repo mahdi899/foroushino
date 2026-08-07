@@ -137,7 +137,12 @@ export interface FamilyPost {
   author: { name: string; avatar?: string | null };
   blocks: FamilyPostBlock[];
   actions: FamilyAction[];
-  reply_context?: { comment_body: string; user_name: string | null } | null;
+  reply_context?: {
+    comment_id?: number;
+    post_id?: number;
+    comment_body: string;
+    user_name: string | null;
+  } | null;
   stats: FamilyPostStats;
   user_reaction: FamilyReactionType | null;
   comment_preview?: FamilyComment[];

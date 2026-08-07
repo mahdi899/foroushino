@@ -20,6 +20,7 @@ type Mode = 'guest' | 'join' | 'member';
 
 type CommentsTarget = {
   postId: number;
+  focusCommentId?: number | null;
   onCommentAdded: (comment: FamilyComment) => void;
 };
 

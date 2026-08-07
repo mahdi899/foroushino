@@ -24,6 +24,8 @@ type CommentsPanelProps = {
    * drop the safe-area padding under the composer while the keyboard is open, so
    * the input sits flush above it instead of leaving a gap (Telegram-like). */
   keyboardInset?: number;
+  /** Scroll to / highlight this comment (root or nested reply) after load. */
+  focusCommentId?: number | null;
 };
 
 type ReplyTarget = {
@@ -71,15 +73,19 @@ function sortRepliesForDisplay(replies: FamilyComment[]): FamilyComment[] {
 function CommentReplyRow({
   reply,
   onReply,
+  highlighted = false,
 }: {
   reply: FamilyComment;
   onReply: () => void;
+  highlighted?: boolean;
 }) {
   return (
     <div
+      id={`family-comment-${reply.id}`}
       className={cn(
         'family-comment-reply',
         reply.is_bahram_reply && 'family-comment-reply--bahram',
+        highlighted && 'family-comment--highlight',
       )}
     >
       <CommentAvatar
@@ -128,10 +134,12 @@ function CommentRow({
   comment,
   avatarSize,
   onReply,
+  focusCommentId = null,
 }: {
   comment: FamilyComment;
   avatarSize: 'sm' | 'md';
   onReply: (target: ReplyTarget) => void;
+  focusCommentId?: number | null;
 }) {
   const [visibleCount, setVisibleCount] = useState(REPLY_PREVIEW_COUNT);
   const sortedReplies = useMemo(
@@ -140,6 +148,10 @@ function CommentRow({
   );
   const totalReplies = sortedReplies.length;
   const hasReplies = totalReplies > 0;
+  const focusIsNestedReply =
+    focusCommentId != null &&
+    focusCommentId !== comment.id &&
+    sortedReplies.some((reply) => reply.id === focusCommentId);
 
   // New thread → reset; if replies grow while already expanded, keep progress.
   useEffect(() => {
@@ -148,10 +160,11 @@ function CommentRow({
 
   useEffect(() => {
     setVisibleCount((prev) => {
+      if (focusIsNestedReply) return totalReplies;
       if (totalReplies <= REPLY_PREVIEW_COUNT) return Math.max(totalReplies, REPLY_PREVIEW_COUNT);
       return Math.min(Math.max(prev, REPLY_PREVIEW_COUNT), totalReplies);
     });
-  }, [totalReplies]);
+  }, [focusIsNestedReply, totalReplies]);
 
   const shownCount = Math.min(visibleCount, totalReplies);
   const visibleReplies = sortedReplies.slice(0, shownCount);
@@ -168,7 +181,7 @@ function CommentRow({
   };
 
   return (
-    <li className="py-1">
+    <li id={`family-comment-${comment.id}`} className="py-1">
       <div className="flex items-start gap-3">
         <CommentAvatar
           name={comment.user.name}
@@ -181,6 +194,7 @@ function CommentRow({
             'family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2',
             comment.is_important && 'family-comment-bubble--important',
             hasReplies && 'family-comment-bubble--threaded',
+            focusCommentId === comment.id && 'family-comment--highlight',
           )}
         >
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -221,6 +235,7 @@ function CommentRow({
                 <CommentReplyRow
                   key={reply.id}
                   reply={reply}
+                  highlighted={focusCommentId === reply.id}
                   onReply={() => startReply(reply, comment.id)}
                 />
               ))}
@@ -268,6 +283,7 @@ export function CommentsPanel({
   hideTitle = false,
   className,
   keyboardInset = 0,
+  focusCommentId = null,
 }: CommentsPanelProps) {
   useFamilyDebugRender(`CommentsPanel:${postId}`);
   const keyboardOpen = keyboardInset > 40;
@@ -287,6 +303,8 @@ export function CommentsPanel({
   const initialPinnedForPostRef = useRef<number | null>(null);
   /** Snapshot before older comments prepend — restore so the list doesn't jump to the tip. */
   const pendingScrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
+  const focusHandledRef = useRef<number | null>(null);
+  const focusLoadingRef = useRef(false);
   const loadingMoreRef = useRef(false);
   const orderedLengthRef = useRef(0);
   const isPage = variant === 'page';
@@ -379,7 +397,9 @@ export function CommentsPanel({
     setReplyTarget(null);
     initialPinnedForPostRef.current = null;
     pendingScrollRestoreRef.current = null;
-  }, [postId]);
+    focusHandledRef.current = null;
+    focusLoadingRef.current = false;
+  }, [postId, focusCommentId]);
 
   useLayoutEffect(() => {
     resizeTextarea();
@@ -397,13 +417,53 @@ export function CommentsPanel({
       return;
     }
 
+    // When focusing a specific comment, don't yank to the tip.
+    if (focusCommentId) {
+      initialPinnedForPostRef.current = postId;
+      return;
+    }
+
     // Initial open only — loading older must not yank to the tip.
     if (initialPinnedForPostRef.current === postId) return;
     initialPinnedForPostRef.current = postId;
     scrollToLatest('auto');
     const frame = requestAnimationFrame(() => scrollToLatest('auto'));
     return () => cancelAnimationFrame(frame);
-  }, [isLoading, orderedComments.length, postId, scrollToLatest]);
+  }, [focusCommentId, isLoading, orderedComments.length, postId, scrollToLatest]);
+
+  useEffect(() => {
+    if (!focusCommentId || focusCommentId <= 0 || isLoading) return;
+    if (focusHandledRef.current === focusCommentId) return;
+
+    const foundInComments = comments.some(
+      (comment) =>
+        comment.id === focusCommentId ||
+        (comment.replies ?? []).some((reply) => reply.id === focusCommentId),
+    );
+
+    if (!foundInComments) {
+      if (!hasMore || loadingMore || focusLoadingRef.current) return;
+      focusLoadingRef.current = true;
+      void loadMore().finally(() => {
+        focusLoadingRef.current = false;
+      });
+      return;
+    }
+
+    focusHandledRef.current = focusCommentId;
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const list = listRef.current;
+        const el = document.getElementById(`family-comment-${focusCommentId}`);
+        if (!list || !el || !list.contains(el)) return;
+        const listRect = list.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const nextTop = list.scrollTop + (elRect.top - listRect.top) - Math.max(24, list.clientHeight * 0.2);
+        list.scrollTop = Math.max(0, nextTop);
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [comments, focusCommentId, hasMore, isLoading, loadMore, loadingMore]);
 
   useLayoutEffect(() => {
     if (!justSent) return;
@@ -601,6 +661,7 @@ export function CommentsPanel({
                 comment={comment}
                 avatarSize={avatarSize}
                 onReply={beginReply}
+                focusCommentId={focusCommentId}
               />
             ))}
             <div

@@ -6,7 +6,7 @@ import { NowPlayingBar } from '@/components/family/NowPlayingBar';
 import { PinnedMessageBar } from '@/components/family/PinnedMessageBar';
 import { PinnedBarSkeleton } from '@/components/family/PinnedBarSkeleton';
 import { getPinnedPosts } from '@/lib/family/api';
-import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
+import { useFamilyMediaPlayerOptional } from '@/lib/family/FamilyMediaPlayerContext';
 import { familyPinnedSwr } from '@/lib/family/swr';
 
 type ChromePart = 'pinned' | 'now' | 'all';
@@ -24,7 +24,7 @@ export function FamilyFeedChrome({
   onScrollToPost?: (postId: number) => void;
 }) {
   const reduceMotion = useReducedMotion();
-  const { nowPlaying } = useFamilyMediaPlayer();
+  const { nowPlaying } = useFamilyMediaPlayerOptional() ?? { nowPlaying: null };
   const wantsPinned = parts === 'pinned' || parts === 'all';
   const wantsNow = parts === 'now' || parts === 'all';
 

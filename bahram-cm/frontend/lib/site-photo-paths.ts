@@ -10,6 +10,10 @@ export const sitePhotos = {
   heroBackground: siteStorageMedia('hero-background.webp'),
   /** گالری — background-mobile (مربع ۹۴۱px) */
   heroBackgroundMobile: siteStorageMedia('hero-background-mobile.webp'),
+  /** الگوی تکرارشونده پس‌زمینه خانواده — لایت و دارک (تلگرام‌وار) */
+  familyChatPattern: siteStorageMedia('family-chat-pattern.svg'),
+  /** @deprecated use familyChatPattern */
+  familyChatPatternDark: siteStorageMedia('family-chat-pattern.svg'),
   /** پس‌زمینه فید خانواده — الگوی تاریک (دارک) */
   familyChatWallpaperDark: siteStorageMedia('family-chat-wallpaper-dark.webp'),
   /** پس‌زمینه فید خانواده — الگوی روشن (لایت) */
