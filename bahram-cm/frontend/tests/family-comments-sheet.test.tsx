@@ -36,7 +36,7 @@ describe("CommentsSheet", () => {
     mockHook({ isLoading: true });
     render(<CommentsSheet postId={1} onClose={vi.fn()} />);
 
-    expect(screen.getByText("در حال بارگذاری…")).toBeInTheDocument();
+    expect(screen.getByLabelText("در حال بارگذاری")).toBeInTheDocument();
   });
 
   it("shows an empty state when there are no comments", () => {
@@ -69,7 +69,7 @@ describe("CommentsSheet", () => {
     fireEvent.change(textarea, { target: { value: "  یک نظر خوب  " } });
     fireEvent.click(screen.getByRole("button", { name: "ارسال" }));
 
-    await waitFor(() => expect(submit).toHaveBeenCalledWith("یک نظر خوب"));
+    await waitFor(() => expect(submit).toHaveBeenCalledWith("یک نظر خوب", null));
     await waitFor(() => expect(textarea).toHaveValue(""));
     expect(await screen.findByText(/نظر شما ثبت شد\./)).toBeInTheDocument();
   });

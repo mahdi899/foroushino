@@ -149,6 +149,7 @@ export default async function FamilyPage({
       initialMemberCount={initialMemberCount}
       viewerKey={viewerKey}
       focusPostId={focusPostId}
+      initialFamilyId={me.family_id}
     />
   );
 }

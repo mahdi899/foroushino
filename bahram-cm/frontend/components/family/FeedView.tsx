@@ -453,6 +453,8 @@ export function FeedView({
 
       if (isPreview) return;
 
+      if (event === 'comments_count') return;
+
       if (event === 'updated' || event === 'deleted' || event === 'archived') {
         void handleFeedModerationEvent(event, payload.post_id);
         return;

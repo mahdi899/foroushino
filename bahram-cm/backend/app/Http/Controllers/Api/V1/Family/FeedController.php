@@ -360,6 +360,7 @@ class FeedController extends Controller
             'is_staff' => $this->access->canManage($request->user()),
             'family_inactive' => $inactive,
             'inactive_message' => $inactive ? 'خانواده غیرفعال شده است' : null,
+            'family_id' => (int) $membership->family_id,
         ]);
     }
 }

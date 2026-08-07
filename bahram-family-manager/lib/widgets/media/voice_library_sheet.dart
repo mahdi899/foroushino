@@ -10,6 +10,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/media_playback_source.dart';
 import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
+import 'package:bahram_family_manager/core/utils/picked_media.dart';
 import 'package:bahram_family_manager/services/voice_local_store.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
@@ -93,7 +94,7 @@ class _VoiceLibrarySheetState extends State<VoiceLibrarySheet> {
       if (mounted) showAppSnackBar(context, 'خواندن فایل ویس ناموفق بود.');
       return;
     }
-    final oversize = MediaSizeGuard.oversizeMessage(bytes.length);
+    final oversize = MediaSizeGuard.oversizeMessage(bytes.length, type: 'voice');
     if (oversize != null) {
       if (mounted) showAppSnackBar(context, oversize);
       return;
@@ -187,35 +188,25 @@ class _VoiceLibrarySheetState extends State<VoiceLibrarySheet> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.audio,
-        withData: true,
+        withData: pickFilesWithData,
       );
       final picked = result?.files.singleOrNull;
       if (picked == null) return;
 
-      final size = picked.size;
-      if (size > 0 && MediaSizeGuard.isOversize(size)) {
-        if (mounted) {
-          showAppSnackBar(
-            context,
-            MediaSizeGuard.oversizeMessage(size) ?? 'فایل بیش از حد بزرگ است.',
-          );
-        }
+      final resolved = await resolvePlatformFile(picked, mediaType: 'voice');
+      if (!mounted) return;
+      if (resolved is ResolvePickedMediaError) {
+        showAppSnackBar(context, resolved.message);
+        return;
+      }
+      final file = (resolved as ResolvePickedMediaOk).file;
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        showAppSnackBar(context, 'خواندن فایل «${file.filename}» ناموفق بود.');
         return;
       }
 
-      final bytes = picked.bytes;
-      if (bytes == null) {
-        if (mounted) showAppSnackBar(context, 'خواندن فایل «${picked.name}» ناموفق بود.');
-        return;
-      }
-
-      final oversize = MediaSizeGuard.oversizeMessage(bytes.length);
-      if (oversize != null) {
-        if (mounted) showAppSnackBar(context, oversize);
-        return;
-      }
-
-      final saved = await VoiceLocalStore.save(bytes, picked.name);
+      final saved = await VoiceLocalStore.save(bytes, file.filename);
       if (saved == null) {
         if (mounted) showAppSnackBar(context, 'ذخیره در کتابخانه ناموفق بود.');
         return;

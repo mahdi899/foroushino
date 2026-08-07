@@ -17,6 +17,8 @@ class FamilyFeedUpdated implements ShouldBroadcastNow
     public function __construct(
         public FamilyPost $post,
         public string $event = 'published',
+        public ?int $approvedCommentsCount = null,
+        public ?int $familyId = null,
     ) {}
 
     /**
@@ -37,12 +39,22 @@ class FamilyFeedUpdated implements ShouldBroadcastNow
      */
     public function broadcastWith(): array
     {
-        return [
+        $payload = [
             'post_id' => $this->post->id,
             'latest_post_id' => $this->post->id,
             'published_at' => FamilyDateTime::toApi($this->post->published_at),
             'is_important' => (bool) $this->post->is_important,
             'event' => $this->event,
         ];
+
+        if ($this->approvedCommentsCount !== null) {
+            $payload['approved_comments_count'] = $this->approvedCommentsCount;
+        }
+
+        if ($this->familyId !== null) {
+            $payload['family_id'] = $this->familyId;
+        }
+
+        return $payload;
     }
 }

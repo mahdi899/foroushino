@@ -5,7 +5,6 @@ import 'package:bahram_family_manager/config/bootstrap_admin.dart';
 import 'package:bahram_family_manager/config/app_config.dart';
 import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
-import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/services/auth_service.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
@@ -30,85 +29,25 @@ class _LoginScreenState extends State<LoginScreen> {
     text: BootstrapAdmin.devDefaults?.password ?? '',
   );
   final _otpCtrl = TextEditingController();
-  final _captchaAnswerCtrl = TextEditingController();
 
   var _step = 0;
   var _loading = false;
-  var _captchaRequired = false;
-  var _captchaLoading = false;
   String? _mobileMasked;
   String? _mobile;
-  MathChallenge? _captcha;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCaptchaIfNeeded());
-  }
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _otpCtrl.dispose();
-    _captchaAnswerCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCaptchaIfNeeded({bool force = false}) async {
-    if (_captchaLoading) return;
-    if (!force && _captchaRequired && _captcha != null) return;
-
-    setState(() => _captchaLoading = true);
-    final state = context.read<AppState>();
-    try {
-      final protected = await state.isAdminLoginProtected();
-      if (!mounted) return;
-      if (!protected) {
-        setState(() {
-          _captchaRequired = false;
-          _captcha = null;
-          _captchaAnswerCtrl.clear();
-        });
-        return;
-      }
-
-      final challenge = await state.fetchMathChallenge();
-      if (!mounted) return;
-      setState(() {
-        _captchaRequired = true;
-        _captcha = challenge;
-        _captchaAnswerCtrl.clear();
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _captchaRequired = true;
-        _captcha = null;
-      });
-      showAppSnackBar(context, messageOf(e));
-    } finally {
-      if (mounted) setState(() => _captchaLoading = false);
-    }
-  }
-
   Future<void> _submitCredentials() async {
-    if (_loading || _captchaLoading) return;
+    if (_loading) return;
     if (_emailCtrl.text.trim().isEmpty || _passwordCtrl.text.isEmpty) {
       showAppSnackBar(context, 'ایمیل و رمز عبور را کامل وارد کنید.');
       return;
-    }
-
-    if (_captchaRequired) {
-      if (_captcha == null) {
-        showAppSnackBar(context, 'لطفاً چند لحظه صبر کنید تا تأیید امنیتی بارگذاری شود.');
-        await _loadCaptchaIfNeeded(force: true);
-        return;
-      }
-      if (_captchaAnswerCtrl.text.trim().isEmpty) {
-        showAppSnackBar(context, 'پاسخ تأیید امنیتی را وارد کنید.');
-        return;
-      }
     }
 
     setState(() => _loading = true);
@@ -116,8 +55,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await context.read<AppState>().login(
             email: _emailCtrl.text.trim(),
             password: _passwordCtrl.text,
-            captchaId: _captcha?.id,
-            captchaAnswer: _captchaAnswerCtrl.text.trim(),
           );
       if (!mounted) return;
       switch (result) {
@@ -133,9 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, messageOf(e));
-      if (_captchaRequired) {
-        await _loadCaptchaIfNeeded(force: true);
-      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -210,18 +144,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: _LoginForm(
                             step: _step,
                             loading: _loading,
-                            captchaLoading: _captchaLoading,
-                            captchaRequired: _captchaRequired,
                             mobileMasked: _mobileMasked,
-                            captcha: _captcha,
                             emailCtrl: _emailCtrl,
                             passwordCtrl: _passwordCtrl,
                             otpCtrl: _otpCtrl,
-                            captchaAnswerCtrl: _captchaAnswerCtrl,
                             onSubmitCredentials: _submitCredentials,
                             onVerify: _verify,
                             onResend: _resend,
-                            onReloadCaptcha: () => _loadCaptchaIfNeeded(force: true),
                             onBack: () => setState(() {
                               _step = 0;
                               _otpCtrl.clear();
@@ -274,18 +203,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: _LoginForm(
                       step: _step,
                       loading: _loading,
-                      captchaLoading: _captchaLoading,
-                      captchaRequired: _captchaRequired,
                       mobileMasked: _mobileMasked,
-                      captcha: _captcha,
                       emailCtrl: _emailCtrl,
                       passwordCtrl: _passwordCtrl,
                       otpCtrl: _otpCtrl,
-                      captchaAnswerCtrl: _captchaAnswerCtrl,
                       onSubmitCredentials: _submitCredentials,
                       onVerify: _verify,
                       onResend: _resend,
-                      onReloadCaptcha: () => _loadCaptchaIfNeeded(force: true),
                       onBack: () => setState(() {
                         _step = 0;
                         _otpCtrl.clear();
@@ -389,35 +313,25 @@ class _LoginForm extends StatelessWidget {
   const _LoginForm({
     required this.step,
     required this.loading,
-    required this.captchaLoading,
-    required this.captchaRequired,
     required this.mobileMasked,
-    required this.captcha,
     required this.emailCtrl,
     required this.passwordCtrl,
     required this.otpCtrl,
-    required this.captchaAnswerCtrl,
     required this.onSubmitCredentials,
     required this.onVerify,
     required this.onResend,
-    required this.onReloadCaptcha,
     required this.onBack,
   });
 
   final int step;
   final bool loading;
-  final bool captchaLoading;
-  final bool captchaRequired;
   final String? mobileMasked;
-  final MathChallenge? captcha;
   final TextEditingController emailCtrl;
   final TextEditingController passwordCtrl;
   final TextEditingController otpCtrl;
-  final TextEditingController captchaAnswerCtrl;
   final VoidCallback onSubmitCredentials;
   final VoidCallback onVerify;
   final VoidCallback onResend;
-  final VoidCallback onReloadCaptcha;
   final VoidCallback onBack;
 
   @override
@@ -449,50 +363,11 @@ class _LoginForm extends StatelessWidget {
         decoration: const InputDecoration(labelText: 'رمز عبور'),
         onSubmitted: (_) => onSubmitCredentials(),
       ),
-      if (captchaRequired) ...[
-        const SizedBox(height: AppSpacing.md),
-        if (captchaLoading)
-          const LinearProgressIndicator(minHeight: 2)
-        else if (captcha == null)
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'اتصال به سرور ناموفق بود. اینترنت یا VPN را بررسی کنید.',
-                  style: TextStyle(color: muted),
-                ),
-              ),
-              TextButton(onPressed: loading ? null : onReloadCaptcha, child: const Text('تلاش دوباره')),
-            ],
-          )
-        else
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'تأیید امنیتی: ${captcha!.question} = ؟',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              SizedBox(
-                width: 80,
-                child: TextField(
-                  controller: captchaAnswerCtrl,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(isDense: true),
-                  onSubmitted: (_) => onSubmitCredentials(),
-                ),
-              ),
-            ],
-          ),
-      ],
       const SizedBox(height: AppSpacing.xl),
       PrimaryButton(
         label: 'ورود',
-        loading: loading || captchaLoading,
-        onPressed: (loading || captchaLoading) ? null : onSubmitCredentials,
+        loading: loading,
+        onPressed: loading ? null : onSubmitCredentials,
       ),
     ];
   }

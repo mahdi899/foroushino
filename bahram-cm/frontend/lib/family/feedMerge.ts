@@ -66,6 +66,32 @@ export function replacePostInFeedPages(
   return changed ? next : pages;
 }
 
+/** Soft-patch approved comment count on a post already present in feed pages. */
+export function patchCommentsCountInFeedPages(
+  pages: FeedCachePage[] | undefined,
+  postId: number,
+  commentsCount: number,
+): FeedCachePage[] | undefined {
+  if (!pages?.length) return pages;
+
+  let changed = false;
+  const next = pages.map((page) => {
+    const index = page.data.findIndex((item) => item.id === postId);
+    if (index < 0) return page;
+    const post = page.data[index]!;
+    if (post.stats.comments === commentsCount) return page;
+    changed = true;
+    const data = page.data.slice();
+    data[index] = {
+      ...post,
+      stats: { ...post.stats, comments: commentsCount },
+    };
+    return { ...page, data };
+  });
+
+  return changed ? next : pages;
+}
+
 export function feedPagesContainPost(pages: FeedCachePage[] | undefined, postId: number): boolean {
   return Boolean(pages?.some((page) => page.data.some((item) => item.id === postId)));
 }

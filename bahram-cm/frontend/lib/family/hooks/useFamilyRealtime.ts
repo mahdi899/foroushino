@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
 import { getFeed, getPost } from '@/lib/family/api';
-import { feedPagesContainPost, prependPostToFeedPages, removePostFromFeedPages, replacePostInFeedPages, repositionPostToFeedTip } from '@/lib/family/feedMerge';
+import { feedPagesContainPost, prependPostToFeedPages, removePostFromFeedPages, replacePostInFeedPages, repositionPostToFeedTip, patchCommentsCountInFeedPages } from '@/lib/family/feedMerge';
+import { getViewerFamilyId } from '@/lib/family/viewerFamilyId';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
 import type { FamilyEcho } from '@/lib/realtime/echo';
 import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
@@ -17,7 +18,9 @@ export type FamilyFeedUpdatedPayload = {
   latest_post_id: number;
   published_at?: string | null;
   is_important?: boolean;
-  event?: 'published' | 'pinned' | 'unpinned' | 'archived' | 'updated' | 'deleted';
+  event?: 'published' | 'pinned' | 'unpinned' | 'archived' | 'updated' | 'deleted' | 'comments_count';
+  approved_comments_count?: number;
+  family_id?: number;
 };
 
 type Options = {
@@ -141,7 +144,30 @@ export async function removePostFromFeedCaches(postId: number): Promise<boolean>
   return removed;
 }
 
-/** Refresh only the feed tip page in SWR caches (one /feed call), not every loaded page. */
+/** Soft-patch comment counts from a feed realtime ping (no HTTP). */
+export async function patchCommentsCountInFeedCaches(
+  postId: number,
+  commentsCount: number,
+): Promise<boolean> {
+  let patched = false;
+
+  await globalMutate(
+    isFamilyFeedKey,
+    (current) => {
+      if (!Array.isArray(current) || current.length === 0) return current;
+      const next = patchCommentsCountInFeedPages(current, postId, commentsCount);
+      if (next && next !== current) {
+        patched = true;
+        return next;
+      }
+      return current;
+    },
+    { revalidate: false },
+  );
+
+  return patched;
+}
+
 export async function revalidateFamilyFeedTipOnly(): Promise<void> {
   await globalMutate(
     isFamilyFeedKey,
@@ -202,9 +228,29 @@ export function useFamilyRealtime({
 
     const handler = (payload: FamilyFeedUpdatedPayload) => {
       void (async () => {
+        const event = payload.event ?? 'published';
+
+        if (event === 'comments_count') {
+          if (typeof payload.approved_comments_count === 'number') {
+            const viewerFamilyId = getViewerFamilyId();
+            if (
+              viewerFamilyId != null &&
+              payload.family_id != null &&
+              payload.family_id !== viewerFamilyId
+            ) {
+              return;
+            }
+            await patchCommentsCountInFeedCaches(
+              payload.post_id,
+              payload.approved_comments_count,
+            );
+          }
+          onFeedUpdatedRef.current?.(payload);
+          return;
+        }
+
         scheduleUnreadSummaryRevalidate();
 
-        const event = payload.event ?? 'published';
         if (event === 'pinned' || event === 'unpinned' || event === 'archived' || event === 'deleted') {
           void globalMutate(isFamilyPinnedKey);
         }

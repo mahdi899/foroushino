@@ -35,30 +35,15 @@ class AuthService {
   final ApiClient api;
   final SecureStorage _storage;
 
-  Future<bool> isAdminLoginProtected() async {
-    final res = await api.get('/captcha/config');
-    final data = (res['data'] as Map?)?.cast<String, dynamic>() ?? {};
-    return data['protect_admin_login'] == true;
-  }
-
-  Future<MathChallenge> fetchMathChallenge() async {
-    final res = await api.get('/captcha/math');
-    return MathChallenge.fromJson((res['data'] as Map).cast<String, dynamic>());
-  }
-
   /// Step 1 — validates email/password. OTP-exempt admins receive a token
   /// immediately; others get an SMS OTP on their registered mobile.
   Future<AdminLoginResult> loginWithPassword({
     required String email,
     required String password,
-    String? captchaId,
-    String? captchaAnswer,
   }) async {
     final res = await api.post('/auth/login', data: {
       'email': email,
       'password': password,
-      if (captchaId != null) 'captcha_id': captchaId,
-      if (captchaAnswer != null) 'captcha_answer': captchaAnswer,
     });
     final data = (res['data'] as Map).cast<String, dynamic>();
     final token = res['token']?.toString();
