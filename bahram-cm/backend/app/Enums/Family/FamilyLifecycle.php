@@ -36,4 +36,13 @@ enum FamilyLifecycle: string
     {
         return $this === self::Inactive;
     }
+
+    /** Map DB values including pre-binary migration legacy strings. */
+    public static function fromStored(?string $value): self
+    {
+        return match ($value) {
+            self::Inactive->value, 'dormant' => self::Inactive,
+            default => self::Active,
+        };
+    }
 }

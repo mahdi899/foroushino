@@ -1,6 +1,6 @@
 import type { FamilyPost } from '@/lib/family/types';
 import { getPinnedPreview } from '@/lib/family/pinnedPreview';
-import { formatPostDateTime } from '@/lib/family/datetime';
+import { formatPostTime } from '@/lib/family/datetime';
 
 export function getPostListPreview(post: FamilyPost): {
   label: string;
@@ -26,5 +26,5 @@ export function getPostListPreview(post: FamilyPost): {
 
 export function formatPostListTime(iso: string | null | undefined): string {
   if (!iso) return '';
-  return formatPostDateTime(iso);
+  return formatPostTime(iso);
 }

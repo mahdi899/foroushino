@@ -580,8 +580,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-app__frame {
-  height: 98dvh;
-  max-height: 98dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   flex-shrink: 0;
   background: transparent;
   border: 0.5px solid var(--family-tg-header-border);
@@ -594,8 +594,14 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 @media (min-width: 640px) {
   .family-app__frame {
     margin-inline: auto;
-    max-width: min(680px, calc(100% - 1rem));
     border-radius: 1.125rem;
+  }
+}
+
+/* تبلت: ستون باریک‌تر وسط صفحه */
+@media (min-width: 640px) and (max-width: 1023.98px) {
+  .family-app__frame {
+    max-width: min(460px, calc(100% - 2.5rem));
   }
 }
 
@@ -613,7 +619,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   position: relative;
   isolation: isolate;
   box-sizing: border-box;
-  padding-block: 1dvh;
+  padding-block: 0;
   background-color: var(--family-chat-bg);
   background-image: none;
   color: var(--family-text);
@@ -2514,8 +2520,8 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
   }
 
   .family-post-bubble__text {
-    font-size: 0.875rem;
-    line-height: 1.5;
+    font-size: 0.9375rem;
+    line-height: 1.52;
     padding-inline: 0.0625rem;
   }
 
@@ -2705,6 +2711,26 @@ html[data-theme='dark'] .family-app .family-post-bubble {
   box-shadow: var(--family-bubble-shadow);
 }
 
+@keyframes family-important-border-pulse {
+  0%,
+  100% {
+    border-color: color-mix(in oklab, var(--family-bubble-important-accent) 65%, transparent);
+    box-shadow:
+      inset 2.5px 0 0 color-mix(in oklab, var(--family-bubble-important-accent) 88%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 18%, transparent),
+      var(--family-bubble-shadow);
+  }
+  50% {
+    border-color: var(--family-bubble-important-accent);
+    box-shadow:
+      inset 2.5px 0 0 var(--family-bubble-important-accent),
+      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 34%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--family-bubble-important-accent) 22%, transparent),
+      0 0 14px color-mix(in oklab, var(--family-bubble-important-accent) 26%, transparent),
+      var(--family-bubble-shadow);
+  }
+}
+
 .family-post-bubble--important {
   border: 1.5px solid var(--family-bubble-important-accent);
   background: var(--family-bubble-important-bg);
@@ -2712,14 +2738,13 @@ html[data-theme='dark'] .family-app .family-post-bubble {
     inset 2.5px 0 0 var(--family-bubble-important-accent),
     0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 22%, transparent),
     var(--family-bubble-shadow);
+  animation: family-important-border-pulse 2.6s ease-in-out infinite;
+  transition: transform 200ms var(--family-tg-spring);
 }
 
 .family-app[data-family-theme='light'] .family-post-bubble--important,
 html[data-theme='light'] .family-app .family-post-bubble--important {
-  box-shadow:
-    inset 2.5px 0 0 var(--family-bubble-important-accent),
-    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 22%, transparent),
-    var(--family-bubble-shadow);
+  animation: family-important-border-pulse 2.6s ease-in-out infinite;
 }
 
 .family-post-bubble__labels {
@@ -2900,12 +2925,28 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
   display: block;
   margin: 0;
   padding-inline: 0.0625rem;
-  font-size: 0.9375rem;
-  line-height: 1.55;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.58;
   color: var(--family-text);
   letter-spacing: -0.012em;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.family-text-link {
+  color: var(--family-tg-channel-name);
+  text-decoration: none;
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.family-text-link:hover {
+  text-decoration: underline;
+}
+
+.family-text-link:active {
+  opacity: 0.85;
 }
 
 .family-post-bubble__body :is(.family-feed-image, .family-feed-album, .family-feed-video) {
@@ -2986,11 +3027,27 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
 
 .family-post-bubble__meta-caption,
 .family-post-bubble__meta-author,
-.family-post-bubble__meta-time,
-.family-post-bubble__views {
+.family-post-bubble__meta-time {
   color: inherit;
   font-size: inherit;
   line-height: inherit;
+}
+
+.family-post-bubble__views {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1;
+}
+
+.family-post-bubble__views-icon {
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .family-post-bubble__meta-caption {
@@ -3709,7 +3766,8 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
   .family-reaction-btn--active,
   .family-reaction-btn--pop,
   .family-reaction-picker--burst,
-  .family-post--highlight .family-post-bubble {
+  .family-post--highlight .family-post-bubble,
+  .family-post-bubble--important {
     animation: none !important;
   }
 

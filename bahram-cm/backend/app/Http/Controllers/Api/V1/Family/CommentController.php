@@ -13,9 +13,11 @@ use App\Services\Family\FamilyAiSettingsService;
 use App\Services\Family\FamilyStatsService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
+use App\Support\FamilyCommentBodyGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CommentController extends Controller
 {
@@ -81,6 +83,12 @@ class CommentController extends Controller
             'body' => ['required', 'string', 'min:2', "max:{$max}"],
             'parent_id' => ['nullable', 'integer', 'exists:family_comments,id'],
         ]);
+
+        if (! $request->user()->is_admin && FamilyCommentBodyGuard::containsPhoneNumber($data['body'])) {
+            throw ValidationException::withMessages([
+                'body' => ['لطفاً شماره تلفن در نظر قرار ندهید. فقط ادمین می‌تواند شماره منتشر کند.'],
+            ]);
+        }
 
         $parentId = null;
         if (! empty($data['parent_id'])) {

@@ -1920,6 +1920,7 @@ export function FeedView({
             <FeedCommentsPanel
               postId={commentsTarget.postId}
               focusCommentId={commentsTarget.focusCommentId}
+              allowPhoneNumbers={isStaff}
               onClose={closeComments}
               onCommentAdded={commentsTarget.onCommentAdded}
               className="flex min-h-0 flex-1 flex-col"

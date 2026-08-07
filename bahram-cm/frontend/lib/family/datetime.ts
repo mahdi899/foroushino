@@ -88,8 +88,17 @@ export function formatFeedDaySeparator(iso: string): string {
 }
 
 /**
- * تاریخ و ساعت زیر هر پست — همیشه به وقت ایران (Asia/Tehran)
- * و همیشه شامل تاریخ شمسی + ساعت.
+ * ساعت پست — فقط زمان (تاریخ در جداکننده روز فید است)
+ */
+export function formatPostTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = parseDate(iso);
+  if (!d) return iso;
+  return formatPersianTime(d);
+}
+
+/**
+ * تاریخ و ساعت — برای نظرات و جاهایی که تاریخ لازم است
  */
 export function formatPostDateTime(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -101,8 +110,7 @@ export function formatPostDateTime(iso: string | null | undefined): string {
 }
 
 /**
- * متا پایین حباب فید — ساعت · نویسنده · تاریخ شمسی
- * (همه به وقت ایران)
+ * متا پایین حباب فید — ساعت · نویسنده (بدون تاریخ؛ روز در جداکننده فید)
  */
 export function formatPostBubbleMeta(
   iso: string | null | undefined,
@@ -116,6 +124,5 @@ export function formatPostBubbleMeta(
 
   const parts: string[] = [formatPersianTime(d)];
   if (author) parts.push(author);
-  parts.push(formatPersianPostDate(d));
   return parts.join(' · ');
 }

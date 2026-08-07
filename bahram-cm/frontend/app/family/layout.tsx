@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import '@/styles/family.css';
-import { fontVariable } from '@/lib/fonts';
+import { fontClassName, fontVariable } from '@/lib/fonts';
 import { cn } from '@/lib/cn';
 import { sitePhotos } from '@/lib/site-photo-paths';
 import { primarySiteImageSrc } from '@/lib/mediaUrl';
@@ -76,6 +76,7 @@ export default async function FamilyLayout({ children }: { children: React.React
       className={cn(
         'family-app family-app__canvas h-[100dvh] overflow-hidden antialiased',
         fontVariable,
+        fontClassName,
       )}
       style={familyRootStyle}
       suppressHydrationWarning

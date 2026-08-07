@@ -12,6 +12,7 @@ import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import { encodeReplyBody, parseReplyBody } from '@/lib/family/replyTag';
+import { commentContainsPhoneNumber, COMMENT_PHONE_WARNING } from '@/lib/family/commentPhoneGuard';
 import { cn } from '@/lib/cn';
 
 type CommentsPanelProps = {
@@ -26,6 +27,8 @@ type CommentsPanelProps = {
   keyboardInset?: number;
   /** Scroll to / highlight this comment (root or nested reply) after load. */
   focusCommentId?: number | null;
+  /** Family managers / admins may include phone numbers in comments. */
+  allowPhoneNumbers?: boolean;
 };
 
 type ReplyTarget = {
@@ -284,6 +287,7 @@ export function CommentsPanel({
   className,
   keyboardInset = 0,
   focusCommentId = null,
+  allowPhoneNumbers = false,
 }: CommentsPanelProps) {
   useFamilyDebugRender(`CommentsPanel:${postId}`);
   const keyboardOpen = keyboardInset > 40;
@@ -295,6 +299,7 @@ export function CommentsPanel({
   const [justSentWasReply, setJustSentWasReply] = useState(false);
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const topSentinelRef = useRef<HTMLLIElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
@@ -465,6 +470,36 @@ export function CommentsPanel({
     return () => cancelAnimationFrame(frame);
   }, [comments, focusCommentId, hasMore, isLoading, loadMore, loadingMore]);
 
+  // Auto-load older comments when scrolling up (Telegram-style — no button tap).
+  useEffect(() => {
+    const root = listRef.current;
+    const sentinel = topSentinelRef.current;
+    if (!root || !sentinel || !hasMore || isLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        if (loadingMoreRef.current || focusLoadingRef.current) return;
+
+        const list = listRef.current;
+        if (!list) return;
+
+        const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 12;
+        const contentOverflows = list.scrollHeight > list.clientHeight + 8;
+        // Pinned on latest in a long thread — wait until the user scrolls up.
+        if (contentOverflows && atBottom && !focusCommentId) return;
+        // Let initial pin / focus scroll settle before fetching history.
+        if (initialPinnedForPostRef.current !== postId && !focusCommentId) return;
+
+        void handleLoadOlder();
+      },
+      { root, rootMargin: '96px 0px 0px 0px', threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [focusCommentId, handleLoadOlder, hasMore, isLoading, orderedComments.length, postId]);
+
   useLayoutEffect(() => {
     if (!justSent) return;
     scrollToLatest('smooth');
@@ -493,6 +528,11 @@ export function CommentsPanel({
     const typed = value.trim();
     if (!typed || submitting) return;
     const body = encodeReplyBody(replyTarget?.userName, typed);
+    if (!allowPhoneNumbers && commentContainsPhoneNumber(body)) {
+      familyHaptic('warning');
+      setError(COMMENT_PHONE_WARNING);
+      return;
+    }
     setError(null);
     familyFeedDebug.mark(`comment:${postId}`);
     familyFeedDebug.info('comment', 'submit start', {
@@ -638,23 +678,20 @@ export function CommentsPanel({
           </p>
         ) : (
           <ul className={cn('family-comments-thread space-y-2 pb-2', isPage && 'mt-auto')}>
-            {hasMore && (
-              <li className="flex justify-center py-2">
-                <button
-                  type="button"
-                  onClick={() => void handleLoadOlder()}
-                  disabled={loadingMore}
-                  aria-label={loadingMore ? 'در حال بارگذاری' : 'نظرات قدیمی‌تر'}
-                  className="flex min-h-8 min-w-[7.5rem] items-center justify-center rounded-full border border-[var(--family-border-subtle)] px-4 py-1.5 text-xs text-bone/65 transition hover:bg-white/[0.04] disabled:opacity-50"
-                >
-                  {loadingMore ? (
-                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
-                  ) : (
-                    'نظرات قدیمی‌تر'
-                  )}
-                </button>
+            {hasMore ? (
+              <li
+                ref={topSentinelRef}
+                className="flex min-h-8 justify-center py-2"
+                aria-hidden={!loadingMore}
+              >
+                {loadingMore ? (
+                  <span
+                    className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
+                    aria-label="در حال بارگذاری نظرات قدیمی‌تر"
+                  />
+                ) : null}
               </li>
-            )}
+            ) : null}
             {orderedComments.map((comment) => (
               <CommentRow
                 key={comment.id}

@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Eye } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { recordPostView } from '@/lib/family/api';
-import { formatPostBubbleMeta, formatPostDateTime } from '@/lib/family/datetime';
-import { displayPostViews } from '@/lib/family/displayViews';
+import { formatPostBubbleMeta, formatPostTime } from '@/lib/family/datetime';
+import { displayPostViews, formatCompactViewCount } from '@/lib/family/displayViews';
 
 const VIEW_RECORD_DELAY_MS = 1500;
 
@@ -30,6 +30,7 @@ export function PostMetaRow({
   const recorded = useRef(false);
   const [realViews, setRealViews] = useState(initialViews);
   const views = displayPostViews(realViews);
+  const viewsLabel = formatCompactViewCount(views);
 
   useEffect(() => {
     setRealViews(initialViews);
@@ -75,9 +76,12 @@ export function PostMetaRow({
     return (
       <div ref={ref} dir="ltr" className={cn('family-post-bubble__meta-row', className)}>
         {views > 0 && (
-          <span className="family-post-bubble__views inline-flex items-center gap-0.5 tabular-nums" title="بازدید">
-            <Eye className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
-            {views.toLocaleString('en-US')}
+          <span
+            className="family-post-bubble__views tabular-nums"
+            title={views > 999 ? `${views.toLocaleString('en-US')} بازدید` : 'بازدید'}
+          >
+            <Eye className="family-post-bubble__views-icon" strokeWidth={1.75} aria-hidden />
+            {viewsLabel}
           </span>
         )}
         {views > 0 && metaCaption ? (
@@ -102,16 +106,16 @@ export function PostMetaRow({
     <div ref={ref} className={cn('flex h-5 shrink-0 items-center gap-1.5', className)}>
       {views > 0 && (
         <span
-          className="flex items-center gap-0.5 text-[11px] tabular-nums text-[var(--family-tg-subtitle)]"
-          title="بازدید"
+          className="family-post-bubble__views text-[11px] text-[var(--family-tg-subtitle)] tabular-nums"
+          title={views > 999 ? `${views.toLocaleString('fa-IR')} بازدید` : 'بازدید'}
         >
-          <Eye className="h-3 w-3 shrink-0 opacity-60" strokeWidth={1.75} aria-hidden />
-          {views.toLocaleString('fa-IR')}
+          <Eye className="family-post-bubble__views-icon opacity-60" strokeWidth={1.75} aria-hidden />
+          {viewsLabel}
         </span>
       )}
       {publishedAt && (
         <time dateTime={publishedAt} className="text-[11px] tabular-nums text-[var(--family-tg-subtitle)]">
-          {formatPostDateTime(publishedAt)}
+          {formatPostTime(publishedAt)}
         </time>
       )}
     </div>

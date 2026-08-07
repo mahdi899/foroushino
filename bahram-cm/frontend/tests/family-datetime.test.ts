@@ -3,6 +3,7 @@ import {
   formatFeedDaySeparator,
   formatPostBubbleMeta,
   formatPostDateTime,
+  formatPostTime,
   getPostDayKey,
 } from '@/lib/family/datetime';
 
@@ -23,11 +24,16 @@ describe('family datetime (Asia/Tehran)', () => {
     expect(fromUtc).toBe(fromTehran);
   });
 
-  it('includes date in bubble meta along with author', () => {
+  it('includes author in bubble meta without date', () => {
     const text = formatPostBubbleMeta('2026-07-20T12:30:00.000Z', 'بهرام');
-    expect(text).toContain('بهرام');
-    expect(text).toMatch(/۱۶:۰۰/);
-    expect(text.split('·').length).toBeGreaterThanOrEqual(3);
+    expect(text).toBe('۱۶:۰۰ · بهرام');
+    expect(text).not.toContain('مرداد');
+  });
+
+  it('formats post time only', () => {
+    const text = formatPostTime('2026-07-20T12:30:00.000Z');
+    expect(text).toBe('۱۶:۰۰');
+    expect(text).not.toContain('·');
   });
 
   it('groups posts by Tehran calendar day', () => {

@@ -323,4 +323,32 @@ class FamilyReactionAndCommentTest extends TestCase
             ->getJson('/api/v1/family-manager/comments')
             ->assertForbidden();
     }
+
+    public function test_member_cannot_post_phone_number_in_comment(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'تماس بگیرید 09123456789'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'validation_error')
+            ->assertJsonPath('error.details.body.0', 'لطفاً شماره تلفن در نظر قرار ندهید. فقط ادمین می‌تواند شماره منتشر کند.');
+    }
+
+    public function test_admin_can_post_phone_number_in_comment(): void
+    {
+        Queue::fake();
+
+        $admin = $this->managerAdmin();
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/family/join')->assertOk();
+        $post = $this->publishedPost();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'پشتیبانی: 09123456789'])
+            ->assertCreated()
+            ->assertJsonPath('data.status', FamilyCommentStatus::Approved->value);
+    }
 }

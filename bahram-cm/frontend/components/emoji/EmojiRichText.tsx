@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatedEmoji, type AnimatedEmojiMode } from '@/components/emoji/AnimatedEmoji';
+import { LinkifiedText } from '@/components/emoji/LinkifiedText';
 import { splitEmojiText } from '@/lib/emoji/noto-registry';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +11,7 @@ export function EmojiRichText({
   emojiSize,
   emojiClassName,
   emojiMode = 'inline',
+  linkify = true,
 }: {
   text: string;
   className?: string;
@@ -18,6 +20,8 @@ export function EmojiRichText({
   emojiClassName?: string;
   /** `static` keeps feed text light (unicode only, no Lottie). */
   emojiMode?: AnimatedEmojiMode | 'static';
+  /** Turn URLs in text segments into clickable links. */
+  linkify?: boolean;
 }) {
   const parts = splitEmojiText(text);
   const size = emojiSize ?? 18;
@@ -25,7 +29,13 @@ export function EmojiRichText({
   return (
     <span className={cn('whitespace-pre-wrap break-words', className)}>
       {parts.map((part, i) => {
-        if (part.type === 'text') return <span key={i}>{part.value}</span>;
+        if (part.type === 'text') {
+          return linkify ? (
+            <LinkifiedText key={i} text={part.value} />
+          ) : (
+            <span key={i}>{part.value}</span>
+          );
+        }
         if (emojiMode === 'static') {
           return (
             <span

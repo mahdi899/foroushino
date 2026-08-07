@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\FamilyLifecycleCast;
 use App\Enums\Family\FamilyLifecycle;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +26,7 @@ class Family extends Model
     protected function casts(): array
     {
         return [
-            'lifecycle' => FamilyLifecycle::class,
+            'lifecycle' => FamilyLifecycleCast::class,
             'accepting_members' => 'boolean',
             'member_count' => 'integer',
             'capacity_target' => 'integer',
