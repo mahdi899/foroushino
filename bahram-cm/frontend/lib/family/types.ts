@@ -238,6 +238,7 @@ export interface FamilyMeResponse {
   is_staff?: boolean;
   family_inactive?: boolean;
   inactive_message?: string | null;
+  family_id?: number;
 }
 
 export interface FamilyPulseItem {

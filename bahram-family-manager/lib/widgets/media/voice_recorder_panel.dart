@@ -605,7 +605,7 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
           name = '${p.basenameWithoutExtension(name)}.wav';
         }
       }
-      final oversize = MediaSizeGuard.oversizeMessage(out.length);
+      final oversize = MediaSizeGuard.oversizeMessage(out.length, type: 'voice');
       if (oversize != null) {
         widget.onError?.call(oversize);
         if (mounted) setState(() => _busy = false);

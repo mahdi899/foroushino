@@ -95,6 +95,17 @@ class FamilyStatsService
         $this->bumpHotCounter($postId, $familyId, 'approved_comments_count', $delta);
     }
 
+    /** Current approved comment counter for a post/family (no COUNT(*)). */
+    public function approvedCommentsCount(int $postId, int $familyId): int
+    {
+        $stat = FamilyPostStat::query()
+            ->where('post_id', $postId)
+            ->where('family_id', $familyId)
+            ->first();
+
+        return max(0, (int) ($stat?->approved_comments_count ?? 0));
+    }
+
     public function incrementActionResponses(int $postId, int $familyId, int $delta = 1): void
     {
         $stat = $this->ensureStatRow($postId, $familyId);

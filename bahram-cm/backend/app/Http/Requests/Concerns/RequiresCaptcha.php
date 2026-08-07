@@ -53,6 +53,12 @@ trait RequiresCaptcha
                 }
             }
 
+            // Family Manager (Flutter) uses password + OTP; no math captcha in the app.
+            if ($this->captchaFormKey() === 'admin_login'
+                && str_starts_with((string) $this->userAgent(), 'BahramFamilyManager/')) {
+                return;
+            }
+
             if (! $captcha->isFormProtected($this->captchaFormKey())) {
                 return;
             }

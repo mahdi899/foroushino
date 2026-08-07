@@ -10,6 +10,7 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/local_media_url.dart';
+import 'package:bahram_family_manager/core/utils/picked_media.dart';
 import 'package:bahram_family_manager/core/utils/story_aspect.dart';
 import 'package:bahram_family_manager/core/utils/story_media_dimensions.dart';
 import 'package:bahram_family_manager/features/posts/widgets/family_picker_sheet.dart';
@@ -42,6 +43,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
   FamilyMediaRef? _storyMedia;
   Uint8List? _localPreviewBytes;
   String? _localPreviewUrl;
+  bool _localPreviewOwned = false;
   int? _localWidth;
   int? _localHeight;
   var _audienceMode = 'all';
@@ -62,16 +64,23 @@ class _StoriesScreenState extends State<StoriesScreen> {
   @override
   void dispose() {
     _captionCtrl.dispose();
-    revokeLocalMediaUrl(_localPreviewUrl);
+    if (_localPreviewOwned) {
+      revokeLocalMediaUrl(_localPreviewUrl);
+    }
     super.dispose();
   }
 
   Future<void> _clearLocalPreview() async {
-    await revokeLocalMediaUrl(_localPreviewUrl);
+    final url = _localPreviewUrl;
+    final owned = _localPreviewOwned;
     _localPreviewUrl = null;
     _localPreviewBytes = null;
+    _localPreviewOwned = false;
     _localWidth = null;
     _localHeight = null;
+    if (owned) {
+      await revokeLocalMediaUrl(url);
+    }
   }
 
   void _load() {
@@ -102,20 +111,45 @@ class _StoriesScreenState extends State<StoriesScreen> {
   }
 
   Future<void> _pickStoryMedia() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.media, withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.media,
+      withData: pickFilesWithData,
+    );
     final picked = result?.files.singleOrNull;
-    if (picked?.bytes == null) return;
+    if (picked == null) return;
 
-    final bytes = picked!.bytes!;
-    final isVideo = picked.extension?.toLowerCase() == 'mp4' ||
-        picked.extension?.toLowerCase() == 'mov' ||
-        picked.extension?.toLowerCase() == 'webm';
+    final ext = picked.extension?.toLowerCase();
+    final isVideo = ext == 'mp4' || ext == 'mov' || ext == 'webm' || ext == 'm4v';
+    final mediaType = isVideo ? 'video' : 'image';
+
+    final resolved = await resolvePlatformFile(picked, mediaType: mediaType);
+    if (!mounted) return;
+    if (resolved is ResolvePickedMediaError) {
+      showAppSnackBar(context, resolved.message);
+      return;
+    }
+    final file = (resolved as ResolvePickedMediaOk).file;
 
     await _clearLocalPreview();
     if (isVideo) {
-      final mime = guessMediaMimeType(picked.name, 'video');
-      _localPreviewUrl = await createLocalMediaUrl(bytes, mime, extension: picked.extension);
+      if (file.path != null && file.path!.isNotEmpty) {
+        _localPreviewUrl = file.path;
+        _localPreviewOwned = false;
+      } else if (file.bytes != null) {
+        final mime = guessMediaMimeType(file.filename, 'video');
+        _localPreviewUrl = await createLocalMediaUrl(
+          file.bytes!,
+          mime,
+          extension: ext,
+        );
+        _localPreviewOwned = true;
+      }
     } else {
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        showAppSnackBar(context, 'خواندن تصویر ناموفق بود.');
+        return;
+      }
       _localPreviewBytes = bytes;
       final dims = await readImageDimensions(bytes);
       if (dims != null) {
@@ -128,16 +162,17 @@ class _StoriesScreenState extends State<StoriesScreen> {
       _uploading = true;
       _uploadProgress = 0;
       _uploadSentBytes = 0;
-      _uploadTotalBytes = bytes.length;
+      _uploadTotalBytes = file.size;
       _uploadPhase = MediaUploadPhase.uploading;
       _storyMedia = null;
     });
 
     try {
       final media = await context.read<AppState>().manager.uploadMedia(
-            bytes: bytes,
-            filename: picked.name,
-            type: isVideo ? 'video' : 'image',
+            bytes: file.bytes,
+            path: file.path,
+            filename: file.filename,
+            type: mediaType,
             optimizeImages: false,
             onUploadState: (upload) {
               if (!mounted) return;
@@ -155,8 +190,19 @@ class _StoriesScreenState extends State<StoriesScreen> {
       if (!media.isReady) {
         ready = await context.read<AppState>().manager.waitForMediaReady(
               media.id,
+              type: mediaType,
+              totalBytes: file.size,
               onUpdate: (updated) {
                 if (mounted) setState(() => _storyMedia = updated);
+              },
+              onUploadState: (upload) {
+                if (!mounted) return;
+                setState(() {
+                  _uploadPhase = upload.phase;
+                  _uploadProgress = upload.fraction;
+                  _uploadSentBytes = upload.sentBytes;
+                  _uploadTotalBytes = upload.totalBytes;
+                });
               },
             );
       }

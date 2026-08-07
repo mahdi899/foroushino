@@ -10,6 +10,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/core/utils/local_media_url.dart';
+import 'package:bahram_family_manager/core/utils/picked_media.dart';
 import 'package:bahram_family_manager/features/posts/widgets/family_picker_sheet.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_action_results_panel.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_editor_action_bar.dart';
@@ -67,6 +68,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   FamilyMediaRef? _mediaRef;
   Uint8List? _localPreviewBytes;
   String? _localPreviewUrl;
+  /// When false, [_localPreviewUrl] points at the original picked file — do not delete.
+  bool _localPreviewOwned = false;
   /// Image / album attachments (one or many). Voice/video still use [_mediaRef].
   final List<_AttachedImage> _images = [];
   MediaUploadPhase _mediaPhase = MediaUploadPhase.idle;
@@ -188,9 +191,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   Future<void> _clearLocalPreview() async {
     final url = _localPreviewUrl;
+    final owned = _localPreviewOwned;
     _localPreviewBytes = null;
     _localPreviewUrl = null;
-    await revokeLocalMediaUrl(url);
+    _localPreviewOwned = false;
+    if (owned) {
+      await revokeLocalMediaUrl(url);
+    }
   }
 
   Future<void> _clearAllMedia() async {
@@ -259,11 +266,44 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     return (_mediaRef?.isAudio ?? _type == 'voice') ? 88 : 220;
   }
 
-  bool _rejectOversizeMedia(int bytes) {
-    final message = MediaSizeGuard.oversizeMessage(bytes);
+  bool _rejectOversizeMedia(int bytes, {required String type}) {
+    final message = MediaSizeGuard.oversizeMessage(bytes, type: type);
     if (message == null) return false;
     if (mounted) showAppSnackBar(context, message);
     return true;
+  }
+
+  Future<void> _prepareLocalPreview(
+    String filename,
+    String mediaType, {
+    Uint8List? bytes,
+    String? path,
+  }) async {
+    await _clearLocalPreview();
+    if (mediaType == 'image') {
+      _localPreviewBytes = bytes;
+      return;
+    }
+    if (path != null && path.isNotEmpty) {
+      _localPreviewUrl = path;
+      _localPreviewOwned = false;
+      _localPreviewBytes = bytes;
+      return;
+    }
+    if (bytes == null || bytes.isEmpty) return;
+    try {
+      _localPreviewUrl = await createLocalMediaUrl(
+        bytes,
+        guessMediaMimeType(filename, mediaType),
+        extension: extensionOfFilename(filename),
+      );
+      _localPreviewOwned = true;
+      _localPreviewBytes = bytes;
+    } catch (_) {
+      _localPreviewUrl = null;
+      _localPreviewOwned = false;
+      _localPreviewBytes = bytes;
+    }
   }
 
   Widget _buildSingleMediaUploadPreview({
@@ -326,21 +366,6 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     );
   }
 
-  Future<void> _prepareLocalPreview(Uint8List bytes, String filename, String mediaType) async {
-    await _clearLocalPreview();
-    _localPreviewBytes = bytes;
-    if (mediaType == 'image') return;
-    try {
-      _localPreviewUrl = await createLocalMediaUrl(
-        bytes,
-        guessMediaMimeType(filename, mediaType),
-        extension: extensionOfFilename(filename),
-      );
-    } catch (_) {
-      _localPreviewUrl = null;
-    }
-  }
-
   bool get _isArchived => _post?.isArchived ?? false;
 
   String get _audiencePreviewLabel {
@@ -382,6 +407,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           });
           final ready = await manager.waitForMediaReady(
             media.id,
+            type: 'image',
             onUpdate: (updated) {
               if (!mounted) return;
               setState(() => _images[i].media = updated);
@@ -423,6 +449,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     try {
       final ready = await context.read<AppState>().manager.waitForMediaReady(
             media.id,
+            type: _type,
             onUpdate: (updated) {
               if (!mounted) return;
               setState(() => _mediaRef = updated);
@@ -447,15 +474,21 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
-  Future<void> _uploadMediaBytes(Uint8List bytes, String filename) async {
-    if (_rejectOversizeMedia(bytes.length)) return;
+  Future<void> _uploadPickedMedia(PickedMediaFile file, {String? typeOverride}) async {
+    final mediaType = typeOverride ?? (_isImagePost ? 'image' : _type);
+    if (_rejectOversizeMedia(file.size, type: mediaType)) return;
 
-    if (_isImagePost) {
-      await _uploadImageBytes(bytes, filename);
+    if (_isImagePost || mediaType == 'image') {
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        if (mounted) showAppSnackBar(context, 'خواندن فایل «${file.filename}» ناموفق بود.');
+        return;
+      }
+      await _uploadImageBytes(bytes, file.filename);
       return;
     }
 
-    final totalBytes = bytes.length;
+    final totalBytes = file.size;
     if (!mounted) return;
     setState(() {
       _mediaPhase = MediaUploadPhase.uploading;
@@ -465,14 +498,20 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
 
     try {
-      await _prepareLocalPreview(bytes, filename, _type);
+      await _prepareLocalPreview(
+        file.filename,
+        mediaType,
+        bytes: file.bytes,
+        path: file.path,
+      );
       if (!mounted) return;
 
       final manager = context.read<AppState>().manager;
       final media = await manager.uploadMedia(
-            bytes: bytes,
-            filename: filename,
-            type: _type,
+            bytes: file.bytes,
+            path: file.path,
+            filename: file.filename,
+            type: mediaType,
             optimizeImages: null,
             onUploadState: (upload) {
               if (!mounted) return;
@@ -498,6 +537,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
       final ready = await manager.waitForMediaReady(
         media.id,
+        type: mediaType,
         totalBytes: totalBytes,
         onUpdate: (updated) {
           if (!mounted) return;
@@ -526,7 +566,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   Future<void> _uploadImageBytes(Uint8List bytes, String filename) async {
-    if (_rejectOversizeMedia(bytes.length)) return;
+    if (_rejectOversizeMedia(bytes.length, type: 'image')) return;
 
     final draft = _AttachedImage(localBytes: bytes);
     draft.phase = MediaUploadPhase.uploading;
@@ -561,6 +601,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
       final ready = await manager.waitForMediaReady(
         media.id,
+        type: 'image',
         onUpdate: (updated) {
           if (!mounted) return;
           setState(() => draft.media = updated);
@@ -588,7 +629,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   Future<void> _uploadVoiceBytes(Uint8List bytes, String filename) {
-    return _uploadMediaBytes(bytes, filename);
+    return _uploadPickedMedia(
+      PickedMediaFile(filename: filename, size: bytes.length, bytes: bytes),
+      typeOverride: 'voice',
+    );
   }
 
   Future<void> _pickFromVoiceLibrary() async {
@@ -600,29 +644,29 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   Future<void> _pickVoiceFromDevice() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.audio,
-      withData: true,
+      withData: pickFilesWithData,
     );
     final picked = result?.files.singleOrNull;
     if (picked == null) return;
 
-    final size = picked.size;
-    if (size > 0 && _rejectOversizeMedia(size)) return;
-
-    final bytes = picked.bytes;
-    if (bytes == null) {
-      if (mounted) showAppSnackBar(context, 'خواندن فایل ناموفق بود.');
+    final resolved = await resolvePlatformFile(picked, mediaType: 'voice');
+    if (!mounted) return;
+    if (resolved is ResolvePickedMediaError) {
+      showAppSnackBar(context, resolved.message);
       return;
     }
-    if (_rejectOversizeMedia(bytes.length)) return;
+    final file = (resolved as ResolvePickedMediaOk).file;
+    final bytes = file.bytes;
+    if (bytes != null) {
+      try {
+        final saved = await VoiceLocalStore.save(bytes, file.filename);
+        if (saved != null && mounted) {
+          showAppSnackBar(context, 'ویس در کتابخانه ذخیره شد.');
+        }
+      } catch (_) {}
+    }
 
-    try {
-      final saved = await VoiceLocalStore.save(bytes, picked.name);
-      if (saved != null && mounted) {
-        showAppSnackBar(context, 'ویس در کتابخانه ذخیره شد.');
-      }
-    } catch (_) {}
-
-    await _uploadVoiceBytes(bytes, picked.name);
+    await _uploadPickedMedia(file, typeOverride: 'voice');
   }
 
   Future<void> _pickAndUploadMedia() async {
@@ -630,21 +674,19 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
         allowMultiple: true,
-        withData: true,
+        withData: pickFilesWithData,
       );
       final files = result?.files ?? const <PlatformFile>[];
       if (files.isEmpty) return;
 
       for (final picked in files) {
-        final size = picked.size;
-        if (size > 0 && _rejectOversizeMedia(size)) continue;
-        final bytes = picked.bytes;
-        if (bytes == null) {
-          if (mounted) showAppSnackBar(context, 'خواندن فایل «${picked.name}» ناموفق بود.');
+        final resolved = await resolvePlatformFile(picked, mediaType: 'image');
+        if (!mounted) return;
+        if (resolved is ResolvePickedMediaError) {
+          showAppSnackBar(context, resolved.message);
           continue;
         }
-        if (_rejectOversizeMedia(bytes.length)) continue;
-        await _uploadImageBytes(bytes, picked.name);
+        await _uploadPickedMedia((resolved as ResolvePickedMediaOk).file, typeOverride: 'image');
         if (!mounted) return;
       }
       return;
@@ -656,20 +698,20 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _ => FileType.any,
     };
 
-    final result = await FilePicker.platform.pickFiles(type: fileType, withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: fileType,
+      withData: pickFilesWithData,
+    );
     final picked = result?.files.singleOrNull;
     if (picked == null) return;
 
-    final size = picked.size;
-    if (size > 0 && _rejectOversizeMedia(size)) return;
-
-    final bytes = picked.bytes;
-    if (bytes == null) {
-      if (mounted) showAppSnackBar(context, 'خواندن فایل ناموفق بود.');
+    final resolved = await resolvePlatformFile(picked, mediaType: _type);
+    if (!mounted) return;
+    if (resolved is ResolvePickedMediaError) {
+      showAppSnackBar(context, resolved.message);
       return;
     }
-
-    await _uploadMediaBytes(bytes, picked.name);
+    await _uploadPickedMedia((resolved as ResolvePickedMediaOk).file);
   }
 
   Future<FamilyMediaRef?> _ensureMediaReady() async {
@@ -688,6 +730,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           });
           final ready = await manager.waitForMediaReady(
             media.id,
+            type: 'image',
             onUpdate: (updated) {
               if (!mounted) return;
               setState(() => _images[i].media = updated);
@@ -723,6 +766,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
     final ready = await context.read<AppState>().manager.waitForMediaReady(
           media.id,
+          type: _type,
           onUpdate: (updated) {
             if (!mounted) return;
             setState(() => _mediaRef = updated);
@@ -763,6 +807,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       }
       final ready = await manager.waitForMediaReady(
         retried.id,
+        type: _type,
         onUpdate: (updated) {
           if (!mounted) return;
           setState(() => _mediaRef = updated);
@@ -808,6 +853,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       }
       final ready = await manager.waitForMediaReady(
         retried.id,
+        type: 'image',
         onUpdate: (updated) {
           if (!mounted) return;
           setState(() => image.media = updated);

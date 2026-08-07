@@ -10,6 +10,7 @@ use App\Models\FamilyComment;
 use App\Models\FamilyPost;
 use App\Services\Family\FamilyAccessService;
 use App\Services\Family\FamilyAiSettingsService;
+use App\Services\Family\FamilyCommentModerationService;
 use App\Services\Family\FamilyStatsService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
@@ -23,6 +24,7 @@ class CommentController extends Controller
         private readonly FamilyAccessService $access,
         private readonly PostAudienceResolver $audience,
         private readonly FamilyStatsService $stats,
+        private readonly FamilyCommentModerationService $moderation,
     ) {}
 
     public function index(Request $request, FamilyPost $post): JsonResponse
@@ -66,7 +68,10 @@ class CommentController extends Controller
         return ApiResponse::success(
             FamilyCommentResource::collection($comments)->resolve(),
             200,
-            ['next_cursor' => $hasMore ? (string) $comments->last()->id : null]
+            [
+                'next_cursor' => $hasMore ? (string) $comments->last()->id : null,
+                'family_id' => $familyId,
+            ]
         );
     }
 
@@ -118,6 +123,7 @@ class CommentController extends Controller
 
         if (! $requireApproval) {
             $this->stats->incrementApprovedComments((int) $post->id, (int) $membership->family_id);
+            $this->moderation->broadcastMemberCreated($comment);
         }
 
         $comment->load(['user:id,name,is_admin', 'user.profile']);

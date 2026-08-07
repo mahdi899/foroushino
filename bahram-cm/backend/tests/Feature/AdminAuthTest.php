@@ -61,6 +61,36 @@ class AdminAuthTest extends TestCase
             ->assertJsonPath('error.details.captcha.0', 'تأیید امنیتی ناموفق بود. لطفاً دوباره تلاش کنید.');
     }
 
+    public function test_family_manager_login_skips_captcha(): void
+    {
+        Setting::query()->updateOrCreate(
+            ['group' => 'captcha', 'key' => 'config'],
+            ['value' => [
+                'enabled' => true,
+                'honeypot_enabled' => true,
+                'protect_admin_login' => true,
+            ]],
+        );
+        CaptchaService::forgetCachedConfig();
+
+        config(['bahram.otp.dev_mode' => true, 'bahram.otp.dev_code' => '12345']);
+
+        User::factory()->create([
+            'email' => 'admin@bahram.local',
+            'mobile' => '09121000001',
+            'password' => Hash::make('password'),
+            'is_admin' => true,
+        ]);
+
+        $this->withHeader('User-Agent', 'BahramFamilyManager/1.0.0')
+            ->postJson('/api/v1/auth/login', [
+                'email' => 'admin@bahram.local',
+                'password' => 'password',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.otp_required', true);
+    }
+
     public function test_admin_login_is_limited_to_six_attempts_per_ten_minutes(): void
     {
         Setting::query()->updateOrCreate(

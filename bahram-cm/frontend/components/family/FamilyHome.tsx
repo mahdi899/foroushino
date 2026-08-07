@@ -14,6 +14,7 @@ import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
 import { useOverlayHistoryBack } from '@/lib/family/hooks/useOverlayHistoryBack';
 import { invalidateAllFamilyBrowserCache } from '@/lib/family/browserCache';
 import { writeFamilyShellSnapshot } from '@/lib/family/shellCache';
+import { setViewerFamilyId } from '@/lib/family/viewerFamilyId';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse } from '@/lib/family/types';
 
 type Mode = 'guest' | 'join' | 'member';
@@ -33,6 +34,7 @@ export function FamilyHome({
   initialFeed = null,
   initialBranding,
   initialMemberCount,
+  initialFamilyId,
   viewerKey = 'anon',
   focusPostId,
 }: {
@@ -45,12 +47,17 @@ export function FamilyHome({
   initialFeed?: FamilyFeedResponse | null;
   initialBranding?: FamilyBranding;
   initialMemberCount?: number;
+  initialFamilyId?: number;
   viewerKey?: string | number;
   focusPostId?: number;
 }) {
   const { memberCount: resolvedMemberCount, syncMemberCount } = useFamilyMemberCount(
     memberCount ?? initialMemberCount,
   );
+
+  useEffect(() => {
+    if (initialFamilyId != null) setViewerFamilyId(initialFamilyId);
+  }, [initialFamilyId]);
 
   useEffect(() => {
     if (!initialBranding && typeof initialMemberCount !== 'number') return;

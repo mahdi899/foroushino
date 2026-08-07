@@ -54,21 +54,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<bool> isAdminLoginProtected() => _auth.isAdminLoginProtected();
-
-  Future<MathChallenge> fetchMathChallenge() => _auth.fetchMathChallenge();
-
   Future<AdminLoginResult> login({
     required String email,
     required String password,
-    String? captchaId,
-    String? captchaAnswer,
   }) async {
     final result = await _auth.loginWithPassword(
       email: email,
       password: password,
-      captchaId: captchaId,
-      captchaAnswer: captchaAnswer,
     );
     if (result case AdminLoginAuthenticated(:final user)) {
       this.user = user;
@@ -80,14 +72,10 @@ class AppState extends ChangeNotifier {
   Future<({String mobile, String masked})> requestOtp({
     required String email,
     required String password,
-    String? captchaId,
-    String? captchaAnswer,
   }) async {
     final result = await login(
       email: email,
       password: password,
-      captchaId: captchaId,
-      captchaAnswer: captchaAnswer,
     );
     return switch (result) {
       AdminLoginAuthenticated(:final user) => throw StateError('Already signed in as ${user.email}'),

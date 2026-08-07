@@ -175,7 +175,7 @@ export async function removeReaction(postId: number): Promise<{ data: { removed:
 export async function getComments(
   postId: number,
   cursor?: string | null,
-): Promise<{ data: FamilyComment[]; meta: { next_cursor: string | null } }> {
+): Promise<{ data: FamilyComment[]; meta: { next_cursor: string | null; family_id?: number } }> {
   const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
   return run(() => familyFetch(`/posts/${postId}/comments${qs}`), 'دریافت نظرات ناموفق بود.');
 }

@@ -51,18 +51,6 @@ class ManagerUser {
   bool get canManageFamilyAdmins => isRootAdmin || isSuperAdmin;
 }
 
-class MathChallenge {
-  MathChallenge({required this.id, required this.question});
-
-  final String id;
-  final String question;
-
-  factory MathChallenge.fromJson(Map<String, dynamic> json) => MathChallenge(
-        id: json['id']?.toString() ?? '',
-        question: json['question']?.toString() ?? '',
-      );
-}
-
 class HomeStats {
   HomeStats({
     required this.postsToday,

@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:bahram_family_manager/core/utils/file_download.dart';
+import 'package:bahram_family_manager/core/utils/read_file_chunk.dart';
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/core/api/api_exception.dart';
@@ -21,8 +23,11 @@ class FamilyManagerService {
 
   /// Chunked upload kicks in above this size so large voice/video files
   /// don't time out or blow past PHP's post_max_size in one request.
-  static const _chunkThresholdBytes = 20 * 1024 * 1024;
-  static const _chunkSizeBytes = 5 * 1024 * 1024;
+  static const chunkThresholdBytes = 20 * 1024 * 1024;
+  static const chunkSizeBytes = 5 * 1024 * 1024;
+
+  static const _chunkThresholdBytes = chunkThresholdBytes;
+  static const _chunkSizeBytes = chunkSizeBytes;
 
   Future<HomeStats> home() async {
     final res = await api.get('$_base/home');
@@ -483,18 +488,35 @@ class FamilyManagerService {
   // never construct storage paths on the client.
   // ---------------------------------------------------------------------
 
+  /// Uploads media from in-memory [bytes] and/or a local disk [path].
+  /// Prefer [path] for large videos so chunks are streamed without loading the
+  /// whole file into RAM. At least one of [bytes] / [path] is required.
   Future<FamilyMediaRef> uploadMedia({
-    required Uint8List bytes,
+    Uint8List? bytes,
+    String? path,
     required String filename,
     required String type,
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
   }) async {
-    final size = bytes.length;
+    final hasBytes = bytes != null && bytes.isNotEmpty;
+    final hasPath = path != null && path.isNotEmpty;
+    if (!hasBytes && !hasPath) {
+      throw ApiException(message: 'فایلی برای آپلود مشخص نشده است.', code: 'no_media_source');
+    }
+
+    final sourceBytes = hasBytes ? bytes : null;
+    final sourcePath = hasPath ? path : null;
+
+    final size = sourceBytes != null
+        ? sourceBytes.length
+        : await fileByteLength(sourcePath as String);
+
     if (size <= _chunkThresholdBytes) {
+      final payload = sourceBytes ?? await readFileChunk(sourcePath as String, 0, size);
       return _uploadSimple(
-        bytes,
+        payload,
         filename,
         type,
         optimizeImages: optimizeImages,
@@ -502,8 +524,28 @@ class FamilyManagerService {
         onUploadState: onUploadState,
       );
     }
+
+    if (sourcePath != null && !kIsWeb) {
+      return _uploadChunkedFromPath(
+        sourcePath,
+        filename,
+        type,
+        totalSize: size,
+        optimizeImages: optimizeImages,
+        onProgress: onProgress,
+        onUploadState: onUploadState,
+      );
+    }
+
+    if (sourceBytes == null) {
+      throw ApiException(
+        message: 'خواندن فایل برای آپلود ناموفق بود.',
+        code: 'media_bytes_missing',
+      );
+    }
+
     return _uploadChunked(
-      bytes,
+      sourceBytes,
       filename,
       type,
       optimizeImages: optimizeImages,
@@ -642,8 +684,49 @@ class FamilyManagerService {
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
   }) async {
-    final totalSize = bytes.length;
+    return _uploadChunkedSession(
+      filename: filename,
+      type: type,
+      totalSize: bytes.length,
+      optimizeImages: optimizeImages,
+      onProgress: onProgress,
+      onUploadState: onUploadState,
+      readChunk: (start, length) async {
+        final end = start + length;
+        return bytes.sublist(start, end > bytes.length ? bytes.length : end);
+      },
+    );
+  }
 
+  Future<FamilyMediaRef> _uploadChunkedFromPath(
+    String path,
+    String filename,
+    String type, {
+    required int totalSize,
+    bool? optimizeImages,
+    void Function(double progress)? onProgress,
+    MediaUploadStateCallback? onUploadState,
+  }) async {
+    return _uploadChunkedSession(
+      filename: filename,
+      type: type,
+      totalSize: totalSize,
+      optimizeImages: optimizeImages,
+      onProgress: onProgress,
+      onUploadState: onUploadState,
+      readChunk: (start, length) => readFileChunk(path, start, length),
+    );
+  }
+
+  Future<FamilyMediaRef> _uploadChunkedSession({
+    required String filename,
+    required String type,
+    required int totalSize,
+    required Future<Uint8List> Function(int start, int length) readChunk,
+    bool? optimizeImages,
+    void Function(double progress)? onProgress,
+    MediaUploadStateCallback? onUploadState,
+  }) async {
     _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0, totalSize);
 
     final sessionRes = await api.post('$_base/media/sessions', data: {
@@ -659,8 +742,8 @@ class FamilyManagerService {
 
     for (var index = 0; index < totalChunks; index++) {
       final start = index * _chunkSizeBytes;
-      final end = start + _chunkSizeBytes;
-      final chunk = bytes.sublist(start, end > totalSize ? totalSize : end);
+      final length = (start + _chunkSizeBytes > totalSize) ? totalSize - start : _chunkSizeBytes;
+      final chunk = await readChunk(start, length);
 
       final form = FormData.fromMap({
         'index': index,
@@ -688,19 +771,31 @@ class FamilyManagerService {
     return FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
+  static Duration readyTimeoutFor(String? type) {
+    if (type == 'video') return const Duration(minutes: 10);
+    return const Duration(minutes: 3);
+  }
+
   /// Poll until backend pipeline marks media `ready` (optimize → storage → CDN/local).
   Future<FamilyMediaRef> waitForMediaReady(
     int id, {
-    Duration timeout = const Duration(minutes: 3),
+    Duration? timeout,
     Duration interval = const Duration(seconds: 2),
     void Function(FamilyMediaRef media)? onUpdate,
     MediaUploadStateCallback? onUploadState,
     int totalBytes = 0,
+    String? type,
   }) async {
-    final deadline = DateTime.now().add(timeout);
+    Duration effectiveTimeout = timeout ?? readyTimeoutFor(type);
+    final started = DateTime.now();
+    var deadline = started.add(effectiveTimeout);
     while (DateTime.now().isBefore(deadline)) {
       final media = await showMedia(id);
       onUpdate?.call(media);
+      if (timeout == null && type == null && media.type.isNotEmpty) {
+        effectiveTimeout = readyTimeoutFor(media.type);
+        deadline = started.add(effectiveTimeout);
+      }
       final bytes = totalBytes > 0 ? totalBytes : (media.size ?? 0);
       if (media.isReady) {
         onUploadState?.call(UploadProgress(

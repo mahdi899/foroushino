@@ -11,9 +11,9 @@ use App\Http\Controllers\Controller;
 use App\Models\FamilyComment;
 use App\Services\AdminAuditLogger;
 use App\Services\Family\FamilyBrandingService;
+use App\Services\Family\FamilyCommentModerationService;
 use App\Services\Family\FamilyNotificationService;
 use App\Services\Family\FamilyPostPublisher;
-use App\Services\Family\FamilyStatsService;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +25,7 @@ use Illuminate\Validation\Rule;
 class CommentModerationController extends Controller
 {
     public function __construct(
-        private readonly FamilyStatsService $stats,
+        private readonly FamilyCommentModerationService $moderation,
         private readonly AdminAuditLogger $audit,
         private readonly FamilyNotificationService $notifications,
         private readonly FamilyBrandingService $branding,
@@ -181,18 +181,7 @@ class CommentModerationController extends Controller
     {
         abort_if($comment->status === FamilyCommentStatus::Approved, 422, 'این نظر قبلاً تأیید شده است.');
 
-        $comment->update([
-            'status' => FamilyCommentStatus::Approved,
-            'approved_at' => now(),
-            'moderated_by' => $request->user()->id,
-        ]);
-
-        $this->stats->incrementApprovedComments((int) $comment->post_id, (int) $comment->family_id);
-        $this->audit->log($request->user(), 'family.comment_approved', $comment);
-
-        if ($comment->user) {
-            $this->notifications->commentApproved($comment->user, (int) $comment->post_id);
-        }
+        $this->moderation->approve($comment, $request->user());
 
         return ApiResponse::success($this->present($comment->fresh(['user', 'family'])));
     }
@@ -204,26 +193,8 @@ class CommentModerationController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $wasApproved = $comment->status === FamilyCommentStatus::Approved;
-
-        $comment->update([
-            'status' => FamilyCommentStatus::Rejected,
-            'rejection_reason' => $data['reason'],
-            'rejection_note' => $data['note'] ?? null,
-            'rejected_at' => now(),
-            'moderated_by' => $request->user()->id,
-        ]);
-
-        if ($wasApproved) {
-            $this->stats->incrementApprovedComments((int) $comment->post_id, (int) $comment->family_id, -1);
-        }
-
-        $this->audit->log($request->user(), 'family.comment_rejected', $comment, ['reason' => $data['reason']]);
-
-        if ($comment->user) {
-            $reasonLabel = FamilyCommentRejectionReason::from($data['reason'])->label();
-            $this->notifications->commentRejected($comment->user, $data['note'] ?? $reasonLabel);
-        }
+        $reason = FamilyCommentRejectionReason::from($data['reason']);
+        $this->moderation->reject($comment, $reason, $data['note'] ?? null, $request->user());
 
         return ApiResponse::success($this->present($comment->fresh(['user', 'family'])));
     }
@@ -241,16 +212,7 @@ class CommentModerationController extends Controller
             ->get();
 
         foreach ($comments as $comment) {
-            $comment->update([
-                'status' => FamilyCommentStatus::Approved,
-                'approved_at' => now(),
-                'moderated_by' => $request->user()->id,
-            ]);
-            $this->stats->incrementApprovedComments((int) $comment->post_id, (int) $comment->family_id);
-
-            if ($comment->user) {
-                $this->notifications->commentApproved($comment->user, (int) $comment->post_id);
-            }
+            $this->moderation->approve($comment, $request->user());
         }
 
         $this->audit->log($request->user(), 'family.comments_batch_approved', null, [
@@ -274,7 +236,12 @@ class CommentModerationController extends Controller
             'is_important' => $important,
         ]);
 
-        return ApiResponse::success($this->present($comment->fresh(['user', 'family'])));
+        $fresh = $comment->fresh(['user', 'family', 'user.profile']);
+        if ($fresh) {
+            $this->moderation->broadcastVisibleUpdate($fresh);
+        }
+
+        return ApiResponse::success($this->present($fresh ?? $comment));
     }
 
     public function togglePulse(Request $request, FamilyComment $comment): JsonResponse
@@ -317,32 +284,11 @@ class CommentModerationController extends Controller
             return $this->replyWithVoicePost($request, $comment, $data);
         }
 
-        $reply = FamilyComment::query()->create([
-            'post_id' => $comment->post_id,
-            'family_id' => $comment->family_id,
-            'user_id' => $request->user()->id,
-            'parent_id' => $comment->id,
-            'body' => trim((string) $data['text']),
-            'status' => FamilyCommentStatus::Approved,
-            'approved_at' => now(),
-            'moderated_by' => $request->user()->id,
-        ]);
-
-        if (! $comment->seen_by_bahram_at) {
-            $comment->update(['seen_by_bahram_at' => now()]);
-        }
-
-        $this->stats->incrementApprovedComments((int) $comment->post_id, (int) $comment->family_id);
-
-        $this->audit->log($request->user(), 'family.bahram_replied', $comment, [
-            'reply_comment_id' => $reply->id,
-        ]);
-
-        if ($comment->user) {
-            $this->notifications->bahramReplied($comment->user, (int) $comment->post_id);
-        }
-
-        $reply->load(['user:id,name', 'family:id,internal_name']);
+        $reply = $this->moderation->addApprovedReply(
+            $comment,
+            $request->user(),
+            trim((string) $data['text']),
+        );
 
         return ApiResponse::success($this->present($reply), 201);
     }
