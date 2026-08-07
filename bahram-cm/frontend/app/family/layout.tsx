@@ -59,9 +59,13 @@ export default async function FamilyLayout({ children }: { children: React.React
   const wallpaperDark =
     primarySiteImageSrc(sitePhotos.familyChatWallpaperDark) ||
     sitePhotos.familyChatWallpaperDark;
+  const pattern =
+    primarySiteImageSrc(sitePhotos.familyChatPattern) ||
+    sitePhotos.familyChatPattern;
   const familyRootStyle = {
     '--family-chat-wallpaper-photo-light': `url('${wallpaperLight}')`,
     '--family-chat-wallpaper-photo-dark': `url('${wallpaperDark}')`,
+    '--family-chat-pattern': `url('${pattern}')`,
   } as CSSProperties;
 
   return (
@@ -84,7 +88,7 @@ export default async function FamilyLayout({ children }: { children: React.React
       <FamilyReactScan />
       <FamilyMediaPlayerProvider>
         <FamilyActionCelebrateProvider>
-          <div className="family-app__frame relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden">
+          <div className="family-app__frame relative mx-auto flex min-h-0 w-full flex-col overflow-hidden">
             {children}
             <FamilyPwaInstallBoot />
             <BahramUpdateBanner variant="family" />

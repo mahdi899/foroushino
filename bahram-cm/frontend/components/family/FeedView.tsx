@@ -20,7 +20,6 @@ import { GUEST_BLURRED_POST_COUNT, type FamilyGuestAction } from '@/lib/family/g
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
-import { FamilyFeedWallpaper } from '@/components/family/FamilyFeedWallpaper';
 import { VirtualFeedList, type VirtualFeedListHandle } from '@/components/family/VirtualFeedList';
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
@@ -113,6 +112,7 @@ const FeedCommentsPanel = dynamic(
 
 type CommentsTarget = {
   postId: number;
+  focusCommentId?: number | null;
   onCommentAdded: (comment: FamilyComment) => void;
 };
 
@@ -313,6 +313,8 @@ export function FeedView({
   const userScrollQuietUntilRef = useRef(0);
   /** Suppress jump FAB while a FAB-initiated scroll-to-tip is in flight. */
   const jumpToLatestInFlightRef = useRef(false);
+  /** User scrolled during an unread session — allows natural catch-up once tip is seen. */
+  const unreadUserScrolledRef = useRef(false);
   const scrollStickRafRef = useRef<number | null>(null);
   const scrollAnchorRafRef = useRef<number | null>(null);
   const mediaWarmupRafRef = useRef<number | null>(null);
@@ -475,23 +477,23 @@ export function FeedView({
         return;
       }
 
-      // Reading older tip pages — merge silently + bump FAB unread.
+      // Reading older tip pages — merge silently + bump FAB unread by one.
+      // Do NOT reset to full chrono — that undid scroll-based badge decreases.
       void mergePublishedPostIntoFeedCaches(payload.post_id).then((merged) => {
         if (!merged) void revalidateTip();
       });
 
-      const lastRead = getLastReadPostId(viewerKey);
-      const fromLoaded = countUnreadPosts(postsRef.current, lastRead);
-      const nextBadge = Math.max(
-        fromLoaded,
-        postsRef.current.some((p) => p.id === payload.post_id) ? fromLoaded : fromLoaded + 1,
-        1,
-      );
-      pushUnreadBadge(Math.max(unreadBadgeRef.current, nextBadge));
+      const lastRead = unreadSplitRef.current ?? getLastReadPostId(viewerKey);
+      const alreadyLoaded = postsRef.current.some((p) => p.id === payload.post_id);
+      if (!alreadyLoaded) {
+        pushUnreadBadge(Math.max(unreadBadgeRef.current + 1, 1));
+      }
       if (unreadSplitRef.current == null && lastRead > 0) {
         unreadSplitRef.current = lastRead;
+        unreadUserScrolledRef.current = false;
         setUnreadSplitId(lastRead);
-        setUnreadDividerCount((prev) => Math.max(prev, nextBadge));
+        const chrono = countUnreadPosts(postsRef.current, lastRead);
+        setUnreadDividerCount((prev) => Math.max(prev, alreadyLoaded ? chrono : chrono + 1, 1));
       }
     },
   });
@@ -646,6 +648,9 @@ export function FeedView({
     // Cancel delayed passes from an earlier automatic scroll. A later explicit FAB click
     // starts a new generation, so manual "jump to latest" remains reliable.
     scrollLatestGenRef.current += 1;
+    if (unreadSplitRef.current != null && !unreadBootLockRef.current) {
+      unreadUserScrolledRef.current = true;
+    }
     if (!movingAwayFromTip) return;
     tipSettleUntilRef.current = 0;
     anchoredToBottomRef.current = false;
@@ -832,15 +837,7 @@ export function FeedView({
     const { root, lenis } = getScrollCtx();
     if (!root) return;
     if (unreadBootLockRef.current) return;
-    // Loaded window is a "jump to post" slice — the true tip isn't loaded, so the bottom
-    // of this window is never "caught up". Keep the FAB up as the only way back to live.
-    if (isJumpedAwayRef.current) {
-      anchoredToBottomRef.current = false;
-      if (feedReadyRef.current && !commentsOpenRef.current && !notificationsOpenRef.current) {
-        setJumpFabVisible(true);
-      }
-      return;
-    }
+
     // Do NOT call lenis.resize() here — it runs on every scroll frame and tanks FPS.
     const distanceFromBottom = lenis
       ? getLenisDistanceFromBottom(lenis)
@@ -852,6 +849,29 @@ export function FeedView({
       !isPreview && lastRead > 0 ? countUnreadPosts(postsRef.current, lastRead) : 0;
     const unreadSession = split != null && chronoUnread > 0;
 
+    // Always measure what's still below in the loaded window so the FAB badge tracks scroll.
+    const remainingUnread =
+      !isPreview && lastRead > 0 && chronoUnread > 0
+        ? countUnreadStillBelow(postsRef.current, lastRead, root, distanceFromBottom)
+        : 0;
+
+    // Loaded window is a "jump to post" slice — true tip may still be unloaded.
+    // Still refresh the badge from the local window; don't freeze it until FAB click.
+    if (isJumpedAwayRef.current && hasNewer) {
+      anchoredToBottomRef.current = false;
+      if (!isPreview) {
+        // Local window fully seen but server still has newer pages — keep a residual badge.
+        pushUnreadBadge(remainingUnread > 0 ? remainingUnread : Math.max(chronoUnread, 1));
+      }
+      if (feedReadyRef.current && !commentsOpenRef.current && !notificationsOpenRef.current) {
+        setJumpFabVisible(true);
+      }
+      return;
+    }
+    if (isJumpedAwayRef.current && !hasNewer) {
+      isJumpedAwayRef.current = false;
+    }
+
     const latestPostId = chronologicalLatestPostId(postsRef.current);
     const tipInView = isFeedTipInView(root, latestPostId, distanceFromBottom);
 
@@ -861,7 +881,8 @@ export function FeedView({
       distanceFromBottom < (unreadSession ? 24 : 80) || tipInView;
 
     // If last-seen is still on screen, we are in the unread landing zone — never auto-catchup
-    // (short posts can fit tip + last-read in one viewport and falsely look "at tip").
+    // (short posts can fit tip + last-read in one viewport and falsely look "at tip"),
+    // unless the user has already scrolled (they've looked at the new posts).
     let lastReadInView = false;
     if (unreadSession && lastRead > 0) {
       const el = document.getElementById(`family-post-${lastRead}`);
@@ -873,18 +894,11 @@ export function FeedView({
       }
     }
 
-    // Always measure what's still below — never fall back to full chrono when tip peeks in
-    // (that flashed badge 1→10 and forced a false catch-up).
-    const remainingUnread =
-      !isPreview && lastRead > 0 && chronoUnread > 0
-        ? countUnreadStillBelow(postsRef.current, lastRead, root, distanceFromBottom)
-        : 0;
+    const landLock =
+      unreadSession && lastReadInView && !unreadUserScrolledRef.current;
 
     const atBottom =
-      nearScrollEnd &&
-      tipInView &&
-      remainingUnread === 0 &&
-      !(unreadSession && lastReadInView);
+      nearScrollEnd && tipInView && remainingUnread === 0 && !landLock;
 
     // While tip is still settling after caught-up boot, don't drop the anchor just
     // because media/chrome inset grew the scroll height (that showed the jump FAB early).
@@ -935,8 +949,10 @@ export function FeedView({
           unreadSession,
           remainingUnread,
           chronoUnread,
+          userScrolled: unreadUserScrolledRef.current,
         });
       }
+      unreadUserScrolledRef.current = false;
       markCaughtUpToLatest();
       setJumpFabVisible(false);
       return;
@@ -945,7 +961,15 @@ export function FeedView({
     if (!isPreview) {
       pushUnreadBadge(badgeCount);
     }
-  }, [getScrollCtx, isPreview, markCaughtUpToLatest, pushUnreadBadge, setJumpFabVisible, viewerKey]);
+  }, [
+    getScrollCtx,
+    hasNewer,
+    isPreview,
+    markCaughtUpToLatest,
+    pushUnreadBadge,
+    setJumpFabVisible,
+    viewerKey,
+  ]);
 
   const estimatePostHeight = useCallback((post: FamilyPost) => {
     return estimateFeedItemSize(0, { kind: 'post', key: `estimate-${post.id}`, post });
@@ -1029,6 +1053,9 @@ export function FeedView({
   }, [feedReady, isPreview, posts.length]);
 
   const handleFeedScroll = useCallback(() => {
+    if (unreadSplitRef.current != null && !unreadBootLockRef.current) {
+      unreadUserScrolledRef.current = true;
+    }
     const { root: currentRoot } = getScrollCtx();
     if (
       currentRoot &&
@@ -1196,6 +1223,20 @@ export function FeedView({
       }
     },
     [getScrollCtx, jumpToPost, loadMore],
+  );
+
+  const openReplyTarget = useCallback(
+    (target: { postId: number; commentId?: number | null }) => {
+      void (async () => {
+        await scrollToPost(target.postId, { behavior: 'smooth', highlight: true });
+        openComments({
+          postId: target.postId,
+          focusCommentId: target.commentId ?? null,
+          onCommentAdded: () => {},
+        });
+      })();
+    },
+    [openComments, scrollToPost],
   );
 
   useEffect(() => {
@@ -1369,6 +1410,7 @@ export function FeedView({
         }
         unreadSplitRef.current = lastRead;
         pendingInitialUnreadScrollRef.current = lastRead;
+        unreadUserScrolledRef.current = false;
         setUnreadSplitId(lastRead);
         const localCount = countUnreadPosts(posts, lastRead);
         familyFeedDebug.info('boot', 'unread landing path', {
@@ -1543,6 +1585,7 @@ export function FeedView({
       scheduleRevealFeed(40);
       unreadLandCompletedForRef.current = splitAtStart;
       unreadBootLockRef.current = false;
+      unreadUserScrolledRef.current = false;
       familyFeedDebug.info('land', 'boot lock released', { landGen, completedFor: splitAtStart });
     };
 
@@ -1642,19 +1685,23 @@ export function FeedView({
     const lastRead = unreadSplitRef.current ?? resolveUnreadCursor(viewerKey, posts);
     if (lastRead <= 0) return;
     const chrono = countUnreadPosts(posts, lastRead);
-    if (chrono <= 0) return;
+    if (chrono <= 0) {
+      pushUnreadBadge(0);
+      return;
+    }
     if (root) {
       const distanceFromBottom = lenis
         ? getLenisDistanceFromBottom(lenis)
         : getFeedDistanceFromBottom(root);
       const below = countUnreadStillBelow(posts, lastRead, root, distanceFromBottom);
-      // Keep at least chrono while unread session is open — don't collapse to 0 if tip also fits.
-      pushUnreadBadge(below > 0 ? below : chrono);
+      // Track remaining-below only — never re-inflate to full chrono after the user has scrolled.
+      pushUnreadBadge(below);
     } else {
       pushUnreadBadge(chrono);
     }
     if (unreadSplitRef.current == null) {
       unreadSplitRef.current = lastRead;
+      unreadUserScrolledRef.current = false;
       setUnreadSplitId(lastRead);
       setUnreadDividerCount((prev) => Math.max(prev, chrono));
     }
@@ -1783,6 +1830,7 @@ export function FeedView({
           onGuestGate={scrollToPreviewCta}
           animateEnter={animateEnter}
           onOpenComments={isPreview ? undefined : openPostComments}
+          onOpenReplyTarget={isPreview ? undefined : openReplyTarget}
           guestBlurred={guestBlurredPostIds.has(item.post.id)}
           onGuestUnlock={unlockGuestPost}
         />
@@ -1795,6 +1843,7 @@ export function FeedView({
       isPreview,
       isStaff,
       openPostComments,
+      openReplyTarget,
       previewMode,
       resolvedMemberCount,
       scrollToPreviewCta,
@@ -1859,7 +1908,6 @@ export function FeedView({
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <FamilyFeedWallpaper />
           {!isPreview && notificationsOpen ? (
             <div className="family-feed-overlay absolute inset-0 z-50 flex min-h-0 flex-col overflow-hidden">
               <FamilyNotificationsPanel
@@ -1873,6 +1921,7 @@ export function FeedView({
           {commentsTarget ? (
             <FeedCommentsPanel
               postId={commentsTarget.postId}
+              focusCommentId={commentsTarget.focusCommentId}
               onClose={closeComments}
               onCommentAdded={commentsTarget.onCommentAdded}
               className="flex min-h-0 flex-1 flex-col"
@@ -1902,7 +1951,7 @@ export function FeedView({
 
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
               {!feedReady ? (
-                <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-[color-mix(in_oklab,var(--family-chat-wallpaper-base)_72%,transparent)]" />
+                <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-transparent" />
               ) : null}
               <FamilyFeedScroll
                 ref={feedScrollRef}

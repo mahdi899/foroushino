@@ -63,6 +63,8 @@ class FamilyPostResource extends JsonResource
             'reply_context' => $this->when(
                 $this->relationLoaded('replyToComment') && $this->replyToComment,
                 fn () => [
+                    'comment_id' => (int) $this->replyToComment->id,
+                    'post_id' => (int) $this->replyToComment->post_id,
                     'comment_body' => $this->replyToComment->body,
                     'user_name' => $this->replyToComment->user?->name,
                 ]

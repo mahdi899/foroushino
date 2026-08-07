@@ -1,4 +1,3 @@
-import { FamilyFeedWallpaper } from '@/components/family/FamilyFeedWallpaper';
 import { PinnedBarSkeleton } from '@/components/family/PinnedBarSkeleton';
 
 /** Bubble placeholders while feed scroll position is prepared (no jump flash). */
@@ -40,7 +39,6 @@ export function FamilyShellLoading() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <FamilyFeedWallpaper />
           <div className="family-feed-chrome-stack">
             <div className="family-feed-chrome-stack__pin">
               <div className="family-feed-chrome-item family-feed-chrome-item--pinned family-feed-chrome-item--pinned-slot">

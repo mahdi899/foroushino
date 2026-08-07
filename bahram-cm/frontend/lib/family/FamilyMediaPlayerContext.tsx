@@ -219,3 +219,8 @@ export function useFamilyMediaPlayer() {
   if (!ctx) throw new Error('useFamilyMediaPlayer must be used within FamilyMediaPlayerProvider');
   return ctx;
 }
+
+/** Safe for chrome that may pre-render before layout providers attach (SSR / recovery). */
+export function useFamilyMediaPlayerOptional() {
+  return useContext(FamilyMediaPlayerContext);
+}

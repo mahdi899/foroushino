@@ -24,6 +24,16 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     label: 'پس‌زمینه هیرو — موبایل',
     category: 'صفحه اصلی',
   },
+  'family-chat-pattern': {
+    src: siteStorageMedia('family-chat-pattern.svg'),
+    label: 'الگوی پس‌زمینه خانواده — تکرار (لایت/دارک)',
+    category: 'خانواده',
+  },
+  'family-chat-pattern-dark': {
+    src: siteStorageMedia('family-chat-pattern.svg'),
+    label: 'الگوی پس‌زمینه خانواده — تکرار (قدیمی)',
+    category: 'خانواده',
+  },
   'family-chat-wallpaper-dark': {
     src: siteStorageMedia('family-chat-wallpaper-dark.webp'),
     label: 'پس‌زمینه فید خانواده — دارک',

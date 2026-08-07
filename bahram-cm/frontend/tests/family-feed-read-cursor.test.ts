@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   countUnreadStillBelow,
   getLastReadPostId,
@@ -31,45 +31,70 @@ describe('resolveUnreadCursor', () => {
   });
 });
 
+function mockRect(top: number, bottom: number) {
+  return {
+    top,
+    bottom,
+    left: 0,
+    right: 360,
+    width: 360,
+    height: bottom - top,
+    x: 0,
+    y: top,
+    toJSON: () => ({}),
+  };
+}
+
+function mountPost(id: number, top: number, bottom: number) {
+  const el = document.createElement('article');
+  el.id = `family-post-${id}`;
+  document.body.appendChild(el);
+  Object.defineProperty(el, 'getBoundingClientRect', {
+    value: () => mockRect(top, bottom),
+  });
+  return el;
+}
+
 describe('countUnreadStillBelow', () => {
-  it('does not count virtualized-above posts as still below when near tip', () => {
-    const root = document.createElement('div');
+  let root: HTMLDivElement;
+  const mounted: HTMLElement[] = [];
+
+  beforeEach(() => {
+    root = document.createElement('div');
     document.body.appendChild(root);
     Object.defineProperty(root, 'getBoundingClientRect', {
-      value: () => ({
-        top: 0,
-        bottom: 400,
-        left: 0,
-        right: 360,
-        width: 360,
-        height: 400,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }),
+      value: () => mockRect(0, 400),
     });
+  });
 
-    const tip = document.createElement('article');
-    tip.id = 'family-post-30';
-    document.body.appendChild(tip);
-    Object.defineProperty(tip, 'getBoundingClientRect', {
-      value: () => ({
-        top: 300,
-        bottom: 380,
-        left: 0,
-        right: 360,
-        width: 360,
-        height: 80,
-        x: 0,
-        y: 300,
-        toJSON: () => ({}),
-      }),
-    });
+  afterEach(() => {
+    for (const el of mounted.splice(0)) el.remove();
+    root.remove();
+  });
 
+  it('does not count virtualized-above posts as still below when near tip', () => {
+    mounted.push(mountPost(30, 300, 380));
     const posts = [{ id: 10 }, { id: 20 }, { id: 30 }];
     expect(countUnreadStillBelow(posts, 10, root, 40)).toBe(0);
+  });
 
-    tip.remove();
-    root.remove();
+  it('decrements past virtualized-above posts while scrolling mid-feed', () => {
+    // lastRead=10; 20 already scrolled past (unmounted); 30 visible; 40+50 still below (unmounted).
+    mounted.push(mountPost(30, 120, 220));
+    const posts = [{ id: 10 }, { id: 20 }, { id: 30 }, { id: 40 }, { id: 50 }];
+    expect(countUnreadStillBelow(posts, 10, root, 500)).toBe(2);
+  });
+
+  it('counts only posts still below a mounted unread row', () => {
+    mounted.push(mountPost(20, 50, 150));
+    mounted.push(mountPost(30, 160, 260));
+    mounted.push(mountPost(40, 450, 550));
+    const posts = [{ id: 10 }, { id: 20 }, { id: 30 }, { id: 40 }, { id: 50 }];
+    expect(countUnreadStillBelow(posts, 10, root, 500)).toBe(2);
+  });
+
+  it('treats an unread window with nothing mounted as all still below', () => {
+    const posts = [{ id: 10 }, { id: 20 }, { id: 30 }];
+    expect(countUnreadStillBelow(posts, 10, root, 500)).toBe(2);
   });
 });

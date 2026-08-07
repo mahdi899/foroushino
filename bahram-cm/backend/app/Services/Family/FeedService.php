@@ -115,7 +115,7 @@ class FeedService
                 'blocks.media',
                 'blocks.article:id,title,slug,excerpt,featured_image,status',
                 'actions.options',
-                'replyToComment:id,user_id,body,status',
+                'replyToComment:id,post_id,user_id,body,status',
                 'replyToComment.user:id,name',
                 'stats' => fn ($q) => $q->where('family_id', $familyId),
             ])
@@ -272,7 +272,7 @@ class FeedService
                     'blocks.media',
                     'blocks.article:id,title,slug,excerpt,featured_image,status',
                     'actions.options',
-                    'replyToComment:id,user_id,body,status',
+                    'replyToComment:id,post_id,user_id,body,status',
                     'replyToComment.user:id,name',
                     'stats' => fn ($q) => $q->where('family_id', $familyId),
                 ])
@@ -315,7 +315,7 @@ class FeedService
                 'blocks.media',
                 'blocks.article:id,title,slug,excerpt,featured_image,status',
                 'actions.options',
-                'replyToComment:id,user_id,body,status',
+                'replyToComment:id,post_id,user_id,body,status',
                 'replyToComment.user:id,name',
                 'stats' => fn ($q) => $q->where('family_id', $familyId),
             ])
@@ -497,7 +497,7 @@ class FeedService
                 'blocks.media',
                 'blocks.article:id,title,slug,excerpt,featured_image,status',
                 'actions.options',
-                'replyToComment:id,user_id,body,status',
+                'replyToComment:id,post_id,user_id,body,status',
                 'replyToComment.user:id,name',
                 'stats' => fn ($q) => $q->where('family_id', $familyId),
             ])

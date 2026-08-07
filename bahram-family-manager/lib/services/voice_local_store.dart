@@ -107,10 +107,57 @@ class VoiceLocalStore {
     }
   }
 
+  /// Renames the file on disk. Keeps the original audio extension.
+  /// [newName] may be stem-only or include an extension (extension is ignored if different).
+  static Future<SavedVoiceRecording?> rename(
+    SavedVoiceRecording recording,
+    String newName,
+  ) async {
+    if (kIsWeb) return null;
+
+    final dir = await recordingsDirectory();
+    if (dir == null) return null;
+
+    final file = File(recording.absolutePath);
+    if (!await file.exists()) return null;
+
+    final ext = p.extension(recording.filename);
+    var input = newName.trim();
+    if (input.isEmpty) return null;
+
+    final inputExt = p.extension(input);
+    if (inputExt.isEmpty) {
+      input = '$input$ext';
+    } else {
+      input = '${p.basenameWithoutExtension(input)}$ext';
+    }
+
+    final safeName = _sanitizeFilename(input);
+    if (safeName == recording.filename) return recording;
+
+    final targetName = _uniqueFilename(dir, safeName);
+    try {
+      final renamed = await file.rename(p.join(dir.path, targetName));
+      final stat = await renamed.stat();
+      return SavedVoiceRecording(
+        filename: targetName,
+        absolutePath: renamed.path,
+        savedAt: stat.modified,
+        sizeBytes: stat.size,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   static String _sanitizeFilename(String filename) {
     final base = p.basename(filename.trim());
     if (base.isEmpty) return 'voice_${DateTime.now().millisecondsSinceEpoch}.wav';
-    final cleaned = base.replaceAll(RegExp(r'[^\w.\-]'), '_');
+    // Keep letters (incl. Persian), digits, dot, dash, underscore; strip path separators & control chars.
+    final cleaned = base
+        .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), '_')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     return cleaned.isEmpty ? 'voice_${DateTime.now().millisecondsSinceEpoch}.wav' : cleaned;
   }
 
