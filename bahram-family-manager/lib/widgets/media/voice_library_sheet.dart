@@ -108,6 +108,48 @@ class _VoiceLibrarySheetState extends State<VoiceLibrarySheet> {
     );
   }
 
+  Future<void> _rename(SavedVoiceRecording recording) async {
+    final stem = recording.filename.contains('.')
+        ? recording.filename.substring(0, recording.filename.lastIndexOf('.'))
+        : recording.filename;
+    final ctrl = TextEditingController(text: stem);
+    final confirmed = await showGlassDialog<bool>(
+      context: context,
+      title: 'تغییر نام ویس',
+      content: TextField(
+        controller: ctrl,
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(
+          labelText: 'نام جدید',
+          hintText: 'مثلاً معرفی خانواده',
+        ),
+        onSubmitted: (_) => Navigator.pop(context, true),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('ذخیره')),
+      ],
+    );
+    final nextName = ctrl.text.trim();
+    ctrl.dispose();
+    if (confirmed != true || nextName.isEmpty) return;
+
+    if (_playingPath == recording.absolutePath) {
+      await _player.stop();
+      _playingPath = null;
+    }
+
+    final renamed = await VoiceLocalStore.rename(recording, nextName);
+    if (!mounted) return;
+    if (renamed == null) {
+      showAppSnackBar(context, 'تغییر نام ویس ناموفق بود.');
+      return;
+    }
+    await _reload();
+    if (mounted) showAppSnackBar(context, 'نام ویس به‌روز شد.');
+  }
+
   Future<void> _delete(SavedVoiceRecording recording) async {
     final confirmed = await showGlassDialog<bool>(
       context: context,
@@ -278,9 +320,9 @@ class _VoiceLibrarySheetState extends State<VoiceLibrarySheet> {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'انتخاب',
-                        onPressed: () => unawaited(_select(recording)),
-                        icon: Icon(Icons.check_circle_outline_rounded, color: scheme.primary),
+                        tooltip: 'تغییر نام',
+                        onPressed: () => unawaited(_rename(recording)),
+                        icon: Icon(Icons.drive_file_rename_outline_rounded, color: scheme.primary),
                       ),
                       IconButton(
                         tooltip: 'حذف',
