@@ -198,7 +198,10 @@ export function isFeedTipInView(
 
 /**
  * How many posts after `lastReadPostId` are still entirely below the viewport.
- * Binary-searches post tops — O(log n) layout reads instead of measuring every post.
+ *
+ * Virtualized rows unmount both above and below the window. Layout is only read for
+ * mounted posts; unmounted rows before the last seen mounted post are treated as
+ * already scrolled past, and unmounted rows after it as still below (unless near tip).
  */
 export function countUnreadStillBelow(
   postsAsc: { id: number }[],
@@ -215,28 +218,34 @@ export function countUnreadStillBelow(
   const rootBottom = root.getBoundingClientRect().bottom - 4;
   const nearTip =
     typeof distanceFromBottom === 'number' && distanceFromBottom < 120;
-  let lo = from;
-  let hi = postsAsc.length;
+  const end = postsAsc.length;
 
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    const el = document.getElementById(`family-post-${postsAsc[mid]!.id}`);
-    if (!el) {
-      // Virtualized rows above the viewport unmount too — only treat as "below"
-      // when we're not already pinned near the feed tip.
-      if (nearTip) {
-        lo = mid + 1;
-      } else {
-        hi = mid;
-      }
-      continue;
-    }
+  let lastNotBelow = from - 1;
+  let firstBelow: number | null = null;
+  let mounted = 0;
+
+  for (let i = from; i < end; i++) {
+    const el = document.getElementById(`family-post-${postsAsc[i]!.id}`);
+    if (!el) continue;
+    mounted += 1;
     if (el.getBoundingClientRect().top > rootBottom) {
-      hi = mid;
-    } else {
-      lo = mid + 1;
+      firstBelow = i;
+      break;
     }
+    lastNotBelow = i;
   }
 
-  return postsAsc.length - lo;
+  if (firstBelow != null) {
+    return end - firstBelow;
+  }
+
+  // No mounted unread post is entirely below the viewport.
+  if (nearTip) return 0;
+  if (mounted === 0) {
+    // Unread zone not in the virtual window yet — still all below.
+    return end - from;
+  }
+
+  // Mounted unread posts were seen; only unmounted rows after the last seen remain below.
+  return end - lastNotBelow - 1;
 }
