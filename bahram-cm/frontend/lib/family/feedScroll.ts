@@ -200,7 +200,8 @@ export function getFeedScrollTop(root: HTMLElement, lenis?: Lenis | null) {
  * items are prepended (Lenis-safe — does not rely on wrapper.scrollTop).
  *
  * `anchorSelector` defaults to feed posts; comments panels pass
- * `[id^="family-comment-"]` so mt-auto / avatar measure can't yank the viewport.
+ * `li[id^="family-comment-"]` so nested reply ids / mt-auto / avatar measure
+ * can't yank the viewport.
  */
 export function captureFeedScrollRestore(
   root: HTMLElement,
@@ -249,7 +250,7 @@ export function feedScrollRestoreDrift(
   if (!root) return 0;
 
   if (previous.mode === 'anchor' && previous.anchorId && previous.offsetFromRootTop != null) {
-    const el = document.getElementById(previous.anchorId);
+    const el = findScrollAnchor(root, previous.anchorId);
     if (el) {
       const rootTop = root.getBoundingClientRect().top;
       const currentOffset = el.getBoundingClientRect().top - rootTop;
@@ -259,6 +260,17 @@ export function feedScrollRestoreDrift(
 
   const expectedTop = previous.top + (root.scrollHeight - previous.height);
   return getFeedScrollTop(root, lenis) - expectedTop;
+}
+
+function findScrollAnchor(root: HTMLElement, anchorId: string): HTMLElement | null {
+  try {
+    const scoped = root.querySelector<HTMLElement>(`#${CSS.escape(anchorId)}`);
+    if (scoped) return scoped;
+  } catch {
+    // CSS.escape / querySelector can throw on odd ids — fall through.
+  }
+  const byId = document.getElementById(anchorId);
+  return byId && root.contains(byId) ? byId : null;
 }
 
 export function restoreFeedScrollPosition(
@@ -274,7 +286,7 @@ export function restoreFeedScrollPosition(
   if (!root) return;
 
   if (previous.mode === 'anchor' && previous.anchorId) {
-    const el = document.getElementById(previous.anchorId);
+    const el = findScrollAnchor(root, previous.anchorId);
     if (el && previous.offsetFromRootTop != null) {
       const rootTop = root.getBoundingClientRect().top;
       const currentOffset = el.getBoundingClientRect().top - rootTop;

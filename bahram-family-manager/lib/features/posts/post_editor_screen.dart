@@ -502,7 +502,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       return _mediaPhase.isActive ? 160 : 88;
     }
     if (_type == 'video_note') {
-      return _mediaPhase.isActive ? 240 : 220;
+      return _mediaPhase.isActive ? 220 : 200;
     }
     return (_mediaRef?.isAudio ?? _type == 'voice') ? 88 : 220;
   }
@@ -588,6 +588,33 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   Widget _buildSingleMediaUploadPreview({
     required Color subtle,
   }) {
+    final isVideoNote = _type == 'video_note';
+    final previewRadius = isVideoNote
+        ? BorderRadius.circular(_singleMediaPreviewHeight / 2)
+        : BorderRadius.circular(14);
+    final mediaPreview = MediaUploadProgressOverlay(
+      phase: _mediaPhase,
+      progress: _uploadProgress,
+      sentBytes: _uploadSentBytes,
+      totalBytes: _uploadTotalBytes,
+      borderRadius: previewRadius,
+      onRetry: _mediaPhase == MediaUploadPhase.failed ? _retryMedia : null,
+      child: FamilyMediaView(
+        media: _mediaRef ??
+            FamilyMediaRef(
+              id: 0,
+              type: _type == 'voice' ? 'voice' : _mediaIngestType,
+              status: 'uploading',
+              originalFilename: null,
+            ),
+        height: _singleMediaPreviewHeight,
+        circular: isVideoNote,
+        borderRadius: previewRadius,
+        localBytes: _localPreviewBytes,
+        localUrl: _localPreviewUrl,
+      ),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -599,26 +626,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               style: TextStyle(color: subtle, fontSize: 13),
             ),
           ),
-        MediaUploadProgressOverlay(
-          phase: _mediaPhase,
-          progress: _uploadProgress,
-          sentBytes: _uploadSentBytes,
-          totalBytes: _uploadTotalBytes,
-          borderRadius: BorderRadius.circular(14),
-          onRetry: _mediaPhase == MediaUploadPhase.failed ? _retryMedia : null,
-          child: FamilyMediaView(
-            media: _mediaRef ??
-                FamilyMediaRef(
-                  id: 0,
-                  type: _type == 'voice' ? 'voice' : _mediaIngestType,
-                  status: 'uploading',
-                  originalFilename: null,
-                ),
-            height: _singleMediaPreviewHeight,
-            localBytes: _localPreviewBytes,
-            localUrl: _localPreviewUrl,
-          ),
-        ),
+        if (isVideoNote)
+          Center(
+            child: SizedBox(
+              width: _singleMediaPreviewHeight,
+              height: _singleMediaPreviewHeight,
+              child: mediaPreview,
+            ),
+          )
+        else
+          mediaPreview,
         const SizedBox(height: AppSpacing.sm),
         Align(
           alignment: Alignment.centerLeft,
@@ -934,7 +951,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     final picked = result?.files.singleOrNull;
     if (picked == null) return;
 
-    final resolved = await resolvePlatformFile(picked, mediaType: 'video');
+    final resolved = await resolvePlatformFile(picked, mediaType: 'video_note');
     if (!mounted) return;
     if (resolved is ResolvePickedMediaError) {
       showAppSnackBar(context, resolved.message);
@@ -950,9 +967,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         saved = await VideoNoteLocalStore.save(file.bytes!, file.filename);
       }
       if (saved != null && mounted) {
-        showAppSnackBar(context, 'ویدیو در کتابخانه ذخیره شد.');
+        showAppSnackBar(context, 'ویدیو دایره‌ای در کتابخانه ذخیره شد.');
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        showAppSnackBar(context, 'ذخیره در کتابخانه ویدیو دایره‌ای ناموفق بود؛ آپلود ادامه می‌یابد.');
+      }
+    }
 
     await _uploadPickedMedia(file, typeOverride: 'video');
   }
@@ -1845,8 +1866,18 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('نظرات فعال'),
-                  subtitle: const Text('به‌صورت پیش‌فرض بسته است؛ در صورت نیاز روشن کنید'),
+                  title: Text(
+                    _post != null && (_post!.isPublished || _post!.isArchived)
+                        ? (_commentsEnabled ? 'نظرات باز است' : 'نظرات بسته است')
+                        : 'نظرات فعال',
+                  ),
+                  subtitle: Text(
+                    _post != null && (_post!.isPublished || _post!.isArchived)
+                        ? (_commentsEnabled
+                            ? 'اعضا می‌توانند نظر و پاسخ بگذارند — برای بستن خاموش کنید'
+                            : 'نظرات قبلی نمایش داده می‌شوند؛ برای باز کردن روشن کنید')
+                        : 'به‌صورت پیش‌فرض بسته است؛ در صورت نیاز روشن کنید',
+                  ),
                   value: _commentsEnabled,
                   onChanged: (v) => setState(() => _commentsEnabled = v),
                 ),

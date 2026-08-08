@@ -40,6 +40,8 @@ class _LandingLeadsScreenState extends State<LandingLeadsScreen> {
   var _unassignedOnly = true;
   int? _landingPageId;
   String? _error;
+  /// lead id → in-flight assign/create action.
+  final Map<int, LeadBusyAction> _busyLeads = {};
 
   @override
   void initState() {
@@ -128,9 +130,11 @@ class _LandingLeadsScreenState extends State<LandingLeadsScreen> {
   }
 
   Future<void> _assignToFamily(LandingLeadModel lead) async {
+    if (_busyLeads.containsKey(lead.id)) return;
     final familyId = await showFamilySinglePickerSheet(context);
     if (!mounted || familyId == null) return;
 
+    setState(() => _busyLeads[lead.id] = LeadBusyAction.assign);
     try {
       await context.read<AppState>().manager.assignLandingLead(
             leadId: lead.id,
@@ -141,10 +145,13 @@ class _LandingLeadsScreenState extends State<LandingLeadsScreen> {
       await _loadFirstPage();
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busyLeads.remove(lead.id));
     }
   }
 
   Future<void> _createFamilyForLead(LandingLeadModel lead) async {
+    if (_busyLeads.containsKey(lead.id)) return;
     final familyId = await showFamilyEditorSheet(
       context: context,
       initialName: lead.name != '—' ? lead.name : null,
@@ -152,6 +159,7 @@ class _LandingLeadsScreenState extends State<LandingLeadsScreen> {
     );
     if (!mounted || familyId == null) return;
 
+    setState(() => _busyLeads[lead.id] = LeadBusyAction.createFamily);
     try {
       await context.read<AppState>().manager.assignLandingLead(
             leadId: lead.id,
@@ -163,6 +171,8 @@ class _LandingLeadsScreenState extends State<LandingLeadsScreen> {
       await _loadFirstPage();
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busyLeads.remove(lead.id));
     }
   }
 
@@ -329,6 +339,7 @@ class _LandingLeadsScreenState extends State<LandingLeadsScreen> {
           lead: lead,
           canManage: canManage && !lead.isAssigned,
           statusLabel: lead.statusLabel ?? leadStatusLabel(lead.status ?? 'new'),
+          busyAction: _busyLeads[lead.id],
           onCreateFamily: () => _createFamilyForLead(lead),
           onAddToFamily: () => _assignToFamily(lead),
         );

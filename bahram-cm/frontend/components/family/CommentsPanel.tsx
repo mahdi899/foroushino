@@ -9,19 +9,15 @@ import { FamilyApiError } from '@/lib/family/errors';
 import { familyHaptic } from '@/lib/family/haptics';
 import { formatPostTime } from '@/lib/family/datetime';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
-import {
-  captureFeedScrollRestore,
-  restoreFeedScrollPosition,
-  restoreFeedScrollPositionUntilSettled,
-  type FeedScrollRestoreSnapshot,
-} from '@/lib/family/feedScroll';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import { encodeReplyBody, parseReplyBody } from '@/lib/family/replyTag';
 import { commentNeedsManualReview, COMMENT_REVIEW_NOTICE } from '@/lib/family/commentPhoneGuard';
 import { cn } from '@/lib/cn';
 
-const COMMENT_SCROLL_ANCHOR = '[id^="family-comment-"]';
+/** Frames to keep re-asserting the reader's position after a history prepend —
+ * bubble text wrapping and avatars settle a frame or two after the commit. */
+const HISTORY_PIN_FRAMES = 6;
 
 type CommentsPanelProps = {
   postId: number;
@@ -37,6 +33,8 @@ type CommentsPanelProps = {
   focusCommentId?: number | null;
   /** Family managers / admins may include phone numbers in comments. */
   allowPhoneNumbers?: boolean;
+  /** When false, existing comments stay visible but compose/reply are hidden. */
+  commentsEnabled?: boolean;
 };
 
 type ReplyTarget = {
@@ -85,10 +83,12 @@ function CommentReplyRow({
   reply,
   onReply,
   highlighted = false,
+  canReply = true,
 }: {
   reply: FamilyComment;
   onReply: () => void;
   highlighted?: boolean;
+  canReply?: boolean;
 }) {
   return (
     <div
@@ -130,7 +130,7 @@ function CommentReplyRow({
           ) : (
             <span />
           )}
-          {!reply.is_mine ? (
+          {canReply && !reply.is_mine ? (
             <button type="button" className="family-comment-reply-btn" onClick={onReply}>
               پاسخ
             </button>
@@ -146,11 +146,13 @@ function CommentRow({
   avatarSize,
   onReply,
   focusCommentId = null,
+  canReply = true,
 }: {
   comment: FamilyComment;
   avatarSize: 'sm' | 'md';
   onReply: (target: ReplyTarget) => void;
   focusCommentId?: number | null;
+  canReply?: boolean;
 }) {
   const [visibleCount, setVisibleCount] = useState(REPLY_PREVIEW_COUNT);
   const sortedReplies = useMemo(
@@ -232,13 +234,15 @@ function CommentRow({
             ) : (
               <span />
             )}
-            <button
-              type="button"
-              className="family-comment-reply-btn"
-              onClick={() => startReply(comment, comment.id)}
-            >
-              پاسخ
-            </button>
+            {canReply ? (
+              <button
+                type="button"
+                className="family-comment-reply-btn"
+                onClick={() => startReply(comment, comment.id)}
+              >
+                پاسخ
+              </button>
+            ) : null}
           </div>
           {hasReplies ? (
             <div className="family-comment-replies">
@@ -247,6 +251,7 @@ function CommentRow({
                   key={reply.id}
                   reply={reply}
                   highlighted={focusCommentId === reply.id}
+                  canReply={canReply}
                   onReply={() => startReply(reply, comment.id)}
                 />
               ))}
@@ -296,6 +301,7 @@ export function CommentsPanel({
   keyboardInset = 0,
   focusCommentId = null,
   allowPhoneNumbers = false,
+  commentsEnabled = true,
 }: CommentsPanelProps) {
   useFamilyDebugRender(`CommentsPanel:${postId}`);
   const keyboardOpen = keyboardInset > 40;
@@ -316,39 +322,72 @@ export function CommentsPanel({
   /** Only auto-pin to the latest comment once per post open — not after loading older pages. */
   const initialPinnedForPostRef = useRef<number | null>(null);
   /**
-   * Snapshot before older comments prepend — held through measure settle so
-   * mt-auto / avatar layout can't yank the viewport to the tip or oldest tip.
+   * Live distance (px) between the bottom of the viewport and the end of the thread.
+   *
+   * Older pages only ever add content *above* the reader, so holding this value
+   * constant across the prepend keeps every visible comment on the exact same pixel —
+   * unlike an anchor snapshot taken before the request, which also undoes whatever
+   * the reader scrolled while the page was in flight (the "tiny jump").
    */
-  const pendingScrollRestoreRef = useRef<FeedScrollRestoreSnapshot | null>(null);
-  const historySettleActiveRef = useRef(false);
-  const historySettleGenRef = useRef(0);
+  const distanceFromBottomRef = useRef(0);
+  /** >0 while our own scrollTop writes are in flight, so they don't pollute the ref. */
+  const programmaticScrollRef = useRef(0);
+  /** A history page is in flight and its landing commit still needs pinning. */
+  const historyPinPendingRef = useRef(false);
+  const historyPinActiveRef = useRef(false);
+  const historyPinFrameRef = useRef<number | null>(null);
   const focusHandledRef = useRef<number | null>(null);
   const focusLoadingRef = useRef(false);
   const loadingMoreRef = useRef(false);
-  const orderedLengthRef = useRef(0);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
 
   const orderedComments = useMemo(() => [...comments].reverse(), [comments]);
-  orderedLengthRef.current = orderedComments.length;
 
   useEffect(() => {
     loadingMoreRef.current = loadingMore;
   }, [loadingMore]);
 
-  const pinLatestComment = useCallback((behavior: ScrollBehavior = 'auto') => {
+  const readDistanceFromBottom = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return 0;
+    return Math.max(0, list.scrollHeight - list.scrollTop - list.clientHeight);
+  }, []);
+
+  const handleListScroll = useCallback(() => {
+    // Skip the scroll events produced by our own pin writes.
+    if (programmaticScrollRef.current > 0) return;
+    distanceFromBottomRef.current = readDistanceFromBottom();
+  }, [readDistanceFromBottom]);
+
+  const scrollListTo = useCallback((top: number, behavior: ScrollBehavior = 'auto') => {
     const list = listRef.current;
     if (!list) return;
-    // Never use scrollIntoView here — on mobile it can pan ancestors / the
-    // visual viewport behind the comments overlay when the keyboard opens.
-    // Scroll only the comments list itself.
-    const top = list.scrollHeight;
+    const target = Math.max(0, Math.min(top, list.scrollHeight - list.clientHeight));
+    // Never use scrollIntoView here — on mobile it can pan ancestors / the visual
+    // viewport behind the comments overlay when the keyboard opens.
     if (behavior === 'smooth' && typeof list.scrollTo === 'function') {
-      list.scrollTo({ top, behavior: 'smooth' });
+      list.scrollTo({ top: target, behavior: 'smooth' });
       return;
     }
-    list.scrollTop = top;
+    if (Math.abs(list.scrollTop - target) < 0.5) return;
+    programmaticScrollRef.current += 1;
+    list.scrollTop = target;
+    // The scroll event for this write is dispatched before the next animation frame.
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = Math.max(0, programmaticScrollRef.current - 1);
+    });
   }, []);
+
+  const pinLatestComment = useCallback(
+    (behavior: ScrollBehavior = 'auto') => {
+      const list = listRef.current;
+      if (!list) return;
+      distanceFromBottomRef.current = 0;
+      scrollListTo(list.scrollHeight, behavior);
+    },
+    [scrollListTo],
+  );
 
   const scrollToLatest = useCallback(
     (behavior: ScrollBehavior = 'auto') => {
@@ -357,37 +396,67 @@ export function CommentsPanel({
     [pinLatestComment],
   );
 
-  const captureListScrollRestore = useCallback(() => {
-    const list = listRef.current;
-    if (!list) return;
-    pendingScrollRestoreRef.current = captureFeedScrollRestore(list, null, {
-      anchorSelector: COMMENT_SCROLL_ANCHOR,
-    });
+  const cancelHistoryPin = useCallback(() => {
+    if (historyPinFrameRef.current != null) {
+      cancelAnimationFrame(historyPinFrameRef.current);
+      historyPinFrameRef.current = null;
+    }
+    historyPinActiveRef.current = false;
   }, []);
 
+  /**
+   * Re-assert the reader's distance-from-bottom for a few frames. Each pass reads
+   * the ref again, so a reader who keeps scrolling simply moves the target with
+   * them instead of being dragged back.
+   */
+  const holdHistoryPin = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+    cancelHistoryPin();
+    historyPinActiveRef.current = true;
+
+    const apply = () => {
+      const el = listRef.current;
+      if (!el) return;
+      scrollListTo(el.scrollHeight - el.clientHeight - distanceFromBottomRef.current);
+    };
+
+    let framesLeft = HISTORY_PIN_FRAMES;
+    apply();
+
+    const step = () => {
+      apply();
+      framesLeft -= 1;
+      if (framesLeft > 0) {
+        historyPinFrameRef.current = requestAnimationFrame(step);
+        return;
+      }
+      historyPinFrameRef.current = null;
+      historyPinActiveRef.current = false;
+    };
+    historyPinFrameRef.current = requestAnimationFrame(step);
+  }, [cancelHistoryPin, scrollListTo]);
+
+  useEffect(() => cancelHistoryPin, [cancelHistoryPin]);
+
   const handleLoadOlder = useCallback(async () => {
-    const lengthBefore = orderedLengthRef.current;
-    captureListScrollRestore();
+    if (loadingMoreRef.current || historyPinPendingRef.current) return;
+    loadingMoreRef.current = true;
+    historyPinPendingRef.current = true;
+    // Re-measure in case no scroll event landed since the last pin (e.g. the panel
+    // opened straight onto a short thread).
+    distanceFromBottomRef.current = readDistanceFromBottom();
     try {
-      await loadMore();
+      const loaded = await loadMore();
+      if (!loaded) {
+        historyPinPendingRef.current = false;
+        loadingMoreRef.current = false;
+      }
     } catch {
-      pendingScrollRestoreRef.current = null;
-      return;
+      historyPinPendingRef.current = false;
+      loadingMoreRef.current = false;
     }
-    // If nothing was prepended (no cursor / empty page), drop the snapshot so a
-    // later length change (e.g. sending a comment) doesn't apply a stale restore.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (
-          pendingScrollRestoreRef.current &&
-          !historySettleActiveRef.current &&
-          orderedLengthRef.current === lengthBefore
-        ) {
-          pendingScrollRestoreRef.current = null;
-        }
-      });
-    });
-  }, [captureListScrollRestore, loadMore]);
+  }, [loadMore, readDistanceFromBottom]);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -398,6 +467,7 @@ export function CommentsPanel({
   }, []);
 
   const beginReply = useCallback((target: ReplyTarget) => {
+    if (!commentsEnabled) return;
     setReplyTarget(target);
     // Keep only the user's typed text — name is shown as a chip, not @ in the input.
     setValue((prev) => parseReplyBody(prev).body);
@@ -406,11 +476,17 @@ export function CommentsPanel({
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
     });
-  }, []);
+  }, [commentsEnabled]);
 
   const clearReply = useCallback(() => {
     setReplyTarget(null);
   }, []);
+
+  useEffect(() => {
+    if (!commentsEnabled) {
+      setReplyTarget(null);
+    }
+  }, [commentsEnabled]);
 
   useEffect(() => {
     setValue('');
@@ -420,50 +496,39 @@ export function CommentsPanel({
     setJustSentWasReply(false);
     setReplyTarget(null);
     initialPinnedForPostRef.current = null;
-    pendingScrollRestoreRef.current = null;
-    historySettleActiveRef.current = false;
-    historySettleGenRef.current += 1;
+    historyPinPendingRef.current = false;
+    cancelHistoryPin();
+    distanceFromBottomRef.current = 0;
     focusHandledRef.current = null;
     focusLoadingRef.current = false;
-  }, [postId, focusCommentId]);
+  }, [cancelHistoryPin, postId, focusCommentId]);
 
   useLayoutEffect(() => {
     resizeTextarea();
   }, [value, resizeTextarea]);
 
+  /**
+   * Older pages land above the fold. Pin in layout — same pass as the DOM change,
+   * before paint — so the reader never sees the prepend push comments around.
+   *
+   * Rows and the "load older" sentinel can arrive in separate commits, so pin on
+   * every commit until the request settles; holding a distance is idempotent.
+   */
+  useLayoutEffect(() => {
+    if (!historyPinPendingRef.current) return;
+    holdHistoryPin();
+    if (!loadingMore) historyPinPendingRef.current = false;
+  }, [hasMore, holdHistoryPin, loadingMore, orderedComments.length]);
+
   useLayoutEffect(() => {
     if (isLoading || orderedComments.length === 0) return;
+    if (historyPinPendingRef.current || historyPinActiveRef.current) return;
 
-    const list = listRef.current;
-    const snapshot = pendingScrollRestoreRef.current;
-    if (snapshot && list) {
-      // Older comments prepend above the fold — keep the same messages under the viewport.
-      // Re-pin across a few frames: flex mt-auto + avatars change height after first paint.
-      restoreFeedScrollPosition(snapshot, { root: list, lenis: null });
-
-      const gen = ++historySettleGenRef.current;
-      historySettleActiveRef.current = true;
-      void restoreFeedScrollPositionUntilSettled(snapshot, {
-        getScrollCtx: () => ({ root: listRef.current, lenis: null }),
-        maxPasses: 6,
-        isCancelled: () => gen !== historySettleGenRef.current,
-      }).finally(() => {
-        if (gen !== historySettleGenRef.current) return;
-        historySettleActiveRef.current = false;
-        pendingScrollRestoreRef.current = null;
-      });
-      return () => {
-        historySettleGenRef.current += 1;
-      };
-    }
-
-    // When focusing a specific comment, don't yank to the tip.
     if (focusCommentId) {
       initialPinnedForPostRef.current = postId;
       return;
     }
 
-    // Initial open only — loading older must not yank to the tip.
     if (initialPinnedForPostRef.current === postId) return;
     initialPinnedForPostRef.current = postId;
     scrollToLatest('auto');
@@ -500,11 +565,21 @@ export function CommentsPanel({
         const listRect = list.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
         const nextTop = list.scrollTop + (elRect.top - listRect.top) - Math.max(24, list.clientHeight * 0.2);
-        list.scrollTop = Math.max(0, nextTop);
+        scrollListTo(nextTop);
+        distanceFromBottomRef.current = readDistanceFromBottom();
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [comments, focusCommentId, handleLoadOlder, hasMore, isLoading, loadingMore]);
+  }, [
+    comments,
+    focusCommentId,
+    handleLoadOlder,
+    hasMore,
+    isLoading,
+    loadingMore,
+    readDistanceFromBottom,
+    scrollListTo,
+  ]);
 
   // Auto-load older comments when scrolling up (Telegram-style — no button tap).
   useEffect(() => {
@@ -516,7 +591,7 @@ export function CommentsPanel({
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
         if (loadingMoreRef.current || focusLoadingRef.current) return;
-        if (historySettleActiveRef.current || pendingScrollRestoreRef.current) return;
+        if (historyPinActiveRef.current || historyPinPendingRef.current) return;
 
         const list = listRef.current;
         if (!list) return;
@@ -550,20 +625,25 @@ export function CommentsPanel({
     const list = listRef.current;
     if (!list || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
-      if (!composerFocusedRef.current) return;
-      if (loadingMoreRef.current || pendingScrollRestoreRef.current || historySettleActiveRef.current) {
+      if (loadingMoreRef.current || historyPinPendingRef.current || historyPinActiveRef.current) {
         return;
       }
-      const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
-      // Only stick while the user is already reading the tip (composer focused).
-      if (distanceFromBottom > 80) return;
-      pinLatestComment('auto');
+      // Compare against the pre-resize distance: the keyboard shrinks the list, so
+      // measuring after the fact would make a reader at the tip look scrolled away.
+      const wasAtTip = distanceFromBottomRef.current <= 80;
+      if (composerFocusedRef.current && wasAtTip) {
+        pinLatestComment('auto');
+        return;
+      }
+      // Resizes move the viewport without a scroll event — keep the ref truthful.
+      distanceFromBottomRef.current = readDistanceFromBottom();
     });
     ro.observe(list);
     return () => ro.disconnect();
-  }, [pinLatestComment]);
+  }, [pinLatestComment, readDistanceFromBottom]);
 
   const handleSubmit = async () => {
+    if (!commentsEnabled) return;
     const typed = value.trim();
     if (!typed || submitting) return;
     const body = encodeReplyBody(replyTarget?.userName, typed);
@@ -700,11 +780,14 @@ export function CommentsPanel({
         </div>
       )}
 
+      {/* Vertical padding lives on the inner wrapper, not here: with `min-h-full`
+          children, container padding would add permanent phantom overflow. */}
       <div
         ref={listRef}
+        onScroll={handleListScroll}
         className={cn(
-          'family-feed-scroll family-comments-list min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain',
-          isPage ? 'flex flex-1 flex-col px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
+          'family-feed-scroll family-comments-list min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none]',
+          isPage ? 'flex-1 px-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
           isPage && keyboardOpen && 'family-comments-list--keyboard',
         )}
       >
@@ -718,45 +801,66 @@ export function CommentsPanel({
         ) : loadError ? (
           <p className="py-12 text-center text-sm text-red-400">{loadError}</p>
         ) : orderedComments.length === 0 ? (
-          <p className={cn('py-12 text-center text-sm text-bone/50', isPage && 'mt-auto')}>
-            هنوز نظری ثبت نشده. اولین نفر باش.
-          </p>
+          <div className={cn(isPage && 'flex min-h-full flex-col justify-end py-3')}>
+            <p className="py-12 text-center text-sm text-bone/50">
+              {commentsEnabled ? 'هنوز نظری ثبت نشده. اولین نفر باش.' : 'نظرات این پست بسته شده است.'}
+            </p>
+          </div>
         ) : (
-          <ul className={cn('family-comments-thread space-y-2 pb-2', isPage && 'mt-auto')}>
-            {hasMore ? (
-              <li
-                ref={topSentinelRef}
-                className="flex min-h-8 justify-center py-2"
-                aria-hidden={!loadingMore}
-              >
-                {loadingMore ? (
-                  <span
-                    className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
-                    aria-label="در حال بارگذاری نظرات قدیمی‌تر"
-                  />
-                ) : null}
-              </li>
-            ) : null}
-            {orderedComments.map((comment) => (
-              <CommentRow
-                key={comment.id}
-                comment={comment}
-                avatarSize={avatarSize}
-                onReply={beginReply}
-                focusCommentId={focusCommentId}
+          /* min-h-full + justify-end keeps short threads on the composer without
+             margin-top:auto on the thread (that margin collapses on prepend and
+             yanks the visible comment up under the overlay header on mobile). */
+          <div className={cn('flex flex-col', isPage && 'min-h-full justify-end py-3')}>
+            <ul className="family-comments-thread w-full space-y-2 pb-2">
+              {hasMore ? (
+                <li
+                  ref={topSentinelRef}
+                  className="flex h-8 shrink-0 items-center justify-center"
+                  aria-hidden={!loadingMore}
+                >
+                  {loadingMore ? (
+                    <span
+                      className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
+                      aria-label="در حال بارگذاری نظرات قدیمی‌تر"
+                    />
+                  ) : null}
+                </li>
+              ) : null}
+              {orderedComments.map((comment) => (
+                <CommentRow
+                  key={comment.id}
+                  comment={comment}
+                  avatarSize={avatarSize}
+                  onReply={beginReply}
+                  focusCommentId={focusCommentId}
+                  canReply={commentsEnabled}
+                />
+              ))}
+              <div
+                ref={bottomRef}
+                aria-hidden
+                className="h-px shrink-0 scroll-mt-2"
+                style={{ scrollMarginBottom: keyboardOpen ? 0 : '0.5rem' }}
               />
-            ))}
-            <div
-              ref={bottomRef}
-              aria-hidden
-              className="h-px shrink-0 scroll-mt-2"
-              style={{ scrollMarginBottom: keyboardOpen ? 0 : '0.5rem' }}
-            />
-          </ul>
+            </ul>
+          </div>
         )}
       </div>
 
-      {composerNode}
+      {commentsEnabled ? (
+        composerNode
+      ) : (
+        <div
+          className={cn(
+            'family-glass-bar family-comment-composer shrink-0 p-3 sm:p-4',
+            isPage && 'family-comment-composer--page',
+          )}
+          dir="rtl"
+          role="status"
+        >
+          <p className="text-center text-sm text-bone/60">نظرات این پست بسته شده است.</p>
+        </div>
+      )}
     </section>
   );
 }

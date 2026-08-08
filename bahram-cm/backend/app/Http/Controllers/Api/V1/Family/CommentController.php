@@ -80,7 +80,16 @@ class CommentController extends Controller
     {
         $membership = $this->access->requireMembership($request->user());
         abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
-        abort_if($post->comments_enabled === false, 422, 'نظرات این پست بسته است.');
+
+        // abort() messages are sanitized by the API exception handler — return
+        // an explicit envelope so members see a clear Persian reason.
+        if ($post->comments_enabled === false) {
+            return ApiResponse::error(
+                'comments_closed',
+                'نظرات این پست بسته شده است.',
+                422,
+            );
+        }
 
         $max = (int) config('family.comment.max_length', 1000);
         $data = $request->validate([

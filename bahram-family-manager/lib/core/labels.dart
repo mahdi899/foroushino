@@ -111,4 +111,64 @@ const Map<String, String> actionTypeLabels = {
   'scale': 'طیف امتیاز',
 };
 
+/// Sync with `bahram-cm/frontend/lib/family/reactions.ts` + `FamilyReactionType`.
+const Map<String, String> reactionTypeLabels = {
+  'fire': 'آتشین',
+  'heart': 'قلب',
+  'clap': 'تشویق',
+  'thumbs_up': 'عالی',
+  'laugh': 'خنده',
+  'target': 'هدف',
+  'sad': 'غمگین',
+  'party': 'جشن',
+  'star': 'ستاره',
+  'rocket': 'موشک',
+  'eyes': 'چشم',
+  'pray': 'دعا',
+  'muscle': 'قدرت',
+  'hundred': 'صد',
+  'wink': 'چشمک',
+};
+
+const Map<String, String> reactionTypeEmojis = {
+  'fire': '🔥',
+  'heart': '❤️',
+  'clap': '👏',
+  'thumbs_up': '👍',
+  'laugh': '😂',
+  'target': '🎯',
+  'sad': '😢',
+  'party': '🎉',
+  'star': '⭐',
+  'rocket': '🚀',
+  'eyes': '👀',
+  'pray': '🙏',
+  'muscle': '💪',
+  'hundred': '💯',
+  'wink': '😉',
+};
+
+/// Display order: quick bar first, then picker types.
+const List<String> reactionTypeOrder = [
+  'fire',
+  'heart',
+  'clap',
+  'thumbs_up',
+  'laugh',
+  'target',
+  'sad',
+  'party',
+  'star',
+  'rocket',
+  'eyes',
+  'pray',
+  'muscle',
+  'hundred',
+  'wink',
+];
+
+String reactionTypeLabel(String key) => labelOf(reactionTypeLabels, key);
+
+String reactionTypeEmoji(String key) => reactionTypeEmojis[key] ?? '✨';
+
 String labelOf(Map<String, String> table, String key) => table[key] ?? key;

@@ -249,10 +249,8 @@ class FamilyManagerService {
   /// client-side so the hub still loads before deploy catches up.
   bool _shouldFallbackCommentThreads(ApiException e) {
     final status = e.statusCode;
-    if (status == 404 || status == 405 || status == 501) return true;
-    if (status != null && status >= 500) return true;
-    // Connection / timeout — threads may be missing or timing out on the server.
-    return status == null && e.code == null;
+    // Only treat "endpoint missing" as legacy — never hide real 5xx SQL errors.
+    return status == 404 || status == 405 || status == 501;
   }
 
   Future<PaginatedResult<CommentThreadModel>> _commentThreadsFromComments({
@@ -278,6 +276,9 @@ class FamilyManagerService {
           postId: comment.postId,
           familyId: familyIdValue,
           familyInternalName: comment.familyInternalName,
+          postType: comment.postType,
+          postPreview: comment.postPreview,
+          publishedAt: comment.publishedAt,
         ),
       ).add(comment, tab);
     }
@@ -949,11 +950,17 @@ class _CommentThreadAccumulator {
     required this.postId,
     required this.familyId,
     this.familyInternalName,
+    this.postType,
+    this.postPreview,
+    this.publishedAt,
   });
 
   final int postId;
   final int familyId;
   final String? familyInternalName;
+  String? postType;
+  String? postPreview;
+  String? publishedAt;
 
   var matchingCount = 0;
   var pendingCount = 0;
@@ -962,9 +969,30 @@ class _CommentThreadAccumulator {
   String? latestCommentPreview;
 
   void add(FamilyCommentModel comment, String tab) {
-    matchingCount++;
+    // Count every comment that matches the tab (root + nested replies), same as
+    // hub matching_count / feed approved_comments_count.
+    if (_matchesTab(comment, tab)) matchingCount++;
     if (comment.status == 'pending') pendingCount++;
     if (!comment.seenByBahram) unreadCount++;
+    for (final reply in comment.replies) {
+      if (_matchesTab(reply, tab)) matchingCount++;
+      if (reply.status == 'pending') pendingCount++;
+      if (!reply.seenByBahram) unreadCount++;
+      final replyCreatedAt = reply.createdAt;
+      if (replyCreatedAt != null &&
+          (latestCommentAt == null || replyCreatedAt.compareTo(latestCommentAt!) > 0)) {
+        latestCommentAt = replyCreatedAt;
+        latestCommentPreview = reply.body;
+      }
+    }
+
+    postType ??= comment.postType;
+    if ((postPreview == null || postPreview!.trim().isEmpty) &&
+        comment.postPreview != null &&
+        comment.postPreview!.trim().isNotEmpty) {
+      postPreview = comment.postPreview;
+    }
+    publishedAt ??= comment.publishedAt;
 
     final createdAt = comment.createdAt;
     if (createdAt != null &&
@@ -974,10 +1002,30 @@ class _CommentThreadAccumulator {
     }
   }
 
+  static bool _matchesTab(FamilyCommentModel comment, String tab) {
+    switch (tab) {
+      case 'approved':
+        return comment.status == 'approved';
+      case 'rejected':
+        return comment.status == 'rejected';
+      case 'important':
+        return comment.isImportant;
+      case 'unread':
+        return !comment.seenByBahram;
+      case 'coaching_questions':
+        return comment.signals.contains('coaching_question');
+      default:
+        return comment.status == 'pending';
+    }
+  }
+
   CommentThreadModel toModel() => CommentThreadModel(
         postId: postId,
         familyId: familyId,
         familyInternalName: familyInternalName,
+        postType: postType,
+        postPreview: postPreview,
+        publishedAt: publishedAt,
         matchingCount: matchingCount,
         pendingCount: pendingCount,
         unreadCount: unreadCount,

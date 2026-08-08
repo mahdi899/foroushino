@@ -401,6 +401,13 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   overflow: hidden;
 }
 
+/* Overlay headers sit above the scroll pane as a flex sibling — sticky is
+   useless here and lets prepend-jumps paint comments underneath the bar. */
+.family-feed-overlay__content > .family-panel-header {
+  position: relative;
+  flex-shrink: 0;
+}
+
 /* Comments / notifications — chat wallpaper. Avoid setting `position` on the
    base class: it overrides Tailwind absolute/fixed on FeedCommentsPanel and
    splits height with the feed (composer floats mid-screen on mobile). */
@@ -436,6 +443,11 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   align-self: stretch;
   flex-direction: column;
   overflow: hidden;
+}
+
+.family-wallpaper-surface__content > .family-panel-header {
+  position: relative;
+  flex-shrink: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1008,8 +1020,11 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
   padding-bottom: 0.5rem;
 }
 
+/* Bottom-align short threads via the inner `min-h-full justify-end` wrapper in
+   CommentsPanel — never `margin-top: auto` on the scrolling thread itself.
+   Auto-margins collapse on prepend and yank comments up under the panel header. */
 .family-comments-list .family-comments-thread {
-  margin-top: auto;
+  margin-top: 0;
 }
 
 .family-comments-list.family-comments-list--keyboard .family-comments-thread {
@@ -2764,42 +2779,11 @@ html[data-theme='dark'] .family-app .family-post-bubble {
   box-shadow: var(--family-bubble-shadow);
 }
 
-@keyframes family-important-border-pulse {
-  0%,
-  100% {
-    border-color: var(--family-bubble-channel-border);
-    border-inline-start-color: color-mix(in oklab, var(--family-bubble-important-accent) 72%, transparent);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 14%, transparent),
-      var(--family-bubble-shadow);
-  }
-  50% {
-    border-color: color-mix(in oklab, var(--family-bubble-important-accent) 28%, var(--family-bubble-channel-border));
-    border-inline-start-color: var(--family-bubble-important-accent);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 28%, transparent),
-      0 0 0 3px color-mix(in oklab, var(--family-bubble-important-accent) 16%, transparent),
-      0 0 12px color-mix(in oklab, var(--family-bubble-important-accent) 20%, transparent),
-      var(--family-bubble-shadow);
-  }
-}
-
 .family-post-bubble--important {
-  border: 0.5px solid var(--family-bubble-channel-border);
-  border-inline-start-width: 3px;
-  border-inline-start-style: solid;
-  border-inline-start-color: var(--family-bubble-important-accent);
+  border: 1.5px solid var(--family-bubble-important-accent);
   background: var(--family-bubble-important-bg);
-  box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 18%, transparent),
-    var(--family-bubble-shadow);
-  animation: family-important-border-pulse 2.6s ease-in-out infinite;
+  box-shadow: var(--family-bubble-shadow);
   transition: transform 200ms var(--family-tg-spring);
-}
-
-.family-app[data-family-theme='light'] .family-post-bubble--important,
-html[data-theme='light'] .family-app .family-post-bubble--important {
-  animation: family-important-border-pulse 2.6s ease-in-out infinite;
 }
 
 .family-post-bubble__labels {
@@ -3821,8 +3805,7 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
   .family-reaction-btn--active,
   .family-reaction-btn--pop,
   .family-reaction-picker--burst,
-  .family-post--highlight .family-post-bubble,
-  .family-post-bubble--important {
+  .family-post--highlight .family-post-bubble {
     animation: none !important;
   }
 

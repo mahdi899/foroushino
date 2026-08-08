@@ -72,7 +72,10 @@ class FamilyManagerPublishingTest extends TestCase
         $this->actingAs($manager, 'sanctum')
             ->getJson("/api/v1/family-manager/posts/{$postId}")
             ->assertOk()
-            ->assertJsonPath('data.stats.views', 0);
+            ->assertJsonPath('data.stats.views', 0)
+            ->assertJsonPath('data.stats.reactions', 0)
+            ->assertJsonPath('data.stats.fire', 0)
+            ->assertJsonPath('data.stats.heart', 0);
     }
 
     public function test_manager_post_payload_sums_loaded_view_stats(): void
@@ -115,6 +118,61 @@ class FamilyManagerPublishingTest extends TestCase
             ->getJson("/api/v1/family-manager/posts/{$postId}")
             ->assertOk()
             ->assertJsonPath('data.stats.views', 8);
+    }
+
+    public function test_manager_post_payload_sums_reaction_stats_across_families(): void
+    {
+        $manager = $this->manager();
+
+        $store = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'all',
+            'blocks' => [
+                ['type' => 'text', 'position' => 0, 'text' => 'آمار واکنش'],
+            ],
+        ]);
+
+        $store->assertCreated();
+        $postId = $store->json('data.id');
+
+        $familyA = Family::query()->create([
+            'internal_name' => 'family-react-a',
+            'lifecycle' => FamilyLifecycle::Active,
+            'member_count' => 1,
+            'capacity_target' => 10,
+            'capacity_min' => 1,
+            'capacity_max' => 20,
+        ]);
+        $familyB = Family::query()->create([
+            'internal_name' => 'family-react-b',
+            'lifecycle' => FamilyLifecycle::Active,
+            'member_count' => 1,
+            'capacity_target' => 10,
+            'capacity_min' => 1,
+            'capacity_max' => 20,
+        ]);
+
+        $post = FamilyPost::query()->findOrFail($postId);
+        $post->stats()->create([
+            'family_id' => $familyA->id,
+            'fire_count' => 2,
+            'heart_count' => 1,
+            'clap_count' => 0,
+        ]);
+        $post->stats()->create([
+            'family_id' => $familyB->id,
+            'fire_count' => 1,
+            'heart_count' => 3,
+            'clap_count' => 4,
+        ]);
+
+        $this->actingAs($manager, 'sanctum')
+            ->getJson("/api/v1/family-manager/posts/{$postId}")
+            ->assertOk()
+            ->assertJsonPath('data.stats.fire', 3)
+            ->assertJsonPath('data.stats.heart', 4)
+            ->assertJsonPath('data.stats.clap', 4)
+            ->assertJsonPath('data.stats.reactions', 11);
     }
 
     public function test_publish_fails_when_media_is_not_ready(): void

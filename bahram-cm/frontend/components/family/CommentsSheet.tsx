@@ -11,10 +11,12 @@ export function CommentsPage({
   postId,
   onClose,
   onCommentAdded,
+  commentsEnabled = true,
 }: {
   postId: number;
   onClose: () => void;
   onCommentAdded?: (comment: FamilyComment) => void;
+  commentsEnabled?: boolean;
 }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -53,6 +55,7 @@ export function CommentsPage({
           <CommentsPanel
             postId={postId}
             onCommentAdded={onCommentAdded}
+            commentsEnabled={commentsEnabled}
             variant="page"
             className="min-h-0 flex-1"
           />

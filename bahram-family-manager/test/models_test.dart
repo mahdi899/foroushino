@@ -60,6 +60,37 @@ void main() {
       expect(post.targetFamilyIds, [3]);
       expect(post.channelLabel, 'نور');
       expect(post.targetFamilies.single.familyName, 'نور');
+      expect(post.stats, isNull);
+    });
+
+    test('parses aggregated reaction stats on the post card payload', () {
+      final json = {
+        'id': 20,
+        'type': 'text',
+        'status': 'published',
+        'audience_mode': 'all',
+        'is_important': false,
+        'blocks': [
+          {'id': 1, 'type': 'text', 'position': 0, 'text_content': 'با واکنش'},
+        ],
+        'stats': {
+          'views': 10,
+          'comments': 2,
+          'reactions': 7,
+          'fire': 3,
+          'heart': 2,
+          'clap': 2,
+          'thumbs_up': 0,
+        },
+      };
+
+      final post = FamilyPostModel.fromJson(json);
+      expect(post.stats, isNotNull);
+      expect(post.stats!.views, 10);
+      expect(post.stats!.totalReactions, 7);
+      expect(post.stats!.fire, 3);
+      expect(post.stats!.countFor('heart'), 2);
+      expect(post.stats!.countFor('clap'), 2);
     });
 
     test('preview falls back to a media label when there is no text block', () {

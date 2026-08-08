@@ -10,6 +10,9 @@ import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
+/// In-flight list action for a post card (pin / menu items).
+enum PostBusyAction { pin, toggleComments, publish, republish, delete, recover }
+
 class PostListTile extends StatelessWidget {
   const PostListTile({
     super.key,
@@ -21,6 +24,8 @@ class PostListTile extends StatelessWidget {
     this.onRepublish,
     this.onPublish,
     this.onRecover,
+    this.onToggleComments,
+    this.busyAction,
     this.selectable = false,
     this.selected = false,
     this.onSelectedChanged,
@@ -35,12 +40,23 @@ class PostListTile extends StatelessWidget {
   final VoidCallback? onRepublish;
   final VoidCallback? onPublish;
   final VoidCallback? onRecover;
+  final VoidCallback? onToggleComments;
+  /// Non-null while a post action awaits the API.
+  final PostBusyAction? busyAction;
   final bool selectable;
   final bool selected;
   final ValueChanged<bool>? onSelectedChanged;
   final VoidCallback? onLongPress;
 
-  bool get _hasMenu => onEdit != null || onDelete != null || onRepublish != null || onPublish != null || onRecover != null;
+  bool get _isBusy => busyAction != null;
+
+  bool get _hasMenu =>
+      onEdit != null ||
+      onDelete != null ||
+      onRepublish != null ||
+      onPublish != null ||
+      onRecover != null ||
+      onToggleComments != null;
 
   @override
   Widget build(BuildContext context) {
@@ -113,78 +129,114 @@ class PostListTile extends StatelessWidget {
                       const SizedBox(width: AppSpacing.xs),
                       IconButton(
                         tooltip: post.isPinned ? 'برداشتن سنجاق' : 'سنجاق',
-                        onPressed: onPinToggle,
-                        icon: Icon(
-                          post.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                          color: post.isPinned ? scheme.primary : muted,
-                          size: 20,
-                        ),
+                        onPressed: _isBusy ? null : onPinToggle,
+                        icon: busyAction == PostBusyAction.pin
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: scheme.primary,
+                                ),
+                              )
+                            : Icon(
+                                post.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                color: post.isPinned ? scheme.primary : muted,
+                                size: 20,
+                              ),
                       ),
                     ],
                     if (_hasMenu && !selectable)
-                      PopupMenuButton<_PostMenuAction>(
-                        tooltip: 'عملیات پست',
-                        icon: Icon(Icons.more_vert_rounded, color: muted, size: 22),
-                        onSelected: (action) => switch (action) {
-                          _PostMenuAction.edit => onEdit?.call(),
-                          _PostMenuAction.publish => onPublish?.call(),
-                          _PostMenuAction.republish => onRepublish?.call(),
-                          _PostMenuAction.delete => onDelete?.call(),
-                          _PostMenuAction.recover => onRecover?.call(),
-                        },
-                        itemBuilder: (context) => [
-                          if (onEdit != null)
-                            const PopupMenuItem(
-                              value: _PostMenuAction.edit,
-                              child: ListTile(
-                                leading: Icon(Icons.edit_rounded),
-                                title: Text('ویرایش'),
-                                contentPadding: EdgeInsets.zero,
-                                visualDensity: VisualDensity.compact,
+                      _isBusy
+                          ? Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: scheme.primary,
+                                ),
                               ),
+                            )
+                          : PopupMenuButton<_PostMenuAction>(
+                              tooltip: 'عملیات پست',
+                              icon: Icon(Icons.more_vert_rounded, color: muted, size: 22),
+                              onSelected: (action) => switch (action) {
+                                _PostMenuAction.edit => onEdit?.call(),
+                                _PostMenuAction.publish => onPublish?.call(),
+                                _PostMenuAction.republish => onRepublish?.call(),
+                                _PostMenuAction.toggleComments => onToggleComments?.call(),
+                                _PostMenuAction.delete => onDelete?.call(),
+                                _PostMenuAction.recover => onRecover?.call(),
+                              },
+                              itemBuilder: (context) => [
+                                if (onEdit != null)
+                                  const PopupMenuItem(
+                                    value: _PostMenuAction.edit,
+                                    child: ListTile(
+                                      leading: Icon(Icons.edit_rounded),
+                                      title: Text('ویرایش'),
+                                      contentPadding: EdgeInsets.zero,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                if (onPublish != null)
+                                  const PopupMenuItem(
+                                    value: _PostMenuAction.publish,
+                                    child: ListTile(
+                                      leading: Icon(Icons.publish_rounded),
+                                      title: Text('انتشار'),
+                                      contentPadding: EdgeInsets.zero,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                if (onRepublish != null)
+                                  const PopupMenuItem(
+                                    value: _PostMenuAction.republish,
+                                    child: ListTile(
+                                      leading: Icon(Icons.refresh_rounded),
+                                      title: Text('انتشار مجدد'),
+                                      contentPadding: EdgeInsets.zero,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                if (onToggleComments != null)
+                                  PopupMenuItem(
+                                    value: _PostMenuAction.toggleComments,
+                                    child: ListTile(
+                                      leading: Icon(
+                                        post.commentsEnabled
+                                            ? Icons.comments_disabled_rounded
+                                            : Icons.forum_rounded,
+                                      ),
+                                      title: Text(post.commentsEnabled ? 'بستن نظرات' : 'باز کردن نظرات'),
+                                      contentPadding: EdgeInsets.zero,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                if (onRecover != null)
+                                  const PopupMenuItem(
+                                    value: _PostMenuAction.recover,
+                                    child: ListTile(
+                                      leading: Icon(Icons.unarchive_rounded),
+                                      title: Text('بازیابی از آرشیو'),
+                                      contentPadding: EdgeInsets.zero,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                                if (onDelete != null)
+                                  const PopupMenuItem(
+                                    value: _PostMenuAction.delete,
+                                    child: ListTile(
+                                      leading: Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                                      title: Text('حذف', style: TextStyle(color: AppColors.error)),
+                                      contentPadding: EdgeInsets.zero,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                              ],
                             ),
-                          if (onPublish != null)
-                            const PopupMenuItem(
-                              value: _PostMenuAction.publish,
-                              child: ListTile(
-                                leading: Icon(Icons.publish_rounded),
-                                title: Text('انتشار'),
-                                contentPadding: EdgeInsets.zero,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ),
-                          if (onRepublish != null)
-                            const PopupMenuItem(
-                              value: _PostMenuAction.republish,
-                              child: ListTile(
-                                leading: Icon(Icons.refresh_rounded),
-                                title: Text('انتشار مجدد'),
-                                contentPadding: EdgeInsets.zero,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ),
-                          if (onRecover != null)
-                            const PopupMenuItem(
-                              value: _PostMenuAction.recover,
-                              child: ListTile(
-                                leading: Icon(Icons.unarchive_rounded),
-                                title: Text('بازیابی از آرشیو'),
-                                contentPadding: EdgeInsets.zero,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ),
-                          if (onDelete != null)
-                            const PopupMenuItem(
-                              value: _PostMenuAction.delete,
-                              child: ListTile(
-                                leading: Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                                title: Text('حذف', style: TextStyle(color: AppColors.error)),
-                                contentPadding: EdgeInsets.zero,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ),
-                        ],
-                      ),
                   ],
                 ),
               ),
@@ -205,51 +257,52 @@ class PostListTile extends StatelessWidget {
                   ),
                 ),
               ],
-              if (isImportant || post.notifyMembers || post.actions.isNotEmpty || post.isPinned || post.isScheduled) ...[
-                const SizedBox(height: AppSpacing.md),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-                  child: Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
+              const SizedBox(height: AppSpacing.md),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    StatusChip(
+                      label: post.channelLabel,
+                      color: AppColors.accent,
+                      icon: Icons.campaign_rounded,
+                    ),
+                    if (post.isScheduled)
                       StatusChip(
-                        label: post.channelLabel,
-                        color: AppColors.accent,
-                        icon: Icons.campaign_rounded,
+                        label: formatJalaliDateTime(post.scheduledPublishAt),
+                        color: AppColors.gold,
+                        icon: Icons.schedule_rounded,
                       ),
-                      if (post.isScheduled)
-                        StatusChip(
-                          label: formatJalaliDateTime(post.scheduledPublishAt),
-                          color: AppColors.gold,
-                          icon: Icons.schedule_rounded,
-                        ),
-                      if (isImportant)
-                        const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
-                      if (post.notifyMembers)
-                        const StatusChip(label: 'اعلان', color: AppColors.accent, icon: Icons.notifications_active_rounded),
-                      if (post.isPinned)
-                        const StatusChip(label: 'سنجاق', color: AppColors.primary, icon: Icons.push_pin_rounded),
-                      if (post.actions.isNotEmpty)
-                        StatusChip(
-                          label: post.actions.first.prompt,
-                          color: AppColors.primaryDark,
-                          icon: Icons.ads_click_rounded,
-                        ),
-                    ],
-                  ),
+                    if (isImportant)
+                      const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
+                    if (post.notifyMembers)
+                      const StatusChip(label: 'اعلان', color: AppColors.accent, icon: Icons.notifications_active_rounded),
+                    if (post.isPinned)
+                      const StatusChip(label: 'سنجاق', color: AppColors.primary, icon: Icons.push_pin_rounded),
+                    if (busyAction == PostBusyAction.toggleComments)
+                      StatusChip(
+                        label: post.commentsEnabled ? 'در حال بستن نظرات…' : 'در حال باز کردن نظرات…',
+                        color: AppColors.warning,
+                        icon: Icons.hourglass_top_rounded,
+                      )
+                    else if ((post.isPublished || post.isArchived) && !post.commentsEnabled)
+                      const StatusChip(
+                        label: 'نظرات بسته',
+                        color: AppColors.warning,
+                        icon: Icons.comments_disabled_rounded,
+                      ),
+                    if (post.actions.isNotEmpty)
+                      StatusChip(
+                        label: post.actions.first.prompt,
+                        color: AppColors.primaryDark,
+                        icon: Icons.ads_click_rounded,
+                      ),
+                    ..._reactionChips(post.stats),
+                  ],
                 ),
-              ] else ...[
-                const SizedBox(height: AppSpacing.md),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-                  child: StatusChip(
-                    label: post.channelLabel,
-                    color: AppColors.accent,
-                    icon: Icons.campaign_rounded,
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
           ),
@@ -257,9 +310,104 @@ class PostListTile extends StatelessWidget {
       ),
     );
   }
+
+  /// Compact reaction row: emphasized total + emoji/count per type (no names).
+  /// Hidden when total is 0 so draft/empty cards stay clean.
+  static List<Widget> _reactionChips(FamilyPostStatsModel? stats) {
+    if (stats == null) return const [];
+
+    final total = stats.totalReactions;
+    if (total <= 0) return const [];
+
+    final chips = <Widget>[
+      _ReactionTotalChip(total: total),
+    ];
+
+    for (final type in reactionTypeOrder) {
+      final count = stats.countFor(type);
+      if (count <= 0) continue;
+      chips.add(
+        _ReactionTypeChip(
+          emoji: reactionTypeEmoji(type),
+          count: count,
+        ),
+      );
+    }
+
+    return chips;
+  }
 }
 
-enum _PostMenuAction { edit, publish, republish, recover, delete }
+/// Prominent total reactions chip (filled tonal) — stands out from per-type chips.
+class _ReactionTotalChip extends StatelessWidget {
+  const _ReactionTotalChip({required this.total});
+
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(AppSpacing.sm),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.favorite_rounded, size: 14, color: Colors.white),
+          const SizedBox(width: 5),
+          Text(
+            '${toFaDigits(total.toString())} واکنش',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Quiet per-type chip: emoji + Persian count only.
+class _ReactionTypeChip extends StatelessWidget {
+  const _ReactionTypeChip({required this.emoji, required this.count});
+
+  final String emoji;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.textMuted.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppSpacing.sm),
+      ),
+      child: Text(
+        '$emoji ${toFaDigits(count.toString())}',
+        style: const TextStyle(
+          color: AppColors.text,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
+        ),
+      ),
+    );
+  }
+}
+
+enum _PostMenuAction { edit, publish, republish, toggleComments, recover, delete }
 
 class _AuthorAvatar extends StatelessWidget {
   const _AuthorAvatar({this.name});

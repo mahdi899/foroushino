@@ -41,7 +41,8 @@ class CommentModerationController extends Controller
             ->with([
                 'user:id,name,is_admin',
                 'family:id,internal_name',
-                'post:id,type',
+                'post:id,type,published_at',
+                'post.blocks' => fn ($q) => $q->orderBy('position'),
                 // Include all reply statuses so pending member replies appear under the root.
                 'replies' => fn ($q) => $q
                     ->with('user:id,name,is_admin')
@@ -87,19 +88,22 @@ class CommentModerationController extends Controller
         $tab = (string) $request->query('tab', 'pending');
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
 
-        // Count roots and replies together (member replies share the same status workflow).
-        $base = FamilyComment::query();
-        $this->applyTabFilter($base, $tab);
-        $this->applySearchFilter($base, $request->query('search'));
-
-        if ($request->filled('family_id')) {
-            $base->where('family_id', (int) $request->query('family_id'));
-        }
-
-        $pendingStatus = FamilyCommentStatus::Pending->value;
         $commentsTable = (new FamilyComment)->getTable();
         $postsTable = (new \App\Models\FamilyPost)->getTable();
 
+        // Qualify comment columns: join with posts makes `status` / `is_important` ambiguous on MySQL.
+        $base = FamilyComment::query();
+        $this->applyTabFilter($base, $tab, $commentsTable);
+        $this->applySearchFilter($base, $request->query('search'));
+
+        if ($request->filled('family_id')) {
+            $base->where("{$commentsTable}.family_id", (int) $request->query('family_id'));
+        }
+
+        $pendingStatus = FamilyCommentStatus::Pending->value;
+
+        // matching_count = all comments matching the tab (roots + replies), same as feed
+        // approved_comments_count for the approved tab.
         $paginator = (clone $base)
             ->join($postsTable, "{$postsTable}.id", '=', "{$commentsTable}.post_id")
             ->select([
@@ -186,7 +190,7 @@ class CommentModerationController extends Controller
             $key = $row->post_id.':'.$row->family_id;
 
             $pendingCount = $tab === 'pending'
-                ? (int) $row->matching_count
+                ? (int) ($row->pending_count ?? 0)
                 : (int) ($pendingByKey[$key] ?? $row->pending_count ?? 0);
 
             return [
@@ -195,7 +199,10 @@ class CommentModerationController extends Controller
                 'family_internal_name' => $family?->internal_name,
                 'post_type' => $post?->type?->value ?? $post?->type,
                 'post_preview' => $this->postPreview($post),
-                'published_at' => $post?->published_at?->toIso8601String(),
+                'published_at' => $post?->published_at?->toIso8601String()
+                    ?? ($row->post_published_at
+                        ? \Illuminate\Support\Carbon::parse($row->post_published_at)->toIso8601String()
+                        : null),
                 'matching_count' => (int) $row->matching_count,
                 'pending_count' => $pendingCount,
                 'unread_count' => (int) ($unreadByKey[$key] ?? $row->unread_in_tab ?? 0),
@@ -355,15 +362,17 @@ class CommentModerationController extends Controller
         return ApiResponse::success(\App\Support\FamilyManagerPostPresenter::present($published), 201);
     }
 
-    private function applyTabFilter(Builder $query, string $tab): void
+    private function applyTabFilter(Builder $query, string $tab, ?string $table = null): void
     {
+        $col = fn (string $name) => $table ? "{$table}.{$name}" : $name;
+
         match ($tab) {
-            'approved' => $query->where('status', FamilyCommentStatus::Approved->value),
-            'rejected' => $query->where('status', FamilyCommentStatus::Rejected->value),
-            'important' => $query->where('is_important', true),
-            'unread' => $query->whereNull('seen_by_bahram_at'),
-            'coaching_questions' => $query->whereJsonContains('ai_signals', 'coaching_question'),
-            default => $query->where('status', FamilyCommentStatus::Pending->value),
+            'approved' => $query->where($col('status'), FamilyCommentStatus::Approved->value),
+            'rejected' => $query->where($col('status'), FamilyCommentStatus::Rejected->value),
+            'important' => $query->where($col('is_important'), true),
+            'unread' => $query->whereNull($col('seen_by_bahram_at')),
+            'coaching_questions' => $query->whereJsonContains($col('ai_signals'), 'coaching_question'),
+            default => $query->where($col('status'), FamilyCommentStatus::Pending->value),
         };
     }
 
@@ -398,7 +407,9 @@ class CommentModerationController extends Controller
             return null;
         }
 
-        $textBlock = $post->blocks->first(
+        $blocks = $post->relationLoaded('blocks') ? $post->blocks : collect();
+
+        $textBlock = $blocks->first(
             fn ($block) => ($block->type === FamilyPostBlockType::Text || ($block->type?->value ?? $block->type) === 'text')
                 && filled($block->text_content)
         );
@@ -407,7 +418,25 @@ class CommentModerationController extends Controller
             return mb_substr(trim((string) $textBlock->text_content), 0, 160);
         }
 
-        return null;
+        $first = $blocks->first();
+        $blockType = $first?->type?->value ?? $first?->type;
+        $postType = $post->type instanceof FamilyPostType ? $post->type : FamilyPostType::tryFrom((string) $post->type);
+
+        return match ($blockType) {
+            'audio' => 'پیام صوتی',
+            'video' => $postType === FamilyPostType::VideoNote ? 'پیام ویدیویی دایره‌ای' : 'ویدیو',
+            'image' => 'تصویر',
+            'article_reference' => 'اشاره به مقاله',
+            default => match ($postType) {
+                FamilyPostType::Voice => 'پیام صوتی',
+                FamilyPostType::Video => 'ویدیو',
+                FamilyPostType::VideoNote => 'پیام ویدیویی دایره‌ای',
+                FamilyPostType::Image, FamilyPostType::ImageAlbum => 'تصویر',
+                FamilyPostType::Article => 'مقاله',
+                FamilyPostType::Reply => 'پاسخ بهرام',
+                default => null,
+            },
+        };
     }
 
     /** @return array<string, mixed> */
@@ -436,6 +465,13 @@ class CommentModerationController extends Controller
             ],
             'post_id' => $comment->post_id,
             'family_id' => $comment->family_id,
+            'post_type' => $comment->relationLoaded('post')
+                ? ($comment->post?->type?->value ?? $comment->post?->type)
+                : null,
+            'post_preview' => $comment->relationLoaded('post') ? $this->postPreview($comment->post) : null,
+            'published_at' => $comment->relationLoaded('post')
+                ? $comment->post?->published_at?->toIso8601String()
+                : null,
             'ai' => [
                 'risk_score' => $comment->ai_risk_score !== null ? (float) $comment->ai_risk_score : null,
                 'sentiment' => $comment->ai_sentiment,

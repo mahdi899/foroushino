@@ -157,11 +157,20 @@ export function resolveFamilyMediaPlaybackUrl(url: string | null | undefined): s
 }
 
 /**
- * Same-origin /media/family proxy when on the family host — enables SW cache-first
- * for images/posters without putting Range video through the service worker.
- * Falls back to CDN when not on a proxy host (SSR, tests, non-club origins).
+ * Deterministic image/poster URL for SSR + hydration.
+ * Always playback/CDN (or preserved local absolute) — never branches on `window`,
+ * so `<img src>` matches between server HTML and the client's first paint.
+ * Prefer `useFamilyImageSrc` when the club same-origin proxy is needed for SW cache.
  */
 export function resolveFamilyMediaDisplayUrl(url: string | null | undefined): string | null {
+  return resolveFamilyMediaPlaybackUrl(url);
+}
+
+/**
+ * Same-origin /media/family on the club host (browser only).
+ * Do not call during SSR render — use `useFamilyImageSrc` / useSyncExternalStore.
+ */
+export function resolveFamilyMediaSameOriginUrl(url: string | null | undefined): string | null {
   const sameOrigin = clubSameOriginMediaUrl(url);
   if (
     sameOrigin &&
@@ -170,10 +179,10 @@ export function resolveFamilyMediaDisplayUrl(url: string | null | undefined): st
   ) {
     return sameOrigin;
   }
-  return resolveFamilyMediaPlaybackUrl(url);
+  return null;
 }
 
-/** Feed image / LQIP poster — same-origin on club for durable browser cache. */
+/** Feed image / LQIP poster — hydration-safe playback URL. */
 export function resolveFamilyMediaPosterUrl(url: string | null | undefined): string | null {
   return resolveFamilyMediaDisplayUrl(url);
 }
@@ -183,7 +192,7 @@ export function resolveFamilyMediaDownloadUrl(url: string | null | undefined): s
   return resolveFamilyMediaPlaybackUrl(url);
 }
 
-/** Images in the feed — same-origin display URL when available. */
+/** Images in the feed — hydration-safe; same-origin via `useFamilyImageSrc` after mount. */
 export const resolveFamilyMediaUrl = resolveFamilyMediaDisplayUrl;
 
 /** Guess MIME from API hint or file extension (helps `<video>` / `<source type>`). */

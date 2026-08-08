@@ -21,6 +21,7 @@ class FamilyMediaView extends StatelessWidget {
     this.borderRadius,
     this.compact = false,
     this.previewOnly = false,
+    this.circular = false,
     this.localBytes,
     this.localUrl,
   });
@@ -31,6 +32,8 @@ class FamilyMediaView extends StatelessWidget {
   final bool compact;
   /// List/feed previews — thumbnail only, no video decoder.
   final bool previewOnly;
+  /// Telegram-style circular video note presentation (1:1 circle crop).
+  final bool circular;
   /// Immediate preview from the just-picked file (before CDN URL exists).
   final Uint8List? localBytes;
   /// Blob URL (web) or temp file path (IO) for video/audio local preview.
@@ -38,16 +41,26 @@ class FamilyMediaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? BorderRadius.circular(18);
+    final radius = circular
+        ? BorderRadius.circular(height / 2)
+        : (borderRadius ?? BorderRadius.circular(18));
     final networkUrl = media.playableUrl;
     final localPlaybackUrl = localUrl;
 
     if (previewOnly) {
-      return MediaThumbnail(
+      final thumb = MediaThumbnail(
         media: media,
         height: height,
         borderRadius: radius,
         localBytes: localBytes,
+      );
+      if (!circular) return thumb;
+      return Align(
+        child: SizedBox(
+          width: height,
+          height: height,
+          child: ClipOval(child: thumb),
+        ),
       );
     }
 
@@ -72,11 +85,12 @@ class FamilyMediaView extends StatelessWidget {
       final source = networkUrl ?? localPlaybackUrl;
       if (source != null) {
         return _VideoView(
-          key: ValueKey('video-$source'),
+          key: ValueKey('video-$source-c$circular'),
           source: source,
           isFilePath: networkUrl == null && !kIsWeb,
           height: height,
           radius: radius,
+          circular: circular,
         );
       }
     }
@@ -95,11 +109,19 @@ class FamilyMediaView extends StatelessWidget {
       }
     }
 
-    return MediaThumbnail(
+    final fallback = MediaThumbnail(
       media: media,
       height: height,
       borderRadius: radius,
       localBytes: localBytes,
+    );
+    if (!circular) return fallback;
+    return Align(
+      child: SizedBox(
+        width: height,
+        height: height,
+        child: ClipOval(child: fallback),
+      ),
     );
   }
 }
@@ -185,12 +207,14 @@ class _VideoView extends StatefulWidget {
     required this.height,
     required this.radius,
     this.isFilePath = false,
+    this.circular = false,
   });
 
   final String source;
   final double height;
   final BorderRadius radius;
   final bool isFilePath;
+  final bool circular;
 
   @override
   State<_VideoView> createState() => _VideoViewState();
@@ -242,42 +266,70 @@ class _VideoViewState extends State<_VideoView> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final videoChild = Stack(
+      alignment: Alignment.center,
+      fit: widget.circular ? StackFit.expand : StackFit.loose,
+      children: [
+        if (_ready && controller != null)
+          widget.circular
+              ? FittedBox(
+                  fit: BoxFit.cover,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: controller.value.size.width,
+                    height: controller.value.size.height,
+                    child: VideoPlayer(controller),
+                  ),
+                )
+              : AspectRatio(
+                  aspectRatio: controller.value.aspectRatio,
+                  child: VideoPlayer(controller),
+                )
+        else if (_failed)
+          const Icon(Icons.broken_image_rounded, color: Colors.white70, size: 40)
+        else
+          const CircularProgressIndicator(color: Colors.white),
+        if (_ready && controller != null)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.25),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              iconSize: 52,
+              color: Colors.white,
+              icon: Icon(controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+              onPressed: () {
+                setState(() {
+                  controller.value.isPlaying ? controller.pause() : controller.play();
+                });
+              },
+            ),
+          ),
+      ],
+    );
+
+    if (widget.circular) {
+      return Align(
+        child: SizedBox(
+          width: widget.height,
+          height: widget.height,
+          child: ClipOval(
+            child: ColoredBox(
+              color: Colors.black,
+              child: videoChild,
+            ),
+          ),
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: widget.radius,
       child: Container(
         color: Colors.black,
         height: widget.height,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (_ready && controller != null)
-              AspectRatio(
-                aspectRatio: controller.value.aspectRatio,
-                child: VideoPlayer(controller),
-              )
-            else if (_failed)
-              const Icon(Icons.broken_image_rounded, color: Colors.white70, size: 40)
-            else
-              const CircularProgressIndicator(color: Colors.white),
-            if (_ready && controller != null)
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  iconSize: 52,
-                  color: Colors.white,
-                  icon: Icon(controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                  onPressed: () {
-                    setState(() {
-                      controller.value.isPlaying ? controller.pause() : controller.play();
-                    });
-                  },
-                ),
-              ),
-          ],
-        ),
+        child: videoChild,
       ),
     );
   }

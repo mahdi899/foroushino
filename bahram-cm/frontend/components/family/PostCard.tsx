@@ -352,11 +352,12 @@ function FeedPostCard({
           />
         </div>
 
-        {!hideCommentPreview && isPostCommentsEnabled(post) && (
+        {!hideCommentPreview && (isPostCommentsEnabled(post) || commentCount > 0) && (
           <div className="family-post-bubble__comment-zone">
             <CommentThreadPreview
               count={commentCount}
               preview={commentPreview}
+              closed={!isPostCommentsEnabled(post)}
               onOpen={openCommentsPanel}
             />
           </div>
@@ -534,10 +535,11 @@ export const PostCard = memo(function PostCard({
         </div>
       </div>
 
-      {!hideCommentPreview && isPostCommentsEnabled(post) && (
+      {!hideCommentPreview && (isPostCommentsEnabled(post) || commentCount > 0) && (
         <CommentThreadPreview
           count={commentCount}
           preview={commentPreview}
+          closed={!isPostCommentsEnabled(post)}
           onOpen={() => {
             if (previewMode) {
               onGuestGate?.('comment');

@@ -108,6 +108,78 @@ class FamilyReactionAndCommentTest extends TestCase
         $this->assertDatabaseHas('family_post_stats', ['post_id' => $post->id, 'approved_comments_count' => 1]);
     }
 
+    public function test_member_cannot_comment_or_reply_when_comments_disabled(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $closedPost = $this->publishedPost(['comments_enabled' => false]);
+        $familyId = (int) $user->familyMembership()->value('family_id');
+
+        $existing = \App\Models\FamilyComment::query()->create([
+            'post_id' => $closedPost->id,
+            'family_id' => $familyId,
+            'user_id' => $user->id,
+            'body' => 'نظر قبلی قبل از بستن',
+            'status' => FamilyCommentStatus::Approved,
+            'approved_at' => now(),
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$closedPost->id}/comments", ['body' => 'نظر جدید نباید ثبت شود'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'comments_closed')
+            ->assertJsonPath('error.message_fa', 'نظرات این پست بسته شده است.');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$closedPost->id}/comments", [
+                'body' => 'پاسخ جدید هم نباید ثبت شود',
+                'parent_id' => $existing->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'comments_closed')
+            ->assertJsonPath('error.message_fa', 'نظرات این پست بسته شده است.');
+
+        $this->assertDatabaseMissing('family_comments', [
+            'post_id' => $closedPost->id,
+            'body' => 'نظر جدید نباید ثبت شود',
+        ]);
+        $this->assertDatabaseMissing('family_comments', [
+            'post_id' => $closedPost->id,
+            'body' => 'پاسخ جدید هم نباید ثبت شود',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/family/posts/{$closedPost->id}/comments")
+            ->assertOk()
+            ->assertJsonPath('data.0.body', 'نظر قبلی قبل از بستن');
+    }
+
+    public function test_manager_can_toggle_comments_enabled_on_published_post(): void
+    {
+        $admin = $this->managerAdmin();
+        $post = $this->publishedPost(['comments_enabled' => true]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/family-manager/posts/{$post->id}", [
+                'comments_enabled' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.comments_enabled', false);
+
+        $this->assertDatabaseHas('family_posts', [
+            'id' => $post->id,
+            'comments_enabled' => false,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/family-manager/posts/{$post->id}", [
+                'comments_enabled' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.comments_enabled', true);
+    }
+
     public function test_manager_approve_is_idempotent_for_already_approved_comment(): void
     {
         Queue::fake();
@@ -151,6 +223,8 @@ class FamilyReactionAndCommentTest extends TestCase
                         'post_id',
                         'family_id',
                         'family_internal_name',
+                        'post_type',
+                        'post_preview',
                         'matching_count',
                         'pending_count',
                         'unread_count',
@@ -185,7 +259,13 @@ class FamilyReactionAndCommentTest extends TestCase
             ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
             ->assertOk()
             ->assertJsonPath('data.0.post_id', $post->id)
+            // Root + reply — parity with feed approved_comments_count.
             ->assertJsonPath('data.0.matching_count', 2);
+
+        $this->assertDatabaseHas('family_post_stats', [
+            'post_id' => $post->id,
+            'approved_comments_count' => 2,
+        ]);
     }
 
     public function test_manager_comment_threads_order_by_post_published_at(): void

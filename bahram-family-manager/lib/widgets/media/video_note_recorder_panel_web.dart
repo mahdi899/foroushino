@@ -59,6 +59,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
 
   _Phase _phase = _Phase.idle;
   bool _busy = false;
+  String? _inlineError;
   Duration _elapsed = Duration.zero;
   Timer? _ticker;
   DateTime? _startedAt;
@@ -133,11 +134,29 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
     stream?.getTracks().forEach((track) => track.stop());
   }
 
+  void _reportError(String message) {
+    if (!mounted) {
+      widget.onError?.call(message);
+      return;
+    }
+    setState(() => _inlineError = message);
+    widget.onError?.call(message);
+  }
+
+  /// Theme uses [Size.fromHeight] (infinite width) — unsafe inside [Row].
+  ButtonStyle _rowFilledStyle({Color? backgroundColor}) {
+    return FilledButton.styleFrom(
+      backgroundColor: backgroundColor,
+      minimumSize: const Size(0, 48),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
   Future<bool> _ensureCamera() async {
     try {
       final devices = html.window.navigator.mediaDevices;
       if (devices == null) {
-        widget.onError?.call('دوربین در این مرورگر در دسترس نیست.');
+        _reportError('دوربین در این مرورگر در دسترس نیست.');
         return false;
       }
       final stream = await devices.getUserMedia({
@@ -156,7 +175,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       }
       return true;
     } catch (_) {
-      widget.onError?.call(
+      _reportError(
         'دسترسی به دوربین/میکروفون لازم است. مجوز را در مرورگر فعال کنید.',
       );
       return false;
@@ -180,7 +199,10 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
 
   Future<void> _openPreview() async {
     if (!widget.enabled || _busy || _phase != _Phase.idle) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
     final ok = await _ensureCamera();
     if (!mounted) return;
     if (!ok) {
@@ -190,6 +212,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
     setState(() {
       _busy = false;
       _phase = _Phase.preview;
+      _inlineError = null;
     });
   }
 
@@ -199,9 +222,15 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       await _openPreview();
       if (_phase != _Phase.preview) return;
     }
-    if (_phase != _Phase.preview || _stream == null) return;
+    if (_phase != _Phase.preview || _stream == null) {
+      _reportError('دوربین آماده نیست. دوباره شروع کنید.');
+      return;
+    }
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
     try {
       _chunks.clear();
       final mime = _pickMimeType();
@@ -242,7 +271,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _phase = _Phase.preview;
         });
       }
-      widget.onError?.call('شروع ضبط ویدیو ممکن نشد.');
+      _reportError('شروع ضبط ویدیو ممکن نشد. دوباره تلاش کنید.');
     }
   }
 
@@ -297,7 +326,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _elapsed = Duration.zero;
         });
       }
-      widget.onError?.call('ویدیو خیلی کوتاه بود. دوباره ضبط کنید.');
+      _reportError('ویدیو خیلی کوتاه بود. دوباره ضبط کنید.');
       return;
     }
 
@@ -338,6 +367,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
         _busy = false;
         _phase = _Phase.reviewing;
         _elapsed = duration;
+        _inlineError = null;
       });
       await _stopStream();
     } catch (_) {
@@ -347,7 +377,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _phase = _Phase.preview;
         });
       }
-      widget.onError?.call('ذخیره ویدیو ضبط‌شده ممکن نشد.');
+      _reportError('ذخیره ویدیو ضبط‌شده ممکن نشد.');
     }
   }
 
@@ -388,6 +418,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       _phase = _Phase.idle;
       _busy = false;
       _elapsed = Duration.zero;
+      _inlineError = null;
     });
   }
 
@@ -436,6 +467,18 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.65)),
           ),
+          if (_inlineError != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              _inlineError!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: 220,
@@ -511,50 +554,55 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
             )
           else if (_phase == _Phase.preview)
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   onPressed: _busy ? null : _resetToIdle,
                   child: const Text('انصراف'),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                FilledButton.icon(
-                  onPressed: (!widget.enabled || _busy) ? null : _startRecording,
-                  icon: const Icon(Icons.fiber_manual_record_rounded),
-                  label: const Text('شروع ضبط'),
-                  style: FilledButton.styleFrom(backgroundColor: scheme.error),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: (!widget.enabled || _busy) ? null : _startRecording,
+                    icon: const Icon(Icons.fiber_manual_record_rounded),
+                    label: const Text('شروع ضبط'),
+                    style: _rowFilledStyle(backgroundColor: scheme.error),
+                  ),
                 ),
               ],
             )
           else if (_phase == _Phase.recording)
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   onPressed: _busy ? null : () => _finishRecording(cancel: true),
                   child: const Text('لغو'),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                FilledButton.icon(
-                  onPressed: _busy ? null : () => _finishRecording(cancel: false),
-                  icon: const Icon(Icons.stop_rounded),
-                  label: const Text('پایان ضبط'),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : () => _finishRecording(cancel: false),
+                    icon: const Icon(Icons.stop_rounded),
+                    label: const Text('پایان ضبط'),
+                    style: _rowFilledStyle(backgroundColor: scheme.error),
+                  ),
                 ),
               ],
             )
           else
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   onPressed: _busy ? null : _discardReview,
                   child: const Text('ضبط دوباره'),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _useRecording,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('استفاده از این ویدیو'),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _useRecording,
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('استفاده از این ویدیو'),
+                    style: _rowFilledStyle(),
+                  ),
                 ),
               ],
             ),

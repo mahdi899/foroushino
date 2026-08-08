@@ -1872,6 +1872,10 @@ function FeedViewInner({
   );
 
   const showFeed = !commentsTarget && !notificationsOpen;
+  const commentsPost = commentsTarget
+    ? posts.find((post) => post.id === commentsTarget.postId)
+    : undefined;
+  const commentsEnabled = commentsPost ? commentsPost.comments_enabled !== false : true;
 
   useLayoutEffect(() => {
     if (!showFeed) {
@@ -1943,6 +1947,7 @@ function FeedViewInner({
               postId={commentsTarget.postId}
               focusCommentId={commentsTarget.focusCommentId}
               allowPhoneNumbers={isStaff}
+              commentsEnabled={commentsEnabled}
               onClose={closeComments}
               onCommentAdded={commentsTarget.onCommentAdded}
               className="flex min-h-0 flex-1 flex-col"

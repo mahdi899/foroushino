@@ -242,6 +242,115 @@ class FamilyPostTargetModel {
       );
 }
 
+class FamilyPostStatsModel {
+  FamilyPostStatsModel({
+    this.views = 0,
+    this.comments = 0,
+    this.actionResponses = 0,
+    this.reactions = 0,
+    this.fire = 0,
+    this.heart = 0,
+    this.target = 0,
+    this.clap = 0,
+    this.thumbsUp = 0,
+    this.laugh = 0,
+    this.sad = 0,
+    this.party = 0,
+    this.star = 0,
+    this.rocket = 0,
+    this.eyes = 0,
+    this.pray = 0,
+    this.muscle = 0,
+    this.hundred = 0,
+    this.wink = 0,
+  });
+
+  final int views;
+  final int comments;
+  final int actionResponses;
+  final int reactions;
+  final int fire;
+  final int heart;
+  final int target;
+  final int clap;
+  final int thumbsUp;
+  final int laugh;
+  final int sad;
+  final int party;
+  final int star;
+  final int rocket;
+  final int eyes;
+  final int pray;
+  final int muscle;
+  final int hundred;
+  final int wink;
+
+  int countFor(String type) => switch (type) {
+        'fire' => fire,
+        'heart' => heart,
+        'target' => target,
+        'clap' => clap,
+        'thumbs_up' => thumbsUp,
+        'laugh' => laugh,
+        'sad' => sad,
+        'party' => party,
+        'star' => star,
+        'rocket' => rocket,
+        'eyes' => eyes,
+        'pray' => pray,
+        'muscle' => muscle,
+        'hundred' => hundred,
+        'wink' => wink,
+        _ => 0,
+      };
+
+  /// Prefer API `reactions` total; fall back to summing per-type fields.
+  int get totalReactions {
+    final summed = fire +
+        heart +
+        target +
+        clap +
+        thumbsUp +
+        laugh +
+        sad +
+        party +
+        star +
+        rocket +
+        eyes +
+        pray +
+        muscle +
+        hundred +
+        wink;
+    if (reactions == 0 && summed > 0) return summed;
+    return reactions;
+  }
+
+  factory FamilyPostStatsModel.fromJson(Map<String, dynamic> json) {
+    int n(String key) => (json[key] as num?)?.toInt() ?? 0;
+    return FamilyPostStatsModel(
+      views: n('views'),
+      comments: n('comments'),
+      actionResponses: n('action_responses'),
+      reactions: n('reactions'),
+      fire: n('fire'),
+      heart: n('heart'),
+      target: n('target'),
+      clap: n('clap'),
+      thumbsUp: n('thumbs_up'),
+      laugh: n('laugh'),
+      sad: n('sad'),
+      party: n('party'),
+      star: n('star'),
+      rocket: n('rocket'),
+      eyes: n('eyes'),
+      pray: n('pray'),
+      muscle: n('muscle'),
+      hundred: n('hundred'),
+      wink: n('wink'),
+    );
+  }
+}
+
 class FamilyPostModel {
   FamilyPostModel({
     required this.id,
@@ -261,6 +370,7 @@ class FamilyPostModel {
     this.actions = const [],
     this.targetFamilies = const [],
     this.targetFamilyIds = const [],
+    this.stats,
   });
 
   final int id;
@@ -280,6 +390,7 @@ class FamilyPostModel {
   final List<FamilyActionModel> actions;
   final List<FamilyPostTargetModel> targetFamilies;
   final List<int> targetFamilyIds;
+  final FamilyPostStatsModel? stats;
 
   bool get isDraft => status == 'draft';
   bool get isPublished => status == 'published';
@@ -333,6 +444,9 @@ class FamilyPostModel {
             .toList(),
         targetFamilies: targets,
         targetFamilyIds: targets.map((target) => target.familyId).toList(),
+        stats: json['stats'] is Map
+            ? FamilyPostStatsModel.fromJson((json['stats'] as Map).cast<String, dynamic>())
+            : null,
       );
   }
 
@@ -374,6 +488,9 @@ class FamilyCommentModel {
     this.signals = const [],
     this.rejectionReason,
     this.rejectionNote,
+    this.postType,
+    this.postPreview,
+    this.publishedAt,
   });
 
   final int id;
@@ -396,15 +513,27 @@ class FamilyCommentModel {
   final List<String> signals;
   final String? rejectionReason;
   final String? rejectionNote;
+  final String? postType;
+  final String? postPreview;
+  final String? publishedAt;
 
-  FamilyCommentModel copyWith({bool? seenByBahram}) {
+  FamilyCommentModel copyWith({
+    String? status,
+    bool? isImportant,
+    bool? inPulse,
+    bool? seenByBahram,
+    List<FamilyCommentModel>? replies,
+    String? rejectionReason,
+    String? rejectionNote,
+    bool clearRejection = false,
+  }) {
     return FamilyCommentModel(
       id: id,
       body: body,
-      status: status,
+      status: status ?? this.status,
       createdAt: createdAt,
-      isImportant: isImportant,
-      inPulse: inPulse,
+      isImportant: isImportant ?? this.isImportant,
+      inPulse: inPulse ?? this.inPulse,
       seenByBahram: seenByBahram ?? this.seenByBahram,
       userName: userName,
       familyId: familyId,
@@ -412,13 +541,30 @@ class FamilyCommentModel {
       postId: postId,
       parentId: parentId,
       isBahramReply: isBahramReply,
-      replies: replies,
+      replies: replies ?? this.replies,
       riskScore: riskScore,
       sentiment: sentiment,
       topic: topic,
       signals: signals,
-      rejectionReason: rejectionReason,
-      rejectionNote: rejectionNote,
+      rejectionReason: clearRejection ? rejectionReason : (rejectionReason ?? this.rejectionReason),
+      rejectionNote: clearRejection ? rejectionNote : (rejectionNote ?? this.rejectionNote),
+      postType: postType,
+      postPreview: postPreview,
+      publishedAt: publishedAt,
+    );
+  }
+
+  /// Merge moderation API payload into an existing list item (keeps nested replies when absent).
+  FamilyCommentModel mergedWith(FamilyCommentModel updated) {
+    return copyWith(
+      status: updated.status,
+      isImportant: updated.isImportant,
+      inPulse: updated.inPulse,
+      seenByBahram: updated.seenByBahram,
+      replies: updated.replies.isNotEmpty ? updated.replies : null,
+      rejectionReason: updated.rejectionReason,
+      rejectionNote: updated.rejectionNote,
+      clearRejection: true,
     );
   }
 
@@ -449,6 +595,9 @@ class FamilyCommentModel {
       signals: (ai['signals'] as List? ?? []).map((e) => e.toString()).toList(),
       rejectionReason: json['rejection_reason']?.toString(),
       rejectionNote: json['rejection_note']?.toString(),
+      postType: json['post_type']?.toString(),
+      postPreview: json['post_preview']?.toString(),
+      publishedAt: json['published_at']?.toString(),
     );
   }
 }
@@ -481,7 +630,11 @@ class CommentThreadModel {
   final String? latestCommentAt;
   final String? latestCommentPreview;
 
-  CommentThreadModel copyWith({int? unreadCount}) {
+  CommentThreadModel copyWith({
+    int? matchingCount,
+    int? pendingCount,
+    int? unreadCount,
+  }) {
     return CommentThreadModel(
       postId: postId,
       familyId: familyId,
@@ -489,8 +642,8 @@ class CommentThreadModel {
       postType: postType,
       postPreview: postPreview,
       publishedAt: publishedAt,
-      matchingCount: matchingCount,
-      pendingCount: pendingCount,
+      matchingCount: matchingCount ?? this.matchingCount,
+      pendingCount: pendingCount ?? this.pendingCount,
       unreadCount: unreadCount ?? this.unreadCount,
       latestCommentAt: latestCommentAt,
       latestCommentPreview: latestCommentPreview,

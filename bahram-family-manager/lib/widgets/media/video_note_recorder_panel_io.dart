@@ -62,6 +62,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
   _Phase _phase = _Phase.idle;
   bool _busy = false;
   bool _cameraSupported = true;
+  String? _inlineError;
   Duration _elapsed = Duration.zero;
   Timer? _ticker;
   DateTime? _startedAt;
@@ -136,16 +137,39 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
     _reviewPlayer = null;
   }
 
+  void _reportError(String message) {
+    if (!mounted) {
+      widget.onError?.call(message);
+      return;
+    }
+    setState(() => _inlineError = message);
+    widget.onError?.call(message);
+  }
+
+  /// Theme uses [Size.fromHeight] (infinite width) — unsafe inside [Row].
+  ButtonStyle _rowFilledStyle({Color? backgroundColor}) {
+    return FilledButton.styleFrom(
+      backgroundColor: backgroundColor,
+      minimumSize: const Size(0, 48),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+
   Future<bool> _ensurePermissions() async {
-    final cam = await Permission.camera.request();
-    final mic = await Permission.microphone.request();
-    if (!cam.isGranted || !mic.isGranted) {
-      widget.onError?.call(
-        'دسترسی دوربین و میکروفون لازم است. از تنظیمات گوشی فعال کنید.',
-      );
+    try {
+      final cam = await Permission.camera.request();
+      final mic = await Permission.microphone.request();
+      if (!cam.isGranted || !mic.isGranted) {
+        _reportError(
+          'دسترسی دوربین و میکروفون لازم است. از تنظیمات گوشی فعال کنید.',
+        );
+        return false;
+      }
+      return true;
+    } catch (_) {
+      _reportError('بررسی مجوز دوربین/میکروفون ناموفق بود.');
       return false;
     }
-    return true;
   }
 
   Future<bool> _openCamera({int? index}) async {
@@ -153,7 +177,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       await _probeCameras();
     }
     if (_cameras.isEmpty) {
-      widget.onError?.call('دوربینی روی این دستگاه پیدا نشد.');
+      _reportError('دوربینی روی این دستگاه پیدا نشد.');
       return false;
     }
 
@@ -180,11 +204,12 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       setState(() {
         _camera = controller;
         _cameraIndex = nextIndex;
+        _inlineError = null;
       });
       return true;
     } catch (_) {
       await controller.dispose();
-      widget.onError?.call('راه‌اندازی دوربین ممکن نشد.');
+      _reportError('راه‌اندازی دوربین ممکن نشد. دوباره تلاش کنید.');
       return false;
     }
   }
@@ -192,11 +217,14 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
   Future<void> _openPreview() async {
     if (!widget.enabled || _busy || _phase != _Phase.idle) return;
     if (!_cameraSupported) {
-      widget.onError?.call('ضبط زنده روی این پلتفرم پشتیبانی نمی‌شود. فایل ویدیو انتخاب کنید.');
+      _reportError('ضبط زنده روی این پلتفرم پشتیبانی نمی‌شود. فایل ویدیو انتخاب کنید.');
       return;
     }
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
     final permitted = await _ensurePermissions();
     if (!permitted) {
       if (mounted) setState(() => _busy = false);
@@ -230,10 +258,16 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       if (_phase != _Phase.preview) return;
     }
     final cam = _camera;
-    if (_phase != _Phase.preview || cam == null || !cam.value.isInitialized) return;
+    if (_phase != _Phase.preview || cam == null || !cam.value.isInitialized) {
+      _reportError('دوربین آماده نیست. دوباره شروع کنید.');
+      return;
+    }
     if (cam.value.isRecordingVideo) return;
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
     try {
       await cam.startVideoRecording();
       _startedAt = DateTime.now();
@@ -262,13 +296,16 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _phase = _Phase.preview;
         });
       }
-      widget.onError?.call('شروع ضبط ویدیو ممکن نشد.');
+      _reportError('شروع ضبط ویدیو ممکن نشد. دوباره تلاش کنید.');
     }
   }
 
   Future<void> _finishRecording({required bool cancel}) async {
     if (_phase != _Phase.recording || _busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      if (!cancel) _inlineError = null;
+    });
     _ticker?.cancel();
     _pulse.stop();
     _pulse.reset();
@@ -284,6 +321,17 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       }
     } catch (_) {
       file = null;
+      if (!cancel) {
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _phase = _Phase.preview;
+            _elapsed = Duration.zero;
+          });
+        }
+        _reportError('توقف ضبط ناموفق بود. دوباره تلاش کنید.');
+        return;
+      }
     }
 
     final duration = started == null ? Duration.zero : DateTime.now().difference(started);
@@ -317,7 +365,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _elapsed = Duration.zero;
         });
       }
-      widget.onError?.call('ویدیو خیلی کوتاه بود. دوباره ضبط کنید.');
+      _reportError('ویدیو خیلی کوتاه بود. دوباره ضبط کنید.');
       return;
     }
 
@@ -335,6 +383,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _busy = false;
           _phase = _Phase.reviewing;
           _elapsed = Duration.zero;
+          _inlineError = null;
         });
       }
     } catch (_) {
@@ -345,7 +394,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _elapsed = Duration.zero;
         });
       }
-      widget.onError?.call('ذخیره ویدیو ممکن نشد.');
+      _reportError('ذخیره ویدیو ممکن نشد.');
     }
   }
 
@@ -356,19 +405,24 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
     required String mime,
   }) async {
     await _disposeReview();
-    late final VideoPlayerController player;
-    if (path != null && path.isNotEmpty) {
-      player = createVideoPlayerController(path, isLocalFile: true);
-    } else {
-      final url = await createLocalMediaUrl(
-        bytes,
-        mime,
-        extension: p.extension(filename).replaceFirst('.', ''),
-      );
-      player = createVideoPlayerController(url, isLocalFile: false);
+    VideoPlayerController? player;
+    try {
+      if (path != null && path.isNotEmpty) {
+        player = createVideoPlayerController(path, isLocalFile: true);
+      } else {
+        final url = await createLocalMediaUrl(
+          bytes,
+          mime,
+          extension: p.extension(filename).replaceFirst('.', ''),
+        );
+        player = createVideoPlayerController(url, isLocalFile: false);
+      }
+      await player.initialize();
+      await player.setLooping(true);
+    } catch (_) {
+      await player?.dispose();
+      throw StateError('review_init_failed');
     }
-    await player.initialize();
-    await player.setLooping(true);
     if (!mounted) {
       await player.dispose();
       return;
@@ -382,7 +436,10 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
 
   Future<void> _pickClip() async {
     if (!widget.enabled || _busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _inlineError = null;
+    });
 
     try {
       if (_phase == _Phase.recording) {
@@ -411,7 +468,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
         bytes = await readFileBytes(path);
       }
       if (bytes == null || bytes.isEmpty) {
-        widget.onError?.call('خواندن ویدیو ممکن نشد.');
+        _reportError('خواندن ویدیو ممکن نشد.');
         if (mounted) {
           setState(() {
             _busy = false;
@@ -429,12 +486,23 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           ? filename
           : 'video_note_${DateTime.now().millisecondsSinceEpoch}.mp4';
       final mime = guessMediaMimeType(safeName, 'video');
+      if (!mime.startsWith('video/')) {
+        _reportError('فایل انتخاب‌شده ویدیو نیست.');
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _phase = _Phase.idle;
+          });
+        }
+        return;
+      }
 
       await _enterReview(bytes: bytes, filename: safeName, path: path, mime: mime);
       if (!mounted) return;
       setState(() {
         _busy = false;
         _phase = _Phase.reviewing;
+        _inlineError = null;
       });
     } catch (_) {
       if (mounted) {
@@ -443,14 +511,17 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           _phase = _Phase.idle;
         });
       }
-      widget.onError?.call('انتخاب ویدیو ممکن نشد.');
+      _reportError('انتخاب یا پیش‌نمایش ویدیو ممکن نشد.');
     }
   }
 
   Future<void> _useRecording() async {
     final bytes = _draftBytes;
     final filename = _draftFilename;
-    if (bytes == null || filename == null) return;
+    if (bytes == null || filename == null) {
+      _reportError('ویدیویی برای استفاده آماده نیست.');
+      return;
+    }
 
     SavedVideoNoteRecording? saved;
     try {
@@ -460,7 +531,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
       }
       saved ??= await VideoNoteLocalStore.save(bytes, filename);
     } catch (_) {
-      widget.onError?.call('ذخیره ویدیو روی دستگاه ناموفق بود.');
+      _reportError('ذخیره ویدیو روی دستگاه ناموفق بود.');
       return;
     }
 
@@ -490,6 +561,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
     setState(() {
       _phase = _Phase.idle;
       _busy = false;
+      _inlineError = null;
     });
     if (reopenPreview) {
       await _openPreview();
@@ -615,6 +687,14 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.65)),
           ),
+          if (_inlineError != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              _inlineError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w600),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           _buildCirclePreview(scheme),
           if (recording || preview) ...[
@@ -650,7 +730,6 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
             ),
           ] else if (preview) ...[
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_cameras.length > 1)
                   IconButton(
@@ -658,12 +737,13 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
                     onPressed: _busy ? null : _flipCamera,
                     icon: const Icon(Icons.cameraswitch_rounded),
                   ),
-                const SizedBox(width: AppSpacing.sm),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-                  onPressed: _busy ? null : _startRecording,
-                  icon: const Icon(Icons.fiber_manual_record_rounded),
-                  label: const Text('ضبط'),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: _rowFilledStyle(backgroundColor: AppColors.error),
+                    onPressed: _busy ? null : _startRecording,
+                    icon: const Icon(Icons.fiber_manual_record_rounded),
+                    label: const Text('ضبط'),
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 TextButton(
@@ -673,19 +753,25 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
               ],
             ),
           ] else if (recording) ...[
-            FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-              onPressed: _busy ? null : () => _finishRecording(cancel: false),
-              icon: const Icon(Icons.stop_rounded),
-              label: const Text('پایان ضبط'),
-            ),
-            TextButton(
-              onPressed: _busy ? null : () => _finishRecording(cancel: true),
-              child: const Text('لغو'),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    style: _rowFilledStyle(backgroundColor: AppColors.error),
+                    onPressed: _busy ? null : () => _finishRecording(cancel: false),
+                    icon: const Icon(Icons.stop_rounded),
+                    label: const Text('پایان ضبط'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                TextButton(
+                  onPressed: _busy ? null : () => _finishRecording(cancel: true),
+                  child: const Text('لغو'),
+                ),
+              ],
             ),
           ] else ...[
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   onPressed: _busy
@@ -696,10 +782,13 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
                   child: Text(_cameraSupported ? 'ضبط دوباره' : 'انتخاب دوباره'),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _useRecording,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('استفاده از این ویدیو'),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: _rowFilledStyle(),
+                    onPressed: _busy ? null : _useRecording,
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('استفاده از این ویدیو'),
+                  ),
                 ),
               ],
             ),

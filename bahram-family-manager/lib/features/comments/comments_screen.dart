@@ -177,6 +177,42 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
     _loadFirstPage();
   }
 
+  /// Quiet re-fetch after leaving detail — keeps current rows visible (no spinner wipe).
+  Future<void> _softRefreshCurrentTab() async {
+    final tab = _currentTab;
+    if (tab.initialLoading) return;
+    try {
+      final result = await context.read<AppState>().manager.listCommentThreads(
+            tab: _tabs[_tabController.index],
+            familyId: _familyFilter,
+            search: _searchQuery,
+            page: 1,
+          );
+      if (!mounted) return;
+      setState(() {
+        tab.items
+          ..clear()
+          ..addAll(result.items);
+        tab.page = result.currentPage;
+        tab.hasMore = result.hasMore;
+        tab.error = null;
+        tab.loadingMore = false;
+      });
+      // Other tabs may be stale after moderation in detail.
+      final current = _tabController.index;
+      for (var i = 0; i < _tabData.length; i++) {
+        if (i == current) continue;
+        final t = _tabData[i];
+        t.items.clear();
+        t.page = 0;
+        t.hasMore = true;
+        t.error = null;
+      }
+    } catch (_) {
+      // Keep existing hub rows if soft refresh fails.
+    }
+  }
+
   Future<void> _openThread(CommentThreadModel thread) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -187,7 +223,7 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
         ),
       ),
     );
-    if (mounted) _loadFirstPage();
+    if (mounted) await _softRefreshCurrentTab();
   }
 
   /// Preserve hub sort order while grouping rows under family headers.
@@ -286,7 +322,7 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
                     ),
                   ),
                   Text(
-                    toFaDigits(group.threads.length.toString()),
+                    '${toFaDigits(group.threads.length.toString())} پست',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ],

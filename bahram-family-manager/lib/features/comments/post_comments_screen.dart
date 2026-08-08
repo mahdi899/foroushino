@@ -61,6 +61,9 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
   final _searchCtrl = TextEditingController();
   final _tabData = List.generate(_tabs.length, (_) => _CommentsTabData());
   final Set<int> _selectedPendingIds = {};
+  /// comment/reply id → which moderation action is in flight.
+  final Map<int, CommentBusyAction> _busyActions = {};
+  var _batchApproving = false;
 
   _CommentsTabData get _currentTab => _tabData[_tabController.index];
 
@@ -229,16 +232,111 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
     _loadFirstPage();
   }
 
-  Future<void> _approve(FamilyCommentModel comment) async {
-    try {
-      await context.read<AppState>().manager.approveComment(comment.id);
-      _loadFirstPage();
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
+  /// Drop cached pages for other tabs so switching reloads fresh data.
+  void _invalidateOtherTabs() {
+    final current = _tabController.index;
+    for (var i = 0; i < _tabData.length; i++) {
+      if (i == current) continue;
+      final t = _tabData[i];
+      t.items.clear();
+      t.page = 0;
+      t.hasMore = true;
+      t.error = null;
+      t.initialLoading = false;
+      t.loadingMore = false;
     }
   }
 
+  static bool _matchesTab(FamilyCommentModel comment, String tab) {
+    switch (tab) {
+      case 'approved':
+        return comment.status == 'approved';
+      case 'rejected':
+        return comment.status == 'rejected';
+      case 'important':
+        return comment.isImportant;
+      case 'unread':
+        return !comment.seenByBahram;
+      case 'coaching_questions':
+        return comment.signals.contains('coaching_question');
+      default:
+        return comment.status == 'pending';
+    }
+  }
+
+  /// Update a root or nested comment in place — never wipe the list or jump scroll.
+  void _applyCommentUpdate(FamilyCommentModel updated) {
+    final tabKey = _tabs[_tabController.index];
+    final tab = _currentTab;
+
+    setState(() {
+      _invalidateOtherTabs();
+
+      final rootIndex = tab.items.indexWhere((c) => c.id == updated.id);
+      if (rootIndex >= 0) {
+        final merged = tab.items[rootIndex].mergedWith(updated);
+        if (_matchesTab(merged, tabKey)) {
+          tab.items[rootIndex] = merged;
+        } else {
+          tab.items.removeAt(rootIndex);
+          _selectedPendingIds.remove(updated.id);
+        }
+        return;
+      }
+
+      for (var i = 0; i < tab.items.length; i++) {
+        final root = tab.items[i];
+        final replyIndex = root.replies.indexWhere((r) => r.id == updated.id);
+        if (replyIndex < 0) continue;
+        final replies = [...root.replies];
+        replies[replyIndex] = replies[replyIndex].mergedWith(updated);
+        tab.items[i] = root.copyWith(replies: replies);
+        return;
+      }
+    });
+  }
+
+  void _appendReply(int parentId, FamilyCommentModel reply) {
+    final tab = _currentTab;
+    setState(() {
+      _invalidateOtherTabs();
+      for (var i = 0; i < tab.items.length; i++) {
+        final root = tab.items[i];
+        if (root.id != parentId) continue;
+        if (root.replies.any((r) => r.id == reply.id)) return;
+        tab.items[i] = root.copyWith(replies: [...root.replies, reply]);
+        return;
+      }
+    });
+  }
+
+  Future<void> _withBusy(
+    int commentId,
+    CommentBusyAction action,
+    Future<void> Function() work,
+  ) async {
+    if (_busyActions.containsKey(commentId) || _batchApproving) return;
+    setState(() => _busyActions[commentId] = action);
+    try {
+      await work();
+    } finally {
+      if (mounted) setState(() => _busyActions.remove(commentId));
+    }
+  }
+
+  Future<void> _approve(FamilyCommentModel comment) async {
+    await _withBusy(comment.id, CommentBusyAction.approve, () async {
+      try {
+        final updated = await context.read<AppState>().manager.approveComment(comment.id);
+        if (mounted) _applyCommentUpdate(updated);
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
+      }
+    });
+  }
+
   Future<void> _reject(FamilyCommentModel comment) async {
+    if (_busyActions.containsKey(comment.id) || _batchApproving) return;
     final result = await showAppBottomSheet<({String reason, String note})>(
       context: context,
       title: 'رد نظر',
@@ -246,48 +344,64 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
     );
     if (result == null || !mounted) return;
 
-    try {
-      await context.read<AppState>().manager.rejectComment(comment.id, reason: result.reason, note: result.note);
-      if (mounted) _loadFirstPage();
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
-    }
+    await _withBusy(comment.id, CommentBusyAction.reject, () async {
+      try {
+        final updated = await context.read<AppState>().manager.rejectComment(
+              comment.id,
+              reason: result.reason,
+              note: result.note,
+            );
+        if (mounted) _applyCommentUpdate(updated);
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
+      }
+    });
   }
 
   Future<void> _toggleImportant(FamilyCommentModel comment) async {
-    try {
-      await context.read<AppState>().manager.toggleImportant(comment.id);
-      _loadFirstPage();
-      if (mounted) {
+    await _withBusy(comment.id, CommentBusyAction.important, () async {
+      try {
+        final updated = await context.read<AppState>().manager.toggleImportant(comment.id);
+        if (!mounted) return;
+        _applyCommentUpdate(updated);
         showAppSnackBar(
           context,
           comment.isImportant ? 'برچسب مهم برداشته شد.' : 'نظر به‌عنوان مهم علامت خورد.',
         );
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
       }
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
-    }
+    });
   }
 
   Future<void> _reply(FamilyCommentModel comment) async {
-    final replied = await showCommentReplySheet(context: context, comment: comment);
-    if (replied == true && mounted) {
+    if (_busyActions.containsKey(comment.id) || _batchApproving) return;
+    final reply = await showCommentReplySheet(context: context, comment: comment);
+    if (reply != null && mounted) {
       showAppSnackBar(context, 'پاسخ بهرام ارسال شد.');
-      _loadFirstPage();
+      _appendReply(comment.id, reply);
     }
   }
 
   Future<void> _batchApprove() async {
-    if (_selectedPendingIds.isEmpty) return;
+    if (_selectedPendingIds.isEmpty || _batchApproving) return;
+    if (_selectedPendingIds.any(_busyActions.containsKey)) return;
+    final ids = _selectedPendingIds.toList();
+    setState(() => _batchApproving = true);
     try {
-      final count = await context.read<AppState>().manager.batchApprove(_selectedPendingIds.toList());
-      if (mounted) {
-        showAppSnackBar(context, '${toFaDigits(count.toString())} نظر تأیید شد.');
-        setState(_selectedPendingIds.clear);
-        _loadFirstPage();
-      }
+      final count = await context.read<AppState>().manager.batchApprove(ids);
+      if (!mounted) return;
+      showAppSnackBar(context, '${toFaDigits(count.toString())} نظر تأیید شد.');
+      final idSet = ids.toSet();
+      setState(() {
+        _invalidateOtherTabs();
+        _currentTab.items.removeWhere((c) => idSet.contains(c.id));
+        _selectedPendingIds.clear();
+      });
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _batchApproving = false);
     }
   }
 
@@ -318,9 +432,12 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
   Widget _buildPostHeader() {
     final thread = widget.thread;
     final typeLabel = thread.postType != null ? labelOf(postTypeLabels, thread.postType!) : 'پست';
-    final preview = (thread.postPreview?.trim().isNotEmpty == true)
+    final title = (thread.postPreview?.trim().isNotEmpty == true)
         ? thread.postPreview!.trim()
         : 'پست $typeLabel #${toFaDigits(thread.postId.toString())}';
+    final publishedLabel = thread.publishedAt != null
+        ? 'انتشار: ${formatDateTime(thread.publishedAt)}'
+        : null;
 
     return GlassPanel(
       borderRadius: 16,
@@ -334,7 +451,13 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(preview, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(height: 1.5)),
+          Text(title, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(height: 1.5)),
+          if (publishedLabel != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(publishedLabel, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65), fontSize: 12)),
+          ],
+          const SizedBox(height: AppSpacing.xs),
+          Text(typeLabel, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -422,19 +545,29 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
 
         final c = comments[commentIndex];
         final selected = _selectedPendingIds.contains(c.id);
+        final replyBusy = <int, CommentBusyAction>{
+          for (final reply in c.replies)
+            if (_busyActions.containsKey(reply.id)) reply.id: _busyActions[reply.id]!,
+        };
         return CommentCard(
           comment: c,
           showFamily: false,
           selectable: isPendingTab,
           selected: selected,
+          busyAction: _busyActions[c.id],
+          replyBusyActions: replyBusy,
+          batchBusy: _batchApproving && selected,
           onSelectedChanged: isPendingTab
-              ? (value) => setState(() {
+              ? (value) {
+                  if (_batchApproving) return;
+                  setState(() {
                     if (value) {
                       _selectedPendingIds.add(c.id);
                     } else {
                       _selectedPendingIds.remove(c.id);
                     }
-                  })
+                  });
+                }
               : null,
           onApprove: () => _approve(c),
           onReject: () => _reject(c),
@@ -466,8 +599,14 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
           if (isPendingTab && _selectedPendingIds.isNotEmpty)
             IconButton(
               tooltip: 'تأیید گروهی',
-              onPressed: _batchApprove,
-              icon: const Icon(Icons.done_all_rounded),
+              onPressed: _batchApproving ? null : _batchApprove,
+              icon: _batchApproving
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.done_all_rounded),
             ),
         ],
         bottom: AppTabBar(

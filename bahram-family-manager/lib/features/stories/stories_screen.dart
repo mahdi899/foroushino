@@ -51,6 +51,8 @@ class _StoriesScreenState extends State<StoriesScreen> {
   var _audienceMode = 'all';
   final Set<int> _selectedFamilyIds = {};
   bool _saving = false;
+  /// Story ids currently awaiting delete.
+  final Set<int> _deletingStoryIds = {};
   bool _uploading = false;
   double _uploadProgress = 0;
   int _uploadSentBytes = 0;
@@ -266,6 +268,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
   int? get _previewHeight => _localHeight ?? _storyMedia?.height;
 
   Future<void> _publishStory() async {
+    if (_saving || _deletingStoryIds.isNotEmpty) return;
     if (_storyMedia == null) {
       showAppSnackBar(context, 'ابتدا تصویر یا ویدیو انتخاب کنید.');
       return;
@@ -312,7 +315,8 @@ class _StoriesScreenState extends State<StoriesScreen> {
   }
 
   Future<void> _deleteStory(FamilyStoryModel story) async {
-    setState(() => _saving = true);
+    if (_saving || _deletingStoryIds.contains(story.id)) return;
+    setState(() => _deletingStoryIds.add(story.id));
     try {
       await context.read<AppState>().manager.deleteStory(story.id);
       if (mounted) {
@@ -322,7 +326,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _deletingStoryIds.remove(story.id));
     }
   }
 
@@ -442,7 +446,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: _StoryListCard(
                         story: story,
-                        saving: _saving,
+                        deleting: _deletingStoryIds.contains(story.id),
                         onDelete: () => _deleteStory(story),
                       ),
                     ),
@@ -459,12 +463,12 @@ class _StoriesScreenState extends State<StoriesScreen> {
 class _StoryListCard extends StatefulWidget {
   const _StoryListCard({
     required this.story,
-    required this.saving,
+    required this.deleting,
     required this.onDelete,
   });
 
   final FamilyStoryModel story;
-  final bool saving;
+  final bool deleting;
   final VoidCallback onDelete;
 
   @override
@@ -542,8 +546,14 @@ class _StoryListCardState extends State<_StoryListCard> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded),
-                onPressed: widget.saving ? null : widget.onDelete,
+                icon: widget.deleting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline_rounded),
+                onPressed: widget.deleting ? null : widget.onDelete,
               ),
             ],
           ),

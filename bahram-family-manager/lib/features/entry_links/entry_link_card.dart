@@ -14,7 +14,7 @@ import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
-class EntryLinkCard extends StatelessWidget {
+class EntryLinkCard extends StatefulWidget {
   const EntryLinkCard({
     super.key,
     required this.link,
@@ -26,29 +26,39 @@ class EntryLinkCard extends StatelessWidget {
   final VoidCallback onChanged;
   final bool compact;
 
-  Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: link.url));
-    if (context.mounted) showAppSnackBar(context, 'لینک کپی شد.');
+  @override
+  State<EntryLinkCard> createState() => _EntryLinkCardState();
+}
+
+class _EntryLinkCardState extends State<EntryLinkCard> {
+  var _deactivating = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.link.url));
+    if (mounted) showAppSnackBar(context, 'لینک کپی شد.');
   }
 
-  Future<void> _edit(BuildContext context) async {
+  Future<void> _edit() async {
+    if (_deactivating) return;
     final saved = await showAppBottomSheet<bool>(
       context: context,
       title: 'ویرایش لینک ورود',
-      subtitle: link.name,
+      subtitle: widget.link.name,
       scrollable: true,
       initialChildSize: 0.75,
-      child: EntryLinkForm(link: link, onSaved: onChanged),
+      child: EntryLinkForm(link: widget.link, onSaved: widget.onChanged),
     );
-    if (saved == true) onChanged();
+    if (saved == true) widget.onChanged();
   }
 
-  Future<void> _deactivate(BuildContext context) async {
+  Future<void> _deactivate() async {
+    if (_deactivating || !widget.link.isActive) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('غیرفعال کردن لینک'),
-        content: Text('لینک «${link.name}» غیرفعال شود؟ URL دیگر برای عضوگیری جدید توصیه نمی‌شود.'),
+        content: Text('لینک «${widget.link.name}» غیرفعال شود؟ URL دیگر برای عضوگیری جدید توصیه نمی‌شود.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
           TextButton(
@@ -58,21 +68,26 @@ class EntryLinkCard extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
+    final manager = context.read<AppState>().manager;
+    setState(() => _deactivating = true);
     try {
-      await context.read<AppState>().manager.deactivateEntryLink(link.id);
-      if (context.mounted) {
+      await manager.deactivateEntryLink(widget.link.id);
+      if (mounted) {
         showAppSnackBar(context, 'لینک غیرفعال شد.');
-        onChanged();
+        widget.onChanged();
       }
     } catch (e) {
-      if (context.mounted) showAppSnackBar(context, 'عملیات ناموفق بود.');
+      if (mounted) showAppSnackBar(context, 'عملیات ناموفق بود.');
+    } finally {
+      if (mounted) setState(() => _deactivating = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final link = widget.link;
     final sourceLabel = link.sourceLabel ?? labelOf(entrySourceLabels, link.source);
 
     return AppCard(
@@ -86,7 +101,7 @@ class EntryLinkCard extends StatelessWidget {
                   link.name,
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: compact ? 14 : 16,
+                    fontSize: widget.compact ? 14 : 16,
                     color: link.isActive ? AppColors.text : AppColors.textMuted,
                   ),
                 ),
@@ -96,24 +111,34 @@ class EntryLinkCard extends StatelessWidget {
                   label: Text('غیرفعال', style: TextStyle(fontSize: 11)),
                   visualDensity: VisualDensity.compact,
                 ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, size: 20),
-                onSelected: (action) => switch (action) {
-                  'edit' => _edit(context),
-                  'copy' => _copy(context),
-                  'deactivate' => link.isActive ? _deactivate(context) : null,
-                  _ => null,
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'edit', child: Text('ویرایش')),
-                  const PopupMenuItem(value: 'copy', child: Text('کپی لینک')),
-                  if (link.isActive)
-                    const PopupMenuItem(
-                      value: 'deactivate',
-                      child: Text('غیرفعال کردن', style: TextStyle(color: AppColors.error)),
-                    ),
-                ],
-              ),
+              if (_deactivating)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded, size: 20),
+                  onSelected: (action) => switch (action) {
+                    'edit' => _edit(),
+                    'copy' => _copy(),
+                    'deactivate' => link.isActive ? _deactivate() : null,
+                    _ => null,
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'edit', child: Text('ویرایش')),
+                    const PopupMenuItem(value: 'copy', child: Text('کپی لینک')),
+                    if (link.isActive)
+                      const PopupMenuItem(
+                        value: 'deactivate',
+                        child: Text('غیرفعال کردن', style: TextStyle(color: AppColors.error)),
+                      ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -133,7 +158,7 @@ class EntryLinkCard extends StatelessWidget {
               _MiniStat(label: '۳۰ روز اخیر', value: link.joinsPeriod),
             ],
           ),
-          if (!compact) ...[
+          if (!widget.compact) ...[
             const SizedBox(height: AppSpacing.md),
             Container(
               width: double.infinity,
@@ -156,7 +181,7 @@ class EntryLinkCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _copy(context),
+                  onPressed: _deactivating ? null : _copy,
                   icon: const Icon(Icons.copy_rounded, size: 18),
                   label: const Text('کپی'),
                 ),
@@ -164,20 +189,22 @@ class EntryLinkCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => FamilyMembersScreen(
-                          familyId: link.familyId,
-                          familyName: link.familyName,
-                          entryLinkId: link.id,
-                          title: 'ورودی‌های «${link.name}»',
-                          showFamilyName: link.familyId == null,
-                          showAttribution: true,
-                        ),
-                      ),
-                    );
-                  },
+                  onPressed: _deactivating
+                      ? null
+                      : () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => FamilyMembersScreen(
+                                familyId: link.familyId,
+                                familyName: link.familyName,
+                                entryLinkId: link.id,
+                                title: 'ورودی‌های «${link.name}»',
+                                showFamilyName: link.familyId == null,
+                                showAttribution: true,
+                              ),
+                            ),
+                          );
+                        },
                   icon: const Icon(Icons.people_rounded, size: 18),
                   label: const Text('اعضا'),
                 ),

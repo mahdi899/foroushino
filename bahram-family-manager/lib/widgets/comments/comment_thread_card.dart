@@ -6,6 +6,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
+import 'package:bahram_family_manager/widgets/posts/post_list_tile.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 class CommentThreadCard extends StatelessWidget {
@@ -23,10 +24,12 @@ class CommentThreadCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final muted = scheme.onSurface.withValues(alpha: 0.65);
     final typeLabel = thread.postType != null ? labelOf(postTypeLabels, thread.postType!) : 'پست';
-    final preview = (thread.postPreview?.trim().isNotEmpty == true)
+    final title = (thread.postPreview?.trim().isNotEmpty == true)
         ? thread.postPreview!.trim()
         : 'پست $typeLabel #${toFaDigits(thread.postId.toString())}';
-    final dateLabel = thread.publishedAt ?? thread.latestCommentAt;
+    final publishedLabel = thread.publishedAt != null
+        ? 'انتشار: ${formatDateTime(thread.publishedAt)}'
+        : null;
 
     return GlassPanel(
       borderRadius: 20,
@@ -52,7 +55,7 @@ class CommentThreadCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(13),
                       ),
                       alignment: Alignment.center,
-                      child: const Icon(Icons.article_outlined, color: Colors.white, size: 20),
+                      child: Icon(postTypeIcon(thread.postType ?? 'text'), color: Colors.white, size: 20),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
@@ -60,14 +63,16 @@ class CommentThreadCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            typeLabel,
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, height: 1.35),
                           ),
-                          if (dateLabel != null)
-                            Text(
-                              formatDateTime(dateLabel),
-                              style: TextStyle(color: muted, fontSize: 11),
-                            ),
+                          const SizedBox(height: 2),
+                          Text(
+                            publishedLabel ?? 'بدون تاریخ انتشار',
+                            style: TextStyle(color: muted, fontSize: 11),
+                          ),
                         ],
                       ),
                     ),
@@ -75,27 +80,15 @@ class CommentThreadCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text(
-                  preview,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.55),
-                ),
-                if (thread.latestCommentPreview != null &&
-                    thread.latestCommentPreview!.trim().isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'آخرین نظر: ${thread.latestCommentPreview!.trim()}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: muted, fontSize: 12, height: 1.45),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.md),
                 Wrap(
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: [
+                    StatusChip(
+                      label: typeLabel,
+                      color: AppColors.primary,
+                      icon: postTypeIcon(thread.postType ?? 'text'),
+                    ),
                     StatusChip(
                       label: '${toFaDigits(thread.matchingCount.toString())} نظر',
                       color: AppColors.primary,
@@ -115,6 +108,16 @@ class CommentThreadCard extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (thread.latestCommentPreview != null &&
+                    thread.latestCommentPreview!.trim().isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'آخرین نظر: ${thread.latestCommentPreview!.trim()}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: muted, fontSize: 12, height: 1.45),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 Align(
                   alignment: AlignmentDirectional.centerStart,

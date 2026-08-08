@@ -36,7 +36,10 @@ export function useFamilyComments(postId: number, enabled: boolean) {
   const [submitting, setSubmitting] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [extraComments, setExtraComments] = useState<FamilyComment[]>([]);
-  const [extraCursor, setExtraCursor] = useState<string | null>(null);
+  /** Cursor for the next older page. `undefined` = not paged yet (use SWR meta). */
+  const [extraCursor, setExtraCursor] = useState<string | null | undefined>(undefined);
+  /** Once a page returns `next_cursor: null`, stop — do not fall back to the first-page cursor. */
+  const [olderExhausted, setOlderExhausted] = useState(false);
   const wasHealthyRef = useRef(true);
   const fallbackDelayRef = useRef(FALLBACK_INITIAL_MS);
 
@@ -48,7 +51,8 @@ export function useFamilyComments(postId: number, enabled: boolean) {
 
   useEffect(() => {
     setExtraComments([]);
-    setExtraCursor(null);
+    setExtraCursor(undefined);
+    setOlderExhausted(false);
   }, [postId]);
 
   const applyRealtime = useCallback(
@@ -94,7 +98,8 @@ export function useFamilyComments(postId: number, enabled: boolean) {
         if (!wasHealthyRef.current) {
           await mutate();
           setExtraComments([]);
-          setExtraCursor(null);
+          setExtraCursor(undefined);
+          setOlderExhausted(false);
         }
         wasHealthyRef.current = true;
         fallbackDelayRef.current = FALLBACK_INITIAL_MS;
@@ -105,7 +110,8 @@ export function useFamilyComments(postId: number, enabled: boolean) {
       wasHealthyRef.current = false;
       await mutate();
       setExtraComments([]);
-      setExtraCursor(null);
+      setExtraCursor(undefined);
+      setOlderExhausted(false);
       const delay = fallbackDelayRef.current;
       fallbackDelayRef.current = FALLBACK_STEADY_MS;
       schedule(delay);
@@ -166,21 +172,35 @@ export function useFamilyComments(postId: number, enabled: boolean) {
   );
 
   const loadMore = useCallback(async () => {
-    const cursor = extraCursor ?? data?.meta.next_cursor;
-    if (!cursor || loadingMore) return;
+    if (olderExhausted || loadingMore) return false;
+    const cursor = extraCursor !== undefined ? extraCursor : data?.meta.next_cursor ?? null;
+    if (!cursor) return false;
 
     setLoadingMore(true);
     try {
       const res = (await getComments(postId, cursor)) as FamilyCommentsPage;
-      setExtraComments((prev) => [...prev, ...res.data]);
+      setExtraComments((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        for (const c of data?.data ?? []) seen.add(c.id);
+        const fresh = res.data.filter((c) => !seen.has(c.id));
+        return fresh.length > 0 ? [...prev, ...fresh] : prev;
+      });
       setExtraCursor(res.meta.next_cursor);
+      if (res.meta.next_cursor == null) {
+        setOlderExhausted(true);
+      }
+      return true;
     } finally {
       setLoadingMore(false);
     }
-  }, [postId, data?.meta.next_cursor, extraCursor, loadingMore]);
+  }, [postId, data?.data, data?.meta.next_cursor, extraCursor, loadingMore, olderExhausted]);
 
   const comments = [...(data?.data ?? []), ...extraComments];
-  const hasMore = Boolean(extraCursor ?? data?.meta.next_cursor);
+  // Never use `extraCursor ?? firstPageCursor` after exhaustion — `null ?? x` would
+  // revive the sentinel forever and re-fetch the same older page.
+  const hasMore =
+    !olderExhausted &&
+    Boolean(extraCursor !== undefined ? extraCursor : data?.meta.next_cursor);
 
   return {
     comments,

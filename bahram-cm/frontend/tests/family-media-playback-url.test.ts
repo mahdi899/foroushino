@@ -9,6 +9,7 @@ import {
   resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaPlaybackUrl,
   resolveFamilyMediaPosterUrl,
+  resolveFamilyMediaSameOriginUrl,
   resolveFamilyMediaUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 
@@ -99,23 +100,38 @@ describe('resolveFamilyMediaDisplayUrl / poster / image', () => {
     vi.unstubAllGlobals();
   });
 
-  it('uses CDN when not on a family same-origin host', () => {
+  it('uses CDN for display/poster (hydration-safe, no window branch)', () => {
     expect(resolveFamilyMediaDisplayUrl('/media/family/demo/a.webp')).toBe(
       'https://cdn.rostami.app/media/family/demo/a.webp',
     );
     expect(resolveFamilyMediaPosterUrl('/media/family/demo/a.webp')).toBe(
       'https://cdn.rostami.app/media/family/demo/a.webp',
     );
+    expect(resolveFamilyMediaUrl('/media/family/demo/a.webp')).toBe(
+      'https://cdn.rostami.app/media/family/demo/a.webp',
+    );
   });
 
-  it('prefers same-origin /media/family on rostami.club for feed images', () => {
+  it('keeps display URL on CDN even when window is rostami.club', () => {
     vi.stubGlobal('window', {
       location: { origin: 'https://rostami.club', hostname: 'rostami.club' },
     });
     expect(resolveFamilyMediaUrl('/media/family/demo/a.webp')).toBe(
-      'https://rostami.club/media/family/demo/a.webp',
+      'https://cdn.rostami.app/media/family/demo/a.webp',
     );
     expect(resolveFamilyMediaPosterUrl('/media/family/demo/a.webp?v=9')).toBe(
+      'https://cdn.rostami.app/media/family/demo/a.webp?v=9',
+    );
+  });
+
+  it('exposes same-origin club URL separately for post-hydration SW cache', () => {
+    vi.stubGlobal('window', {
+      location: { origin: 'https://rostami.club', hostname: 'rostami.club' },
+    });
+    expect(resolveFamilyMediaSameOriginUrl('/media/family/demo/a.webp')).toBe(
+      'https://rostami.club/media/family/demo/a.webp',
+    );
+    expect(resolveFamilyMediaSameOriginUrl('/media/family/demo/a.webp?v=9')).toBe(
       'https://rostami.club/media/family/demo/a.webp?v=9',
     );
   });

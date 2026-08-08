@@ -48,11 +48,13 @@ DB_DATABASE=`$(grep -E '^DB_DATABASE=' "`$ENV" | cut -d= -f2- | tr -d '"')
 DB_USERNAME=`$(grep -E '^DB_USERNAME=' "`$ENV" | cut -d= -f2- | tr -d '"')
 DB_PASSWORD=`$(grep -E '^DB_PASSWORD=' "`$ENV" | cut -d= -f2- | tr -d '"')
 mysqldump -h"`$DB_HOST" -P"`$DB_PORT" -u"`$DB_USERNAME" -p"`$DB_PASSWORD" \
-  --single-transaction --quick --routines --triggers --events --hex-blob --column-statistics=0 --set-gtid-purged=OFF "`$DB_DATABASE" \
+  --single-transaction --quick --routines --triggers --events --hex-blob --no-tablespaces --column-statistics=0 --set-gtid-purged=OFF "`$DB_DATABASE" \
   | gzip > '$remoteFile'
 ls -la '$remoteFile'
 echo '$remoteFile'
 "@
+    # Normalize CRLF → LF so bash on the remote does not choke on `set -o pipefail\r`
+    $sshCmd = $sshCmd.Replace("`r`n", "`n").Replace("`r", "`n")
     $remoteOut = ssh -o BatchMode=yes -o ConnectTimeout=20 $SshHost $sshCmd
     if ($LASTEXITCODE -ne 0) {
         throw 'Remote dump failed. Fix SSH for bahram-prod, or pass -DumpPath to a local .sql/.sql.gz.'

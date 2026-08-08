@@ -8,6 +8,8 @@ import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
+enum LeadBusyAction { assign, createFamily }
+
 class LandingLeadCard extends StatelessWidget {
   const LandingLeadCard({
     super.key,
@@ -16,6 +18,7 @@ class LandingLeadCard extends StatelessWidget {
     required this.canManage,
     required this.onCreateFamily,
     required this.onAddToFamily,
+    this.busyAction,
   });
 
   final LandingLeadModel lead;
@@ -23,6 +26,9 @@ class LandingLeadCard extends StatelessWidget {
   final bool canManage;
   final VoidCallback onCreateFamily;
   final VoidCallback onAddToFamily;
+  final LeadBusyAction? busyAction;
+
+  bool get _isBusy => busyAction != null;
 
   @override
   Widget build(BuildContext context) {
@@ -91,17 +97,24 @@ class LandingLeadCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: onAddToFamily,
-                    icon: const Icon(Icons.group_add_rounded, size: 18),
-                    label: const Text('افزودن به خانواده'),
+                    onPressed: _isBusy ? null : onAddToFamily,
+                    icon: busyAction == LeadBusyAction.assign
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.group_add_rounded, size: 18),
+                    label: Text(busyAction == LeadBusyAction.assign ? 'در حال افزودن…' : 'افزودن به خانواده'),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: PrimaryButton(
-                    label: 'ساخت خانواده',
+                    label: busyAction == LeadBusyAction.createFamily ? 'در حال اتصال…' : 'ساخت خانواده',
                     icon: Icons.add_home_work_rounded,
-                    onPressed: onCreateFamily,
+                    loading: busyAction == LeadBusyAction.createFamily,
+                    onPressed: _isBusy ? null : onCreateFamily,
                   ),
                 ),
               ],
