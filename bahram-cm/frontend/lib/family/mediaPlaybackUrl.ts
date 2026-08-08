@@ -34,11 +34,18 @@ function isLocalOrigin(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
+function isConfiguredFamilyClubHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (isFamilyHost(host)) return true;
+  const familyDomain = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim().toLowerCase();
+  if (familyDomain && (host === familyDomain || host === `www.${familyDomain}`)) return true;
+  return host === 'rostami.club' || host === 'www.rostami.club';
+}
+
 /** Hosts where /media/family is same-origin proxied with Content-Disposition: inline. */
 export function isFamilyMediaSameOriginHost(hostname: string): boolean {
-  if (isFamilyHost(hostname)) return true;
+  if (isConfiguredFamilyClubHost(hostname)) return true;
   const host = hostname.toLowerCase();
-  if (host === 'rostami.club' || host === 'www.rostami.club') return true;
   const appOrigin = appPublicOrigin();
   if (appOrigin) {
     try {
@@ -66,8 +73,7 @@ function toPlaybackHostUrl(pathname: string, search = ''): string {
 function isFamilyMediaProxyHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
   return (
-    host === 'rostami.club' ||
-    host === 'www.rostami.club' ||
+    isConfiguredFamilyClubHost(host) ||
     host === 'family-cdn.rostami.club' ||
     host === 'rostami.app' ||
     host === 'www.rostami.app'

@@ -57,7 +57,9 @@ Uri _rewriteForWeb(Uri uri) {
         query: uri.query.isEmpty ? null : uri.query,
       );
     }
-    if (page.host.endsWith('rostami.club')) {
+    if (page.host.endsWith('rostami.club') ||
+        page.host == 'bahram.club' ||
+        page.host == 'www.bahram.club') {
       return Uri(
         scheme: page.scheme,
         host: page.host,

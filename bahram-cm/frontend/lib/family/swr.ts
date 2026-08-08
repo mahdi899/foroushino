@@ -1,8 +1,11 @@
-/** Shared SWR defaults — aligned with backend family.cache unread_ttl (45s). */
+/** HTTP safety-net poll cadence for Club (feed tip, unread, notifications, …). */
+export const FAMILY_REFRESH_INTERVAL_MS = 30_000;
+
+/** Shared SWR defaults — dedupe window matches refresh cadence. */
 export const familySwrDefaults = {
   revalidateOnFocus: false,
   revalidateOnReconnect: true,
-  dedupingInterval: 45_000,
+  dedupingInterval: FAMILY_REFRESH_INTERVAL_MS,
 } as const;
 
 /** Feed: restore from SSR/IndexedDB; network only when revision/tip diverges. */
@@ -13,12 +16,12 @@ export const familyFeedSwr = {
   revalidateFirstPage: false,
   revalidateAll: false,
   revalidateIfStale: false,
-  dedupingInterval: 15_000,
+  dedupingInterval: FAMILY_REFRESH_INTERVAL_MS,
 } as const;
 
 export const familyPinnedSwr = {
   ...familySwrDefaults,
-  dedupingInterval: 60_000,
+  dedupingInterval: FAMILY_REFRESH_INTERVAL_MS,
   revalidateIfStale: false,
 } as const;
 
@@ -26,6 +29,6 @@ export const familyBrandingSwr = {
   ...familySwrDefaults,
   revalidateOnFocus: false,
   revalidateOnMount: false,
-  dedupingInterval: 300_000,
+  dedupingInterval: FAMILY_REFRESH_INTERVAL_MS,
   keepPreviousData: true,
 } as const;

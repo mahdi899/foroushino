@@ -1,4 +1,4 @@
-{
+﻿{
   "packageId": "club.rostami.family",
   "host": "rostami.club",
   "name": "خانواده داداش بهرام",
@@ -28,21 +28,17 @@
   "webManifestUrl": "https://rostami.club/family-manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {
-    "playBilling": {
-      "enabled": false
-    },
-    "locationDelegation": {
-      "enabled": false
-    }
+    "playBilling": { "enabled": false },
+    "locationDelegation": { "enabled": false }
   },
-  "alphaDependencies": {
-    "enabled": false
-  },
+  "alphaDependencies": { "enabled": false },
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "orientation": "portrait-primary",
-  "fingerprints": [],
+  "fingerprints": [
+    "8A:5C:73:BE:C6:8F:78:B5:99:09:77:9E:9B:60:50:C0:61:8F:26:F9:E1:6F:52:AE:8D:39:08:58:D8:B2:70:F3"
+  ],
   "additionalTrustedOrigins": [],
   "fileHandlers": [],
   "launchHandlerClientMode": "",

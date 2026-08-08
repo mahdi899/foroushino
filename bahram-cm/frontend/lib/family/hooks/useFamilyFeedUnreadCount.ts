@@ -13,7 +13,7 @@ import {
   rememberUnreadSummary,
 } from '@/lib/family/unreadSummaryCache';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
-import { familySwrDefaults } from '@/lib/family/swr';
+import { familySwrDefaults, FAMILY_REFRESH_INTERVAL_MS } from '@/lib/family/swr';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
 
 /** Unread family posts for the site "خانواده" nav badge (local cursor + API). */
@@ -42,12 +42,7 @@ export function useFamilyFeedUnreadCount(enabled = true) {
     };
   }, [syncAfterId]);
 
-  // Mild HTTP safety net; realtime + FeedView tip sync cover freshness on the family route.
-  const refreshInterval = !pageVisible
-    ? 0
-    : isRealtimeConfigured()
-      ? 300_000
-      : 180_000;
+  const refreshInterval = pageVisible ? FAMILY_REFRESH_INTERVAL_MS : 0;
 
   const { data, mutate } = useSWR(
     enabled && pageVisible && afterId > 0 ? ['family-feed-unread-summary', afterId] : null,
