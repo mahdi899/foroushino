@@ -54,8 +54,8 @@ trait RequiresCaptcha
             }
 
             // Family Manager (Flutter) uses password + OTP; no math captcha in the app.
-            if ($this->captchaFormKey() === 'admin_login'
-                && str_starts_with((string) $this->userAgent(), 'BahramFamilyManager/')) {
+            // Web cannot set User-Agent (browser blocks it) — accept X-Bahram-Client too.
+            if ($this->captchaFormKey() === 'admin_login' && $this->isFamilyManagerClient()) {
                 return;
             }
 
@@ -86,5 +86,15 @@ trait RequiresCaptcha
                 $validator->errors()->add('captcha', 'تأیید امنیتی ناموفق بود. لطفاً دوباره تلاش کنید.');
             }
         });
+    }
+
+    private function isFamilyManagerClient(): bool
+    {
+        $client = trim((string) $this->header('X-Bahram-Client', ''));
+        if (str_starts_with($client, 'BahramFamilyManager/')) {
+            return true;
+        }
+
+        return str_starts_with((string) $this->userAgent(), 'BahramFamilyManager/');
     }
 }

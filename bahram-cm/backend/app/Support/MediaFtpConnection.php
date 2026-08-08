@@ -44,7 +44,9 @@ final class MediaFtpConnection
                 'root' => (string) ($value['root'] ?? '/'),
                 'passive' => (bool) ($value['passive'] ?? true),
                 'ssl' => (bool) ($value['ssl'] ?? false),
-                'timeout' => (int) ($value['timeout'] ?? 60),
+                // Large family videos need a longer FTP data-channel window than
+                // the Flysystem default (60s); panel test often only checks LIST.
+                'timeout' => (int) ($value['timeout'] ?? 300),
                 'private_key' => (string) ($value['private_key'] ?? ''),
             ];
         });
@@ -147,7 +149,7 @@ final class MediaFtpConnection
                 'privateKey' => $config['private_key'] ?: null,
                 'port' => $config['port'],
                 'root' => $config['root'],
-                'timeout' => $config['timeout'],
+                'timeout' => max(300, $config['timeout']),
                 'throw' => true,
             ];
         }
@@ -160,8 +162,11 @@ final class MediaFtpConnection
             'port' => $config['port'],
             'root' => $config['root'],
             'passive' => $config['passive'],
+            // Many download hosts advertise a private PASV IP; without this,
+            // small LIST/uploads may pass while larger video ftp_fput fails.
+            'ignorePassiveAddress' => true,
             'ssl' => $config['ssl'],
-            'timeout' => $config['timeout'],
+            'timeout' => max(300, $config['timeout']),
             'throw' => true,
         ];
     }

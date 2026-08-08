@@ -7,9 +7,22 @@ param(
 
 $ProjectRoot = Split-Path $PSScriptRoot -Parent
 $RepoRoot = Split-Path $ProjectRoot -Parent
-$Flutter = Join-Path $RepoRoot '.tools\flutter\bin\flutter.bat'
 $NodeCmd = Get-Command node -ErrorAction SilentlyContinue
 $Node = if ($NodeCmd) { $NodeCmd.Source } else { $null }
+
+# Prefer a Flutter install whose path has no spaces/parentheses — flutter.bat
+# (cmd) breaks on paths like "D:\New folder (21)\...\.tools\flutter".
+$FlutterCandidates = @(
+  (Get-Command flutter -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
+  'C:\flutter\bin\flutter.bat',
+  'D:\flutter\bin\flutter.bat',
+  (Join-Path $RepoRoot '.tools\flutter\bin\flutter.bat')
+) | Where-Object { $_ -and (Test-Path $_) }
+
+$Flutter = $FlutterCandidates | Where-Object { $_ -notmatch '[()\s]' } | Select-Object -First 1
+if (-not $Flutter) {
+  $Flutter = $FlutterCandidates | Select-Object -First 1
+}
 
 $WebPort = 7357
 $WebInternalPort = 7358
@@ -91,8 +104,15 @@ try {
       $define
     )
 
+    # Paths with spaces/parentheses (e.g. "New folder (21)") break flutter.bat
+    # when launched via Start-Process → cmd. Use PowerShell call-operator instead.
     Write-Host ">> flutter $($flutterArgs -join ' ')" -ForegroundColor Cyan
-    $flutterProc = Start-Process -FilePath $Flutter -ArgumentList $flutterArgs -PassThru -NoNewWindow
+    $flutterOut = Join-Path $env:TEMP "bahram-family-flutter-$WebInternalPort.log"
+    $flutterErr = Join-Path $env:TEMP "bahram-family-flutter-$WebInternalPort.err.log"
+    $flutterProc = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
+      "Set-Location -LiteralPath '$ProjectRoot'; & '$Flutter' $($flutterArgs -join ' ') *>> '$flutterOut' 2>> '$flutterErr'"
+    ) -PassThru -WindowStyle Hidden
 
     Start-Sleep -Seconds 2
     Write-Host ">> node dev-web.mjs (public port $WebPort)" -ForegroundColor Cyan
@@ -104,7 +124,7 @@ try {
       $openUrl = "http://localhost:$WebPort"
       Start-Job -ArgumentList $openUrl -ScriptBlock {
         param($url)
-        Start-Sleep -Seconds 6
+        Start-Sleep -Seconds 8
         Start-Process $url
       } | Out-Null
     }
@@ -123,6 +143,8 @@ try {
       }
       if ($flutterProc -and -not $flutterProc.HasExited) {
         Stop-Process -Id $flutterProc.Id -Force -ErrorAction SilentlyContinue
+        Get-CimInstance Win32_Process -Filter "ParentProcessId=$($flutterProc.Id)" -ErrorAction SilentlyContinue |
+          ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
       }
     }
     exit $LASTEXITCODE

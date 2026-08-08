@@ -46,6 +46,40 @@ final class FamilyMediaStorage
         return str_starts_with($path, 'media/family/') || str_starts_with($path, 'media/site/');
     }
 
+    /** Stream a remote object to a local temp file without loading it all into RAM. */
+    public static function downloadToTemp(
+        \Illuminate\Contracts\Filesystem\Filesystem $disk,
+        string $remotePath,
+        string $localPath,
+    ): bool {
+        $stream = $disk->readStream($remotePath);
+        if ($stream === false || $stream === null) {
+            return false;
+        }
+
+        $out = fopen($localPath, 'wb');
+        if ($out === false) {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+
+            return false;
+        }
+
+        try {
+            $copied = stream_copy_to_stream($stream, $out);
+
+            return $copied !== false && is_file($localPath) && filesize($localPath) > 0;
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            if (is_resource($out)) {
+                fclose($out);
+            }
+        }
+    }
+
     private static function purgeLocalPath(?string $path): void
     {
         if (! self::isOriginMirrorPath($path)) {

@@ -5,6 +5,7 @@ namespace App\Jobs\Family;
 use App\Enums\Family\FamilyMediaStatus;
 use App\Models\FamilyMedia;
 use App\Support\FamilyFfmpeg;
+use App\Support\FamilyMediaStorage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -43,12 +44,8 @@ class GenerateFamilyThumbnailJob implements ShouldQueue
         $previewTempPath = null;
 
         try {
-            $stream = $disk->readStream($media->storage_path);
-            if ($stream) {
-                file_put_contents($localVideo, stream_get_contents($stream));
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
+            if (! FamilyMediaStorage::downloadToTemp($disk, $media->storage_path, $localVideo)) {
+                return;
             }
 
             if (! is_file($localVideo)) {

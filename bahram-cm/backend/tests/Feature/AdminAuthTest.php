@@ -91,6 +91,37 @@ class AdminAuthTest extends TestCase
             ->assertJsonPath('data.otp_required', true);
     }
 
+    public function test_family_manager_web_login_skips_captcha_via_client_header(): void
+    {
+        Setting::query()->updateOrCreate(
+            ['group' => 'captcha', 'key' => 'config'],
+            ['value' => [
+                'enabled' => true,
+                'honeypot_enabled' => true,
+                'protect_admin_login' => true,
+            ]],
+        );
+        CaptchaService::forgetCachedConfig();
+
+        config(['bahram.otp.dev_mode' => true, 'bahram.otp.dev_code' => '12345']);
+
+        User::factory()->create([
+            'email' => 'admin-web@bahram.local',
+            'mobile' => '09121000002',
+            'password' => Hash::make('password'),
+            'is_admin' => true,
+        ]);
+
+        // Flutter Web cannot set User-Agent; it sends X-Bahram-Client instead.
+        $this->withHeader('X-Bahram-Client', 'BahramFamilyManager/1.0.5')
+            ->postJson('/api/v1/auth/login', [
+                'email' => 'admin-web@bahram.local',
+                'password' => 'password',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.otp_required', true);
+    }
+
     public function test_admin_login_is_limited_to_six_attempts_per_ten_minutes(): void
     {
         Setting::query()->updateOrCreate(

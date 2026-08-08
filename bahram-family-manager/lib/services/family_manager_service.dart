@@ -23,7 +23,9 @@ class FamilyManagerService {
 
   /// Chunked upload kicks in above this size so large voice/video files
   /// don't time out or blow past PHP's post_max_size in one request.
-  static const chunkThresholdBytes = 20 * 1024 * 1024;
+  /// Prefer chunked above this size so PHP/`413` body limits don't reject videos.
+  /// Keep below typical `upload_max_filesize` floors; large files use 5 MB chunks.
+  static const chunkThresholdBytes = 1536 * 1024; // 1.5 MB
   static const chunkSizeBytes = 5 * 1024 * 1024;
 
   static const _chunkThresholdBytes = chunkThresholdBytes;

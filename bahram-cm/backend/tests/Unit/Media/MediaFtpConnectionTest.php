@@ -28,5 +28,9 @@ class MediaFtpConnectionTest extends TestCase
         $this->assertSame('ftp.example.com', $view['host']);
         $this->assertSame('/public_html', $view['root']);
         $this->assertSame('site_media_ftp', $view['disk_name']);
+
+        $disk = MediaFtpConnection::toDiskConfig();
+        $this->assertTrue($disk['ignorePassiveAddress']);
+        $this->assertGreaterThanOrEqual(300, $disk['timeout']);
     }
 }

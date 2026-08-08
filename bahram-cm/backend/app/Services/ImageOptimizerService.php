@@ -351,19 +351,17 @@ class ImageOptimizerService
     {
         $prefix = $variant === 'original' ? 'original' : 'optimized';
 
+        // Sign the relative path only — host is rewritten by the admin UI
+        // (SITE_ORIGIN / app.lvh.me) and the Next→Laravel proxy; absolute
+        // signatures break under that dual-domain local setup.
+        $relative = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'media.optimize.preview',
+            $ttl,
+            ['session' => $payload['session_id'], 'variant' => $variant],
+            absolute: false,
+        );
         $frontend = rtrim((string) config('bahram.frontend_url', config('app.frontend_url', 'http://localhost:3000')), '/');
-        $previousRoot = config('app.url');
-        \Illuminate\Support\Facades\URL::forceRootUrl($frontend);
-
-        try {
-            $previewUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
-                'media.optimize.preview',
-                $ttl,
-                ['session' => $payload['session_id'], 'variant' => $variant],
-            );
-        } finally {
-            \Illuminate\Support\Facades\URL::forceRootUrl($previousRoot);
-        }
+        $previewUrl = $frontend.$relative;
 
         return [
             'preview_url' => $previewUrl,

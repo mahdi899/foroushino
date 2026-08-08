@@ -68,7 +68,9 @@ class MediaOptimizeController extends Controller
 
     public function previewFile(Request $request, string $session, string $variant): BinaryFileResponse
     {
-        abort_unless($request->hasValidSignature(), 403);
+        // absolute=false: signature covers path+query only so dual-domain local
+        // (localhost ↔ app.lvh.me) and Next→Laravel proxy Host rewrites stay valid.
+        abort_unless($request->hasValidSignature(absolute: false), 403);
         abort_unless(in_array($variant, ['original', 'optimized'], true), 404);
 
         $path = $this->optimizer->previewFilePath($session, $variant);

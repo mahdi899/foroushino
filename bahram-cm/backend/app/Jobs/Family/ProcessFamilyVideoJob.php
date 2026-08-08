@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ProcessFamilyVideoJob implements ShouldQueue
@@ -19,15 +20,22 @@ class ProcessFamilyVideoJob implements ShouldQueue
 
     public int $tries = 2;
 
+    public int $timeout = 600;
+
     public function __construct(public int $mediaId) {}
 
     public function handle(): void
     {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit($this->timeout);
+        }
+
         $media = FamilyMedia::query()->find($this->mediaId);
         if (! $media || $media->status === FamilyMediaStatus::Ready) {
             return;
         }
 
+        // Become Ready even if ffmpeg/poster fails — same UX gate as images after store.
         $updates = ['status' => FamilyMediaStatus::Ready];
         $previewTempPath = null;
 
@@ -38,15 +46,7 @@ class ProcessFamilyVideoJob implements ShouldQueue
             $localVideo = "{$localTmp}.{$ext}";
 
             try {
-                $stream = $disk->readStream($media->storage_path);
-                if ($stream) {
-                    file_put_contents($localVideo, stream_get_contents($stream));
-                    if (is_resource($stream)) {
-                        fclose($stream);
-                    }
-                }
-
-                if (is_file($localVideo)) {
+                if (FamilyMediaStorage::downloadToTemp($disk, $media->storage_path, $localVideo)) {
                     $probe = FamilyFfmpeg::probe($localVideo);
                     if ($probe['duration'] !== null) {
                         $updates['duration'] = $probe['duration'];
@@ -82,16 +82,44 @@ class ProcessFamilyVideoJob implements ShouldQueue
         $fresh = $media->fresh();
 
         if ($fresh && ! $fresh->thumbnail_path) {
-            GenerateFamilyThumbnailJob::dispatch($fresh->id)
-                ->onQueue(config('family.queues.media', 'family-media'));
+            if (app()->environment(['local', 'testing'])) {
+                GenerateFamilyThumbnailJob::dispatchSync($fresh->id);
+            } else {
+                GenerateFamilyThumbnailJob::dispatch($fresh->id)
+                    ->onQueue(config('family.queues.media', 'family-media'));
+            }
         }
 
         if ($fresh && $this->isRemoteDisk($fresh->disk)) {
             FamilyMediaStorage::purgeLocalPaths($fresh->storage_path, $fresh->thumbnail_path);
         }
 
-        CleanupFamilyTemporaryMediaJob::dispatch($media->id)
-            ->onQueue(config('family.queues.media', 'family-media'));
+        if (app()->environment(['local', 'testing'])) {
+            CleanupFamilyTemporaryMediaJob::dispatchSync($media->id);
+        } else {
+            CleanupFamilyTemporaryMediaJob::dispatch($media->id)
+                ->onQueue(config('family.queues.media', 'family-media'));
+        }
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        $media = FamilyMedia::query()->find($this->mediaId);
+        if (! $media || $media->status === FamilyMediaStatus::Ready) {
+            return;
+        }
+
+        Log::error('Family video processing failed', [
+            'media_id' => $this->mediaId,
+            'error' => $exception?->getMessage(),
+        ]);
+
+        // File is already on disk after transfer — mark Ready so the client
+        // is not stuck polling until timeout when poster/ffprobe dies.
+        $media->update([
+            'status' => FamilyMediaStatus::Ready,
+            'failure_reason' => null,
+        ]);
     }
 
     private function isRemoteDisk(?string $disk): bool

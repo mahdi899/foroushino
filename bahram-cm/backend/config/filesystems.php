@@ -71,8 +71,9 @@ return [
             'port' => (int) env('FAMILY_MEDIA_FTP_PORT', 21),
             'root' => env('FAMILY_MEDIA_FTP_ROOT', '/'),
             'passive' => filter_var(env('FAMILY_MEDIA_FTP_PASSIVE', true), FILTER_VALIDATE_BOOL),
+            'ignorePassiveAddress' => filter_var(env('FAMILY_MEDIA_FTP_IGNORE_PASV_ADDRESS', true), FILTER_VALIDATE_BOOL),
             'ssl' => filter_var(env('FAMILY_MEDIA_FTP_SSL', false), FILTER_VALIDATE_BOOL),
-            'timeout' => (int) env('FAMILY_MEDIA_FTP_TIMEOUT', 60),
+            'timeout' => (int) env('FAMILY_MEDIA_FTP_TIMEOUT', 300),
             'throw' => true,
         ],
 
@@ -89,8 +90,12 @@ return [
             'port' => (int) env('MEDIA_FTP_PORT', env('FAMILY_MEDIA_FTP_PORT', 21)),
             'root' => env('MEDIA_FTP_ROOT', env('FAMILY_MEDIA_FTP_ROOT', '/')),
             'passive' => filter_var(env('MEDIA_FTP_PASSIVE', env('FAMILY_MEDIA_FTP_PASSIVE', true)), FILTER_VALIDATE_BOOL),
+            'ignorePassiveAddress' => filter_var(
+                env('MEDIA_FTP_IGNORE_PASV_ADDRESS', env('FAMILY_MEDIA_FTP_IGNORE_PASV_ADDRESS', true)),
+                FILTER_VALIDATE_BOOL
+            ),
             'ssl' => filter_var(env('MEDIA_FTP_SSL', env('FAMILY_MEDIA_FTP_SSL', false)), FILTER_VALIDATE_BOOL),
-            'timeout' => (int) env('MEDIA_FTP_TIMEOUT', env('FAMILY_MEDIA_FTP_TIMEOUT', 60)),
+            'timeout' => (int) env('MEDIA_FTP_TIMEOUT', env('FAMILY_MEDIA_FTP_TIMEOUT', 300)),
             'throw' => true,
         ],
 

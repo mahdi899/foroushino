@@ -27,7 +27,10 @@ class ApiClient {
         sendTimeout: kIsWeb ? null : _bodySendTimeout,
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'BahramFamilyManager/${AppConfig.appVersion}',
+          // Browsers refuse User-Agent on XHR; native still sends it.
+          // Backend captcha bypass keys off X-Bahram-Client (and UA on native).
+          'X-Bahram-Client': 'BahramFamilyManager/${AppConfig.appVersion}',
+          if (!kIsWeb) 'User-Agent': 'BahramFamilyManager/${AppConfig.appVersion}',
         },
       ),
     );

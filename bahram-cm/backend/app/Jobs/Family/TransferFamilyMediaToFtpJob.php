@@ -33,6 +33,12 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
 
     public function handle(FamilyImageProcessor $imageProcessor, FamilyMediaSettingsService $settings): void
     {
+        // Local uses dispatchSync inside the HTTP request (max_execution_time often 30s).
+        // Videos need minutes on FTP — lift the cap for this job only.
+        if (function_exists('set_time_limit')) {
+            @set_time_limit($this->timeout);
+        }
+
         $media = FamilyMedia::query()->find($this->mediaId);
         if (! $media) {
             return;
@@ -108,6 +114,9 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         $raw = trim((string) ($exception?->getMessage() ?? ''));
         $lower = strtolower($raw);
 
+        if (str_contains($lower, 'ftp_fput') || str_contains($lower, 'opening binary mode data connection')) {
+            return 'انتقال ویدیو/فایل به هاست دانلود روی کانال داده FTP ناموفق بود. Passive FTP یا VPN/فایروال را بررسی کنید.';
+        }
         if ($raw === '' || str_contains($lower, 'ftp transfer failed')) {
             return 'انتقال فایل به هاست دانلود پس از چند تلاش ناموفق بود.';
         }
@@ -194,11 +203,12 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
             ]);
 
             if ($type === 'voice') {
-                GenerateFamilyWaveformJob::dispatch($media->id)
-                    ->onQueue(config('family.queues.media', 'family-media'));
+                $this->dispatchMediaFollowUp(new GenerateFamilyWaveformJob($media->id));
             } elseif ($type === 'video') {
-                ProcessFamilyVideoJob::dispatch($media->id)
-                    ->onQueue(config('family.queues.media', 'family-media'));
+                // Images become Ready in this job; videos need a second pass
+                // (ffprobe + poster). Local/testing: run sync so publish does
+                // not depend on `queue:work` (QUEUE_CONNECTION=redis otherwise).
+                $this->dispatchMediaFollowUp(new ProcessFamilyVideoJob($media->id));
             } else {
                 $updates = ['status' => FamilyMediaStatus::Ready];
                 if (! is_array($meta)) {
@@ -220,8 +230,7 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                 }
 
                 $media->update($updates);
-                CleanupFamilyTemporaryMediaJob::dispatch($media->id)
-                    ->onQueue(config('family.queues.media', 'family-media'));
+                $this->dispatchMediaFollowUp(new CleanupFamilyTemporaryMediaJob($media->id));
             }
         } catch (\Throwable $e) {
             if (is_resource($stream)) {
@@ -231,6 +240,24 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
             try {
                 Storage::disk($diskName)->delete($partPath);
             } catch (\Throwable) {
+            }
+
+            // Local only: tiny images often succeed over FTP while larger videos
+            // die on the PASV data channel. Fall back to public so the manager
+            // can finish publish; production keeps failing/retrying on FTP.
+            if (
+                app()->environment(['local', 'testing'])
+                && $diskName !== 'public'
+                && $this->looksLikeFtpDataChannelFailure($e)
+            ) {
+                Log::warning('Family media FTP data channel failed; falling back to public disk (local only)', [
+                    'media_id' => $media->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $this->storeOnDisk($media, 'public', $uploadAbsolute, $storagePath, $meta, $type, $tempDisk);
+
+                return;
             }
 
             // Keep status as transferring/queued while Laravel retries the job.
@@ -244,6 +271,16 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    private function looksLikeFtpDataChannelFailure(\Throwable $e): bool
+    {
+        $lower = strtolower($e->getMessage());
+
+        return str_contains($lower, 'ftp_fput')
+            || str_contains($lower, 'opening binary mode data connection')
+            || str_contains($lower, 'failed to open data connection')
+            || (str_contains($lower, 'ftp') && str_contains($lower, 'timed out'));
     }
 
     /** Tiny LQIP WebP for image stories/feed — stored beside the canonical object. */
@@ -278,5 +315,17 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                 @unlink($tmpPreview);
             }
         }
+    }
+
+    /** Local: finish pipeline inside the request; production: family-media queue. */
+    private function dispatchMediaFollowUp(object $job): void
+    {
+        if (app()->environment(['local', 'testing'])) {
+            dispatch_sync($job);
+
+            return;
+        }
+
+        dispatch($job)->onQueue(config('family.queues.media', 'family-media'));
     }
 }

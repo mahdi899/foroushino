@@ -46,7 +46,8 @@ Future<ResolvePickedMediaResult> resolvePlatformFile(
   PlatformFile picked, {
   required String mediaType,
 }) async {
-  final path = picked.path;
+  // On web, PlatformFile.path throws — never touch it. Prefer bytes instead.
+  final path = kIsWeb ? null : picked.path;
   final inlineBytes = picked.bytes;
 
   var size = picked.size;
@@ -110,7 +111,7 @@ Future<ResolvePickedMediaResult> resolvePlatformFile(
       return ResolvePickedMediaError('خواندن فایل «${picked.name}» ناموفق بود.');
     }
 
-    if (mediaType != 'video') {
+    if (mediaType != 'video' && mediaType != 'video_note') {
       return ResolvePickedMediaError('خواندن فایل «${picked.name}» ناموفق بود.');
     }
 
