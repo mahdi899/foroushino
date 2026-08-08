@@ -21,7 +21,7 @@
 1. Android Studio → **File → Open**
 2. پوشه `club-twa` را انتخاب کن (همین فولدر، نه روت ریپو)
 3. صبر کن تا Gradle Sync تمام شود
-4. اگر `gradle-wrapper.jar` نبود، Studio خودش می‌سازد / پیشنهاد می‌دهد
+4. اگر دانلود از `dl.google.com` گیر کرد، در `settings.gradle.kts` آینه Aliyun از قبل هست؛ در صورت نیاز VPN بزن و Sync را Retry کن
 
 ---
 
@@ -31,14 +31,23 @@
 2. Run ▶ (variant **debug** → package می‌شود `club.rostami.family.debug`)
 3. تا وقتی `assetlinks.json` روی سرور با SHA256 درست نباشد، ممکن است **نوار آدرس** دیده شود — طبیعی است
 
-برای تست بدون نوار آدرس روی debug:
+برای تست بدون نوار آدرس روی debug (قبل از deploy کردن assetlinks):
 
 ```powershell
-# اثر موقتی روی دستگاه (بعد از ریبوت از بین می‌رود)
-adb shell setprop debug.force_twa true
+# Chrome را debug بگذار و verification را برای دامنه کلاب خاموش کن
+adb shell am set-debug-app --persistent com.android.chrome
+adb shell "echo '_ --disable-digital-asset-link-verification-for-url=\"https://rostami.club\"' > /data/local/tmp/chrome-command-line"
+adb shell am force-stop com.android.chrome
 ```
 
-یا SHA256 کلید debug را در `assetlinks.json` بگذار (مرحله ۳).
+بعد اپ را دوباره باز کن. برای برگشت:
+
+```powershell
+adb shell am clear-debug-app
+adb shell rm /data/local/tmp/chrome-command-line
+```
+
+یا SHA256 کلید debug را در `assetlinks.json` بگذار و بعد از deploy روی `rostami.club` تست کن (مرحله ۳).
 
 ---
 
@@ -76,7 +85,9 @@ keytool -genkeypair -v -keystore club-release.keystore -alias club -keyalg RSA -
 keytool -list -v -keystore club-release.keystore -alias club
 ```
 
-`REPLACE_WITH_RELEASE_SHA256` و در صورت نیاز `REPLACE_WITH_DEBUG_SHA256` را در `assetlinks.json` عوض کن، سپس فرانت را deploy کن.
+`REPLACE_WITH_RELEASE_SHA256` را با fingerprint کلید release عوض کن. برای debug همین ماشین، fingerprint در فایل گذاشته شده است.
+
+سپس فرانت را deploy کن تا آدرس بالا از production سرو شود (الان لوکال است تا deploy نشود).
 
 تأیید گوگل:
 

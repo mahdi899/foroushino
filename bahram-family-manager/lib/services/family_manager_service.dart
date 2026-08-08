@@ -222,18 +222,26 @@ class FamilyManagerService {
   Future<PaginatedResult<CommentThreadModel>> listCommentThreads({
     String tab = 'pending',
     int? familyId,
+    String? search,
     int page = 1,
   }) async {
+    final trimmedSearch = search?.trim();
     try {
       final res = await api.get('$_base/comments/threads', query: {
         'tab': tab,
         'page': page,
         if (familyId != null) 'family_id': familyId,
+        if (trimmedSearch != null && trimmedSearch.isNotEmpty) 'search': trimmedSearch,
       });
       return PaginatedResult.fromEnvelope(res, CommentThreadModel.fromJson);
     } on ApiException catch (e) {
       if (!_shouldFallbackCommentThreads(e)) rethrow;
-      return _commentThreadsFromComments(tab: tab, familyId: familyId, page: page);
+      return _commentThreadsFromComments(
+        tab: tab,
+        familyId: familyId,
+        search: trimmedSearch,
+        page: page,
+      );
     }
   }
 
@@ -250,9 +258,15 @@ class FamilyManagerService {
   Future<PaginatedResult<CommentThreadModel>> _commentThreadsFromComments({
     required String tab,
     int? familyId,
+    String? search,
     required int page,
   }) async {
-    final commentsResult = await listComments(tab: tab, familyId: familyId, page: page);
+    final commentsResult = await listComments(
+      tab: tab,
+      familyId: familyId,
+      search: search,
+      page: page,
+    );
     final accumulators = <String, _CommentThreadAccumulator>{};
 
     for (final comment in commentsResult.items) {
@@ -269,7 +283,11 @@ class FamilyManagerService {
     }
 
     final items = accumulators.values.map((a) => a.toModel()).toList()
-      ..sort((a, b) => (b.latestCommentAt ?? '').compareTo(a.latestCommentAt ?? ''));
+      ..sort((a, b) {
+        final byPublished = (b.publishedAt ?? '').compareTo(a.publishedAt ?? '');
+        if (byPublished != 0) return byPublished;
+        return b.postId.compareTo(a.postId);
+      });
 
     return PaginatedResult(
       items: items,
@@ -283,13 +301,16 @@ class FamilyManagerService {
     String tab = 'pending',
     int? postId,
     int? familyId,
+    String? search,
     int page = 1,
   }) async {
+    final trimmedSearch = search?.trim();
     final res = await api.get('$_base/comments', query: {
       'tab': tab,
       'page': page,
       if (postId != null) 'post_id': postId,
       if (familyId != null) 'family_id': familyId,
+      if (trimmedSearch != null && trimmedSearch.isNotEmpty) 'search': trimmedSearch,
     });
     return PaginatedResult.fromEnvelope(res, FamilyCommentModel.fromJson);
   }
@@ -500,6 +521,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     final hasBytes = bytes != null && bytes.isNotEmpty;
     final hasPath = path != null && path.isNotEmpty;
@@ -523,6 +545,7 @@ class FamilyManagerService {
         optimizeImages: optimizeImages,
         onProgress: onProgress,
         onUploadState: onUploadState,
+        cancelToken: cancelToken,
       );
     }
 
@@ -535,6 +558,7 @@ class FamilyManagerService {
         optimizeImages: optimizeImages,
         onProgress: onProgress,
         onUploadState: onUploadState,
+        cancelToken: cancelToken,
       );
     }
 
@@ -552,6 +576,7 @@ class FamilyManagerService {
       optimizeImages: optimizeImages,
       onProgress: onProgress,
       onUploadState: onUploadState,
+      cancelToken: cancelToken,
     );
   }
 
@@ -609,13 +634,18 @@ class FamilyManagerService {
     required int totalBytes,
     MediaUploadStateCallback? onUploadState,
     void Function(double progress)? onProgress,
+    CancelToken? cancelToken,
   }) async {
     Object? lastError;
     for (var attempt = 0; attempt < _chunkRetryAttempts; attempt++) {
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiException.fromDio(cancelToken!.cancelError!);
+      }
       try {
         await api.postForm(
           path,
           form,
+          cancelToken: cancelToken,
           onSendProgress: (sent, total) {
             if (total <= 0) return;
             final overallSent = baseBytes + sent;
@@ -631,6 +661,8 @@ class FamilyManagerService {
         return;
       } catch (e) {
         lastError = e;
+        if (e is DioException && CancelToken.isCancel(e)) rethrow;
+        if (e is ApiException && e.code == 'cancelled') rethrow;
         if (attempt < _chunkRetryAttempts - 1) {
           await Future<void>.delayed(_chunkRetryDelay);
         }
@@ -651,6 +683,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     final totalBytes = bytes.length;
     _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0, totalBytes);
@@ -664,6 +697,7 @@ class FamilyManagerService {
     final res = await api.postForm(
       '$_base/media',
       form,
+      cancelToken: cancelToken,
       onSendProgress: (sent, total) {
         if (total > 0) {
           _reportUploadState(
@@ -688,6 +722,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     return _uploadChunkedSession(
       filename: filename,
@@ -696,6 +731,7 @@ class FamilyManagerService {
       optimizeImages: optimizeImages,
       onProgress: onProgress,
       onUploadState: onUploadState,
+      cancelToken: cancelToken,
       readChunk: (start, length) async {
         final end = start + length;
         return bytes.sublist(start, end > bytes.length ? bytes.length : end);
@@ -711,6 +747,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     return _uploadChunkedSession(
       filename: filename,
@@ -719,6 +756,7 @@ class FamilyManagerService {
       optimizeImages: optimizeImages,
       onProgress: onProgress,
       onUploadState: onUploadState,
+      cancelToken: cancelToken,
       readChunk: (start, length) => readFileChunk(path, start, length),
     );
   }
@@ -731,16 +769,21 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0, totalSize);
 
-    final sessionRes = await api.post('$_base/media/sessions', data: {
-      'type': type,
-      'filename': filename,
-      'total_size': totalSize,
-      'chunk_size': _chunkSizeBytes,
-      if (optimizeImages != null) 'optimize_images': optimizeImages ? 1 : 0,
-    });
+    final sessionRes = await api.post(
+      '$_base/media/sessions',
+      cancelToken: cancelToken,
+      data: {
+        'type': type,
+        'filename': filename,
+        'total_size': totalSize,
+        'chunk_size': _chunkSizeBytes,
+        if (optimizeImages != null) 'optimize_images': optimizeImages ? 1 : 0,
+      },
+    );
     final session = (sessionRes['data'] as Map).cast<String, dynamic>();
     final ulid = session['ulid'] as String;
     final totalChunks = (session['total_chunks'] as num).toInt();
@@ -761,18 +804,19 @@ class FamilyManagerService {
         totalBytes: totalSize,
         onUploadState: onUploadState,
         onProgress: onProgress,
+        cancelToken: cancelToken,
       );
     }
 
     _reportUploadState(onUploadState, onProgress, MediaUploadPhase.finalizing, totalSize, totalSize);
-    final completeRes = await api.post('$_base/media/sessions/$ulid/complete');
+    final completeRes = await api.post('$_base/media/sessions/$ulid/complete', cancelToken: cancelToken);
     final media = FamilyMediaRef.fromJson((completeRes['data'] as Map).cast<String, dynamic>());
     _reportMediaPipelineState(media, onUploadState, totalSize);
     return media;
   }
 
-  Future<FamilyMediaRef> showMedia(int id) async {
-    final res = await api.get('$_base/media/$id');
+  Future<FamilyMediaRef> showMedia(int id, {CancelToken? cancelToken}) async {
+    final res = await api.get('$_base/media/$id', cancelToken: cancelToken);
     return FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
@@ -790,12 +834,14 @@ class FamilyManagerService {
     MediaUploadStateCallback? onUploadState,
     int totalBytes = 0,
     String? type,
+    CancelToken? cancelToken,
   }) async {
     Duration effectiveTimeout = timeout ?? readyTimeoutFor(type);
     final started = DateTime.now();
     var deadline = started.add(effectiveTimeout);
     while (DateTime.now().isBefore(deadline)) {
-      final media = await showMedia(id);
+      if (cancelToken?.isCancelled ?? false) throw ApiException.fromDio(cancelToken!.cancelError!);
+      final media = await showMedia(id, cancelToken: cancelToken);
       onUpdate?.call(media);
       if (timeout == null && type == null && media.type.isNotEmpty) {
         effectiveTimeout = readyTimeoutFor(media.type);
@@ -911,12 +957,14 @@ class _CommentThreadAccumulator {
 
   var matchingCount = 0;
   var pendingCount = 0;
+  var unreadCount = 0;
   String? latestCommentAt;
   String? latestCommentPreview;
 
   void add(FamilyCommentModel comment, String tab) {
     matchingCount++;
     if (comment.status == 'pending') pendingCount++;
+    if (!comment.seenByBahram) unreadCount++;
 
     final createdAt = comment.createdAt;
     if (createdAt != null &&
@@ -932,6 +980,7 @@ class _CommentThreadAccumulator {
         familyInternalName: familyInternalName,
         matchingCount: matchingCount,
         pendingCount: pendingCount,
+        unreadCount: unreadCount,
         latestCommentAt: latestCommentAt,
         latestCommentPreview: latestCommentPreview,
       );

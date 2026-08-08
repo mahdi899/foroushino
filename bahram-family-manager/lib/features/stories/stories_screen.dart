@@ -181,52 +181,64 @@ class _StoriesScreenState extends State<StoriesScreen> {
       _storyMedia = null;
     });
 
+    final appState = context.read<AppState>();
+    final manager = appState.manager;
+    final uploads = appState.uploads;
+    const slot = 'story:main';
+
     try {
-      final media = await context.read<AppState>().manager.uploadMedia(
+      final task = uploads.start(
+        slot: slot,
+        filename: file.filename,
+        type: mediaType,
+        job: (task) async {
+          final media = await manager.uploadMedia(
             bytes: file.bytes,
             path: file.path,
             filename: file.filename,
             type: mediaType,
             optimizeImages: false,
-            onUploadState: (upload) {
-              if (!mounted) return;
-              setState(() {
-                _uploadPhase = upload.phase;
-                _uploadProgress = upload.fraction;
-                _uploadSentBytes = upload.sentBytes;
-                _uploadTotalBytes = upload.totalBytes;
-              });
-            },
+            cancelToken: task.cancelToken,
+            onUploadState: task.reportProgress,
           );
-      if (!mounted) return;
+          task.media = media;
+          if (media.isReady) return media;
+          return manager.waitForMediaReady(
+            media.id,
+            type: mediaType,
+            totalBytes: file.size,
+            cancelToken: task.cancelToken,
+            onUpdate: (updated) => task.media = updated,
+            onUploadState: task.reportProgress,
+          );
+        },
+      );
 
-      FamilyMediaRef ready = media;
-      if (!media.isReady) {
-        ready = await context.read<AppState>().manager.waitForMediaReady(
-              media.id,
-              type: mediaType,
-              totalBytes: file.size,
-              onUpdate: (updated) {
-                if (mounted) setState(() => _storyMedia = updated);
-              },
-              onUploadState: (upload) {
-                if (!mounted) return;
-                setState(() {
-                  _uploadPhase = upload.phase;
-                  _uploadProgress = upload.fraction;
-                  _uploadSentBytes = upload.sentBytes;
-                  _uploadTotalBytes = upload.totalBytes;
-                });
-              },
-            );
+      void onProgress() {
+        if (!mounted) return;
+        final upload = task.progress.value;
+        setState(() {
+          _uploadPhase = upload.phase;
+          _uploadProgress = upload.fraction;
+          _uploadSentBytes = upload.sentBytes;
+          _uploadTotalBytes = upload.totalBytes;
+          if (task.media != null) _storyMedia = task.media;
+        });
       }
 
-      if (mounted) {
-        setState(() {
-          _storyMedia = ready;
-          if (_localWidth == null && ready.width != null) _localWidth = ready.width;
-          if (_localHeight == null && ready.height != null) _localHeight = ready.height;
-        });
+      task.progress.addListener(onProgress);
+      try {
+        final ready = await task.whenDone;
+        if (mounted) {
+          setState(() {
+            _storyMedia = ready;
+            if (_localWidth == null && ready.width != null) _localWidth = ready.width;
+            if (_localHeight == null && ready.height != null) _localHeight = ready.height;
+          });
+        }
+      } finally {
+        task.progress.removeListener(onProgress);
+        uploads.forget(slot);
       }
     } catch (e) {
       UploadFailureLog.recordError(

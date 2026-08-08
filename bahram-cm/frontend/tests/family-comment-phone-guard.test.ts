@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  analyzeCommentBody,
   commentContainsLink,
   commentContainsNegativeLanguage,
   commentContainsPhoneNumber,
@@ -32,17 +33,34 @@ describe('commentContainsLink', () => {
 });
 
 describe('commentContainsNegativeLanguage', () => {
-  it('detects scam insults', () => {
+  it('detects scam insults and obfuscation', () => {
     expect(commentContainsNegativeLanguage('این کلاهبرداره')).toBe(true);
     expect(commentContainsNegativeLanguage('کلاه برداری محض')).toBe(true);
+    expect(commentContainsNegativeLanguage('کلااااهبردار')).toBe(true);
+    expect(commentContainsNegativeLanguage('ک ل ا ه ب ر د ا ر')).toBe(true);
+  });
+
+  it('ignores polite text and refund complaints', () => {
+    expect(commentContainsNegativeLanguage('ممنون عالی بود')).toBe(false);
+    expect(commentContainsNegativeLanguage('پولم را پس بدهید ناراضی هستم')).toBe(false);
+  });
+});
+
+describe('analyzeCommentBody severity', () => {
+  it('classifies red / orange / yellow', () => {
+    expect(analyzeCommentBody('نابودت می‌کنم').severity).toBe('red');
+    expect(analyzeCommentBody('کلاهبردار').severity).toBe('orange');
+    expect(analyzeCommentBody('درآمد تضمینی').severity).toBe('yellow');
+    expect(analyzeCommentBody('بیا پیج من').categories).toContain('competitor');
   });
 });
 
 describe('commentNeedsManualReview', () => {
-  it('flags phone, link, or insult', () => {
+  it('flags phone, link, or lexicon hits', () => {
     expect(commentNeedsManualReview('شماره 09123456789')).toBe(true);
     expect(commentNeedsManualReview('لینک https://x.com')).toBe(true);
     expect(commentNeedsManualReview('کلاهبردار')).toBe(true);
+    expect(commentNeedsManualReview('حرامزاده')).toBe(true);
     expect(commentNeedsManualReview('عالی بود ممنون')).toBe(false);
   });
 });

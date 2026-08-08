@@ -34,10 +34,12 @@ class PostCommentsScreen extends StatefulWidget {
     super.key,
     required this.thread,
     this.initialTab = 'pending',
+    this.initialSearch,
   });
 
   final CommentThreadModel thread;
   final String initialTab;
+  final String? initialSearch;
 
   @override
   State<PostCommentsScreen> createState() => _PostCommentsScreenState();
@@ -56,21 +58,34 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
 
   late final TabController _tabController;
   final _scrollCtrl = ScrollController();
+  final _searchCtrl = TextEditingController();
   final _tabData = List.generate(_tabs.length, (_) => _CommentsTabData());
   final Set<int> _selectedPendingIds = {};
 
   _CommentsTabData get _currentTab => _tabData[_tabController.index];
 
+  String? get _searchQuery {
+    final q = _searchCtrl.text.trim();
+    return q.isEmpty ? null : q;
+  }
+
   @override
   void initState() {
     super.initState();
     final initial = _tabs.indexOf(widget.initialTab);
+    final seed = widget.initialSearch?.trim();
+    if (seed != null && seed.isNotEmpty) {
+      _searchCtrl.text = seed;
+    }
     _tabController = TabController(
       length: _tabs.length,
       vsync: this,
       initialIndex: initial >= 0 ? initial : 0,
     )..addListener(_onTabChanged);
     _scrollCtrl.addListener(_onScroll);
+    _searchCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadFirstPage();
     });
@@ -124,6 +139,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
             tab: _tabs[_tabController.index],
             postId: widget.thread.postId,
             familyId: widget.thread.familyId,
+            search: _searchQuery,
             page: page,
           );
       if (!mounted) return;
@@ -149,6 +165,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
         initialLoading: tab.initialLoading,
         loadMore: _loadMore,
       );
+      await _markUnseenAsSeen(result.items);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -159,11 +176,57 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
     }
   }
 
+  /// Mark newly loaded comments (and nested replies) as seen so hub unread badges update on return.
+  Future<void> _markUnseenAsSeen(List<FamilyCommentModel> comments) async {
+    final unseen = <FamilyCommentModel>[];
+    for (final comment in comments) {
+      if (!comment.seenByBahram) unseen.add(comment);
+      for (final reply in comment.replies) {
+        if (!reply.seenByBahram && !reply.isBahramReply) unseen.add(reply);
+      }
+    }
+    if (unseen.isEmpty || !mounted) return;
+
+    final manager = context.read<AppState>().manager;
+    final markedIds = <int>{};
+
+    await Future.wait(unseen.map((comment) async {
+      try {
+        await manager.markSeen(comment.id);
+        markedIds.add(comment.id);
+      } catch (_) {}
+    }));
+
+    if (!mounted || markedIds.isEmpty) return;
+
+    setState(() {
+      for (final tab in _tabData) {
+        for (var i = 0; i < tab.items.length; i++) {
+          final item = tab.items[i];
+          if (markedIds.contains(item.id) && !item.seenByBahram) {
+            tab.items[i] = item.copyWith(seenByBahram: true);
+          }
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
     _scrollCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _resetTabsAndReload() {
+    setState(_selectedPendingIds.clear);
+    for (final t in _tabData) {
+      t.items.clear();
+      t.page = 0;
+      t.hasMore = true;
+    }
+    _loadFirstPage();
   }
 
   Future<void> _approve(FamilyCommentModel comment) async {
@@ -228,6 +291,30 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
     }
   }
 
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchCtrl,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        labelText: 'جستجو در نظرات',
+        hintText: 'متن نظر یا نام شخص',
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: _searchCtrl.text.isNotEmpty
+            ? IconButton(
+                tooltip: 'پاک کردن',
+                onPressed: () {
+                  _searchCtrl.clear();
+                  _resetTabsAndReload();
+                },
+                icon: const Icon(Icons.clear_rounded),
+              )
+            : null,
+        isDense: true,
+      ),
+      onSubmitted: (_) => _resetTabsAndReload(),
+    );
+  }
+
   Widget _buildPostHeader() {
     final thread = widget.thread;
     final typeLabel = thread.postType != null ? labelOf(postTypeLabels, thread.postType!) : 'پست';
@@ -257,15 +344,31 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
     final tab = _currentTab;
     final comments = tab.items;
     final isPendingTab = _tabs[_tabController.index] == 'pending';
+    final pad = AppBreakpoints.scrollPadding(context);
 
     if (tab.initialLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: pad,
+        children: [
+          _buildPostHeader(),
+          const SizedBox(height: AppSpacing.md),
+          _buildSearchField(),
+          const SizedBox(height: AppSpacing.xl),
+          const Center(child: CircularProgressIndicator()),
+        ],
+      );
     }
 
     if (tab.error != null && comments.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
+        padding: pad,
         children: [
+          _buildPostHeader(),
+          const SizedBox(height: AppSpacing.md),
+          _buildSearchField(),
+          const SizedBox(height: AppSpacing.lg),
           EmptyState(
             icon: Icons.error_outline_rounded,
             title: 'خطا در بارگذاری نظرات',
@@ -281,11 +384,16 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
       return ListView(
         controller: _scrollCtrl,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: AppBreakpoints.scrollPadding(context),
+        padding: pad,
         children: [
           _buildPostHeader(),
+          const SizedBox(height: AppSpacing.md),
+          _buildSearchField(),
           const SizedBox(height: AppSpacing.lg),
-          const EmptyState(title: 'نظری در این بخش نیست', icon: Icons.forum_outlined),
+          EmptyState(
+            title: _searchQuery == null ? 'نظری در این بخش نیست' : 'نتیجه‌ای برای این جستجو نیست',
+            icon: _searchQuery == null ? Icons.forum_outlined : Icons.search_off_rounded,
+          ),
         ],
       );
     }
@@ -294,16 +402,17 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
 
     return ListView.separated(
       controller: _scrollCtrl,
-      padding: AppBreakpoints.scrollPadding(context),
+      padding: pad,
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: itemCount + 1,
+      itemCount: itemCount + 2,
       separatorBuilder: (_, index) {
-        if (index >= comments.length) return const SizedBox.shrink();
+        if (index >= comments.length + 1) return const SizedBox.shrink();
         return const SizedBox(height: AppSpacing.md);
       },
       itemBuilder: (context, index) {
         if (index == 0) return _buildPostHeader();
-        final commentIndex = index - 1;
+        if (index == 1) return _buildSearchField();
+        final commentIndex = index - 2;
         if (commentIndex >= comments.length) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
@@ -331,6 +440,8 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> with SingleTick
           onReject: () => _reject(c),
           onToggleImportant: () => _toggleImportant(c),
           onReply: () => _reply(c),
+          onApproveReply: _approve,
+          onRejectReply: _reject,
         );
       },
     );

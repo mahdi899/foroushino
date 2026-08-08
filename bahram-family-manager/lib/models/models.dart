@@ -397,6 +397,31 @@ class FamilyCommentModel {
   final String? rejectionReason;
   final String? rejectionNote;
 
+  FamilyCommentModel copyWith({bool? seenByBahram}) {
+    return FamilyCommentModel(
+      id: id,
+      body: body,
+      status: status,
+      createdAt: createdAt,
+      isImportant: isImportant,
+      inPulse: inPulse,
+      seenByBahram: seenByBahram ?? this.seenByBahram,
+      userName: userName,
+      familyId: familyId,
+      familyInternalName: familyInternalName,
+      postId: postId,
+      parentId: parentId,
+      isBahramReply: isBahramReply,
+      replies: replies,
+      riskScore: riskScore,
+      sentiment: sentiment,
+      topic: topic,
+      signals: signals,
+      rejectionReason: rejectionReason,
+      rejectionNote: rejectionNote,
+    );
+  }
+
   factory FamilyCommentModel.fromJson(Map<String, dynamic> json) {
     final ai = (json['ai'] as Map?)?.cast<String, dynamic>() ?? {};
     final family = (json['family'] as Map?)?.cast<String, dynamic>();
@@ -439,6 +464,7 @@ class CommentThreadModel {
     this.publishedAt,
     required this.matchingCount,
     required this.pendingCount,
+    this.unreadCount = 0,
     this.latestCommentAt,
     this.latestCommentPreview,
   });
@@ -451,8 +477,25 @@ class CommentThreadModel {
   final String? publishedAt;
   final int matchingCount;
   final int pendingCount;
+  final int unreadCount;
   final String? latestCommentAt;
   final String? latestCommentPreview;
+
+  CommentThreadModel copyWith({int? unreadCount}) {
+    return CommentThreadModel(
+      postId: postId,
+      familyId: familyId,
+      familyInternalName: familyInternalName,
+      postType: postType,
+      postPreview: postPreview,
+      publishedAt: publishedAt,
+      matchingCount: matchingCount,
+      pendingCount: pendingCount,
+      unreadCount: unreadCount ?? this.unreadCount,
+      latestCommentAt: latestCommentAt,
+      latestCommentPreview: latestCommentPreview,
+    );
+  }
 
   factory CommentThreadModel.fromJson(Map<String, dynamic> json) {
     return CommentThreadModel(
@@ -464,6 +507,7 @@ class CommentThreadModel {
       publishedAt: json['published_at']?.toString(),
       matchingCount: (json['matching_count'] as num?)?.toInt() ?? 0,
       pendingCount: (json['pending_count'] as num?)?.toInt() ?? 0,
+      unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
       latestCommentAt: json['latest_comment_at']?.toString(),
       latestCommentPreview: json['latest_comment_preview']?.toString(),
     );

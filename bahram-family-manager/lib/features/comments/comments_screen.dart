@@ -45,17 +45,26 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
 
   late final TabController _tabController;
   final _scrollCtrl = ScrollController();
+  final _searchCtrl = TextEditingController();
   final _tabData = List.generate(_tabs.length, (_) => _ThreadsTabData());
   List<FamilySummaryModel> _families = [];
   int? _familyFilter;
 
   _ThreadsTabData get _currentTab => _tabData[_tabController.index];
 
+  String? get _searchQuery {
+    final q = _searchCtrl.text.trim();
+    return q.isEmpty ? null : q;
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this)..addListener(_onTabChanged);
     _scrollCtrl.addListener(_onScroll);
+    _searchCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadFamilies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadFirstPage();
@@ -115,6 +124,7 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
       final result = await context.read<AppState>().manager.listCommentThreads(
             tab: _tabs[_tabController.index],
             familyId: _familyFilter,
+            search: _searchQuery,
             page: page,
           );
       if (!mounted) return;
@@ -154,18 +164,30 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
   void dispose() {
     _tabController.dispose();
     _scrollCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _openThread(CommentThreadModel thread) {
-    Navigator.of(context).push(
+  void _resetTabsAndReload() {
+    for (final t in _tabData) {
+      t.items.clear();
+      t.page = 0;
+      t.hasMore = true;
+    }
+    _loadFirstPage();
+  }
+
+  Future<void> _openThread(CommentThreadModel thread) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PostCommentsScreen(
           thread: thread,
           initialTab: _tabs[_tabController.index],
+          initialSearch: _searchQuery,
         ),
       ),
     );
+    if (mounted) _loadFirstPage();
   }
 
   /// Preserve hub sort order while grouping rows under family headers.
@@ -189,7 +211,31 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
         .toList(growable: false);
   }
 
-  Widget _buildBody() {
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchCtrl,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        labelText: 'جستجو در نظرات',
+        hintText: 'متن نظر یا نام شخص',
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: _searchCtrl.text.isNotEmpty
+            ? IconButton(
+                tooltip: 'پاک کردن',
+                onPressed: () {
+                  _searchCtrl.clear();
+                  _resetTabsAndReload();
+                },
+                icon: const Icon(Icons.clear_rounded),
+              )
+            : null,
+        isDense: true,
+      ),
+      onSubmitted: (_) => _resetTabsAndReload(),
+    );
+  }
+
+  Widget _buildList() {
     final tab = _currentTab;
     final threads = tab.items;
 
@@ -212,7 +258,7 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
       );
     }
 
-    final pagePad = AppBreakpoints.shellTabPadding(context);
+    final pagePad = AppBreakpoints.shellTabPadding(context).copyWith(top: 0);
     final groups = _groupedThreads(threads);
 
     return ListView(
@@ -220,24 +266,11 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
       physics: const AlwaysScrollableScrollPhysics(),
       padding: pagePad,
       children: [
-        if (_families.isNotEmpty) ...[
-          PostFamilyFilterBar(
-            families: _families,
-            selectedFamilyId: _familyFilter,
-            onChanged: (id) {
-              setState(() => _familyFilter = id);
-              for (final t in _tabData) {
-                t.items.clear();
-                t.page = 0;
-                t.hasMore = true;
-              }
-              _loadFirstPage();
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
-        ],
         if (threads.isEmpty)
-          const EmptyState(title: 'پستی با نظر در این بخش نیست', icon: Icons.forum_outlined)
+          EmptyState(
+            title: _searchQuery == null ? 'پستی با نظر در این بخش نیست' : 'نتیجه‌ای برای این جستجو نیست',
+            icon: _searchQuery == null ? Icons.forum_outlined : Icons.search_off_rounded,
+          )
         else ...[
           for (final group in groups) ...[
             Padding(
@@ -279,6 +312,8 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final filtersPad = AppBreakpoints.shellTabPadding(context).copyWith(bottom: AppSpacing.sm);
+
     return AdaptiveScaffold(
       appBar: ManagerAppBar(
         title: const Text('نظرات خانواده'),
@@ -304,9 +339,36 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
           ],
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadFirstPage,
-        child: _buildBody(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: filtersPad,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSearchField(),
+                if (_families.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  PostFamilyFilterBar(
+                    families: _families,
+                    selectedFamilyId: _familyFilter,
+                    onChanged: (id) {
+                      setState(() => _familyFilter = id);
+                      _resetTabsAndReload();
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadFirstPage,
+              child: _buildList(),
+            ),
+          ),
+        ],
       ),
     );
   }

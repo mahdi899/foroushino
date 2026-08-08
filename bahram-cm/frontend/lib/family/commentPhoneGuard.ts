@@ -1,4 +1,11 @@
 import { toLatinDigits } from '@/lib/persian';
+import {
+  analyzeCommentLexicon,
+  commentContainsAdSpam,
+  commentContainsNegativeLanguage,
+  lexiconNeedsManualReview,
+  type CommentScreening,
+} from '@/lib/family/commentLexicon';
 
 const IR_MOBILE_INLINE =
   /(?<![\d.])(?:\+|00)?(?:98[\s\-.]?)?0?9[\s\-.]?\d{2}[\s\-.]?\d{3}[\s\-.]?\d{4}(?![\d.])/u;
@@ -9,8 +16,6 @@ const WWW_INLINE = /\bwww\.[a-z0-9][a-z0-9\-.]+\.[a-z]{2,}/i;
 const SHORT_LINK_INLINE =
   /(?:^|[\s(])(?:t\.me|telegram\.me|instagram\.com|wa\.me|bit\.ly|cutt\.ly)\/\S+/i;
 const HANDLE_INLINE = /(?:^|[\s])@[a-zA-Z][a-zA-Z0-9_]{3,}\b/;
-const NEGATIVE_INLINE =
-  /کلاه\s*بردار|کلاهبرداری|کلاه\s*برداری|scammer|\bscam\b|\bfraud\b|شیاد|بی\s*شرف|بیشرف|حرومزاده|حرامزاده|مادرجنده|\bجنده\b|خائن|پول\s*شویی|پانزی|هرمی/i;
 
 function isIranMobileDigits(digits: string): boolean {
   const normalized = digits.replace(/\D/g, '');
@@ -42,17 +47,41 @@ export function commentContainsLink(body: string): boolean {
   return URL_INLINE.test(text) || WWW_INLINE.test(text) || SHORT_LINK_INLINE.test(text) || HANDLE_INLINE.test(text);
 }
 
-export function commentContainsNegativeLanguage(body: string): boolean {
-  return NEGATIVE_INLINE.test(toLatinDigits(body));
+export { commentContainsAdSpam, commentContainsNegativeLanguage };
+
+/** Full deterministic screening — mirrors backend FamilyCommentBodyGuard::analyze. */
+export function analyzeCommentBody(body: string): CommentScreening {
+  const signals: string[] = [];
+  let minRisk = 0;
+
+  if (commentContainsPhoneNumber(body)) {
+    signals.push('phone_number', 'contact');
+    minRisk = Math.max(minRisk, 0.55);
+  }
+
+  if (commentContainsLink(body)) {
+    signals.push('external_link');
+    minRisk = Math.max(minRisk, 0.55);
+  }
+
+  const lexicon = analyzeCommentLexicon(body);
+  signals.push(...lexicon.signals);
+  minRisk = Math.max(minRisk, lexicon.minRisk);
+
+  const uniqueSignals = [...new Set(signals)];
+
+  return {
+    signals: uniqueSignals,
+    minRisk,
+    requiresManualReview: lexiconNeedsManualReview(uniqueSignals),
+    severity: lexicon.severity,
+    categories: lexicon.categories,
+  };
 }
 
-/** True when the comment will stay pending for admin review (phone / link / insult). */
+/** True when the comment will stay pending for admin review (phone / link / lexicon). */
 export function commentNeedsManualReview(body: string): boolean {
-  return (
-    commentContainsPhoneNumber(body) ||
-    commentContainsLink(body) ||
-    commentContainsNegativeLanguage(body)
-  );
+  return analyzeCommentBody(body).requiresManualReview;
 }
 
 /** Soft notice — comment is accepted but not shown publicly until approved. */

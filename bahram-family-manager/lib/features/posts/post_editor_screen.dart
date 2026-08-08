@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -20,6 +21,7 @@ import 'package:bahram_family_manager/features/posts/widgets/post_type_selector.
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/models/upload_progress.dart';
+import 'package:bahram_family_manager/services/upload_coordinator.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
@@ -33,8 +35,10 @@ import 'package:bahram_family_manager/widgets/media/media_upload_progress_overla
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/media/voice_library_sheet.dart';
 import 'package:bahram_family_manager/widgets/media/voice_recorder_panel.dart';
+import 'package:bahram_family_manager/widgets/media/video_note_library_sheet.dart';
 import 'package:bahram_family_manager/widgets/media/video_note_recorder_panel.dart';
 import 'package:bahram_family_manager/services/voice_local_store.dart';
+import 'package:bahram_family_manager/services/video_note_local_store.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_dialog.dart';
@@ -50,6 +54,11 @@ class PostEditorScreen extends StatefulWidget {
 }
 
 class _PostEditorScreenState extends State<PostEditorScreen> {
+  /// Global slot for this screen's single voice/video/video-note upload —
+  /// lets [UploadCoordinator] keep the upload running (and, on remount,
+  /// lets [initState] rebind to it) independent of this widget's lifetime.
+  static const _mainUploadSlot = 'post:main';
+
   final _textCtrl = TextEditingController();
   final _actionPromptCtrl = TextEditingController();
   final _followUpMinutesCtrl = TextEditingController();
@@ -79,6 +88,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   double _uploadProgress = 0;
   int _uploadSentBytes = 0;
   int _uploadTotalBytes = 0;
+  UploadTask? _mainTask;
+  VoidCallback? _detachMainTaskListener;
   bool _optimizeImages = true;
   bool _optimizeDefaultLoaded = false;
 
@@ -155,6 +166,207 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _optionControllers.add(TextEditingController());
       _optionControllers.add(TextEditingController());
     }
+
+    // If a voice/video upload was left running in the background (user chose
+    // "continue in background" from the leave-guard sheet) and this is a
+    // fresh "new post" screen, rebind to it instead of losing track of it.
+    if (widget.post == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _rebindOrphanMainUpload());
+    }
+  }
+
+  void _rebindOrphanMainUpload() {
+    if (!mounted) return;
+    final uploads = context.read<AppState>().uploads;
+    final task = uploads.taskFor(_mainUploadSlot);
+    if (task == null) return;
+    final draft = uploads.pendingPostDraft;
+    if (draft != null) {
+      uploads.pendingPostDraft = null;
+      _restoreDraftSnapshot(draft);
+    }
+    _bindMainTask(task);
+  }
+
+  void _bindMainTask(UploadTask task) {
+    _detachMainTaskListener?.call();
+    _mainTask = task;
+    void listener() {
+      if (!mounted) return;
+      final upload = task.progress.value;
+      setState(() {
+        _applyMainUploadState(upload);
+        if (task.media != null) _mediaRef = task.media;
+      });
+      if (task.isDone) {
+        _onMainTaskFinished(task);
+      }
+    }
+
+    task.progress.addListener(listener);
+    _detachMainTaskListener = () {
+      task.progress.removeListener(listener);
+      _detachMainTaskListener = null;
+    };
+
+    // Sync current state immediately (task may already be mid-flight or done).
+    listener();
+  }
+
+  void _onMainTaskFinished(UploadTask task) {
+    final uploads = context.read<AppState>().uploads;
+    if (task.error != null) {
+      final err = task.error!;
+      final cancelled = task.isCancelled;
+      _detachMainTaskListener?.call();
+      _mainTask = null;
+      uploads.forget(task.slot);
+      // Cancellation from leave-guard / logout — don't snackbar-spam.
+      if (cancelled) {
+        setState(() {
+          _mediaRef = null;
+          _mediaPhase = MediaUploadPhase.idle;
+          _uploadProgress = 0;
+          _uploadSentBytes = 0;
+          _uploadTotalBytes = 0;
+        });
+        return;
+      }
+      unawaited(_abortFailedMainMedia(err, filename: task.filename));
+      return;
+    }
+    if (task.media != null) {
+      setState(() {
+        _mediaRef = task.media;
+        _applyMainUploadState(task.progress.value);
+      });
+      _detachMainTaskListener?.call();
+      _mainTask = null;
+      uploads.forget(task.slot);
+    }
+  }
+
+  Map<String, dynamic> _captureDraftSnapshot() {
+    return {
+      'type': _type,
+      'audienceMode': _audienceMode,
+      'isImportant': _isImportant,
+      'notifyMembers': _notifyMembers,
+      'commentsEnabled': _commentsEnabled,
+      'familyIds': _selectedFamilyIds.toList(),
+      'text': _textCtrl.text,
+      'actionEnabled': _actionEnabled,
+      'actionType': _actionType,
+      'actionPrompt': _actionPromptCtrl.text,
+      'actionDays': _actionDaysCtrl.text,
+      'options': _optionControllers.map((c) => c.text).toList(),
+      'followUpMinutes': _followUpMinutesCtrl.text,
+      'followUpMessage': _followUpMessageCtrl.text,
+      'scaleMin': _scaleMinCtrl.text,
+      'scaleMax': _scaleMaxCtrl.text,
+      'localPreviewUrl': _localPreviewOwned ? null : _localPreviewUrl,
+      'localPreviewOwned': false,
+    };
+  }
+
+  void _restoreDraftSnapshot(Map<String, dynamic> draft) {
+    _type = (draft['type'] as String?) ?? _type;
+    _audienceMode = (draft['audienceMode'] as String?) ?? _audienceMode;
+    _isImportant = (draft['isImportant'] as bool?) ?? _isImportant;
+    _notifyMembers = (draft['notifyMembers'] as bool?) ?? _notifyMembers;
+    _commentsEnabled = (draft['commentsEnabled'] as bool?) ?? _commentsEnabled;
+    _selectedFamilyIds
+      ..clear()
+      ..addAll(((draft['familyIds'] as List?) ?? const []).whereType<int>());
+    _textCtrl.text = (draft['text'] as String?) ?? _textCtrl.text;
+    _actionEnabled = (draft['actionEnabled'] as bool?) ?? _actionEnabled;
+    _actionType = (draft['actionType'] as String?) ?? _actionType;
+    _actionPromptCtrl.text = (draft['actionPrompt'] as String?) ?? _actionPromptCtrl.text;
+    _actionDaysCtrl.text = (draft['actionDays'] as String?) ?? _actionDaysCtrl.text;
+    _followUpMinutesCtrl.text = (draft['followUpMinutes'] as String?) ?? _followUpMinutesCtrl.text;
+    _followUpMessageCtrl.text = (draft['followUpMessage'] as String?) ?? _followUpMessageCtrl.text;
+    _scaleMinCtrl.text = (draft['scaleMin'] as String?) ?? _scaleMinCtrl.text;
+    _scaleMaxCtrl.text = (draft['scaleMax'] as String?) ?? _scaleMaxCtrl.text;
+    final options = ((draft['options'] as List?) ?? const []).whereType<String>().toList();
+    if (options.isNotEmpty) {
+      for (final c in _optionControllers) {
+        c.dispose();
+      }
+      _optionControllers
+        ..clear()
+        ..addAll(options.map((text) => TextEditingController(text: text)));
+    }
+    final previewUrl = draft['localPreviewUrl'] as String?;
+    if (previewUrl != null && previewUrl.isNotEmpty) {
+      _localPreviewUrl = previewUrl;
+      _localPreviewOwned = false;
+    }
+  }
+
+  bool get _hasActiveUploads {
+    if (_mainTask != null && !_mainTask!.isDone) return true;
+    if (_images.any((img) => img.task != null && !img.task!.isDone)) return true;
+    return _mediaBusy;
+  }
+
+  Future<void> _handleLeaveAttempt(bool didPop) async {
+    if (didPop) return;
+    if (!_hasActiveUploads) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+    final choice = await showAppBottomSheet<String>(
+      context: context,
+      title: 'آپلود در جریان است',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'ویدیو/رسانه هنوز در حال آپلود است. می‌خواهید در پس‌زمینه ادامه دهد یا لغو شود؟',
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          PrimaryButton(
+            label: 'ادامه در پس‌زمینه',
+            onPressed: () => Navigator.of(context).pop('continue'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop('cancel'),
+            child: const Text('لغو آپلود و خروج'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'continue') {
+      final uploads = context.read<AppState>().uploads;
+      if (widget.post == null && uploads.taskFor(_mainUploadSlot) != null) {
+        uploads.pendingPostDraft = _captureDraftSnapshot();
+      }
+      _detachMainTaskListener?.call();
+      for (final image in _images) {
+        image.detach();
+      }
+      Navigator.of(context).pop();
+      return;
+    }
+    if (choice == 'cancel') {
+      final uploads = context.read<AppState>().uploads;
+      uploads.cancel(_mainUploadSlot);
+      uploads.forget(_mainUploadSlot);
+      uploads.pendingPostDraft = null;
+      for (final image in List<_AttachedImage>.from(_images)) {
+        if (image.slot != null) {
+          uploads.cancel(image.slot!);
+          uploads.forget(image.slot!);
+        }
+        image.detach();
+      }
+      _detachMainTaskListener?.call();
+      _mainTask = null;
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -178,6 +390,14 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   @override
   void dispose() {
+    // Only detaches this screen's listeners — the upload task itself keeps
+    // running in [UploadCoordinator] regardless of whether this widget is
+    // disposed (back navigation) or simply backgrounded (which never calls
+    // dispose at all).
+    _detachMainTaskListener?.call();
+    for (final image in _images) {
+      image.detach();
+    }
     _clearLocalPreview();
     _textCtrl.dispose();
     _actionPromptCtrl.dispose();
@@ -205,6 +425,20 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   }
 
   Future<void> _clearAllMedia() async {
+    final uploads = context.read<AppState>().uploads;
+    if (_mainTask != null) {
+      uploads.cancel(_mainUploadSlot);
+      uploads.forget(_mainUploadSlot);
+      _detachMainTaskListener?.call();
+      _mainTask = null;
+    }
+    for (final image in List<_AttachedImage>.from(_images)) {
+      if (image.slot != null) {
+        uploads.cancel(image.slot!);
+        uploads.forget(image.slot!);
+      }
+      image.detach();
+    }
     await _clearLocalPreview();
     _mediaRef = null;
     _images.clear();
@@ -392,6 +626,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             onPressed: (_mediaBusy || _saving)
                 ? null
                 : () async {
+                    final uploads = context.read<AppState>().uploads;
+                    if (_mainTask != null) {
+                      uploads.cancel(_mainUploadSlot);
+                      uploads.forget(_mainUploadSlot);
+                      _detachMainTaskListener?.call();
+                      _mainTask = null;
+                    }
                     await _clearLocalPreview();
                     if (mounted) {
                       setState(() {
@@ -545,69 +786,45 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _uploadTotalBytes = totalBytes;
     });
 
-    try {
-      await _prepareLocalPreview(
-        file.filename,
-        mediaType,
-        bytes: file.bytes,
-        path: file.path,
-      );
-      if (!mounted) return;
+    await _prepareLocalPreview(
+      file.filename,
+      mediaType,
+      bytes: file.bytes,
+      path: file.path,
+    );
+    if (!mounted) return;
 
-      final manager = context.read<AppState>().manager;
-      final media = await manager.uploadMedia(
-            bytes: file.bytes,
-            path: file.path,
-            filename: file.filename,
-            type: mediaType,
-            optimizeImages: null,
-            onUploadState: (upload) {
-              if (!mounted) return;
-              setState(() => _applyMainUploadState(upload));
-            },
-          );
-      if (!mounted) return;
-      setState(() {
-        _mediaRef = media;
-        if (media.isReady) {
-          _mediaPhase = MediaUploadPhase.ready;
-          _uploadProgress = 1;
-          _uploadSentBytes = totalBytes;
-          _uploadTotalBytes = totalBytes;
-        } else {
-          _mediaPhase = MediaUploadPhase.processing;
-          _uploadProgress = 1;
-          _uploadSentBytes = totalBytes;
-          _uploadTotalBytes = totalBytes;
-        }
-      });
-      if (media.isReady) return;
+    final appState = context.read<AppState>();
+    final manager = appState.manager;
+    final uploads = appState.uploads;
 
-      final ready = await manager.waitForMediaReady(
-        media.id,
-        type: mediaType,
-        totalBytes: totalBytes,
-        onUpdate: (updated) {
-          if (!mounted) return;
-          setState(() => _mediaRef = updated);
-        },
-        onUploadState: (upload) {
-          if (!mounted) return;
-          setState(() => _applyMainUploadState(upload));
-        },
-      );
-      if (mounted) {
-        setState(() {
-          _mediaRef = ready;
-          _mediaPhase = MediaUploadPhase.ready;
-          _uploadProgress = 1;
-          _uploadSentBytes = totalBytes;
-          _uploadTotalBytes = totalBytes;
-        });
-      }
-    } catch (e) {
-      await _abortFailedMainMedia(e, filename: file.filename);
-    }
+    final task = uploads.start(
+      slot: _mainUploadSlot,
+      filename: file.filename,
+      type: mediaType,
+      job: (task) async {
+        final media = await manager.uploadMedia(
+          bytes: file.bytes,
+          path: file.path,
+          filename: file.filename,
+          type: mediaType,
+          optimizeImages: null,
+          cancelToken: task.cancelToken,
+          onUploadState: task.reportProgress,
+        );
+        task.media = media;
+        if (media.isReady) return media;
+        return manager.waitForMediaReady(
+          media.id,
+          type: mediaType,
+          totalBytes: totalBytes,
+          cancelToken: task.cancelToken,
+          onUpdate: (updated) => task.media = updated,
+          onUploadState: task.reportProgress,
+        );
+      },
+    );
+    _bindMainTask(task);
   }
 
   Future<void> _uploadImageBytes(Uint8List bytes, String filename) async {
@@ -615,57 +832,68 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
     final draft = _AttachedImage(localBytes: bytes);
     draft.phase = MediaUploadPhase.uploading;
+    final slot = 'post:image:${DateTime.now().microsecondsSinceEpoch}';
+    draft.slot = slot;
     setState(() {
       _images.add(draft);
     });
 
-    try {
-      final manager = context.read<AppState>().manager;
-      final media = await manager.uploadMedia(
-            bytes: bytes,
-            filename: filename,
-            type: 'image',
-            optimizeImages: _optimizeImages,
-            onUploadState: (upload) {
-              if (!mounted) return;
-              setState(() => draft.applyUpload(upload));
-            },
-          );
+    final appState = context.read<AppState>();
+    final manager = appState.manager;
+    final uploads = appState.uploads;
+    final optimizeImages = _optimizeImages;
+
+    final task = uploads.start(
+      slot: slot,
+      filename: filename,
+      type: 'image',
+      job: (task) async {
+        final media = await manager.uploadMedia(
+          bytes: bytes,
+          filename: filename,
+          type: 'image',
+          optimizeImages: optimizeImages,
+          cancelToken: task.cancelToken,
+          onUploadState: task.reportProgress,
+        );
+        task.media = media;
+        if (media.isReady) return media;
+        return manager.waitForMediaReady(
+          media.id,
+          type: 'image',
+          cancelToken: task.cancelToken,
+          onUpdate: (updated) => task.media = updated,
+          onUploadState: task.reportProgress,
+        );
+      },
+    );
+    draft.bind(task, onChanged: () {
       if (!mounted) return;
       setState(() {
-        draft.media = media;
-        if (media.isReady) {
-          draft.phase = MediaUploadPhase.ready;
-          draft.progress = 1;
-        } else {
-          draft.phase = MediaUploadPhase.processing;
-          draft.progress = 0.96;
-        }
+        draft.media = task.media;
+        draft.applyUpload(task.progress.value);
       });
-      if (media.isReady) return;
-
-      final ready = await manager.waitForMediaReady(
-        media.id,
-        type: 'image',
-        onUpdate: (updated) {
-          if (!mounted) return;
-          setState(() => draft.media = updated);
-        },
-        onUploadState: (upload) {
-          if (!mounted) return;
-          setState(() => draft.applyUpload(upload));
-        },
-      );
-      if (mounted) {
-        setState(() {
-          draft.media = ready;
-          draft.phase = MediaUploadPhase.ready;
-          draft.progress = 1;
-        });
+      if (task.isDone) {
+        draft.detach();
+        if (task.error != null) {
+          uploads.forget(slot);
+          if (!task.isCancelled) {
+            _abortFailedImage(draft, task.error!, filename: filename);
+          } else if (mounted) {
+            setState(() => _images.remove(draft));
+          }
+        } else {
+          uploads.forget(slot);
+          if (mounted) {
+            setState(() {
+              draft.media = task.media;
+              draft.phase = MediaUploadPhase.ready;
+              draft.progress = 1;
+            });
+          }
+        }
       }
-    } catch (e) {
-      _abortFailedImage(draft, e, filename: filename);
-    }
+    });
   }
 
   Future<void> _uploadVoiceBytes(Uint8List bytes, String filename) {
@@ -686,6 +914,47 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     final result = await showVoiceLibrarySheet(context);
     if (result == null || !mounted) return;
     await _uploadVoiceBytes(result.bytes, result.filename);
+  }
+
+  Future<void> _pickFromVideoNoteLibrary() async {
+    final result = await showVideoNoteLibrarySheet(context);
+    if (result == null || !mounted) return;
+    await _uploadVideoNoteBytes(
+      result.bytes,
+      result.filename,
+      path: result.localPath,
+    );
+  }
+
+  Future<void> _pickVideoNoteFromDevice() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+      withData: pickFilesWithData,
+    );
+    final picked = result?.files.singleOrNull;
+    if (picked == null) return;
+
+    final resolved = await resolvePlatformFile(picked, mediaType: 'video');
+    if (!mounted) return;
+    if (resolved is ResolvePickedMediaError) {
+      showAppSnackBar(context, resolved.message);
+      return;
+    }
+    final file = (resolved as ResolvePickedMediaOk).file;
+
+    try {
+      SavedVideoNoteRecording? saved;
+      if (file.path != null && file.path!.isNotEmpty) {
+        saved = await VideoNoteLocalStore.saveFromPath(file.path!, filename: file.filename);
+      } else if (file.bytes != null && file.bytes!.isNotEmpty) {
+        saved = await VideoNoteLocalStore.save(file.bytes!, file.filename);
+      }
+      if (saved != null && mounted) {
+        showAppSnackBar(context, 'ویدیو در کتابخانه ذخیره شد.');
+      }
+    } catch (_) {}
+
+    await _uploadPickedMedia(file, typeOverride: 'video');
   }
 
   Future<void> _pickVoiceFromDevice() async {
@@ -1287,7 +1556,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     final muted = context.appTextMuted;
     final subtle = context.appTextSubtle;
 
-    return AdaptiveScaffold(
+    return PopScope(
+      canPop: !_hasActiveUploads,
+      onPopInvokedWithResult: (didPop, _) => _handleLeaveAttempt(didPop),
+      child: AdaptiveScaffold(
       appBar: ManagerAppBar(
         title: Text(
           _post == null
@@ -1486,6 +1758,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                         VideoNoteRecorderPanel(
                           enabled: !_saving && !_mediaBusy,
                           onRecorded: (result) async {
+                            if (result.localPath != null && mounted) {
+                              showAppSnackBar(context, 'ویدیو دایره‌ای در حافظه دستگاه ذخیره شد.');
+                            }
                             await _uploadVideoNoteBytes(
                               result.bytes,
                               result.filename,
@@ -1495,15 +1770,32 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                           onError: (message) => showAppSnackBar(context, message),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        TextButton.icon(
-                          onPressed: (_saving || _mediaBusy)
-                              ? null
-                              : () async => await _pickAndUploadMedia(),
-                          icon: Icon(Icons.video_file_outlined, size: 18, color: scheme.primary),
-                          label: Text(
-                            'انتخاب ویدیو از فایل',
-                            style: TextStyle(color: scheme.primary),
-                          ),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          children: [
+                            TextButton.icon(
+                              onPressed: (_saving || _mediaBusy)
+                                  ? null
+                                  : () async => await _pickFromVideoNoteLibrary(),
+                              icon: Icon(Icons.video_library_outlined, size: 18, color: scheme.primary),
+                              label: Text(
+                                'کتابخانه ویدیو دایره‌ای',
+                                style: TextStyle(color: scheme.primary),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: (_saving || _mediaBusy)
+                                  ? null
+                                  : () async => await _pickVideoNoteFromDevice(),
+                              icon: Icon(Icons.video_file_outlined, size: 18, color: scheme.primary),
+                              label: Text(
+                                'انتخاب از فایل',
+                                style: TextStyle(color: scheme.primary),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     )
@@ -1695,6 +1987,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -1846,7 +2139,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               _ImageThumb(
                 image: _images[i],
                 enabled: !_mediaBusy && !_saving,
-                onRemove: () => setState(() => _images.removeAt(i)),
+                onRemove: () {
+                  final image = _images[i];
+                  if (image.slot != null) {
+                    final uploads = context.read<AppState>().uploads;
+                    uploads.cancel(image.slot!);
+                    uploads.forget(image.slot!);
+                  }
+                  image.detach();
+                  setState(() => _images.removeAt(i));
+                },
                 onRetry: () => _retryImageMedia(_images[i]),
               ),
             if (!_mediaBusy && !_saving)
@@ -1888,7 +2190,17 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           child: TextButton.icon(
             onPressed: (_mediaBusy || _saving)
                 ? null
-                : () => setState(() => _images.clear()),
+                : () {
+                    final uploads = context.read<AppState>().uploads;
+                    for (final image in List<_AttachedImage>.from(_images)) {
+                      if (image.slot != null) {
+                        uploads.cancel(image.slot!);
+                        uploads.forget(image.slot!);
+                      }
+                      image.detach();
+                    }
+                    setState(() => _images.clear());
+                  },
             icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
             label: const Text('حذف همه عکس‌ها', style: TextStyle(color: AppColors.error)),
           ),
@@ -1907,12 +2219,31 @@ class _AttachedImage {
   double progress = 0;
   int sentBytes = 0;
   int totalBytes = 0;
+  String? slot;
+  UploadTask? task;
+  VoidCallback? _listener;
 
   void applyUpload(UploadProgress upload) {
     phase = upload.phase;
     progress = upload.fraction;
     sentBytes = upload.sentBytes;
     totalBytes = upload.totalBytes;
+  }
+
+  void bind(UploadTask uploadTask, {required VoidCallback onChanged}) {
+    detach();
+    task = uploadTask;
+    _listener = onChanged;
+    uploadTask.progress.addListener(onChanged);
+    onChanged();
+  }
+
+  void detach() {
+    if (task != null && _listener != null) {
+      task!.progress.removeListener(_listener!);
+    }
+    _listener = null;
+    task = null;
   }
 }
 

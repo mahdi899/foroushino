@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * Deterministic comment screening — phone, links, and hostile/scam language.
+ * Deterministic comment screening — phone, links, lexicon (severity tiers), ads.
  * Used to raise risk and force manual review before comments appear publicly.
  */
 class FamilyCommentBodyGuard
@@ -14,11 +14,20 @@ class FamilyCommentBodyGuard
     /** Risk floor when an external link / contact handle is present. */
     public const RISK_LINK = 0.55;
 
-    /** Risk floor for insult / scam accusations. */
-    public const RISK_INSULT = 0.6;
+    /** Risk floor for yellow lexicon (ads / spam / competitor). */
+    public const RISK_YELLOW = 0.5;
 
-    /** Risk floor for ad/spam wording. */
-    public const RISK_ADS = 0.5;
+    /** Risk floor for orange lexicon (scam / insult / brand attack). */
+    public const RISK_ORANGE = 0.65;
+
+    /** Risk floor for red lexicon (threat / hate / sexual / honor abuse). */
+    public const RISK_RED = 0.85;
+
+    /** @deprecated Use RISK_ORANGE */
+    public const RISK_INSULT = self::RISK_ORANGE;
+
+    /** @deprecated Use RISK_YELLOW */
+    public const RISK_ADS = self::RISK_YELLOW;
 
     /**
      * Signals that must never auto-approve or auto-reject — admin reviews first.
@@ -33,6 +42,10 @@ class FamilyCommentBodyGuard
         'abuse',
         'advertising',
         'spam',
+        'scam',
+        'threat',
+        'hate',
+        'sexual',
     ];
 
     public static function containsPhoneNumber(string $body): bool
@@ -87,39 +100,12 @@ class FamilyCommentBodyGuard
         return false;
     }
 
+    /** True when red/orange lexicon terms are present (insults, scams, threats, …). */
     public static function containsNegativeLanguage(string $body): bool
     {
-        $text = self::normalizeForLexicon($body);
-
-        $patterns = [
-            'کلاهبردار',
-            'کلاه برداری',
-            'کلاهبرداری',
-            'کلاه\s*بردار',
-            'scammer',
-            'scam',
-            'fraud',
-            'شیاد',
-            'دغل',
-            'بی\s*شرف',
-            'بیشرف',
-            'حرومزاده',
-            'حرامزاده',
-            'مادرجنده',
-            'جنده',
-            'گوه',
-            'گوه\s*خور',
-            'کثافت',
-            'آشغال',
-            'خائن',
-            'دزد',
-            'پول\s*شویی',
-            'پانزی',
-            'هرمی',
-        ];
-
-        foreach ($patterns as $pattern) {
-            if (preg_match('/'.$pattern.'/iu', $text)) {
+        foreach (self::matchLexicon($body) as $hit) {
+            if ($hit['severity'] === FamilyCommentLexicon::SEVERITY_RED
+                || $hit['severity'] === FamilyCommentLexicon::SEVERITY_ORANGE) {
                 return true;
             }
         }
@@ -127,20 +113,102 @@ class FamilyCommentBodyGuard
         return false;
     }
 
+    /** True when yellow advertising / spam / competitor lexicon hits. */
     public static function containsAdSpam(string $body): bool
     {
-        $text = self::normalizeForLexicon($body);
+        foreach (self::matchLexicon($body) as $hit) {
+            if ($hit['severity'] === FamilyCommentLexicon::SEVERITY_YELLOW) {
+                return true;
+            }
+        }
 
-        return (bool) preg_match('/خرید\s*و\s*فروش|فروش\s*ویژه|تبلیغ|تخفیف\s*ویژه|ثبت\s*نام\s*کنید|ویزیت\s*رایگان/u', $text);
+        return false;
     }
 
     /**
-     * @return array{signals: list<string>, min_risk: float, requires_manual_review: bool}
+     * @return list<array{term: string, severity: string, category: string, signal: string}>
+     */
+    public static function matchLexicon(string $body): array
+    {
+        $normalized = self::normalizeForLexicon($body);
+        $compact = self::compactForLexicon($normalized);
+        if ($normalized === '' && $compact === '') {
+            return [];
+        }
+
+        $hits = [];
+        $seen = [];
+
+        foreach (FamilyCommentLexicon::entries() as $entry) {
+            $term = (string) $entry['term'];
+            $termNorm = self::normalizeForLexicon($term);
+            $termCompact = self::compactForLexicon($termNorm);
+            if ($termCompact === '') {
+                continue;
+            }
+
+            $bounded = (bool) ($entry['bounded'] ?? false);
+            $found = $bounded
+                ? self::containsBounded($normalized, $compact, $termNorm, $termCompact)
+                : (str_contains($normalized, $termNorm) || str_contains($compact, $termCompact));
+
+            if (! $found) {
+                continue;
+            }
+
+            $key = $entry['severity'].'|'.$entry['category'].'|'.$termCompact;
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            $hits[] = [
+                'term' => $term,
+                'severity' => (string) $entry['severity'],
+                'category' => (string) $entry['category'],
+                'signal' => (string) $entry['signal'],
+            ];
+        }
+
+        return $hits;
+    }
+
+    /**
+     * Highest severity among lexicon hits, or null.
+     *
+     * @return null|'yellow'|'orange'|'red'
+     */
+    public static function maxSeverity(string $body): ?string
+    {
+        $max = null;
+        $rank = array_flip(FamilyCommentLexicon::SEVERITY_ORDER);
+
+        foreach (self::matchLexicon($body) as $hit) {
+            $sev = $hit['severity'];
+            if ($max === null || ($rank[$sev] ?? -1) > ($rank[$max] ?? -1)) {
+                $max = $sev;
+            }
+        }
+
+        return $max;
+    }
+
+    /**
+     * @return array{
+     *   signals: list<string>,
+     *   min_risk: float,
+     *   requires_manual_review: bool,
+     *   severity: null|string,
+     *   categories: list<string>
+     * }
      */
     public static function analyze(string $body): array
     {
         $signals = [];
         $minRisk = 0.0;
+        $categories = [];
+        $severity = null;
+        $rank = array_flip(FamilyCommentLexicon::SEVERITY_ORDER);
 
         if (self::containsPhoneNumber($body)) {
             $signals[] = 'phone_number';
@@ -153,24 +221,36 @@ class FamilyCommentBodyGuard
             $minRisk = max($minRisk, self::RISK_LINK);
         }
 
-        if (self::containsNegativeLanguage($body)) {
-            $signals[] = 'insult';
-            $minRisk = max($minRisk, self::RISK_INSULT);
-        }
-
-        if (self::containsAdSpam($body)) {
-            $signals[] = 'advertising';
-            $signals[] = 'spam';
-            $minRisk = max($minRisk, self::RISK_ADS);
+        foreach (self::matchLexicon($body) as $hit) {
+            $signals[] = $hit['signal'];
+            $categories[] = $hit['category'];
+            $sev = $hit['severity'];
+            if ($severity === null || ($rank[$sev] ?? -1) > ($rank[$severity] ?? -1)) {
+                $severity = $sev;
+            }
+            $minRisk = max($minRisk, self::riskForSeverity($sev));
         }
 
         $signals = array_values(array_unique($signals));
+        $categories = array_values(array_unique($categories));
 
         return [
             'signals' => $signals,
             'min_risk' => $minRisk,
             'requires_manual_review' => self::requiresManualReview($signals),
+            'severity' => $severity,
+            'categories' => $categories,
         ];
+    }
+
+    public static function riskForSeverity(string $severity): float
+    {
+        return match ($severity) {
+            FamilyCommentLexicon::SEVERITY_RED => self::RISK_RED,
+            FamilyCommentLexicon::SEVERITY_ORANGE => self::RISK_ORANGE,
+            FamilyCommentLexicon::SEVERITY_YELLOW => self::RISK_YELLOW,
+            default => 0.0,
+        };
     }
 
     /** @param  list<string>  $signals */
@@ -212,12 +292,51 @@ class FamilyCommentBodyGuard
         ];
     }
 
-    private static function normalizeForLexicon(string $body): string
+    private static function containsBounded(string $normalized, string $compact, string $termNorm, string $termCompact): bool
+    {
+        if ($termCompact === '') {
+            return false;
+        }
+
+        // Word-ish boundaries: not preceded/followed by Persian/Arabic letter or Latin letter/digit.
+        $boundary = '[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}A-Za-z0-9]';
+        $quoted = preg_quote($termNorm, '/');
+        if ($termNorm !== '' && preg_match('/(?<!'.$boundary.')'.$quoted.'(?!'.$boundary.')/u', $normalized)) {
+            return true;
+        }
+
+        $quotedCompact = preg_quote($termCompact, '/');
+
+        return (bool) preg_match('/(?<!'.$boundary.')'.$quotedCompact.'(?!'.$boundary.')/u', $compact);
+    }
+
+    public static function normalizeForLexicon(string $body): string
     {
         $text = self::toLatinDigits($body);
-        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
 
-        return mb_strtolower($text);
+        // Arabic presentation forms / common variants → Persian.
+        $text = strtr($text, [
+            'ي' => 'ی', 'ك' => 'ک', 'ة' => 'ه', 'ۀ' => 'ه', 'ؤ' => 'و', 'إ' => 'ا', 'أ' => 'ا', 'آ' => 'ا',
+            'ٱ' => 'ا', 'ء' => '', 'ٔ' => '', 'ٰ' => '',
+        ]);
+
+        // Strip zero-width, tatweel, combining marks, asterisk obfuscation.
+        $text = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{0640}\x{0610}-\x{061A}\x{064B}-\x{065F}\x{0670}*·•._\-]+/u', '', $text) ?? $text;
+
+        // Collapse repeated letters (کلااااهبردار → کلااهبردار → … keep 1).
+        $text = preg_replace('/(.)\1{2,}/u', '$1$1', $text) ?? $text;
+        $text = preg_replace('/(.)\1+/u', '$1', $text) ?? $text;
+
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        $text = mb_strtolower(trim($text));
+
+        return $text;
+    }
+
+    public static function compactForLexicon(string $normalized): string
+    {
+        // Keep Persian/Arabic letters + Latin letters + digits only.
+        return preg_replace('/[^\x{0600}-\x{06FF}\x{0750}-\x{077F}A-Za-z0-9]+/u', '', $normalized) ?? '';
     }
 
     private static function toLatinDigits(string $value): string

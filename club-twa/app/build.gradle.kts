@@ -45,7 +45,8 @@ android {
 }
 
 dependencies {
-    implementation("com.google.androidbrowserhelper:androidbrowserhelper:2.7.2")
+    // TWA launcher + helpers (Google Chrome android-browser-helper)
+    implementation("com.google.androidbrowserhelper:androidbrowserhelper:2.5.0")
     implementation("androidx.browser:browser:1.8.0")
-    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.core:core-ktx:1.13.1")
 }

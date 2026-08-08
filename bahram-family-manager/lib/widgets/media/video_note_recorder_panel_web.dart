@@ -417,7 +417,7 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
     final reviewing = _phase == _Phase.reviewing;
     final live = _phase == _Phase.preview || _phase == _Phase.recording;
 
-    return GlassSurface(
+    return GlassPanel(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         children: [

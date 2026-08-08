@@ -7,13 +7,21 @@ import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
 import { FamilyApiError } from '@/lib/family/errors';
 import { familyHaptic } from '@/lib/family/haptics';
-import { formatPostDateTime } from '@/lib/family/datetime';
+import { formatPostTime } from '@/lib/family/datetime';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
+import {
+  captureFeedScrollRestore,
+  restoreFeedScrollPosition,
+  restoreFeedScrollPositionUntilSettled,
+  type FeedScrollRestoreSnapshot,
+} from '@/lib/family/feedScroll';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import { encodeReplyBody, parseReplyBody } from '@/lib/family/replyTag';
 import { commentNeedsManualReview, COMMENT_REVIEW_NOTICE } from '@/lib/family/commentPhoneGuard';
 import { cn } from '@/lib/cn';
+
+const COMMENT_SCROLL_ANCHOR = '[id^="family-comment-"]';
 
 type CommentsPanelProps = {
   postId: number;
@@ -117,7 +125,7 @@ function CommentReplyRow({
         <div className="family-comment-reply__meta">
           {reply.created_at ? (
             <time dateTime={reply.created_at} className="family-comment-reply__time">
-              {formatPostDateTime(reply.created_at)}
+              {formatPostTime(reply.created_at)}
             </time>
           ) : (
             <span />
@@ -219,7 +227,7 @@ function CommentRow({
           <div className="family-comment-actions">
             {comment.created_at ? (
               <time dateTime={comment.created_at} className="family-comment-bubble__time family-comment-bubble__time--inline">
-                {formatPostDateTime(comment.created_at)}
+                {formatPostTime(comment.created_at)}
               </time>
             ) : (
               <span />
@@ -307,8 +315,13 @@ export function CommentsPanel({
   const composerFocusedRef = useRef(false);
   /** Only auto-pin to the latest comment once per post open — not after loading older pages. */
   const initialPinnedForPostRef = useRef<number | null>(null);
-  /** Snapshot before older comments prepend — restore so the list doesn't jump to the tip. */
-  const pendingScrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
+  /**
+   * Snapshot before older comments prepend — held through measure settle so
+   * mt-auto / avatar layout can't yank the viewport to the tip or oldest tip.
+   */
+  const pendingScrollRestoreRef = useRef<FeedScrollRestoreSnapshot | null>(null);
+  const historySettleActiveRef = useRef(false);
+  const historySettleGenRef = useRef(0);
   const focusHandledRef = useRef<number | null>(null);
   const focusLoadingRef = useRef(false);
   const loadingMoreRef = useRef(false);
@@ -344,15 +357,17 @@ export function CommentsPanel({
     [pinLatestComment],
   );
 
-  const handleLoadOlder = useCallback(async () => {
+  const captureListScrollRestore = useCallback(() => {
     const list = listRef.current;
+    if (!list) return;
+    pendingScrollRestoreRef.current = captureFeedScrollRestore(list, null, {
+      anchorSelector: COMMENT_SCROLL_ANCHOR,
+    });
+  }, []);
+
+  const handleLoadOlder = useCallback(async () => {
     const lengthBefore = orderedLengthRef.current;
-    if (list) {
-      pendingScrollRestoreRef.current = {
-        height: list.scrollHeight,
-        top: list.scrollTop,
-      };
-    }
+    captureListScrollRestore();
     try {
       await loadMore();
     } catch {
@@ -365,13 +380,14 @@ export function CommentsPanel({
       requestAnimationFrame(() => {
         if (
           pendingScrollRestoreRef.current &&
+          !historySettleActiveRef.current &&
           orderedLengthRef.current === lengthBefore
         ) {
           pendingScrollRestoreRef.current = null;
         }
       });
     });
-  }, [loadMore]);
+  }, [captureListScrollRestore, loadMore]);
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -405,6 +421,8 @@ export function CommentsPanel({
     setReplyTarget(null);
     initialPinnedForPostRef.current = null;
     pendingScrollRestoreRef.current = null;
+    historySettleActiveRef.current = false;
+    historySettleGenRef.current += 1;
     focusHandledRef.current = null;
     focusLoadingRef.current = false;
   }, [postId, focusCommentId]);
@@ -417,12 +435,26 @@ export function CommentsPanel({
     if (isLoading || orderedComments.length === 0) return;
 
     const list = listRef.current;
-    const pending = pendingScrollRestoreRef.current;
-    if (pending && list) {
+    const snapshot = pendingScrollRestoreRef.current;
+    if (snapshot && list) {
       // Older comments prepend above the fold — keep the same messages under the viewport.
-      list.scrollTop = pending.top + (list.scrollHeight - pending.height);
-      pendingScrollRestoreRef.current = null;
-      return;
+      // Re-pin across a few frames: flex mt-auto + avatars change height after first paint.
+      restoreFeedScrollPosition(snapshot, { root: list, lenis: null });
+
+      const gen = ++historySettleGenRef.current;
+      historySettleActiveRef.current = true;
+      void restoreFeedScrollPositionUntilSettled(snapshot, {
+        getScrollCtx: () => ({ root: listRef.current, lenis: null }),
+        maxPasses: 6,
+        isCancelled: () => gen !== historySettleGenRef.current,
+      }).finally(() => {
+        if (gen !== historySettleGenRef.current) return;
+        historySettleActiveRef.current = false;
+        pendingScrollRestoreRef.current = null;
+      });
+      return () => {
+        historySettleGenRef.current += 1;
+      };
     }
 
     // When focusing a specific comment, don't yank to the tip.
@@ -452,7 +484,8 @@ export function CommentsPanel({
     if (!foundInComments) {
       if (!hasMore || loadingMore || focusLoadingRef.current) return;
       focusLoadingRef.current = true;
-      void loadMore().finally(() => {
+      // Same prepend path as infinite scroll — preserve viewport while paging history.
+      void handleLoadOlder().finally(() => {
         focusLoadingRef.current = false;
       });
       return;
@@ -471,7 +504,7 @@ export function CommentsPanel({
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [comments, focusCommentId, hasMore, isLoading, loadMore, loadingMore]);
+  }, [comments, focusCommentId, handleLoadOlder, hasMore, isLoading, loadingMore]);
 
   // Auto-load older comments when scrolling up (Telegram-style — no button tap).
   useEffect(() => {
@@ -483,6 +516,7 @@ export function CommentsPanel({
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
         if (loadingMoreRef.current || focusLoadingRef.current) return;
+        if (historySettleActiveRef.current || pendingScrollRestoreRef.current) return;
 
         const list = listRef.current;
         if (!list) return;
@@ -517,7 +551,9 @@ export function CommentsPanel({
     if (!list || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
       if (!composerFocusedRef.current) return;
-      if (loadingMoreRef.current || pendingScrollRestoreRef.current) return;
+      if (loadingMoreRef.current || pendingScrollRestoreRef.current || historySettleActiveRef.current) {
+        return;
+      }
       const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
       // Only stick while the user is already reading the tip (composer focused).
       if (distanceFromBottom > 80) return;

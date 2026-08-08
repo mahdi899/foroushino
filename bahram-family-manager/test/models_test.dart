@@ -139,6 +139,7 @@ void main() {
         'post_preview': 'سلام',
         'matching_count': 4,
         'pending_count': 2,
+        'unread_count': 3,
         'latest_comment_at': '2026-08-06T10:00:00+00:00',
         'latest_comment_preview': 'عالی',
       });
@@ -147,6 +148,7 @@ void main() {
       expect(thread.familyId, 3);
       expect(thread.matchingCount, 4);
       expect(thread.pendingCount, 2);
+      expect(thread.unreadCount, 3);
       expect(thread.familyInternalName, 'نور');
     });
   });

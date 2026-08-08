@@ -196,23 +196,29 @@ export function getFeedScrollTop(root: HTMLElement, lenis?: Lenis | null) {
 }
 
 /**
- * Snapshot the first in-viewport post so we can keep it pinned after older
- * posts are prepended (Lenis-safe — does not rely on wrapper.scrollTop).
+ * Snapshot the first in-viewport row so we can keep it pinned after older
+ * items are prepended (Lenis-safe — does not rely on wrapper.scrollTop).
+ *
+ * `anchorSelector` defaults to feed posts; comments panels pass
+ * `[id^="family-comment-"]` so mt-auto / avatar measure can't yank the viewport.
  */
 export function captureFeedScrollRestore(
   root: HTMLElement,
   lenis?: Lenis | null,
+  options?: { anchorSelector?: string },
 ): FeedScrollRestoreSnapshot {
   const rootTop = root.getBoundingClientRect().top;
-  const posts = root.querySelectorAll<HTMLElement>('[id^="family-post-"]');
+  const anchors = root.querySelectorAll<HTMLElement>(
+    options?.anchorSelector ?? '[id^="family-post-"]',
+  );
   const base = {
     height: root.scrollHeight,
     top: getFeedScrollTop(root, lenis),
   };
 
-  for (const el of posts) {
+  for (const el of anchors) {
     const rect = el.getBoundingClientRect();
-    // First post that still has any pixels below the top edge of the feed.
+    // First row that still has any pixels below the top edge of the scroller.
     if (rect.bottom > rootTop + 4 && el.id) {
       return {
         mode: 'anchor',

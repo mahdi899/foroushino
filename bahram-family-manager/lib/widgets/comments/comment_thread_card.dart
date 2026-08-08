@@ -26,6 +26,7 @@ class CommentThreadCard extends StatelessWidget {
     final preview = (thread.postPreview?.trim().isNotEmpty == true)
         ? thread.postPreview!.trim()
         : 'پست $typeLabel #${toFaDigits(thread.postId.toString())}';
+    final dateLabel = thread.publishedAt ?? thread.latestCommentAt;
 
     return GlassPanel(
       borderRadius: 20,
@@ -62,14 +63,15 @@ class CommentThreadCard extends StatelessWidget {
                             typeLabel,
                             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                           ),
-                          if (thread.latestCommentAt != null)
+                          if (dateLabel != null)
                             Text(
-                              formatDateTime(thread.latestCommentAt),
+                              formatDateTime(dateLabel),
                               style: TextStyle(color: muted, fontSize: 11),
                             ),
                         ],
                       ),
                     ),
+                    if (thread.unreadCount > 0) _UnreadBadge(count: thread.unreadCount),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -105,6 +107,12 @@ class CommentThreadCard extends StatelessWidget {
                         color: AppColors.warning,
                         icon: Icons.hourglass_top_rounded,
                       ),
+                    if (thread.unreadCount > 0)
+                      StatusChip(
+                        label: '${toFaDigits(thread.unreadCount.toString())} خوانده‌نشده',
+                        color: AppColors.error,
+                        icon: Icons.mark_email_unread_rounded,
+                      ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -119,6 +127,42 @@ class CommentThreadCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count > 99 ? '۹۹+' : toFaDigits(count.toString());
+    return Container(
+      constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.error,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.error.withValues(alpha: 0.28),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          height: 1.1,
         ),
       ),
     );

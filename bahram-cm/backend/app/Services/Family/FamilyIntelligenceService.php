@@ -26,7 +26,7 @@ class FamilyIntelligenceService
 
         try {
             $raw = $this->ai->chat([
-                ['role' => 'system', 'content' => 'You are a Family Analyst for a Persian coaching community. Return ONLY compact JSON with keys: risk_score (0-1), sentiment (positive|neutral|negative), topic (short Persian), signals (array of: safe|spam|advertising|phone_number|external_link|insult|sensitive|negative_emotion|coaching_question). Rules: if the text has a phone number, URL/link, @handle, or insult/scam words (e.g. کلاهبردار), include those signals and set risk_score >= 0.55 so it needs human review. Never invent facts.'],
+                ['role' => 'system', 'content' => 'You are a Family Analyst for a Persian coaching community (Bahram / sales-coaching). Return ONLY compact JSON with keys: risk_score (0-1), sentiment (positive|neutral|negative), topic (short Persian), signals (array of: safe|spam|advertising|phone_number|external_link|insult|abuse|scam|threat|hate|sexual|sensitive|negative_emotion|coaching_question). Rules: phone/URL/@handle → those signals, risk>=0.55. Scam/fraud/pyramid (کلاهبردار، هرمی، پانزی، شیاد) → scam|insult, risk>=0.65. Threats/hate/sexual/honor insults → threat|hate|sexual|abuse, risk>=0.85. Ads/competitor poaching → advertising|spam, risk>=0.5. Do NOT treat legitimate support complaints (refund, unhappy, weak support) as insults. Never invent facts.'],
                 ['role' => 'user', 'content' => $body],
             ], ['temperature' => 0.2]);
 

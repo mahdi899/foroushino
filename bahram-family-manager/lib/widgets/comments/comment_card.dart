@@ -64,6 +64,8 @@ class CommentCard extends StatelessWidget {
     required this.onReject,
     required this.onToggleImportant,
     required this.onReply,
+    this.onApproveReply,
+    this.onRejectReply,
     this.selectable = false,
     this.selected = false,
     this.onSelectedChanged,
@@ -75,6 +77,8 @@ class CommentCard extends StatelessWidget {
   final CommentAction onReject;
   final CommentAction onToggleImportant;
   final CommentAction onReply;
+  final ValueChanged<FamilyCommentModel>? onApproveReply;
+  final ValueChanged<FamilyCommentModel>? onRejectReply;
   final bool selectable;
   final bool selected;
   final ValueChanged<bool>? onSelectedChanged;
@@ -216,7 +220,11 @@ class CommentCard extends StatelessWidget {
                   ...replies.map(
                     (reply) => Padding(
                       padding: const EdgeInsets.only(right: AppSpacing.lg, bottom: AppSpacing.sm),
-                      child: _ThreadReplyBubble(reply: reply),
+                      child: _ThreadReplyBubble(
+                        reply: reply,
+                        onApprove: onApproveReply == null ? null : () => onApproveReply!(reply),
+                        onReject: onRejectReply == null ? null : () => onRejectReply!(reply),
+                      ),
                     ),
                   ),
                 ],
@@ -279,9 +287,15 @@ class _Avatar extends StatelessWidget {
 }
 
 class _ThreadReplyBubble extends StatelessWidget {
-  const _ThreadReplyBubble({required this.reply});
+  const _ThreadReplyBubble({
+    required this.reply,
+    this.onApprove,
+    this.onReject,
+  });
 
   final FamilyCommentModel reply;
+  final VoidCallback? onApprove;
+  final VoidCallback? onReject;
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +308,9 @@ class _ThreadReplyBubble extends StatelessWidget {
         ? AppColors.primary.withValues(alpha: 0.4)
         : scheme.outline.withValues(alpha: 0.4);
     final nameColor = isBahram ? AppColors.primary : scheme.onSurface;
+    final canModerate = !isBahram && (onApprove != null || onReject != null);
+    final showApprove = canModerate && reply.status != 'approved' && onApprove != null;
+    final showReject = canModerate && reply.status != 'rejected' && onReject != null;
 
     return Container(
       width: double.infinity,
@@ -331,6 +348,14 @@ class _ThreadReplyBubble extends StatelessWidget {
                   ),
                 ),
               ],
+              if (reply.status == 'pending') ...[
+                const SizedBox(width: AppSpacing.sm),
+                const StatusChip(label: 'در انتظار', color: AppColors.warning, icon: Icons.hourglass_top_rounded),
+              ],
+              if (reply.status == 'rejected') ...[
+                const SizedBox(width: AppSpacing.sm),
+                const StatusChip(label: 'رد‌شده', color: AppColors.error, icon: Icons.cancel_outlined),
+              ],
               const Spacer(),
               Text(
                 formatDateTime(reply.createdAt),
@@ -345,6 +370,18 @@ class _ThreadReplyBubble extends StatelessWidget {
             AppColors.primary,
             AppColors.primary.withValues(alpha: 0.12),
           ),
+          if (showApprove || showReject) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              children: [
+                if (showApprove)
+                  _ActionChip(icon: Icons.check_rounded, label: 'تأیید', color: AppColors.success, onTap: onApprove!),
+                if (showReject)
+                  _ActionChip(icon: Icons.close_rounded, label: 'رد', color: AppColors.error, onTap: onReject!),
+              ],
+            ),
+          ],
         ],
       ),
     );

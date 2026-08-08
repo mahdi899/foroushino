@@ -31,16 +31,17 @@ class FamilyReactionAndCommentTest extends TestCase
         return $user;
     }
 
-    private function publishedPost(): FamilyPost
+    /** @param  array<string, mixed>  $overrides */
+    private function publishedPost(array $overrides = []): FamilyPost
     {
-        return FamilyPost::create([
+        return FamilyPost::create(array_merge([
             'author_id' => User::factory()->create()->id,
             'type' => 'text',
             'status' => FamilyPostStatus::Published,
             'audience_mode' => 'all',
             'comments_enabled' => true,
             'published_at' => now(),
-        ]);
+        ], $overrides));
     }
 
     private function managerAdmin(): User
@@ -152,9 +153,92 @@ class FamilyReactionAndCommentTest extends TestCase
                         'family_internal_name',
                         'matching_count',
                         'pending_count',
+                        'unread_count',
+                        'published_at',
                     ],
                 ],
             ]);
+    }
+
+    public function test_manager_comment_threads_count_includes_replies(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $parent = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'نظر اصلی'])
+            ->assertCreated()
+            ->json('data');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", [
+                'body' => 'پاسخ عضو',
+                'parent_id' => $parent['id'],
+            ])
+            ->assertCreated();
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.post_id', $post->id)
+            ->assertJsonPath('data.0.matching_count', 2);
+    }
+
+    public function test_manager_comment_threads_order_by_post_published_at(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $older = $this->publishedPost(['published_at' => now()->subDays(2)]);
+        $newer = $this->publishedPost(['published_at' => now()->subHour()]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$older->id}/comments", ['body' => 'نظر پست قدیمی'])
+            ->assertCreated();
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$newer->id}/comments", ['body' => 'نظر پست جدید'])
+            ->assertCreated();
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.post_id', $newer->id)
+            ->assertJsonPath('data.1.post_id', $older->id);
+    }
+
+    public function test_manager_comment_threads_include_unread_count_and_mark_seen(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $comment = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'نظر خوانده‌نشده'])
+            ->assertCreated()
+            ->json('data');
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.unread_count', 1);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/family-manager/comments/{$comment['id']}/seen")
+            ->assertOk();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.unread_count', 0);
     }
 
     public function test_manager_can_filter_comments_by_post_and_family(): void

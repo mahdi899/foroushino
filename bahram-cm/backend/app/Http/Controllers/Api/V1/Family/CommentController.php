@@ -117,6 +117,18 @@ class CommentController extends Controller
             || $needsManualReview;
         $status = $requireApproval ? FamilyCommentStatus::Pending : FamilyCommentStatus::Approved;
 
+        $aiSignals = null;
+        if ($needsManualReview) {
+            $aiSignals = $screening['signals'];
+            if (! empty($screening['severity'])) {
+                $aiSignals[] = 'severity:'.$screening['severity'];
+            }
+            foreach ($screening['categories'] as $category) {
+                $aiSignals[] = 'category:'.$category;
+            }
+            $aiSignals = array_values(array_unique($aiSignals));
+        }
+
         $comment = FamilyComment::query()->create([
             'post_id' => $post->id,
             'family_id' => $membership->family_id,
@@ -126,7 +138,7 @@ class CommentController extends Controller
             'status' => $status,
             'approved_at' => $requireApproval ? null : now(),
             'ai_risk_score' => $needsManualReview ? $screening['min_risk'] : null,
-            'ai_signals' => $needsManualReview ? $screening['signals'] : null,
+            'ai_signals' => $aiSignals,
         ]);
 
         if (! $requireApproval) {
