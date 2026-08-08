@@ -225,6 +225,8 @@ final class FamilyMediaStreamService
             'm4a' => 'audio/mp4',
             'mp3' => 'audio/mpeg',
             'ogg' => 'audio/ogg',
+            'opus' => 'audio/ogg',
+            'wav' => 'audio/wav',
             'webp' => 'image/webp',
             'jpg', 'jpeg' => 'image/jpeg',
             'png' => 'image/png',

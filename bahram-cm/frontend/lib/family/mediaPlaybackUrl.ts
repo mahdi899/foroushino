@@ -217,7 +217,10 @@ export function inferFamilyMediaMimeType(
     case 'mp3':
       return 'audio/mpeg';
     case 'ogg':
+    case 'opus':
       return 'audio/ogg';
+    case 'wav':
+      return 'audio/wav';
     case 'webp':
       return 'image/webp';
     case 'jpg':

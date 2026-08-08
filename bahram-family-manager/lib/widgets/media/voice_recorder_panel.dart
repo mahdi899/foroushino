@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart' as p;
@@ -126,23 +126,56 @@ class _VoiceRecorderPanelState extends State<VoiceRecorderPanel>
     return allowed;
   }
 
-  /// Prefer WAV so trim/boost can run in Dart without ffmpeg.
+  /// Prefer Opus (OGG on Android/Linux; WebM on web) for small voice files.
+  /// AAC is the compressed fallback where Opus/OGG is unavailable (Windows, Darwin).
+  /// WAV remains last resort (trim/boost only works on PCM WAV).
   Future<AudioEncoder> _pickEncoder() async {
-    if (await _recorder.isEncoderSupported(AudioEncoder.wav)) {
-      return AudioEncoder.wav;
+    if (_opusProducesPortableContainer &&
+        await _recorder.isEncoderSupported(AudioEncoder.opus)) {
+      return AudioEncoder.opus;
     }
     if (await _recorder.isEncoderSupported(AudioEncoder.aacLc)) {
       return AudioEncoder.aacLc;
     }
-    return AudioEncoder.wav;
+    if (await _recorder.isEncoderSupported(AudioEncoder.wav)) {
+      return AudioEncoder.wav;
+    }
+    return AudioEncoder.aacLc;
+  }
+
+  /// Opus-in-OGG on Android/Linux; Opus-in-WebM on web. Skip Windows (MF stub)
+  /// and Darwin (CAF-only, not portable).
+  bool get _opusProducesPortableContainer {
+    if (kIsWeb) return true;
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.linux => true,
+      _ => false,
+    };
   }
 
   String _extensionFor(AudioEncoder encoder) => switch (encoder) {
         AudioEncoder.aacLc || AudioEncoder.aacEld || AudioEncoder.aacHe => 'm4a',
         AudioEncoder.wav => 'wav',
-        AudioEncoder.opus => 'opus',
-        _ => 'wav',
+        // Android/Linux → OGG; web MediaRecorder → WebM+Opus.
+        AudioEncoder.opus => kIsWeb ? 'webm' : 'ogg',
+        _ => 'm4a',
       };
+
+  RecordConfig _configFor(AudioEncoder encoder) {
+    // Voice-oriented bitrates: Opus is efficient at ~32kbps; AAC needs more.
+    final bitRate = switch (encoder) {
+      AudioEncoder.opus => 32000,
+      AudioEncoder.aacLc || AudioEncoder.aacEld || AudioEncoder.aacHe => 64000,
+      _ => 128000,
+    };
+    final sampleRate = encoder == AudioEncoder.opus ? 48000 : 44100;
+    return RecordConfig(
+      encoder: encoder,
+      bitRate: bitRate,
+      sampleRate: sampleRate,
+      numChannels: 1,
+    );
+  }
 
   Future<String> _buildPath(AudioEncoder encoder) async {
     final ext = _extensionFor(encoder);
@@ -175,15 +208,7 @@ class _VoiceRecorderPanelState extends State<VoiceRecorderPanel>
       final path = await _buildPath(encoder);
       final filename = p.basename(path);
 
-      await _recorder.start(
-        RecordConfig(
-          encoder: encoder,
-          bitRate: 128000,
-          sampleRate: 44100,
-          numChannels: 1,
-        ),
-        path: path,
-      );
+      await _recorder.start(_configFor(encoder), path: path);
 
       _path = path;
       _filename = filename;
@@ -520,7 +545,7 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
       }
       _previewUrl = await createLocalMediaUrl(
         widget.bytes,
-        _editable ? 'audio/wav' : 'audio/mp4',
+        guessMediaMimeType(widget.filename, 'voice'),
         extension: p.extension(widget.filename).replaceFirst('.', ''),
       );
       final total = await setAudioPlayerSource(
@@ -669,7 +694,7 @@ class _VoiceReviewEditorState extends State<_VoiceReviewEditor> {
           Text(
             _editable
                 ? 'گوش دهید، ابتدا/انتها را ببرید؛ تقویت بالای ۱× روی فایل نهایی اعمال می‌شود'
-                : 'گوش دهید و تأیید کنید (برش فقط برای WAV فعال است)',
+                : 'گوش دهید و تأیید کنید (برش/تقویت فقط برای WAV فعال است)',
             style: TextStyle(color: muted, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.lg),
