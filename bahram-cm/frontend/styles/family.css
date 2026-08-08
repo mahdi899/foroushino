@@ -79,18 +79,13 @@ html[data-family-host='1'] body {
   --family-tg-header-border: rgba(60, 60, 67, 0.11);
   --family-tg-header-shadow: rgba(0, 0, 0, 0.05);
   --family-tg-header-highlight: rgba(255, 255, 255, 0.72);
-  --family-chat-bg: #d1dbe5;
+  --family-chat-bg: #c8e08a;
   --family-chat-wallpaper-photo: var(
     --family-chat-wallpaper-photo-light,
     url('/storage/media/site/family-chat-wallpaper-light.webp')
   );
-  --family-chat-wallpaper-base: #d4dee8;
-  --family-chat-wallpaper-veil: linear-gradient(
-    180deg,
-    rgba(238, 244, 248, 0.12) 0%,
-    rgba(238, 244, 248, 0.04) 50%,
-    rgba(232, 240, 246, 0.14) 100%
-  );
+  --family-chat-wallpaper-base: #c5de88;
+  --family-chat-wallpaper-veil: none;
   /* Soft fallback when photo fails to load (sidebar / canvas). */
   --family-chat-wallpaper:
     radial-gradient(ellipse 90% 70% at 12% 8%, rgba(255, 255, 255, 0.72) 0, transparent 55%),
@@ -119,8 +114,8 @@ html[data-family-host='1'] body {
   --family-tg-pattern-url: var(--family-chat-pattern);
   --family-tg-pattern-size: 420px;
   --family-tg-pattern-opacity: 0.3;
-  --family-tg-pattern-blur: 2.5px;
-  --family-feed-extra-blur: 28px;
+  --family-tg-pattern-blur: 0;
+  --family-feed-extra-blur: 0;
   --family-tg-glass-blur: none;
   --family-tg-compose-bg: #f7f7f7;
   --family-tg-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -254,8 +249,8 @@ html[data-theme='dark'] .family-app {
   --family-tg-pattern-url: var(--family-chat-pattern);
   --family-tg-pattern-size: 420px;
   --family-tg-pattern-opacity: 0.3;
-  --family-tg-pattern-blur: 2.5px;
-  --family-feed-extra-blur: 28px;
+  --family-tg-pattern-blur: 0;
+  --family-feed-extra-blur: 0;
   --family-tg-glass-blur: none;
   --family-tg-compose-bg: #17212b;
   --family-tg-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -342,13 +337,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-feed-pane::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  backdrop-filter: blur(var(--family-feed-extra-blur)) saturate(1.1);
-  -webkit-backdrop-filter: blur(var(--family-feed-extra-blur)) saturate(1.1);
+  content: none;
 }
 
 .family-feed-wallpaper {
@@ -361,14 +350,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 
 .family-feed-wallpaper__img {
   position: absolute;
-  inset: -12px;
-  width: calc(100% + 24px);
-  height: calc(100% + 24px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   max-width: none;
   object-fit: cover;
   object-position: center;
-  transform: scale(1.04);
-  animation: family-wallpaper-drift 22s ease-in-out infinite alternate;
 }
 
 .family-feed-wallpaper__veil {
@@ -399,6 +386,13 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   align-self: stretch;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Overlay headers sit above the scroll pane as a flex sibling — sticky is
+   useless here and lets prepend-jumps paint comments underneath the bar. */
+.family-feed-overlay__content > .family-panel-header {
+  position: relative;
+  flex-shrink: 0;
 }
 
 /* Comments / notifications — chat wallpaper. Avoid setting `position` on the
@@ -436,6 +430,11 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   align-self: stretch;
   flex-direction: column;
   overflow: hidden;
+}
+
+.family-wallpaper-surface__content > .family-panel-header {
+  position: relative;
+  flex-shrink: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -642,12 +641,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   background-size: var(--family-tg-pattern-size);
   background-position: 0 0;
   opacity: var(--family-tg-pattern-opacity);
-  filter: blur(var(--family-tg-pattern-blur));
+  filter: none;
 }
 
 .family-app[data-family-theme='dark'] .family-app__canvas::before,
 html[data-theme='dark'] .family-app .family-app__canvas::before {
-  filter: blur(var(--family-tg-pattern-blur)) invert(1);
+  filter: invert(1);
 }
 
 .family-app__canvas > * {
@@ -1008,12 +1007,45 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
   padding-bottom: 0.5rem;
 }
 
+/* Bottom-align short threads via the inner `min-h-full justify-end` wrapper in
+   CommentsPanel — never `margin-top: auto` on the scrolling thread itself.
+   Auto-margins collapse on prepend and yank comments up under the panel header. */
 .family-comments-list .family-comments-thread {
-  margin-top: auto;
+  margin-top: 0;
 }
 
 .family-comments-list.family-comments-list--keyboard .family-comments-thread {
   padding-bottom: 0;
+}
+
+/* Theme-aware loaders — visible on chat wallpaper (light green / dark navy). */
+.family-inline-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  border-style: solid;
+  border-width: 2.5px;
+  /* Default = light family tokens → dark spinner on green wallpaper. */
+  border-color: rgba(13, 21, 23, 0.22);
+  border-top-color: #0d1517;
+}
+
+.family-inline-spinner--sm {
+  height: 1.25rem;
+  width: 1.25rem;
+  border-width: 2.5px;
+}
+
+.family-inline-spinner--md {
+  height: 1.75rem;
+  width: 1.75rem;
+  border-width: 3px;
+}
+
+.family-app[data-family-theme='dark'] .family-inline-spinner {
+  border-color: rgba(255, 255, 255, 0.28);
+  border-top-color: #ffffff;
 }
 
 .family-voice-wave {
@@ -1346,6 +1378,23 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
   max-height: var(--family-media-landscape-h);
 }
 
+/* Telegram-style circular video message in the feed */
+.family-feed-video--circle {
+  width: min(14rem, 72vw);
+  max-width: min(14rem, 100%);
+  max-height: min(14rem, 72vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.family-feed-video--circle video,
+.family-feed-video--circle img {
+  border-radius: 9999px;
+}
+
 .family-video-progress-ring {
   background:
     radial-gradient(farthest-side, rgba(255, 255, 255, 0.12) 72%, transparent 73%) top/100% 100% no-repeat,
@@ -1514,6 +1563,40 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
     top: auto;
     inset-inline-end: auto;
   }
+}
+
+/* Circular video note — centered round player (Telegram-like) */
+.family-video-modal--circle {
+  padding:
+    max(1.25rem, env(safe-area-inset-top))
+    max(1.25rem, env(safe-area-inset-right, 0px))
+    max(1.25rem, env(safe-area-inset-bottom))
+    max(1.25rem, env(safe-area-inset-left, 0px));
+  background: rgba(0, 0, 0, 0.92);
+}
+
+.family-video-modal--circle .family-video-modal__stage {
+  width: min(22rem, 86vw);
+  height: min(22rem, 86vw);
+  max-width: 86vw;
+  max-height: 86dvh;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.16),
+    0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.family-video-modal--circle .family-video-modal__player {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  object-fit: cover;
+  box-shadow: none;
 }
 
 .family-voice {
@@ -2713,42 +2796,11 @@ html[data-theme='dark'] .family-app .family-post-bubble {
   box-shadow: var(--family-bubble-shadow);
 }
 
-@keyframes family-important-border-pulse {
-  0%,
-  100% {
-    border-color: var(--family-bubble-channel-border);
-    border-inline-start-color: color-mix(in oklab, var(--family-bubble-important-accent) 72%, transparent);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 14%, transparent),
-      var(--family-bubble-shadow);
-  }
-  50% {
-    border-color: color-mix(in oklab, var(--family-bubble-important-accent) 28%, var(--family-bubble-channel-border));
-    border-inline-start-color: var(--family-bubble-important-accent);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 28%, transparent),
-      0 0 0 3px color-mix(in oklab, var(--family-bubble-important-accent) 16%, transparent),
-      0 0 12px color-mix(in oklab, var(--family-bubble-important-accent) 20%, transparent),
-      var(--family-bubble-shadow);
-  }
-}
-
 .family-post-bubble--important {
-  border: 0.5px solid var(--family-bubble-channel-border);
-  border-inline-start-width: 3px;
-  border-inline-start-style: solid;
-  border-inline-start-color: var(--family-bubble-important-accent);
+  border: 1.5px solid var(--family-bubble-important-accent);
   background: var(--family-bubble-important-bg);
-  box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--family-bubble-important-accent) 18%, transparent),
-    var(--family-bubble-shadow);
-  animation: family-important-border-pulse 2.6s ease-in-out infinite;
+  box-shadow: var(--family-bubble-shadow);
   transition: transform 200ms var(--family-tg-spring);
-}
-
-.family-app[data-family-theme='light'] .family-post-bubble--important,
-html[data-theme='light'] .family-app .family-post-bubble--important {
-  animation: family-important-border-pulse 2.6s ease-in-out infinite;
 }
 
 .family-post-bubble__labels {
@@ -3770,8 +3822,7 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
   .family-reaction-btn--active,
   .family-reaction-btn--pop,
   .family-reaction-picker--burst,
-  .family-post--highlight .family-post-bubble,
-  .family-post-bubble--important {
+  .family-post--highlight .family-post-bubble {
     animation: none !important;
   }
 

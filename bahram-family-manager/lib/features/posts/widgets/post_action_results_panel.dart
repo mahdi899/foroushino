@@ -25,6 +25,7 @@ class PostActionResultsPanel extends StatefulWidget {
 
 class _PostActionResultsPanelState extends State<PostActionResultsPanel> {
   Future<List<FamilyActionResultModel>>? _future;
+  var _exporting = false;
 
   @override
   void initState() {
@@ -38,6 +39,19 @@ class _PostActionResultsPanelState extends State<PostActionResultsPanel> {
     });
   }
 
+  Future<void> _export() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      await context.read<AppState>().manager.downloadActionResultsExport(widget.postId);
+      if (mounted) showAppSnackBar(context, 'فایل CSV دانلود شد.');
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PanelSectionCard(
@@ -48,17 +62,14 @@ class _PostActionResultsPanelState extends State<PostActionResultsPanel> {
         children: [
           IconButton(
             tooltip: 'خروجی Excel',
-            onPressed: () async {
-              try {
-                await context.read<AppState>().manager.downloadActionResultsExport(widget.postId);
-                if (context.mounted) {
-                  showAppSnackBar(context, 'فایل CSV دانلود شد.');
-                }
-              } catch (e) {
-                if (context.mounted) showAppSnackBar(context, messageOf(e));
-              }
-            },
-            icon: const Icon(Icons.download_rounded),
+            onPressed: _exporting ? null : _export,
+            icon: _exporting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_rounded),
           ),
           IconButton(
             tooltip: 'بروزرسانی',

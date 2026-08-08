@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
 import { getFeed, getPost } from '@/lib/family/api';
 import { feedPagesContainPost, prependPostToFeedPages, removePostFromFeedPages, replacePostInFeedPages, repositionPostToFeedTip, patchCommentsCountInFeedPages } from '@/lib/family/feedMerge';
+import { mutateFamilyFeedPages, hasFamilyFeedPagesMutators } from '@/lib/family/feedPagesMutate';
 import { getViewerFamilyId } from '@/lib/family/viewerFamilyId';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
 import type { FamilyEcho } from '@/lib/realtime/echo';
@@ -149,16 +150,40 @@ export async function patchCommentsCountInFeedCaches(
   postId: number,
   commentsCount: number,
 ): Promise<boolean> {
-  let patched = false;
+  // Prefer bound infinite mutators (mounted FeedView). globalMutate alone cannot
+  // update `$inf$` pages the way useSWRInfinite reads them.
+  if (hasFamilyFeedPagesMutators()) {
+    return mutateFamilyFeedPages((current) => {
+      if (!Array.isArray(current) || current.length === 0) return current;
+      return patchCommentsCountInFeedPages(current, postId, commentsCount) ?? current;
+    });
+  }
 
+  let patched = false;
   await globalMutate(
     isFamilyFeedKey,
     (current) => {
-      if (!Array.isArray(current) || current.length === 0) return current;
-      const next = patchCommentsCountInFeedPages(current, postId, commentsCount);
-      if (next && next !== current) {
-        patched = true;
-        return next;
+      // Page-shaped cache entry (rare) or accidental pages array.
+      if (Array.isArray(current) && current.length > 0 && current[0] && 'data' in current[0]) {
+        const next = patchCommentsCountInFeedPages(current, postId, commentsCount);
+        if (next && next !== current) {
+          patched = true;
+          return next;
+        }
+        return current;
+      }
+      if (
+        current &&
+        typeof current === 'object' &&
+        Array.isArray((current as FeedPage).data)
+      ) {
+        const page = current as FeedPage;
+        const nextPages = patchCommentsCountInFeedPages([page], postId, commentsCount);
+        const nextPage = nextPages?.[0];
+        if (nextPage && nextPage !== page) {
+          patched = true;
+          return nextPage;
+        }
       }
       return current;
     },

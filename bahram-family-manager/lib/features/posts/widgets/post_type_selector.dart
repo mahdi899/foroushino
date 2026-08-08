@@ -4,7 +4,7 @@ import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 
-const mediaPostTypes = ['text', 'voice', 'video', 'image'];
+const mediaPostTypes = ['text', 'voice', 'video_note', 'video', 'image'];
 const choiceActionTypes = ['single_choice', 'multi_choice'];
 
 /// Telegram-style horizontal attach bar for post type selection.
@@ -63,6 +63,7 @@ class PostTypeSelector extends StatelessWidget {
   IconData _iconFor(String type) => switch (type) {
         'text' => Icons.chat_bubble_outline_rounded,
         'voice' => Icons.mic_none_rounded,
+        'video_note' => Icons.radio_button_checked_rounded,
         'video' => Icons.videocam_outlined,
         'image' => Icons.photo_outlined,
         _ => Icons.campaign_outlined,
@@ -124,4 +125,4 @@ class _AttachChip extends StatelessWidget {
     );
   }
 }
-
+

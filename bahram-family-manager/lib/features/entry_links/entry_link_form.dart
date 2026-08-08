@@ -254,9 +254,8 @@ class _EntryLinkFormState extends State<EntryLinkForm> {
         ],
         const SizedBox(height: AppSpacing.lg),
         PrimaryButton(
-          label: _pending
-              ? (_isEdit ? 'در حال ذخیره…' : 'در حال ساخت…')
-              : (_isEdit ? 'ذخیره تغییرات' : 'ساخت لینک'),
+          label: _isEdit ? 'ذخیره تغییرات' : 'ساخت لینک',
+          loading: _pending,
           onPressed: (_pending || _families.isEmpty) ? null : _submit,
         ),
       ],

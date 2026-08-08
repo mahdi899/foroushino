@@ -45,7 +45,7 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         if (! $media->temp_path || ! Storage::disk(config('family.media.temp_disk', 'local'))->exists($media->temp_path)) {
             $media->update([
                 'status' => FamilyMediaStatus::Failed,
-                'failure_reason' => 'Temporary file missing',
+                'failure_reason' => 'فایل موقت روی سرور پیدا نشد؛ آپلود ناقص مانده یا پاک شده است.',
             ]);
 
             return;
@@ -86,18 +86,45 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
             return;
         }
 
+        $reason = $this->humanFailureReason($exception);
+
         Log::error('Family media FTP transfer exhausted retries', [
             'media_id' => $media->id,
             'temp_path' => $media->temp_path,
             'error' => $exception?->getMessage(),
+            'failure_reason' => $reason,
         ]);
 
         if ($media->status !== FamilyMediaStatus::Ready) {
             $media->update([
                 'status' => FamilyMediaStatus::Failed,
-                'failure_reason' => $exception?->getMessage() ?? 'FTP transfer failed after retries',
+                'failure_reason' => $reason,
             ]);
         }
+    }
+
+    private function humanFailureReason(?\Throwable $exception): string
+    {
+        $raw = trim((string) ($exception?->getMessage() ?? ''));
+        $lower = strtolower($raw);
+
+        if ($raw === '' || str_contains($lower, 'ftp transfer failed')) {
+            return 'انتقال فایل به هاست دانلود پس از چند تلاش ناموفق بود.';
+        }
+        if (str_contains($lower, 'size mismatch')) {
+            return 'حجم فایل روی هاست با فایل موقت یکی نیست (آپلود ناقص). دوباره آپلود کنید.';
+        }
+        if (str_contains($lower, 'timeout') || str_contains($lower, 'timed out')) {
+            return 'زمان انتقال فایل به هاست تمام شد. اینترنت/VPN سرور یا اتصال FTP را بررسی کنید.';
+        }
+        if (str_contains($lower, 'connection') || str_contains($lower, 'could not connect')) {
+            return 'اتصال به هاست دانلود/FTP برقرار نشد.';
+        }
+        if (preg_match('/[\x{0600}-\x{06FF}]/u', $raw) === 1) {
+            return $raw;
+        }
+
+        return 'انتقال فایل به هاست دانلود ناموفق بود: '.$raw;
     }
 
   /**
@@ -118,7 +145,7 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         if ($stream === false) {
             $media->update([
                 'status' => FamilyMediaStatus::Failed,
-                'failure_reason' => 'Unable to read temporary file',
+                'failure_reason' => 'خواندن فایل موقت روی سرور ممکن نبود. دوباره آپلود کنید.',
             ]);
 
             return;
@@ -206,9 +233,13 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
             } catch (\Throwable) {
             }
 
-            $media->update([
-                'status' => FamilyMediaStatus::Failed,
-                'failure_reason' => $e->getMessage(),
+            // Keep status as transferring/queued while Laravel retries the job.
+            // Permanent Failed + Persian reason is written only in failed() after retries are exhausted,
+            // so a dead transfer does not keep occupying the media queue as a half-failed item.
+            Log::warning('Family media transfer attempt failed; will retry if attempts remain', [
+                'media_id' => $media->id,
+                'attempt' => $this->attempts(),
+                'error' => $e->getMessage(),
             ]);
 
             throw $e;

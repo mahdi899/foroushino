@@ -39,16 +39,26 @@ class CommentModerationController extends Controller
         $query = FamilyComment::query()
             ->whereNull('parent_id')
             ->with([
-                'user:id,name',
+                'user:id,name,is_admin',
                 'family:id,internal_name',
-                'post:id,type',
+                'post:id,type,published_at',
+                'post.blocks' => fn ($q) => $q->orderBy('position'),
+                // Include all reply statuses so pending member replies appear under the root.
                 'replies' => fn ($q) => $q
-                    ->where('status', FamilyCommentStatus::Approved->value)
                     ->with('user:id,name,is_admin')
                     ->orderBy('id'),
             ]);
 
-        $this->applyTabFilter($query, $tab);
+        // Root matches the tab, or has a reply that matches (e.g. pending reply under approved root).
+        $query->where(function (Builder $group) use ($tab) {
+            $group->where(function (Builder $self) use ($tab) {
+                $this->applyTabFilter($self, $tab);
+            })->orWhereHas('replies', function (Builder $replies) use ($tab) {
+                $this->applyTabFilter($replies, $tab);
+            });
+        });
+
+        $this->applySearchFilter($query, $request->query('search'));
 
         if ($request->filled('post_id')) {
             $query->where('post_id', (int) $request->query('post_id'));
@@ -78,28 +88,41 @@ class CommentModerationController extends Controller
         $tab = (string) $request->query('tab', 'pending');
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
 
-        $base = FamilyComment::query()->whereNull('parent_id');
-        $this->applyTabFilter($base, $tab);
+        $commentsTable = (new FamilyComment)->getTable();
+        $postsTable = (new \App\Models\FamilyPost)->getTable();
+
+        // Qualify comment columns: join with posts makes `status` / `is_important` ambiguous on MySQL.
+        $base = FamilyComment::query();
+        $this->applyTabFilter($base, $tab, $commentsTable);
+        $this->applySearchFilter($base, $request->query('search'));
 
         if ($request->filled('family_id')) {
-            $base->where('family_id', (int) $request->query('family_id'));
+            $base->where("{$commentsTable}.family_id", (int) $request->query('family_id'));
         }
 
         $pendingStatus = FamilyCommentStatus::Pending->value;
 
+        // matching_count = all comments matching the tab (roots + replies), same as feed
+        // approved_comments_count for the approved tab.
         $paginator = (clone $base)
+            ->join($postsTable, "{$postsTable}.id", '=', "{$commentsTable}.post_id")
             ->select([
-                'post_id',
-                'family_id',
-                DB::raw('COUNT(*) as matching_count'),
-                DB::raw('MAX(created_at) as latest_comment_at'),
-                DB::raw('MAX(id) as latest_comment_id'),
+                "{$commentsTable}.post_id",
+                "{$commentsTable}.family_id",
+                DB::raw("COUNT(*) as matching_count"),
+                DB::raw("MAX({$commentsTable}.created_at) as latest_comment_at"),
+                DB::raw("MAX({$commentsTable}.id) as latest_comment_id"),
+                DB::raw("MAX({$postsTable}.published_at) as post_published_at"),
                 DB::raw(
-                    'SUM(CASE WHEN status = '.DB::getPdo()->quote($pendingStatus).' THEN 1 ELSE 0 END) as pending_count'
+                    "SUM(CASE WHEN {$commentsTable}.status = ".DB::getPdo()->quote($pendingStatus).' THEN 1 ELSE 0 END) as pending_count'
+                ),
+                DB::raw(
+                    "SUM(CASE WHEN {$commentsTable}.seen_by_bahram_at IS NULL THEN 1 ELSE 0 END) as unread_in_tab"
                 ),
             ])
-            ->groupBy('post_id', 'family_id')
-            ->orderByDesc('latest_comment_at')
+            ->groupBy("{$commentsTable}.post_id", "{$commentsTable}.family_id")
+            ->orderByDesc('post_published_at')
+            ->orderByDesc("{$commentsTable}.post_id")
             ->paginate($perPage);
 
         $rows = collect($paginator->items());
@@ -123,35 +146,51 @@ class CommentModerationController extends Controller
             ->get(['id', 'body', 'created_at', 'status'])
             ->keyBy('id');
 
-        // Pending counts for groups when tab is not pending (matching_count only covers tab filter).
+        // Absolute pending / unread for the returned post×family rows (not limited to tab filter).
         $pendingByKey = [];
-        if ($tab !== 'pending' && $rows->isNotEmpty()) {
-            $pendingRows = FamilyComment::query()
-                ->select(['post_id', 'family_id', DB::raw('COUNT(*) as pending_count')])
-                ->where('status', $pendingStatus)
-                ->where(function (Builder $q) use ($rows) {
-                    foreach ($rows as $row) {
-                        $q->orWhere(function (Builder $inner) use ($row) {
-                            $inner->where('post_id', $row->post_id)->where('family_id', $row->family_id);
-                        });
-                    }
-                })
+        $unreadByKey = [];
+        if ($rows->isNotEmpty()) {
+            $pairFilter = function (Builder $q) use ($rows) {
+                foreach ($rows as $row) {
+                    $q->orWhere(function (Builder $inner) use ($row) {
+                        $inner->where('post_id', $row->post_id)->where('family_id', $row->family_id);
+                    });
+                }
+            };
+
+            if ($tab !== 'pending') {
+                $pendingRows = FamilyComment::query()
+                    ->select(['post_id', 'family_id', DB::raw('COUNT(*) as pending_count')])
+                    ->where('status', $pendingStatus)
+                    ->where($pairFilter)
+                    ->groupBy('post_id', 'family_id')
+                    ->get();
+
+                foreach ($pendingRows as $pendingRow) {
+                    $pendingByKey[$pendingRow->post_id.':'.$pendingRow->family_id] = (int) $pendingRow->pending_count;
+                }
+            }
+
+            $unreadRows = FamilyComment::query()
+                ->select(['post_id', 'family_id', DB::raw('COUNT(*) as unread_count')])
+                ->whereNull('seen_by_bahram_at')
+                ->where($pairFilter)
                 ->groupBy('post_id', 'family_id')
                 ->get();
 
-            foreach ($pendingRows as $pendingRow) {
-                $pendingByKey[$pendingRow->post_id.':'.$pendingRow->family_id] = (int) $pendingRow->pending_count;
+            foreach ($unreadRows as $unreadRow) {
+                $unreadByKey[$unreadRow->post_id.':'.$unreadRow->family_id] = (int) $unreadRow->unread_count;
             }
         }
 
-        $items = $rows->map(function ($row) use ($posts, $families, $latestComments, $tab, $pendingByKey) {
+        $items = $rows->map(function ($row) use ($posts, $families, $latestComments, $tab, $pendingByKey, $unreadByKey) {
             $post = $posts->get($row->post_id);
             $family = $families->get($row->family_id);
             $latest = $latestComments->get($row->latest_comment_id);
             $key = $row->post_id.':'.$row->family_id;
 
             $pendingCount = $tab === 'pending'
-                ? (int) $row->matching_count
+                ? (int) ($row->pending_count ?? 0)
                 : (int) ($pendingByKey[$key] ?? $row->pending_count ?? 0);
 
             return [
@@ -160,9 +199,13 @@ class CommentModerationController extends Controller
                 'family_internal_name' => $family?->internal_name,
                 'post_type' => $post?->type?->value ?? $post?->type,
                 'post_preview' => $this->postPreview($post),
-                'published_at' => $post?->published_at?->toIso8601String(),
+                'published_at' => $post?->published_at?->toIso8601String()
+                    ?? ($row->post_published_at
+                        ? \Illuminate\Support\Carbon::parse($row->post_published_at)->toIso8601String()
+                        : null),
                 'matching_count' => (int) $row->matching_count,
                 'pending_count' => $pendingCount,
+                'unread_count' => (int) ($unreadByKey[$key] ?? $row->unread_in_tab ?? 0),
                 'latest_comment_at' => $row->latest_comment_at
                     ? \Illuminate\Support\Carbon::parse($row->latest_comment_at)->toIso8601String()
                     : null,
@@ -319,16 +362,43 @@ class CommentModerationController extends Controller
         return ApiResponse::success(\App\Support\FamilyManagerPostPresenter::present($published), 201);
     }
 
-    private function applyTabFilter(Builder $query, string $tab): void
+    private function applyTabFilter(Builder $query, string $tab, ?string $table = null): void
     {
+        $col = fn (string $name) => $table ? "{$table}.{$name}" : $name;
+
         match ($tab) {
-            'approved' => $query->where('status', FamilyCommentStatus::Approved->value),
-            'rejected' => $query->where('status', FamilyCommentStatus::Rejected->value),
-            'important' => $query->where('is_important', true),
-            'unread' => $query->whereNull('seen_by_bahram_at'),
-            'coaching_questions' => $query->whereJsonContains('ai_signals', 'coaching_question'),
-            default => $query->where('status', FamilyCommentStatus::Pending->value),
+            'approved' => $query->where($col('status'), FamilyCommentStatus::Approved->value),
+            'rejected' => $query->where($col('status'), FamilyCommentStatus::Rejected->value),
+            'important' => $query->where($col('is_important'), true),
+            'unread' => $query->whereNull($col('seen_by_bahram_at')),
+            'coaching_questions' => $query->whereJsonContains($col('ai_signals'), 'coaching_question'),
+            default => $query->where($col('status'), FamilyCommentStatus::Pending->value),
         };
+    }
+
+    /** Filter by comment body or author display name (roots or nested replies). */
+    private function applySearchFilter(Builder $query, mixed $search): void
+    {
+        $term = trim((string) $search);
+        if ($term === '') {
+            return;
+        }
+
+        $like = '%'.addcslashes($term, '%_\\').'%';
+        $commentsTable = $query->getModel()->getTable();
+
+        $query->where(function (Builder $inner) use ($like, $commentsTable) {
+            $inner->where("{$commentsTable}.body", 'like', $like)
+                ->orWhereHas('user', function (Builder $userQuery) use ($like) {
+                    $userQuery->where('name', 'like', $like);
+                })
+                ->orWhereHas('replies', function (Builder $replies) use ($like) {
+                    $replies->where('body', 'like', $like)
+                        ->orWhereHas('user', function (Builder $userQuery) use ($like) {
+                            $userQuery->where('name', 'like', $like);
+                        });
+                });
+        });
     }
 
     private function postPreview(?\App\Models\FamilyPost $post): ?string
@@ -337,7 +407,9 @@ class CommentModerationController extends Controller
             return null;
         }
 
-        $textBlock = $post->blocks->first(
+        $blocks = $post->relationLoaded('blocks') ? $post->blocks : collect();
+
+        $textBlock = $blocks->first(
             fn ($block) => ($block->type === FamilyPostBlockType::Text || ($block->type?->value ?? $block->type) === 'text')
                 && filled($block->text_content)
         );
@@ -346,7 +418,25 @@ class CommentModerationController extends Controller
             return mb_substr(trim((string) $textBlock->text_content), 0, 160);
         }
 
-        return null;
+        $first = $blocks->first();
+        $blockType = $first?->type?->value ?? $first?->type;
+        $postType = $post->type instanceof FamilyPostType ? $post->type : FamilyPostType::tryFrom((string) $post->type);
+
+        return match ($blockType) {
+            'audio' => 'پیام صوتی',
+            'video' => $postType === FamilyPostType::VideoNote ? 'پیام ویدیویی دایره‌ای' : 'ویدیو',
+            'image' => 'تصویر',
+            'article_reference' => 'اشاره به مقاله',
+            default => match ($postType) {
+                FamilyPostType::Voice => 'پیام صوتی',
+                FamilyPostType::Video => 'ویدیو',
+                FamilyPostType::VideoNote => 'پیام ویدیویی دایره‌ای',
+                FamilyPostType::Image, FamilyPostType::ImageAlbum => 'تصویر',
+                FamilyPostType::Article => 'مقاله',
+                FamilyPostType::Reply => 'پاسخ بهرام',
+                default => null,
+            },
+        };
     }
 
     /** @return array<string, mixed> */
@@ -375,6 +465,13 @@ class CommentModerationController extends Controller
             ],
             'post_id' => $comment->post_id,
             'family_id' => $comment->family_id,
+            'post_type' => $comment->relationLoaded('post')
+                ? ($comment->post?->type?->value ?? $comment->post?->type)
+                : null,
+            'post_preview' => $comment->relationLoaded('post') ? $this->postPreview($comment->post) : null,
+            'published_at' => $comment->relationLoaded('post')
+                ? $comment->post?->published_at?->toIso8601String()
+                : null,
             'ai' => [
                 'risk_score' => $comment->ai_risk_score !== null ? (float) $comment->ai_risk_score : null,
                 'sentiment' => $comment->ai_sentiment,
@@ -390,7 +487,7 @@ class CommentModerationController extends Controller
                         $reply->id,
                     ])
                     ->values()
-                    ->map(function (FamilyComment $reply) use ($branding) {
+                    ->map(function (FamilyComment $reply) use ($branding, $comment) {
                         $isBahram = (bool) ($reply->user?->is_admin);
 
                         return [
@@ -398,10 +495,25 @@ class CommentModerationController extends Controller
                             'body' => $reply->body,
                             'status' => $reply->status?->value ?? $reply->status,
                             'created_at' => $reply->created_at?->toIso8601String(),
+                            'is_important' => (bool) $reply->is_important,
+                            'in_pulse' => $reply->family_pulse_at !== null,
+                            'seen_by_bahram' => $reply->seen_by_bahram_at !== null,
+                            'parent_id' => $reply->parent_id,
                             'is_bahram_reply' => $isBahram,
+                            'post_id' => $reply->post_id ?? $comment->post_id,
+                            'family_id' => $reply->family_id ?? $comment->family_id,
                             'user' => [
                                 'name' => $isBahram ? $branding['profile_name'] : $reply->user?->name,
                             ],
+                            'ai' => [
+                                'risk_score' => $reply->ai_risk_score !== null ? (float) $reply->ai_risk_score : null,
+                                'sentiment' => $reply->ai_sentiment,
+                                'topic' => $reply->ai_topic,
+                                'signals' => $reply->ai_signals,
+                            ],
+                            'rejection_reason' => $reply->rejection_reason?->value,
+                            'rejection_note' => $reply->rejection_note,
+                            'replies' => [],
                         ];
                     })->all()
                 : [],

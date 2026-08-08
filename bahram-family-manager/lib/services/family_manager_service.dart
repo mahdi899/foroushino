@@ -7,9 +7,9 @@ import 'package:bahram_family_manager/core/utils/read_file_chunk.dart';
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/core/api/api_exception.dart';
+import 'package:bahram_family_manager/core/utils/media_failure_messages.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/models/upload_progress.dart';
-import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 
 /// All calls under `/api/v1/family-manager/*` — the Bahram + authorized-admin
 /// surface. Every route is additionally guarded server-side by the
@@ -221,18 +221,26 @@ class FamilyManagerService {
   Future<PaginatedResult<CommentThreadModel>> listCommentThreads({
     String tab = 'pending',
     int? familyId,
+    String? search,
     int page = 1,
   }) async {
+    final trimmedSearch = search?.trim();
     try {
       final res = await api.get('$_base/comments/threads', query: {
         'tab': tab,
         'page': page,
         if (familyId != null) 'family_id': familyId,
+        if (trimmedSearch != null && trimmedSearch.isNotEmpty) 'search': trimmedSearch,
       });
       return PaginatedResult.fromEnvelope(res, CommentThreadModel.fromJson);
     } on ApiException catch (e) {
       if (!_shouldFallbackCommentThreads(e)) rethrow;
-      return _commentThreadsFromComments(tab: tab, familyId: familyId, page: page);
+      return _commentThreadsFromComments(
+        tab: tab,
+        familyId: familyId,
+        search: trimmedSearch,
+        page: page,
+      );
     }
   }
 
@@ -240,18 +248,22 @@ class FamilyManagerService {
   /// client-side so the hub still loads before deploy catches up.
   bool _shouldFallbackCommentThreads(ApiException e) {
     final status = e.statusCode;
-    if (status == 404 || status == 405 || status == 501) return true;
-    if (status != null && status >= 500) return true;
-    // Connection / timeout — threads may be missing or timing out on the server.
-    return status == null && e.code == null;
+    // Only treat "endpoint missing" as legacy — never hide real 5xx SQL errors.
+    return status == 404 || status == 405 || status == 501;
   }
 
   Future<PaginatedResult<CommentThreadModel>> _commentThreadsFromComments({
     required String tab,
     int? familyId,
+    String? search,
     required int page,
   }) async {
-    final commentsResult = await listComments(tab: tab, familyId: familyId, page: page);
+    final commentsResult = await listComments(
+      tab: tab,
+      familyId: familyId,
+      search: search,
+      page: page,
+    );
     final accumulators = <String, _CommentThreadAccumulator>{};
 
     for (final comment in commentsResult.items) {
@@ -263,12 +275,19 @@ class FamilyManagerService {
           postId: comment.postId,
           familyId: familyIdValue,
           familyInternalName: comment.familyInternalName,
+          postType: comment.postType,
+          postPreview: comment.postPreview,
+          publishedAt: comment.publishedAt,
         ),
       ).add(comment, tab);
     }
 
     final items = accumulators.values.map((a) => a.toModel()).toList()
-      ..sort((a, b) => (b.latestCommentAt ?? '').compareTo(a.latestCommentAt ?? ''));
+      ..sort((a, b) {
+        final byPublished = (b.publishedAt ?? '').compareTo(a.publishedAt ?? '');
+        if (byPublished != 0) return byPublished;
+        return b.postId.compareTo(a.postId);
+      });
 
     return PaginatedResult(
       items: items,
@@ -282,13 +301,16 @@ class FamilyManagerService {
     String tab = 'pending',
     int? postId,
     int? familyId,
+    String? search,
     int page = 1,
   }) async {
+    final trimmedSearch = search?.trim();
     final res = await api.get('$_base/comments', query: {
       'tab': tab,
       'page': page,
       if (postId != null) 'post_id': postId,
       if (familyId != null) 'family_id': familyId,
+      if (trimmedSearch != null && trimmedSearch.isNotEmpty) 'search': trimmedSearch,
     });
     return PaginatedResult.fromEnvelope(res, FamilyCommentModel.fromJson);
   }
@@ -499,6 +521,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     final hasBytes = bytes != null && bytes.isNotEmpty;
     final hasPath = path != null && path.isNotEmpty;
@@ -522,6 +545,7 @@ class FamilyManagerService {
         optimizeImages: optimizeImages,
         onProgress: onProgress,
         onUploadState: onUploadState,
+        cancelToken: cancelToken,
       );
     }
 
@@ -534,6 +558,7 @@ class FamilyManagerService {
         optimizeImages: optimizeImages,
         onProgress: onProgress,
         onUploadState: onUploadState,
+        cancelToken: cancelToken,
       );
     }
 
@@ -551,6 +576,7 @@ class FamilyManagerService {
       optimizeImages: optimizeImages,
       onProgress: onProgress,
       onUploadState: onUploadState,
+      cancelToken: cancelToken,
     );
   }
 
@@ -597,6 +623,8 @@ class FamilyManagerService {
         phase: MediaUploadPhase.processing,
         sentBytes: totalBytes,
         totalBytes: totalBytes,
+        hostStatus: media.status,
+        pollAttempt: 1,
       ));
     }
   }
@@ -608,13 +636,18 @@ class FamilyManagerService {
     required int totalBytes,
     MediaUploadStateCallback? onUploadState,
     void Function(double progress)? onProgress,
+    CancelToken? cancelToken,
   }) async {
     Object? lastError;
     for (var attempt = 0; attempt < _chunkRetryAttempts; attempt++) {
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiException.fromDio(cancelToken!.cancelError!);
+      }
       try {
         await api.postForm(
           path,
           form,
+          cancelToken: cancelToken,
           onSendProgress: (sent, total) {
             if (total <= 0) return;
             final overallSent = baseBytes + sent;
@@ -630,13 +663,19 @@ class FamilyManagerService {
         return;
       } catch (e) {
         lastError = e;
+        if (e is DioException && CancelToken.isCancel(e)) rethrow;
+        if (e is ApiException && e.code == 'cancelled') rethrow;
         if (attempt < _chunkRetryAttempts - 1) {
           await Future<void>.delayed(_chunkRetryDelay);
         }
       }
     }
     throw lastError ??
-        ApiException(message: 'آپلود تکه‌ای ناموفق بود.', code: 'chunk_upload_failed');
+        ApiException(
+          message:
+              'آپلود تکه‌ای پس از چند تلاش ناموفق بود. اینترنت یا VPN را بررسی کنید؛ اگر حجم فایل بالاست اتصال پایدارتری لازم است.',
+          code: 'chunk_upload_failed',
+        );
   }
 
   Future<FamilyMediaRef> _uploadSimple(
@@ -646,6 +685,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     final totalBytes = bytes.length;
     _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0, totalBytes);
@@ -659,6 +699,7 @@ class FamilyManagerService {
     final res = await api.postForm(
       '$_base/media',
       form,
+      cancelToken: cancelToken,
       onSendProgress: (sent, total) {
         if (total > 0) {
           _reportUploadState(
@@ -683,6 +724,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     return _uploadChunkedSession(
       filename: filename,
@@ -691,6 +733,7 @@ class FamilyManagerService {
       optimizeImages: optimizeImages,
       onProgress: onProgress,
       onUploadState: onUploadState,
+      cancelToken: cancelToken,
       readChunk: (start, length) async {
         final end = start + length;
         return bytes.sublist(start, end > bytes.length ? bytes.length : end);
@@ -706,6 +749,7 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     return _uploadChunkedSession(
       filename: filename,
@@ -714,6 +758,7 @@ class FamilyManagerService {
       optimizeImages: optimizeImages,
       onProgress: onProgress,
       onUploadState: onUploadState,
+      cancelToken: cancelToken,
       readChunk: (start, length) => readFileChunk(path, start, length),
     );
   }
@@ -726,16 +771,21 @@ class FamilyManagerService {
     bool? optimizeImages,
     void Function(double progress)? onProgress,
     MediaUploadStateCallback? onUploadState,
+    CancelToken? cancelToken,
   }) async {
     _reportUploadState(onUploadState, onProgress, MediaUploadPhase.uploading, 0, totalSize);
 
-    final sessionRes = await api.post('$_base/media/sessions', data: {
-      'type': type,
-      'filename': filename,
-      'total_size': totalSize,
-      'chunk_size': _chunkSizeBytes,
-      if (optimizeImages != null) 'optimize_images': optimizeImages ? 1 : 0,
-    });
+    final sessionRes = await api.post(
+      '$_base/media/sessions',
+      cancelToken: cancelToken,
+      data: {
+        'type': type,
+        'filename': filename,
+        'total_size': totalSize,
+        'chunk_size': _chunkSizeBytes,
+        if (optimizeImages != null) 'optimize_images': optimizeImages ? 1 : 0,
+      },
+    );
     final session = (sessionRes['data'] as Map).cast<String, dynamic>();
     final ulid = session['ulid'] as String;
     final totalChunks = (session['total_chunks'] as num).toInt();
@@ -756,24 +806,47 @@ class FamilyManagerService {
         totalBytes: totalSize,
         onUploadState: onUploadState,
         onProgress: onProgress,
+        cancelToken: cancelToken,
       );
     }
 
     _reportUploadState(onUploadState, onProgress, MediaUploadPhase.finalizing, totalSize, totalSize);
-    final completeRes = await api.post('$_base/media/sessions/$ulid/complete');
+    final completeRes = await api.post('$_base/media/sessions/$ulid/complete', cancelToken: cancelToken);
     final media = FamilyMediaRef.fromJson((completeRes['data'] as Map).cast<String, dynamic>());
     _reportMediaPipelineState(media, onUploadState, totalSize);
     return media;
   }
 
-  Future<FamilyMediaRef> showMedia(int id) async {
-    final res = await api.get('$_base/media/$id');
+  Future<FamilyMediaRef> showMedia(int id, {CancelToken? cancelToken}) async {
+    final res = await api.get('$_base/media/$id', cancelToken: cancelToken);
     return FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
   static Duration readyTimeoutFor(String? type) {
-    if (type == 'video') return const Duration(minutes: 10);
+    if (type == 'video' || type == 'video_note') return const Duration(minutes: 10);
     return const Duration(minutes: 3);
+  }
+
+  static const _hostPrepTransientRetries = 4;
+  static const _hostPrepPollSlice = Duration(milliseconds: 200);
+
+  /// Interruptible delay so cancel during host-prep polling wakes promptly.
+  Future<void> _delayCancellable(Duration duration, CancelToken? cancelToken) async {
+    var remaining = duration;
+    while (remaining > Duration.zero) {
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiException.fromDio(cancelToken!.cancelError!);
+      }
+      final slice = remaining < _hostPrepPollSlice ? remaining : _hostPrepPollSlice;
+      await Future<void>.delayed(slice);
+      remaining -= slice;
+    }
+  }
+
+  void _throwIfCancelled(CancelToken? cancelToken) {
+    if (cancelToken?.isCancelled ?? false) {
+      throw ApiException.fromDio(cancelToken!.cancelError!);
+    }
   }
 
   /// Poll until backend pipeline marks media `ready` (optimize → storage → CDN/local).
@@ -785,12 +858,52 @@ class FamilyManagerService {
     MediaUploadStateCallback? onUploadState,
     int totalBytes = 0,
     String? type,
+    CancelToken? cancelToken,
   }) async {
     Duration effectiveTimeout = timeout ?? readyTimeoutFor(type);
     final started = DateTime.now();
     var deadline = started.add(effectiveTimeout);
+    var pollAttempt = 0;
+    var consecutiveNetworkFailures = 0;
+
     while (DateTime.now().isBefore(deadline)) {
-      final media = await showMedia(id);
+      _throwIfCancelled(cancelToken);
+      pollAttempt++;
+
+      FamilyMediaRef media;
+      try {
+        media = await showMedia(id, cancelToken: cancelToken);
+        consecutiveNetworkFailures = 0;
+      } catch (e) {
+        if (e is DioException && CancelToken.isCancel(e)) rethrow;
+        if (e is ApiException && e.code == 'cancelled') rethrow;
+        if (MediaFailureMessages.looksLikeNetworkFailure(e) &&
+            consecutiveNetworkFailures < _hostPrepTransientRetries) {
+          consecutiveNetworkFailures++;
+          onUploadState?.call(UploadProgress(
+            phase: MediaUploadPhase.processing,
+            sentBytes: totalBytes,
+            totalBytes: totalBytes,
+            pollAttempt: consecutiveNetworkFailures,
+            statusDetail: MediaFailureMessages.hostPrepReconnect(consecutiveNetworkFailures),
+          ));
+          await _delayCancellable(interval, cancelToken);
+          continue;
+        }
+        onUploadState?.call(UploadProgress(
+          phase: MediaUploadPhase.failed,
+          sentBytes: 0,
+          totalBytes: totalBytes,
+        ));
+        if (MediaFailureMessages.looksLikeNetworkFailure(e)) {
+          throw ApiException(
+            message: MediaFailureMessages.hostPrepConnectionFailed(),
+            code: e is ApiException ? (e.code ?? 'host_prep_connection') : 'host_prep_connection',
+          );
+        }
+        rethrow;
+      }
+
       onUpdate?.call(media);
       if (timeout == null && type == null && media.type.isNotEmpty) {
         effectiveTimeout = readyTimeoutFor(media.type);
@@ -812,7 +925,7 @@ class FamilyManagerService {
           totalBytes: bytes,
         ));
         throw ApiException(
-          message: media.failureReason ?? 'پردازش رسانه ناموفق بود.',
+          message: MediaFailureMessages.pipeline(media.failureReason),
           code: 'media_failed',
         );
       }
@@ -820,8 +933,10 @@ class FamilyManagerService {
         phase: MediaUploadPhase.processing,
         sentBytes: bytes,
         totalBytes: bytes,
+        hostStatus: media.status,
+        pollAttempt: pollAttempt,
       ));
-      await Future<void>.delayed(interval);
+      await _delayCancellable(interval, cancelToken);
     }
     onUploadState?.call(UploadProgress(
       phase: MediaUploadPhase.failed,
@@ -829,7 +944,7 @@ class FamilyManagerService {
       totalBytes: totalBytes,
     ));
     throw ApiException(
-      message: 'فایل روی هاست هنوز آماده نیست. چند لحظه صبر کنید و دوباره تلاش کنید.',
+      message: MediaFailureMessages.timeoutWaitingReady(),
       code: 'media_timeout',
     );
   }
@@ -898,20 +1013,49 @@ class _CommentThreadAccumulator {
     required this.postId,
     required this.familyId,
     this.familyInternalName,
+    this.postType,
+    this.postPreview,
+    this.publishedAt,
   });
 
   final int postId;
   final int familyId;
   final String? familyInternalName;
+  String? postType;
+  String? postPreview;
+  String? publishedAt;
 
   var matchingCount = 0;
   var pendingCount = 0;
+  var unreadCount = 0;
   String? latestCommentAt;
   String? latestCommentPreview;
 
   void add(FamilyCommentModel comment, String tab) {
-    matchingCount++;
+    // Count every comment that matches the tab (root + nested replies), same as
+    // hub matching_count / feed approved_comments_count.
+    if (_matchesTab(comment, tab)) matchingCount++;
     if (comment.status == 'pending') pendingCount++;
+    if (!comment.seenByBahram) unreadCount++;
+    for (final reply in comment.replies) {
+      if (_matchesTab(reply, tab)) matchingCount++;
+      if (reply.status == 'pending') pendingCount++;
+      if (!reply.seenByBahram) unreadCount++;
+      final replyCreatedAt = reply.createdAt;
+      if (replyCreatedAt != null &&
+          (latestCommentAt == null || replyCreatedAt.compareTo(latestCommentAt!) > 0)) {
+        latestCommentAt = replyCreatedAt;
+        latestCommentPreview = reply.body;
+      }
+    }
+
+    postType ??= comment.postType;
+    if ((postPreview == null || postPreview!.trim().isEmpty) &&
+        comment.postPreview != null &&
+        comment.postPreview!.trim().isNotEmpty) {
+      postPreview = comment.postPreview;
+    }
+    publishedAt ??= comment.publishedAt;
 
     final createdAt = comment.createdAt;
     if (createdAt != null &&
@@ -921,12 +1065,33 @@ class _CommentThreadAccumulator {
     }
   }
 
+  static bool _matchesTab(FamilyCommentModel comment, String tab) {
+    switch (tab) {
+      case 'approved':
+        return comment.status == 'approved';
+      case 'rejected':
+        return comment.status == 'rejected';
+      case 'important':
+        return comment.isImportant;
+      case 'unread':
+        return !comment.seenByBahram;
+      case 'coaching_questions':
+        return comment.signals.contains('coaching_question');
+      default:
+        return comment.status == 'pending';
+    }
+  }
+
   CommentThreadModel toModel() => CommentThreadModel(
         postId: postId,
         familyId: familyId,
         familyInternalName: familyInternalName,
+        postType: postType,
+        postPreview: postPreview,
+        publishedAt: publishedAt,
         matchingCount: matchingCount,
         pendingCount: pendingCount,
+        unreadCount: unreadCount,
         latestCommentAt: latestCommentAt,
         latestCommentPreview: latestCommentPreview,
       );

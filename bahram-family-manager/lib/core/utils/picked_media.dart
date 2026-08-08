@@ -78,7 +78,7 @@ Future<ResolvePickedMediaResult> resolvePlatformFile(
   if (path != null && path.isNotEmpty) {
     // Video: only preload small files; large ones stream from path in chunks.
     // Image/voice: preload whenever under the type limit (upload needs bytes).
-    final preloadLimit = mediaType == 'video'
+    final preloadLimit = (mediaType == 'video' || mediaType == 'video_note')
         ? FamilyManagerService.chunkThresholdBytes
         : MediaSizeGuard.maxBytesFor(mediaType);
     if (size > 0 && size <= preloadLimit) {

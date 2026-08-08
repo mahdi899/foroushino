@@ -31,16 +31,17 @@ class FamilyReactionAndCommentTest extends TestCase
         return $user;
     }
 
-    private function publishedPost(): FamilyPost
+    /** @param  array<string, mixed>  $overrides */
+    private function publishedPost(array $overrides = []): FamilyPost
     {
-        return FamilyPost::create([
+        return FamilyPost::create(array_merge([
             'author_id' => User::factory()->create()->id,
             'type' => 'text',
             'status' => FamilyPostStatus::Published,
             'audience_mode' => 'all',
             'comments_enabled' => true,
             'published_at' => now(),
-        ]);
+        ], $overrides));
     }
 
     private function managerAdmin(): User
@@ -107,6 +108,78 @@ class FamilyReactionAndCommentTest extends TestCase
         $this->assertDatabaseHas('family_post_stats', ['post_id' => $post->id, 'approved_comments_count' => 1]);
     }
 
+    public function test_member_cannot_comment_or_reply_when_comments_disabled(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $closedPost = $this->publishedPost(['comments_enabled' => false]);
+        $familyId = (int) $user->familyMembership()->value('family_id');
+
+        $existing = \App\Models\FamilyComment::query()->create([
+            'post_id' => $closedPost->id,
+            'family_id' => $familyId,
+            'user_id' => $user->id,
+            'body' => 'نظر قبلی قبل از بستن',
+            'status' => FamilyCommentStatus::Approved,
+            'approved_at' => now(),
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$closedPost->id}/comments", ['body' => 'نظر جدید نباید ثبت شود'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'comments_closed')
+            ->assertJsonPath('error.message_fa', 'نظرات این پست بسته شده است.');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$closedPost->id}/comments", [
+                'body' => 'پاسخ جدید هم نباید ثبت شود',
+                'parent_id' => $existing->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'comments_closed')
+            ->assertJsonPath('error.message_fa', 'نظرات این پست بسته شده است.');
+
+        $this->assertDatabaseMissing('family_comments', [
+            'post_id' => $closedPost->id,
+            'body' => 'نظر جدید نباید ثبت شود',
+        ]);
+        $this->assertDatabaseMissing('family_comments', [
+            'post_id' => $closedPost->id,
+            'body' => 'پاسخ جدید هم نباید ثبت شود',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/family/posts/{$closedPost->id}/comments")
+            ->assertOk()
+            ->assertJsonPath('data.0.body', 'نظر قبلی قبل از بستن');
+    }
+
+    public function test_manager_can_toggle_comments_enabled_on_published_post(): void
+    {
+        $admin = $this->managerAdmin();
+        $post = $this->publishedPost(['comments_enabled' => true]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/family-manager/posts/{$post->id}", [
+                'comments_enabled' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.comments_enabled', false);
+
+        $this->assertDatabaseHas('family_posts', [
+            'id' => $post->id,
+            'comments_enabled' => false,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/family-manager/posts/{$post->id}", [
+                'comments_enabled' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.comments_enabled', true);
+    }
+
     public function test_manager_approve_is_idempotent_for_already_approved_comment(): void
     {
         Queue::fake();
@@ -150,11 +223,102 @@ class FamilyReactionAndCommentTest extends TestCase
                         'post_id',
                         'family_id',
                         'family_internal_name',
+                        'post_type',
+                        'post_preview',
                         'matching_count',
                         'pending_count',
+                        'unread_count',
+                        'published_at',
                     ],
                 ],
             ]);
+    }
+
+    public function test_manager_comment_threads_count_includes_replies(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $parent = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'نظر اصلی'])
+            ->assertCreated()
+            ->json('data');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", [
+                'body' => 'پاسخ عضو',
+                'parent_id' => $parent['id'],
+            ])
+            ->assertCreated();
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.post_id', $post->id)
+            // Root + reply — parity with feed approved_comments_count.
+            ->assertJsonPath('data.0.matching_count', 2);
+
+        $this->assertDatabaseHas('family_post_stats', [
+            'post_id' => $post->id,
+            'approved_comments_count' => 2,
+        ]);
+    }
+
+    public function test_manager_comment_threads_order_by_post_published_at(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $older = $this->publishedPost(['published_at' => now()->subDays(2)]);
+        $newer = $this->publishedPost(['published_at' => now()->subHour()]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$older->id}/comments", ['body' => 'نظر پست قدیمی'])
+            ->assertCreated();
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$newer->id}/comments", ['body' => 'نظر پست جدید'])
+            ->assertCreated();
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.post_id', $newer->id)
+            ->assertJsonPath('data.1.post_id', $older->id);
+    }
+
+    public function test_manager_comment_threads_include_unread_count_and_mark_seen(): void
+    {
+        Queue::fake();
+
+        $user = $this->joinedUser();
+        $post = $this->publishedPost();
+
+        $comment = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'نظر خوانده‌نشده'])
+            ->assertCreated()
+            ->json('data');
+
+        $admin = $this->managerAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.unread_count', 1);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/family-manager/comments/{$comment['id']}/seen")
+            ->assertOk();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/family-manager/comments/threads?tab=approved')
+            ->assertOk()
+            ->assertJsonPath('data.0.unread_count', 0);
     }
 
     public function test_manager_can_filter_comments_by_post_and_family(): void
@@ -324,7 +488,7 @@ class FamilyReactionAndCommentTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_member_cannot_post_phone_number_in_comment(): void
+    public function test_member_phone_or_link_comment_stays_pending_for_review(): void
     {
         Queue::fake();
 
@@ -333,9 +497,24 @@ class FamilyReactionAndCommentTest extends TestCase
 
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'تماس بگیرید 09123456789'])
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'validation_error')
-            ->assertJsonPath('error.details.body.0', 'لطفاً شماره تلفن در نظر قرار ندهید. فقط ادمین می‌تواند شماره منتشر کند.');
+            ->assertCreated()
+            ->assertJsonPath('data.status', FamilyCommentStatus::Pending->value);
+
+        $this->assertDatabaseHas('family_comments', [
+            'post_id' => $post->id,
+            'user_id' => $user->id,
+            'status' => FamilyCommentStatus::Pending->value,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'ببین https://example.com/scam'])
+            ->assertCreated()
+            ->assertJsonPath('data.status', FamilyCommentStatus::Pending->value);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'این کلاهبرداره'])
+            ->assertCreated()
+            ->assertJsonPath('data.status', FamilyCommentStatus::Pending->value);
     }
 
     public function test_admin_can_post_phone_number_in_comment(): void

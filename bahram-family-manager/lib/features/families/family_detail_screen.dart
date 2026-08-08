@@ -67,6 +67,7 @@ class FamilyDetailBody extends StatefulWidget {
 class _FamilyDetailBodyState extends State<FamilyDetailBody> {
   FamilyDetailModel? _family;
   var _loading = true;
+  var _deleting = false;
   String? _error;
 
   @override
@@ -129,6 +130,8 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
   }
 
   Future<void> _delete(FamilyDetailModel family) async {
+    if (_deleting) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -149,10 +152,12 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
+    final manager = context.read<AppState>().manager;
+    setState(() => _deleting = true);
     try {
-      await context.read<AppState>().manager.deleteFamily(family.id);
+      await manager.deleteFamily(family.id);
       if (!mounted) return;
       FamilyDetailCache.invalidate(family.id);
       FamilyMembersCache.invalidate(family.id);
@@ -162,6 +167,8 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, e.message);
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
   }
 
@@ -200,6 +207,7 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
         family: family,
         canManage: canManage,
         canManageLinks: canManageLinks,
+        deleting: _deleting,
         onEdit: () => _edit(family),
         onDelete: () => _delete(family),
         onMembersChanged: () {
@@ -218,6 +226,7 @@ class _FamilyDetailTabs extends StatefulWidget {
     required this.family,
     required this.canManage,
     required this.canManageLinks,
+    required this.deleting,
     required this.onEdit,
     required this.onDelete,
     required this.onMembersChanged,
@@ -226,6 +235,7 @@ class _FamilyDetailTabs extends StatefulWidget {
   final FamilyDetailModel family;
   final bool canManage;
   final bool canManageLinks;
+  final bool deleting;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onMembersChanged;
@@ -308,6 +318,7 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
                         family: widget.family,
                         canManage: widget.canManage,
                         isDesktop: isDesktop,
+                        deleting: widget.deleting,
                         onEdit: widget.onEdit,
                         onDelete: widget.onDelete,
                         onOpenMembers: () => _tabController.animateTo(1),
@@ -396,6 +407,7 @@ class _FamilySummarySection extends StatelessWidget {
     required this.family,
     required this.canManage,
     required this.isDesktop,
+    required this.deleting,
     required this.onEdit,
     required this.onDelete,
     required this.onOpenMembers,
@@ -405,6 +417,7 @@ class _FamilySummarySection extends StatelessWidget {
   final FamilyDetailModel family;
   final bool canManage;
   final bool isDesktop;
+  final bool deleting;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onOpenMembers;
@@ -456,11 +469,24 @@ class _FamilySummarySection extends StatelessWidget {
               ),
             ),
             if (canManage) ...[
-              IconButton(tooltip: 'ویرایش', onPressed: onEdit, icon: const Icon(Icons.edit_rounded)),
+              IconButton(
+                tooltip: 'ویرایش',
+                onPressed: deleting ? null : onEdit,
+                icon: const Icon(Icons.edit_rounded),
+              ),
               IconButton(
                 tooltip: 'حذف',
-                onPressed: onDelete,
-                icon: Icon(Icons.delete_outline_rounded, color: family.memberCount > 0 ? AppColors.textMuted : AppColors.error),
+                onPressed: deleting ? null : onDelete,
+                icon: deleting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        Icons.delete_outline_rounded,
+                        color: family.memberCount > 0 ? AppColors.textMuted : AppColors.error,
+                      ),
               ),
             ],
           ],

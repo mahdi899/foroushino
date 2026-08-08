@@ -127,15 +127,16 @@ class _FamilyAdminsScreenState extends State<FamilyAdminsScreen> {
   }
 
   Future<void> _resetPassword(FamilyManagerAdmin admin) async {
-    final ctrl = TextEditingController();
+    // Draft kept locally so we never dispose a TextEditingController while the
+    // dialog route is still animating closed (showDialog completes before dispose).
+    var draft = '';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('ریست رمز'),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'رمز جدید (حداقل ۸ کاراکتر)'),
+        content: _PasswordResetField(
+          onChanged: (value) => draft = value,
+          onSubmitted: () => Navigator.pop(ctx, true),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('انصراف')),
@@ -143,16 +144,15 @@ class _FamilyAdminsScreenState extends State<FamilyAdminsScreen> {
         ],
       ),
     );
-    if (ok != true || ctrl.text.length < 8) return;
+    if (ok != true || draft.length < 8) return;
 
     setState(() => _busy = true);
     try {
-      await context.read<AppState>().manager.resetFamilyAdminPassword(admin.id, ctrl.text);
+      await context.read<AppState>().manager.resetFamilyAdminPassword(admin.id, draft);
       if (mounted) showAppSnackBar(context, 'رمز عبور به‌روز شد.');
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
-      ctrl.dispose();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -310,6 +310,53 @@ class _FamilyAdminsScreenState extends State<FamilyAdminsScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Owns [TextEditingController] for the password-reset dialog so dispose runs
+/// only when the dialog route is removed after its close animation.
+class _PasswordResetField extends StatefulWidget {
+  const _PasswordResetField({
+    required this.onChanged,
+    required this.onSubmitted,
+  });
+
+  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmitted;
+
+  @override
+  State<_PasswordResetField> createState() => _PasswordResetFieldState();
+}
+
+class _PasswordResetFieldState extends State<_PasswordResetField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _controller.addListener(_emitChanged);
+  }
+
+  void _emitChanged() => widget.onChanged(_controller.text);
+
+  @override
+  void dispose() {
+    _controller.removeListener(_emitChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      obscureText: true,
+      autofocus: true,
+      textInputAction: TextInputAction.done,
+      decoration: const InputDecoration(labelText: 'رمز جدید (حداقل ۸ کاراکتر)'),
+      onSubmitted: (_) => widget.onSubmitted(),
     );
   }
 }

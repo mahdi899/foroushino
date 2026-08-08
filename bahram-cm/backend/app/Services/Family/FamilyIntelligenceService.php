@@ -4,9 +4,9 @@ namespace App\Services\Family;
 
 use App\Enums\Family\FamilyLifecycle;
 use App\Models\Family;
-use App\Models\FamilyComment;
 use App\Services\AIService;
 use App\Services\Exceptions\AiServiceException;
+use App\Support\FamilyCommentBodyGuard;
 use Illuminate\Support\Facades\Log;
 
 class FamilyIntelligenceService
@@ -16,35 +16,35 @@ class FamilyIntelligenceService
     ) {}
 
     /**
-     * @return array{risk_score?: float, sentiment?: string, topic?: string, signals?: list<string>}
+     * @return array{risk_score: float, sentiment: string, topic: string, signals: list<string>}
      */
     public function analyzeComment(string $body): array
     {
         if (! $this->ai->isConfigured()) {
-            return $this->heuristicCommentAnalysis($body);
+            return FamilyCommentBodyGuard::enrichAnalysis($body, $this->heuristicCommentAnalysis($body));
         }
 
         try {
             $raw = $this->ai->chat([
-                ['role' => 'system', 'content' => 'You are a Family Analyst for a Persian coaching community. Return ONLY compact JSON with keys: risk_score (0-1), sentiment (positive|neutral|negative), topic (short Persian), signals (array of: safe|spam|advertising|phone_number|sensitive|negative_emotion|coaching_question). Never invent facts.'],
+                ['role' => 'system', 'content' => 'You are a Family Analyst for a Persian coaching community (Bahram / sales-coaching). Return ONLY compact JSON with keys: risk_score (0-1), sentiment (positive|neutral|negative), topic (short Persian), signals (array of: safe|spam|advertising|phone_number|external_link|insult|abuse|scam|threat|hate|sexual|sensitive|negative_emotion|coaching_question). Rules: phone/URL/@handle → those signals, risk>=0.55. Scam/fraud/pyramid (کلاهبردار، هرمی، پانزی، شیاد) → scam|insult, risk>=0.65. Threats/hate/sexual/honor insults → threat|hate|sexual|abuse, risk>=0.85. Ads/competitor poaching → advertising|spam, risk>=0.5. Do NOT treat legitimate support complaints (refund, unhappy, weak support) as insults. Never invent facts.'],
                 ['role' => 'user', 'content' => $body],
             ], ['temperature' => 0.2]);
 
             $json = $this->extractJson($raw);
             if (! $json) {
-                return $this->heuristicCommentAnalysis($body);
+                return FamilyCommentBodyGuard::enrichAnalysis($body, $this->heuristicCommentAnalysis($body));
             }
 
-            return [
+            return FamilyCommentBodyGuard::enrichAnalysis($body, [
                 'risk_score' => (float) ($json['risk_score'] ?? 0),
                 'sentiment' => (string) ($json['sentiment'] ?? 'neutral'),
                 'topic' => (string) ($json['topic'] ?? ''),
                 'signals' => array_values((array) ($json['signals'] ?? ['safe'])),
-            ];
+            ]);
         } catch (AiServiceException|\Throwable $e) {
             Log::warning('FamilyIntelligenceService::analyzeComment failed', ['error' => $e->getMessage()]);
 
-            return $this->heuristicCommentAnalysis($body);
+            return FamilyCommentBodyGuard::enrichAnalysis($body, $this->heuristicCommentAnalysis($body));
         }
     }
 
@@ -124,6 +124,7 @@ class FamilyIntelligenceService
             'voice' => 'پست صوتی (متن راهنما برای ضبط وویس)',
             'image' => 'پست تصویری (کپشن کوتاه)',
             'video' => 'پست ویدیویی (متن راهنما)',
+            'video_note' => 'پیام ویدیویی دایره‌ای (کپشن کوتاه مثل تلگرام)',
             default => 'پست متنی',
         };
 
@@ -162,21 +163,16 @@ class FamilyIntelligenceService
     {
         $signals = ['safe'];
         $risk = 0.05;
+        $sentiment = 'neutral';
 
-        if (preg_match('/09\d{9}|\+98|@|تماس|واتس|تلگرام/u', $body)) {
-            $signals = ['phone_number', 'contact'];
-            $risk = 0.85;
-        } elseif (preg_match('/خرید|فروش|تبلیغ|تخفیف|لینک/u', $body)) {
-            $signals = ['advertising', 'spam'];
-            $risk = 0.7;
-        } elseif (preg_match('/چطور|چگونه|کمک|نمی‌تونم|نمیتونم|ترس|خسته/u', $body)) {
+        if (preg_match('/چطور|چگونه|کمک|نمی‌تونم|نمیتونم|ترس|خسته/u', $body)) {
             $signals = ['coaching_question', 'safe'];
             $risk = 0.1;
         }
 
         return [
             'risk_score' => $risk,
-            'sentiment' => 'neutral',
+            'sentiment' => $sentiment,
             'topic' => '',
             'signals' => $signals,
         ];

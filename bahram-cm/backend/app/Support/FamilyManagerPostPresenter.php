@@ -22,6 +22,7 @@ final class FamilyManagerPostPresenter
             'audience_mode' => $post->audience_mode?->value ?? $post->audience_mode,
             'audience_summary' => self::audienceSummary($post),
             'is_important' => (bool) $post->is_important,
+            'notify_members' => (bool) ($post->notify_members ?? false),
             'comments_enabled' => (bool) ($post->comments_enabled ?? false),
             'is_pinned' => (bool) $post->is_pinned,
             'pinned_at' => FamilyDateTime::toApi($post->pinned_at),
@@ -60,9 +61,7 @@ final class FamilyManagerPostPresenter
                 'family_id' => $target->family_id,
                 'family_name' => $target->family?->internal_name,
             ])->values()->all(),
-            'stats' => [
-                'views' => self::postViewCount($post),
-            ],
+            'stats' => self::presentStats($post),
         ];
     }
 
@@ -88,7 +87,70 @@ final class FamilyManagerPostPresenter
         };
     }
 
-    private static function postViewCount(FamilyPost $post): int
+    /**
+     * Aggregated engagement across all family_post_stats rows for this post.
+     * Reaction keys match the member feed (`FamilyStatsService::feedStats`).
+     *
+     * @return array{
+     *     views: int,
+     *     comments: int,
+     *     action_responses: int,
+     *     reactions: int,
+     *     fire: int,
+     *     heart: int,
+     *     target: int,
+     *     clap: int,
+     *     thumbs_up: int,
+     *     laugh: int,
+     *     sad: int,
+     *     party: int,
+     *     star: int,
+     *     rocket: int,
+     *     eyes: int,
+     *     pray: int,
+     *     muscle: int,
+     *     hundred: int,
+     *     wink: int
+     * }
+     */
+    private static function presentStats(FamilyPost $post): array
+    {
+        $reactionColumns = [
+            'fire' => 'fire_count',
+            'heart' => 'heart_count',
+            'target' => 'target_count',
+            'clap' => 'clap_count',
+            'thumbs_up' => 'thumbs_up_count',
+            'laugh' => 'laugh_count',
+            'sad' => 'sad_count',
+            'party' => 'party_count',
+            'star' => 'star_count',
+            'rocket' => 'rocket_count',
+            'eyes' => 'eyes_count',
+            'pray' => 'pray_count',
+            'muscle' => 'muscle_count',
+            'hundred' => 'hundred_count',
+            'wink' => 'wink_count',
+        ];
+
+        $stats = [
+            'views' => self::sumStatColumn($post, 'views_count'),
+            'comments' => self::sumStatColumn($post, 'approved_comments_count'),
+            'action_responses' => self::sumStatColumn($post, 'action_responses_count'),
+        ];
+
+        $reactionsTotal = 0;
+        foreach ($reactionColumns as $key => $column) {
+            $count = self::sumStatColumn($post, $column);
+            $stats[$key] = $count;
+            $reactionsTotal += $count;
+        }
+        $stats['reactions'] = $reactionsTotal;
+
+        return $stats;
+    }
+
+    private static function sumStatColumn(FamilyPost $post, string $column): int
     {
         if ($post->relationLoaded('stats')) {
             $stats = $post->getRelation('stats');
@@ -98,13 +160,13 @@ final class FamilyManagerPostPresenter
             }
 
             if ($stats instanceof Collection) {
-                return (int) $stats->sum('views_count');
+                return (int) $stats->sum($column);
             }
 
             return 0;
         }
 
-        return (int) $post->stats()->sum('views_count');
+        return (int) $post->stats()->sum($column);
     }
 
     /** @return array<string, mixed>|null */

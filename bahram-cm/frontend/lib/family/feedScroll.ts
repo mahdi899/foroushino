@@ -196,23 +196,30 @@ export function getFeedScrollTop(root: HTMLElement, lenis?: Lenis | null) {
 }
 
 /**
- * Snapshot the first in-viewport post so we can keep it pinned after older
- * posts are prepended (Lenis-safe — does not rely on wrapper.scrollTop).
+ * Snapshot the first in-viewport row so we can keep it pinned after older
+ * items are prepended (Lenis-safe — does not rely on wrapper.scrollTop).
+ *
+ * `anchorSelector` defaults to feed posts; comments panels pass
+ * `li[id^="family-comment-"]` so nested reply ids / mt-auto / avatar measure
+ * can't yank the viewport.
  */
 export function captureFeedScrollRestore(
   root: HTMLElement,
   lenis?: Lenis | null,
+  options?: { anchorSelector?: string },
 ): FeedScrollRestoreSnapshot {
   const rootTop = root.getBoundingClientRect().top;
-  const posts = root.querySelectorAll<HTMLElement>('[id^="family-post-"]');
+  const anchors = root.querySelectorAll<HTMLElement>(
+    options?.anchorSelector ?? '[id^="family-post-"]',
+  );
   const base = {
     height: root.scrollHeight,
     top: getFeedScrollTop(root, lenis),
   };
 
-  for (const el of posts) {
+  for (const el of anchors) {
     const rect = el.getBoundingClientRect();
-    // First post that still has any pixels below the top edge of the feed.
+    // First row that still has any pixels below the top edge of the scroller.
     if (rect.bottom > rootTop + 4 && el.id) {
       return {
         mode: 'anchor',
@@ -243,7 +250,7 @@ export function feedScrollRestoreDrift(
   if (!root) return 0;
 
   if (previous.mode === 'anchor' && previous.anchorId && previous.offsetFromRootTop != null) {
-    const el = document.getElementById(previous.anchorId);
+    const el = findScrollAnchor(root, previous.anchorId);
     if (el) {
       const rootTop = root.getBoundingClientRect().top;
       const currentOffset = el.getBoundingClientRect().top - rootTop;
@@ -253,6 +260,17 @@ export function feedScrollRestoreDrift(
 
   const expectedTop = previous.top + (root.scrollHeight - previous.height);
   return getFeedScrollTop(root, lenis) - expectedTop;
+}
+
+function findScrollAnchor(root: HTMLElement, anchorId: string): HTMLElement | null {
+  try {
+    const scoped = root.querySelector<HTMLElement>(`#${CSS.escape(anchorId)}`);
+    if (scoped) return scoped;
+  } catch {
+    // CSS.escape / querySelector can throw on odd ids — fall through.
+  }
+  const byId = document.getElementById(anchorId);
+  return byId && root.contains(byId) ? byId : null;
 }
 
 export function restoreFeedScrollPosition(
@@ -268,7 +286,7 @@ export function restoreFeedScrollPosition(
   if (!root) return;
 
   if (previous.mode === 'anchor' && previous.anchorId) {
-    const el = document.getElementById(previous.anchorId);
+    const el = findScrollAnchor(root, previous.anchorId);
     if (el && previous.offsetFromRootTop != null) {
       const rootTop = root.getBoundingClientRect().top;
       const currentOffset = el.getBoundingClientRect().top - rootTop;

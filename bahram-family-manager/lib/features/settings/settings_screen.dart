@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/core/debug/upload_failure_log.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
+import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/models/upload_progress.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
@@ -84,6 +86,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final bytes = picked?.bytes;
     if (picked == null || bytes == null) return;
 
+    final oversize = MediaSizeGuard.oversizeMessage(bytes.length, type: 'image');
+    if (oversize != null) {
+      UploadFailureLog.record(
+        context: 'settings/avatar',
+        reason: oversize,
+        filename: picked.name,
+        code: 'file_too_large',
+      );
+      showAppSnackBar(context, oversize);
+      return;
+    }
+
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
@@ -92,34 +106,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _uploadPhase = MediaUploadPhase.uploading;
     });
 
+    final appState = context.read<AppState>();
+    final manager = appState.manager;
+    final uploads = appState.uploads;
+    final slot = community ? 'settings:community' : 'settings:profile';
+
     try {
-      final media = await context.read<AppState>().manager.uploadMedia(
+      final task = uploads.start(
+        slot: slot,
+        filename: picked.name,
+        type: 'image',
+        job: (task) async {
+          final media = await manager.uploadMedia(
             bytes: bytes,
             filename: picked.name,
             type: 'image',
-            onUploadState: (upload) {
-              if (mounted) {
-                setState(() {
-                  _uploadPhase = upload.phase;
-                  _uploadProgress = upload.fraction;
-                  _uploadSentBytes = upload.sentBytes;
-                  _uploadTotalBytes = upload.totalBytes;
-                });
-              }
-            },
+            cancelToken: task.cancelToken,
+            onUploadState: task.reportProgress,
           );
-      if (!mounted) return;
-      setState(() {
-        if (community) {
-          _communityMediaId = media.id;
-          _communityPreview = media;
-        } else {
-          _profileMediaId = media.id;
-          _profilePreview = media;
-        }
-      });
+          task.media = media;
+          return media;
+        },
+      );
+
+      void onProgress() {
+        if (!mounted) return;
+        final upload = task.progress.value;
+        setState(() {
+          _uploadPhase = upload.phase;
+          _uploadProgress = upload.fraction;
+          _uploadSentBytes = upload.sentBytes;
+          _uploadTotalBytes = upload.totalBytes;
+        });
+      }
+
+      task.progress.addListener(onProgress);
+      try {
+        final media = await task.whenDone;
+        if (!mounted) return;
+        setState(() {
+          if (community) {
+            _communityMediaId = media.id;
+            _communityPreview = media;
+          } else {
+            _profileMediaId = media.id;
+            _profilePreview = media;
+          }
+        });
+      } finally {
+        task.progress.removeListener(onProgress);
+        uploads.forget(slot);
+      }
     } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      if (mounted) {
+        UploadFailureLog.recordError(
+          context: 'settings/avatar',
+          error: e,
+          filename: picked.name,
+        );
+        setState(() {
+          _uploadPhase = MediaUploadPhase.idle;
+          _uploadProgress = 0;
+          _uploadSentBytes = 0;
+          _uploadTotalBytes = 0;
+        });
+        showAppSnackBar(context, messageOf(e));
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -204,6 +256,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                 ],
+                PanelSectionCard(
+                  title: 'آپلود در پس‌زمینه',
+                  icon: Icons.cloud_sync_rounded,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'اگر گوشی (مثل شیائومی یا هواوی) آپلود ویدیو را هنگام سوییچ اپ قطع می‌کند، بهینه‌سازی باتری را برای این اپ خاموش کنید.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final ok = await context
+                              .read<AppState>()
+                              .uploads
+                              .keepAlive
+                              .requestIgnoreBatteryOptimization();
+                          if (!context.mounted) return;
+                          showAppSnackBar(
+                            context,
+                            ok
+                                ? 'بهینه‌سازی باتری برای این اپ غیرفعال شد (یا از قبل غیرفعال بود).'
+                                : 'تنظیمات بهینه‌سازی باتری باز نشد؛ از تنظیمات گوشی دستی انجام دهید.',
+                          );
+                        },
+                        icon: const Icon(Icons.battery_saver_rounded),
+                        label: const Text('اجازه اجرای پایدار در پس‌زمینه'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
                 if (kDebugMode) ...[
                   const DebugToolsPanel(),
                   const SizedBox(height: AppSpacing.xl),

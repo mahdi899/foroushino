@@ -59,6 +59,7 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
   var _initialLoading = true;
   var _loadingMore = false;
   String? _error;
+  int? _removingMemberId;
 
   bool get _canManage => widget.canManageMembers && widget.familyId != null;
 
@@ -196,7 +197,7 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
   }
 
   Future<void> _removeMember(FamilyMemberModel member) async {
-    if (!_canManage) return;
+    if (!_canManage || _removingMemberId != null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -213,10 +214,12 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
+    final manager = context.read<AppState>().manager;
+    setState(() => _removingMemberId = member.id);
     try {
-      await context.read<AppState>().manager.removeMember(
+      await manager.removeMember(
             familyId: widget.familyId!,
             membershipId: member.id,
           );
@@ -228,6 +231,8 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
       }
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _removingMemberId = null);
     }
   }
 
@@ -371,6 +376,8 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
             showFamilyName: widget.showFamilyName,
             showAttribution: widget.showAttribution || widget.entryLinkId != null,
             canRemove: _canManage,
+            removing: _removingMemberId == member.id,
+            removeDisabled: _removingMemberId != null,
             onRemove: () => _removeMember(member),
           );
         },
@@ -386,6 +393,8 @@ class _MemberTile extends StatelessWidget {
     required this.showFamilyName,
     required this.showAttribution,
     required this.canRemove,
+    required this.removing,
+    required this.removeDisabled,
     required this.onRemove,
   });
 
@@ -393,6 +402,8 @@ class _MemberTile extends StatelessWidget {
   final bool showFamilyName;
   final bool showAttribution;
   final bool canRemove;
+  final bool removing;
+  final bool removeDisabled;
   final VoidCallback onRemove;
 
   String? get _displayMobile {
@@ -510,8 +521,14 @@ class _MemberTile extends StatelessWidget {
               IconButton(
                 tooltip: 'حذف از خانواده',
                 visualDensity: VisualDensity.compact,
-                onPressed: onRemove,
-                icon: const Icon(Icons.person_remove_rounded, color: AppColors.error),
+                onPressed: removeDisabled ? null : onRemove,
+                icon: removing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.person_remove_rounded, color: AppColors.error),
               ),
           ],
         ),

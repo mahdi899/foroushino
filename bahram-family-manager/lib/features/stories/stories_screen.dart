@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -5,11 +6,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/core/labels.dart';
+import 'package:bahram_family_manager/core/debug/upload_failure_log.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/local_media_url.dart';
+import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/core/utils/picked_media.dart';
 import 'package:bahram_family_manager/core/utils/story_aspect.dart';
 import 'package:bahram_family_manager/core/utils/story_media_dimensions.dart';
@@ -49,11 +53,17 @@ class _StoriesScreenState extends State<StoriesScreen> {
   var _audienceMode = 'all';
   final Set<int> _selectedFamilyIds = {};
   bool _saving = false;
+  /// Story ids currently awaiting delete.
+  final Set<int> _deletingStoryIds = {};
   bool _uploading = false;
   double _uploadProgress = 0;
   int _uploadSentBytes = 0;
   int _uploadTotalBytes = 0;
   MediaUploadPhase _uploadPhase = MediaUploadPhase.idle;
+  String? _hostStatus;
+  int? _pollAttempt;
+  String? _statusDetail;
+  static const _storyUploadSlot = 'story:main';
 
   @override
   void initState() {
@@ -130,6 +140,18 @@ class _StoriesScreenState extends State<StoriesScreen> {
     }
     final file = (resolved as ResolvePickedMediaOk).file;
 
+    final oversize = MediaSizeGuard.oversizeMessage(file.size, type: mediaType);
+    if (oversize != null) {
+      UploadFailureLog.record(
+        context: 'story/$mediaType',
+        reason: oversize,
+        filename: file.filename,
+        code: 'file_too_large',
+      );
+      showAppSnackBar(context, oversize);
+      return;
+    }
+
     await _clearLocalPreview();
     if (isVideo) {
       if (file.path != null && file.path!.isNotEmpty) {
@@ -167,65 +189,123 @@ class _StoriesScreenState extends State<StoriesScreen> {
       _storyMedia = null;
     });
 
+    final appState = context.read<AppState>();
+    final manager = appState.manager;
+    final uploads = appState.uploads;
+    const slot = _storyUploadSlot;
+
     try {
-      final media = await context.read<AppState>().manager.uploadMedia(
+      final task = uploads.start(
+        slot: slot,
+        filename: file.filename,
+        type: mediaType,
+        job: (task) async {
+          final media = await manager.uploadMedia(
             bytes: file.bytes,
             path: file.path,
             filename: file.filename,
             type: mediaType,
             optimizeImages: false,
-            onUploadState: (upload) {
-              if (!mounted) return;
-              setState(() {
-                _uploadPhase = upload.phase;
-                _uploadProgress = upload.fraction;
-                _uploadSentBytes = upload.sentBytes;
-                _uploadTotalBytes = upload.totalBytes;
-              });
-            },
+            cancelToken: task.cancelToken,
+            onUploadState: task.reportProgress,
           );
-      if (!mounted) return;
+          task.media = media;
+          if (media.isReady) return media;
+          return manager.waitForMediaReady(
+            media.id,
+            type: mediaType,
+            totalBytes: file.size,
+            cancelToken: task.cancelToken,
+            onUpdate: (updated) => task.media = updated,
+            onUploadState: task.reportProgress,
+          );
+        },
+      );
 
-      FamilyMediaRef ready = media;
-      if (!media.isReady) {
-        ready = await context.read<AppState>().manager.waitForMediaReady(
-              media.id,
-              type: mediaType,
-              totalBytes: file.size,
-              onUpdate: (updated) {
-                if (mounted) setState(() => _storyMedia = updated);
-              },
-              onUploadState: (upload) {
-                if (!mounted) return;
-                setState(() {
-                  _uploadPhase = upload.phase;
-                  _uploadProgress = upload.fraction;
-                  _uploadSentBytes = upload.sentBytes;
-                  _uploadTotalBytes = upload.totalBytes;
-                });
-              },
-            );
-      }
-
-      if (mounted) {
+      void onProgress() {
+        if (!mounted) return;
+        final upload = task.progress.value;
         setState(() {
-          _storyMedia = ready;
-          if (_localWidth == null && ready.width != null) _localWidth = ready.width;
-          if (_localHeight == null && ready.height != null) _localHeight = ready.height;
+          _uploadPhase = upload.phase;
+          _uploadProgress = upload.fraction;
+          _uploadSentBytes = upload.sentBytes;
+          _uploadTotalBytes = upload.totalBytes;
+          _hostStatus = upload.hostStatus;
+          _pollAttempt = upload.pollAttempt;
+          _statusDetail = upload.statusDetail;
+          if (task.media != null) _storyMedia = task.media;
         });
       }
+
+      task.progress.addListener(onProgress);
+      task.uiBound = true;
+      try {
+        final ready = await task.whenDone;
+        if (mounted) {
+          setState(() {
+            _storyMedia = ready;
+            if (_localWidth == null && ready.width != null) _localWidth = ready.width;
+            if (_localHeight == null && ready.height != null) _localHeight = ready.height;
+          });
+        }
+      } finally {
+        task.uiBound = false;
+        task.progress.removeListener(onProgress);
+        uploads.forget(slot);
+      }
     } catch (e) {
+      UploadFailureLog.recordError(
+        context: 'story/$mediaType',
+        error: e,
+        filename: file.filename,
+      );
       await _clearLocalPreview();
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      if (mounted) {
+        setState(() {
+          _storyMedia = null;
+          _uploadPhase = MediaUploadPhase.idle;
+          _uploadProgress = 0;
+          _uploadSentBytes = 0;
+          _uploadTotalBytes = 0;
+          _hostStatus = null;
+          _pollAttempt = null;
+          _statusDetail = null;
+        });
+        // Benign cancel — no snackbar spam.
+        final cancelled = e is ApiException && e.code == 'cancelled';
+        if (!cancelled) {
+          showAppSnackBar(context, messageOf(e));
+        }
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  Future<void> _cancelStoryUpload() async {
+    final uploads = context.read<AppState>().uploads;
+    uploads.cancel(_storyUploadSlot);
+    uploads.forget(_storyUploadSlot);
+    await _clearLocalPreview();
+    if (!mounted) return;
+    setState(() {
+      _storyMedia = null;
+      _uploading = false;
+      _uploadPhase = MediaUploadPhase.idle;
+      _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = 0;
+      _hostStatus = null;
+      _pollAttempt = null;
+      _statusDetail = null;
+    });
   }
 
   int? get _previewWidth => _localWidth ?? _storyMedia?.width;
   int? get _previewHeight => _localHeight ?? _storyMedia?.height;
 
   Future<void> _publishStory() async {
+    if (_saving || _deletingStoryIds.isNotEmpty) return;
     if (_storyMedia == null) {
       showAppSnackBar(context, 'ابتدا تصویر یا ویدیو انتخاب کنید.');
       return;
@@ -272,7 +352,8 @@ class _StoriesScreenState extends State<StoriesScreen> {
   }
 
   Future<void> _deleteStory(FamilyStoryModel story) async {
-    setState(() => _saving = true);
+    if (_saving || _deletingStoryIds.contains(story.id)) return;
+    setState(() => _deletingStoryIds.add(story.id));
     try {
       await context.read<AppState>().manager.deleteStory(story.id);
       if (mounted) {
@@ -282,7 +363,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _deletingStoryIds.remove(story.id));
     }
   }
 
@@ -316,7 +397,13 @@ class _StoriesScreenState extends State<StoriesScreen> {
                         sentBytes: _uploadSentBytes,
                         totalBytes: _uploadTotalBytes,
                         phase: _uploadPhase,
+                        hostStatus: _hostStatus,
+                        pollAttempt: _pollAttempt,
+                        statusDetail: _statusDetail,
                         onTap: _pickStoryMedia,
+                        onCancel: _uploading
+                            ? () => unawaited(_cancelStoryUpload())
+                            : null,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
@@ -402,7 +489,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: _StoryListCard(
                         story: story,
-                        saving: _saving,
+                        deleting: _deletingStoryIds.contains(story.id),
                         onDelete: () => _deleteStory(story),
                       ),
                     ),
@@ -419,12 +506,12 @@ class _StoriesScreenState extends State<StoriesScreen> {
 class _StoryListCard extends StatefulWidget {
   const _StoryListCard({
     required this.story,
-    required this.saving,
+    required this.deleting,
     required this.onDelete,
   });
 
   final FamilyStoryModel story;
-  final bool saving;
+  final bool deleting;
   final VoidCallback onDelete;
 
   @override
@@ -502,8 +589,14 @@ class _StoryListCardState extends State<_StoryListCard> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded),
-                onPressed: widget.saving ? null : widget.onDelete,
+                icon: widget.deleting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.delete_outline_rounded),
+                onPressed: widget.deleting ? null : widget.onDelete,
               ),
             ],
           ),

@@ -11,11 +11,11 @@ import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 
 /// Text-only Bahram reply to a family comment (voice replies removed from manager UI).
-Future<bool?> showCommentReplySheet({
+Future<FamilyCommentModel?> showCommentReplySheet({
   required BuildContext context,
   required FamilyCommentModel comment,
 }) {
-  return showAppBottomSheet<bool>(
+  return showAppBottomSheet<FamilyCommentModel>(
     context: context,
     title: 'پاسخ بهرام به نظر',
     subtitle: comment.userName,
@@ -55,11 +55,11 @@ class _ReplySheetFormState extends State<_ReplySheetForm> {
 
     setState(() => _sending = true);
     try {
-      await context.read<AppState>().manager.replyToComment(
+      final reply = await context.read<AppState>().manager.replyToComment(
             commentId: widget.comment.id,
             text: tagged,
           );
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(reply);
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {

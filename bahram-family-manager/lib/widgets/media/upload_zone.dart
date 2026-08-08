@@ -20,7 +20,11 @@ class UploadZone extends StatelessWidget {
     this.sentBytes = 0,
     this.totalBytes = 0,
     this.phase = MediaUploadPhase.uploading,
+    this.hostStatus,
+    this.pollAttempt,
+    this.statusDetail,
     this.enabled = true,
+    this.onCancel,
   });
 
   final String label;
@@ -30,7 +34,11 @@ class UploadZone extends StatelessWidget {
   final int sentBytes;
   final int totalBytes;
   final MediaUploadPhase phase;
+  final String? hostStatus;
+  final int? pollAttempt;
+  final String? statusDetail;
   final bool enabled;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +51,11 @@ class UploadZone extends StatelessWidget {
         progress: progress,
         sentBytes: sentBytes,
         totalBytes: totalBytes,
+        hostStatus: hostStatus,
+        pollAttempt: pollAttempt,
+        statusDetail: statusDetail,
         borderRadius: AppRadius.cardBorder,
+        onCancel: onCancel,
         child: GlassPanel(
           borderRadius: AppRadius.card,
           blur: 0,
@@ -65,7 +77,13 @@ class UploadZone extends StatelessWidget {
                 Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  phase.statusLabel((progress * 100).clamp(0, 100)),
+                  phase.statusLabel(
+                    phase.overallPercent(progress),
+                    hostStatus: hostStatus,
+                    pollAttempt: pollAttempt,
+                    statusDetail: statusDetail,
+                  ),
+                  textAlign: TextAlign.center,
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
               ],

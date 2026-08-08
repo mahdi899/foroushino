@@ -15,6 +15,7 @@ import {
 } from '@/lib/family/unreadSummaryCache';
 import { readFeedCache, type FeedCachePage } from '@/lib/family/feedCache';
 import { reconcileDiskCacheWithCurrent, latestPostIdFromPages } from '@/lib/family/feedMerge';
+import { registerFamilyFeedPagesMutator } from '@/lib/family/feedPagesMutate';
 import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
 import { familyFeedSwr } from '@/lib/family/swr';
 import { isRealtimeConfigured } from '@/lib/realtime/config';
@@ -98,6 +99,16 @@ export function useFamilyFeed(
       revalidateOnMount: false,
     },
   );
+
+  // Let feed realtime soft-patches (comment counts, etc.) update this infinite cache.
+  useEffect(() => {
+    return registerFamilyFeedPagesMutator(async (updater) => {
+      await mutate(
+        async (pages) => (await updater(pages as FeedCachePage[] | undefined)) as FeedPage[] | undefined,
+        { revalidate: false },
+      );
+    });
+  }, [mutate]);
 
   // IndexedDB-first paint, then lightweight revision check — skip /feed when unchanged.
   useEffect(() => {

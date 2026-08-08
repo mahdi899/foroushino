@@ -18,7 +18,6 @@ use App\Support\FamilyCommentBodyGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class CommentController extends Controller
 {
@@ -81,7 +80,16 @@ class CommentController extends Controller
     {
         $membership = $this->access->requireMembership($request->user());
         abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
-        abort_if($post->comments_enabled === false, 422, 'نظرات این پست بسته است.');
+
+        // abort() messages are sanitized by the API exception handler — return
+        // an explicit envelope so members see a clear Persian reason.
+        if ($post->comments_enabled === false) {
+            return ApiResponse::error(
+                'comments_closed',
+                'نظرات این پست بسته شده است.',
+                422,
+            );
+        }
 
         $max = (int) config('family.comment.max_length', 1000);
         $data = $request->validate([
@@ -89,11 +97,9 @@ class CommentController extends Controller
             'parent_id' => ['nullable', 'integer', 'exists:family_comments,id'],
         ]);
 
-        if (! $request->user()->is_admin && FamilyCommentBodyGuard::containsPhoneNumber($data['body'])) {
-            throw ValidationException::withMessages([
-                'body' => ['لطفاً شماره تلفن در نظر قرار ندهید. فقط ادمین می‌تواند شماره منتشر کند.'],
-            ]);
-        }
+        $body = trim($data['body']);
+        $screening = FamilyCommentBodyGuard::analyze($body);
+        $needsManualReview = ! $request->user()->is_admin && $screening['requires_manual_review'];
 
         $parentId = null;
         if (! empty($data['parent_id'])) {
@@ -116,17 +122,32 @@ class CommentController extends Controller
 
         $aiSettings = app(FamilyAiSettingsService::class);
         $requireApproval = (bool) config('family.comment.require_approval', false)
-            || ($aiSettings->isActive() && $aiSettings->autoApproveComments());
+            || ($aiSettings->isActive() && $aiSettings->autoApproveComments())
+            || $needsManualReview;
         $status = $requireApproval ? FamilyCommentStatus::Pending : FamilyCommentStatus::Approved;
+
+        $aiSignals = null;
+        if ($needsManualReview) {
+            $aiSignals = $screening['signals'];
+            if (! empty($screening['severity'])) {
+                $aiSignals[] = 'severity:'.$screening['severity'];
+            }
+            foreach ($screening['categories'] as $category) {
+                $aiSignals[] = 'category:'.$category;
+            }
+            $aiSignals = array_values(array_unique($aiSignals));
+        }
 
         $comment = FamilyComment::query()->create([
             'post_id' => $post->id,
             'family_id' => $membership->family_id,
             'user_id' => $request->user()->id,
             'parent_id' => $parentId,
-            'body' => trim($data['body']),
+            'body' => $body,
             'status' => $status,
             'approved_at' => $requireApproval ? null : now(),
+            'ai_risk_score' => $needsManualReview ? $screening['min_risk'] : null,
+            'ai_signals' => $aiSignals,
         ]);
 
         if (! $requireApproval) {
@@ -136,6 +157,7 @@ class CommentController extends Controller
 
         $comment->load(['user:id,name,is_admin', 'user.profile']);
 
+        // Still analyze (enrich AI fields) even when already held for review.
         AnalyzeFamilyCommentJob::dispatch($comment->id)
             ->onQueue(config('family.queues.ai', 'family-ai'));
 

@@ -15,6 +15,7 @@ export function FeedCommentsPanel({
   onCommentAdded,
   focusCommentId = null,
   allowPhoneNumbers = false,
+  commentsEnabled = true,
   className,
 }: {
   postId: number;
@@ -22,6 +23,7 @@ export function FeedCommentsPanel({
   onCommentAdded?: (comment: FamilyComment) => void;
   focusCommentId?: number | null;
   allowPhoneNumbers?: boolean;
+  commentsEnabled?: boolean;
   className?: string;
 }) {
   const [mobile, setMobile] = useState(false);
@@ -81,6 +83,7 @@ export function FeedCommentsPanel({
           onCommentAdded={onCommentAdded}
           focusCommentId={focusCommentId}
           allowPhoneNumbers={allowPhoneNumbers}
+          commentsEnabled={commentsEnabled}
           variant="page"
           hideTitle
           className="min-h-0 flex-1"

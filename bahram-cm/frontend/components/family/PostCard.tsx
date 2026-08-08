@@ -71,6 +71,7 @@ function renderPostBodyBlocks(
   blocks: FamilyPostBlock[],
   postId: number,
   authorName: string,
+  postType: FamilyPost['type'],
   constrained?: boolean,
 ) {
   const sorted = sortBlocks(blocks);
@@ -104,7 +105,7 @@ function renderPostBodyBlocks(
     }
 
     flushImageBatch();
-    const node = renderBlock(block, postId, authorName);
+    const node = renderBlock(block, postId, authorName, postType);
     if (node) mediaNodes.push(node);
   }
 
@@ -113,12 +114,17 @@ function renderPostBodyBlocks(
   return (
     <>
       {mediaNodes}
-      {textBlocks.map((block) => renderBlock(block, postId, authorName))}
+      {textBlocks.map((block) => renderBlock(block, postId, authorName, postType))}
     </>
   );
 }
 
-function renderBlock(block: FamilyPostBlock, postId: number, authorName: string) {
+function renderBlock(
+  block: FamilyPostBlock,
+  postId: number,
+  authorName: string,
+  postType: FamilyPost['type'],
+) {
   switch (block.type) {
     case 'text':
       return block.text ? (
@@ -135,7 +141,18 @@ function renderBlock(block: FamilyPostBlock, postId: number, authorName: string)
         <VoiceBlock key={block.id} media={block.media} postId={postId} title={`صوت — ${authorName}`} />
       ) : null;
     case 'video':
-      return block.media ? <VideoBlock key={block.id} media={block.media} postId={postId} /> : null;
+      return block.media ? (
+        <VideoBlock
+          key={block.id}
+          media={block.media}
+          postId={postId}
+          presentation={
+            postType === 'video_note'
+              ? { ...(block.data ?? {}), presentation: 'circle' }
+              : block.data
+          }
+        />
+      ) : null;
     case 'image':
       return block.media ? <ImageBlock key={block.id} media={block.media} /> : null;
     case 'article_reference':
@@ -299,7 +316,7 @@ function FeedPostCard({
               }
             />
           )}
-          {renderPostBodyBlocks(blocks, post.id, post.author.name, true)}
+          {renderPostBodyBlocks(blocks, post.id, post.author.name, post.type, true)}
           {previewMode
             ? null
             : actions.map((action) => (
@@ -335,11 +352,12 @@ function FeedPostCard({
           />
         </div>
 
-        {!hideCommentPreview && isPostCommentsEnabled(post) && (
+        {!hideCommentPreview && (isPostCommentsEnabled(post) || commentCount > 0) && (
           <div className="family-post-bubble__comment-zone">
             <CommentThreadPreview
               count={commentCount}
               preview={commentPreview}
+              closed={!isPostCommentsEnabled(post)}
               onOpen={openCommentsPanel}
             />
           </div>
@@ -482,7 +500,7 @@ export const PostCard = memo(function PostCard({
             }
           />
         )}
-        {renderPostBodyBlocks(blocks, post.id, post.author.name, constrainedMedia)}
+        {renderPostBodyBlocks(blocks, post.id, post.author.name, post.type, constrainedMedia)}
         {previewMode
           ? null
           : actions.map((action) => (
@@ -517,10 +535,11 @@ export const PostCard = memo(function PostCard({
         </div>
       </div>
 
-      {!hideCommentPreview && isPostCommentsEnabled(post) && (
+      {!hideCommentPreview && (isPostCommentsEnabled(post) || commentCount > 0) && (
         <CommentThreadPreview
           count={commentCount}
           preview={commentPreview}
+          closed={!isPostCommentsEnabled(post)}
           onOpen={() => {
             if (previewMode) {
               onGuestGate?.('comment');

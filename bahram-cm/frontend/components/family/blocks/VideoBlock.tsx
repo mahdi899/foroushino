@@ -9,6 +9,7 @@ import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownlo
 import { resolveFamilyMediaPlaybackUrl, resolveFamilyMediaPosterUrl } from '@/lib/family/mediaPlaybackUrl';
 import { hasFamilyMediaBeenSeen, markFamilyMediaSeen } from '@/lib/family/seenFamilyMedia';
 import type { FamilyMediaBlock } from '@/lib/family/types';
+import { isFamilyCircleVideo } from '@/lib/family/types';
 
 /** Player chrome is only needed after a tap — keep it out of the feed bundle. */
 const FamilyVideoModal = dynamic(
@@ -26,7 +27,15 @@ function videoFramePreviewSrc(url: string): string {
   return `${base}#t=0.1`;
 }
 
-export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
+export function VideoBlock({
+  media,
+  postId,
+  presentation,
+}: {
+  media: FamilyMediaBlock;
+  postId: number;
+  presentation?: Record<string, unknown> | null;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapAtRef = useRef(0);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -34,6 +43,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const downloadUrl = streamUrl ?? media.url;
   // Tiny blur poster only — never load the full video just for a feed preview.
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
+  const isCircle = isFamilyCircleVideo(presentation);
   const [modalOpen, setModalOpen] = useState(false);
   const [posterError, setPosterError] = useState(false);
   const [frameError, setFrameError] = useState(false);
@@ -123,8 +133,17 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   if (!streamUrl) {
     return (
       <div
-        className="flex aspect-video items-center justify-center rounded-2xl"
-        style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
+        className={cn(
+          'flex items-center justify-center',
+          isCircle ? 'family-feed-video family-feed-video--circle aspect-square rounded-full' : 'aspect-video rounded-2xl',
+        )}
+        style={
+          isCircle
+            ? undefined
+            : media.width && media.height
+              ? { aspectRatio: `${media.width} / ${media.height}` }
+              : undefined
+        }
         aria-busy
         aria-label="در حال پردازش ویدیو"
       >
@@ -138,8 +157,9 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const showFrameFallback = shouldLoadPreview && needsFrameFallback;
   const showPreviewFailed = shouldLoadPreview && !needsPoster && !needsFrameFallback && Boolean(downloadUrl);
   const frameSrc = videoFramePreviewSrc(streamUrl);
-  const videoAspectStyle =
-    media.width && media.height
+  const videoAspectStyle = isCircle
+    ? { aspectRatio: '1 / 1' as const }
+    : media.width && media.height
       ? { aspectRatio: `${media.width} / ${media.height}` }
       : { aspectRatio: isPortrait ? '3 / 4' : '16 / 9' };
 
@@ -148,8 +168,10 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       <div
         ref={containerRef}
         className={cn(
-          'family-feed-video relative max-w-full overflow-hidden rounded-2xl',
-          isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
+          'family-feed-video relative max-w-full overflow-hidden',
+          isCircle
+            ? 'family-feed-video--circle rounded-full'
+            : cn('rounded-2xl', isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape'),
         )}
         style={videoAspectStyle}
       >
@@ -249,8 +271,11 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
               lastTapAtRef.current = 0;
               openPlayer();
             }}
-            aria-label="پخش ویدیو"
-            className="pointer-events-auto flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-black/55 backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
+            aria-label={isCircle ? 'پخش پیام ویدیویی' : 'پخش ویدیو'}
+            className={cn(
+              'pointer-events-auto flex cursor-pointer items-center justify-center rounded-full bg-black/55 backdrop-blur-sm transition hover:bg-black/65 active:scale-95',
+              isCircle ? 'h-14 w-14' : 'h-12 w-12',
+            )}
           >
             <Play className="ms-0.5 h-6 w-6 text-white/95" fill="currentColor" />
           </button>
@@ -265,6 +290,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         postId={postId}
         durationHint={media.duration}
         portrait={isPortrait}
+        circle={isCircle}
         onClose={() => setModalOpen(false)}
       />
     </>

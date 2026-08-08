@@ -23,10 +23,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Fans an important, published family post out to every member it's visible
- * to: one shared in-app Notification row (cheap — a handful of chunked
- * inserts, not one row per member), plus real device push notifications via
- * many small, parallel `SendFamilyPushBatchJob`s.
+ * Fans a published family post out to every member it's visible to when
+ * `notify_members` is set: one shared in-app Notification row plus real device
+ * push via parallel `SendFamilyPushBatchJob`s.
+ *
+ * Independent of the visual `is_important` badge — admins can mark a post
+ * important without notifying, or notify without marking important.
  *
  * Deliberately queued (never run inline from the publish request) and reads
  * membership/subscriptions in DB chunks so this scales to ~20k members
@@ -49,7 +51,7 @@ class DispatchFamilyPostPushJob implements ShouldQueue
     {
         $post = FamilyPost::query()->with(['blocks', 'targets'])->find($this->postId);
 
-        if ($post === null || $post->status !== FamilyPostStatus::Published || ! $post->is_important) {
+        if ($post === null || $post->status !== FamilyPostStatus::Published || ! $post->notify_members) {
             return;
         }
 
@@ -123,8 +125,9 @@ class DispatchFamilyPostPushJob implements ShouldQueue
                 ->dispatch();
         }
 
-        Log::info('family.important_post_push.dispatched', [
+        Log::info('family.post_notify.dispatched', [
             'post_id' => $post->id,
+            'is_important' => (bool) $post->is_important,
             'recipients' => $recipients,
             'push_batches' => count($pushJobs),
         ]);
@@ -149,12 +152,15 @@ class DispatchFamilyPostPushJob implements ShouldQueue
     {
         $textBlock = $post->blocks->first(fn ($block) => filled($block->text_content));
         $excerpt = $textBlock ? Str::limit(trim((string) $textBlock->text_content), 120) : null;
+        $important = (bool) $post->is_important;
 
         return [
-            'title' => 'پیام مهم از بهرام',
-            'body' => $excerpt ?: 'یک پیام مهم جدید در خانواده منتشر شده است.',
+            'title' => $important ? 'پیام مهم از بهرام' : 'پیام جدید از بهرام',
+            'body' => $excerpt ?: ($important
+                ? 'یک پیام مهم جدید در خانواده منتشر شده است.'
+                : 'یک پیام جدید در خانواده منتشر شده است.'),
             'url' => FamilySiteUrl::postUrl((int) $post->id),
-            'tag' => 'family-important-post-'.$post->id,
+            'tag' => 'family-post-notify-'.$post->id,
         ];
     }
 }

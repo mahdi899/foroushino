@@ -7,6 +7,7 @@ import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/services/auth_service.dart';
 import 'package:bahram_family_manager/services/family_manager_service.dart';
 import 'package:bahram_family_manager/services/secure_storage.dart';
+import 'package:bahram_family_manager/services/upload_coordinator.dart';
 
 /// Top-level app state: session lifecycle + shared service instances.
 /// Screen-local data (post lists, comment tabs, etc.) lives in the screens
@@ -19,6 +20,8 @@ class AppState extends ChangeNotifier {
     _api = ApiClient();
     _auth = AuthService(api: _api, storage: _storage);
     manager = FamilyManagerService(api: _api);
+    uploads = UploadCoordinator();
+    uploads.addListener(notifyListeners);
     _api.onUnauthorized = _handleUnauthorized;
   }
 
@@ -26,6 +29,11 @@ class AppState extends ChangeNotifier {
   late final ApiClient _api;
   late final AuthService _auth;
   late final FamilyManagerService manager;
+
+  /// Owns every in-flight media upload independent of whichever screen
+  /// started it — outlives the post editor / stories / settings screens so
+  /// switching tabs or apps never cancels or orphans an upload.
+  late final UploadCoordinator uploads;
 
   List<FamilySummaryModel>? _familiesCache;
   DateTime? _familiesCacheAt;
@@ -91,9 +99,17 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    uploads.cancelAll();
     await _auth.logout();
     user = null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    uploads.removeListener(notifyListeners);
+    uploads.dispose();
+    super.dispose();
   }
 
   void _handleUnauthorized() {

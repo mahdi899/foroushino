@@ -45,7 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>برای ضبط پیام ویدیویی دایره‌ای به دسترسی دوربین نیاز است.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>برای ضبط ویس پست به دسترسی میکروفون نیاز است.</string>
+	<string>برای ضبط ویس و پیام ویدیویی به دسترسی میکروفون نیاز است.</string>
 </dict>
 </plist>

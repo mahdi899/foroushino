@@ -175,7 +175,14 @@ class FamilyCommentRealtimeTest extends TestCase
 
         Event::assertDispatched(FamilyCommentChanged::class, function (FamilyCommentChanged $event) use ($comment) {
             return $event->action === 'removed'
-                && (int) $event->comment->id === (int) $comment['id'];
+                && (int) $event->comment->id === (int) $comment['id']
+                && $event->approvedCommentsCount === 0;
+        });
+
+        Event::assertDispatched(FamilyFeedUpdated::class, function (FamilyFeedUpdated $event) use ($post) {
+            return $event->event === 'comments_count'
+                && (int) $event->post->id === (int) $post->id
+                && $event->approvedCommentsCount === 0;
         });
     }
 

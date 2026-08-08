@@ -45,6 +45,9 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
   int? _familyFilter;
   bool _archivedSelectionMode = false;
   final Set<int> _selectedArchivedIds = {};
+  /// post id → in-flight card/menu action.
+  final Map<int, PostBusyAction> _busyActions = {};
+  var _batchDeleting = false;
 
   _PostsTabData get _currentTab => _tabData[_tabController.index];
 
@@ -215,49 +218,96 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
     if (changed == true) _loadFirstPage();
   }
 
-  Future<void> _togglePin(FamilyPostModel post) async {
+  Future<void> _withBusy(
+    int postId,
+    PostBusyAction action,
+    Future<void> Function() work,
+  ) async {
+    if (_busyActions.containsKey(postId) || _batchDeleting) return;
+    setState(() => _busyActions[postId] = action);
     try {
-      final manager = context.read<AppState>().manager;
-      final updated = post.isPinned ? await manager.unpinPost(post.id) : await manager.pinPost(post.id);
-      if (!mounted) return;
-      setState(() {
-        final items = _currentTab.items;
-        final index = items.indexWhere((item) => item.id == post.id);
-        if (index >= 0) {
-          items[index] = updated;
-        }
-      });
-      showAppSnackBar(context, updated.isPinned ? 'پست سنجاق شد.' : 'سنجاق برداشته شد.');
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      await work();
+    } finally {
+      if (mounted) setState(() => _busyActions.remove(postId));
     }
+  }
+
+  Future<void> _togglePin(FamilyPostModel post) async {
+    await _withBusy(post.id, PostBusyAction.pin, () async {
+      try {
+        final manager = context.read<AppState>().manager;
+        final updated = post.isPinned ? await manager.unpinPost(post.id) : await manager.pinPost(post.id);
+        if (!mounted) return;
+        setState(() {
+          final items = _currentTab.items;
+          final index = items.indexWhere((item) => item.id == post.id);
+          if (index >= 0) {
+            items[index] = updated;
+          }
+        });
+        showAppSnackBar(context, updated.isPinned ? 'پست سنجاق شد.' : 'سنجاق برداشته شد.');
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
+      }
+    });
+  }
+
+  Future<void> _toggleComments(FamilyPostModel post) async {
+    await _withBusy(post.id, PostBusyAction.toggleComments, () async {
+      try {
+        final enabled = !post.commentsEnabled;
+        final updated = await context.read<AppState>().manager.updatePost(post.id, {
+          'comments_enabled': enabled,
+        });
+        if (!mounted) return;
+        setState(() {
+          final items = _currentTab.items;
+          final index = items.indexWhere((item) => item.id == post.id);
+          if (index >= 0) {
+            items[index] = updated;
+          }
+        });
+        showAppSnackBar(
+          context,
+          enabled ? 'نظرات این پست باز شد.' : 'نظرات این پست بسته شد.',
+        );
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
+      }
+    });
   }
 
   Future<void> _publish(FamilyPostModel post) async {
-    try {
-      await context.read<AppState>().manager.publishPost(post.id);
-      if (mounted) {
-        showAppSnackBar(context, 'پست منتشر شد.');
-        _loadFirstPage();
+    await _withBusy(post.id, PostBusyAction.publish, () async {
+      try {
+        await context.read<AppState>().manager.publishPost(post.id);
+        if (mounted) {
+          showAppSnackBar(context, 'پست منتشر شد.');
+          _loadFirstPage();
+        }
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
       }
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
-    }
+    });
   }
 
   Future<void> _republish(FamilyPostModel post) async {
-    try {
-      await context.read<AppState>().manager.publishPost(post.id);
-      if (mounted) {
-        showAppSnackBar(context, 'پست دوباره منتشر شد و به بالای فید رفت.');
-        _loadFirstPage();
+    await _withBusy(post.id, PostBusyAction.republish, () async {
+      try {
+        await context.read<AppState>().manager.publishPost(post.id);
+        if (mounted) {
+          showAppSnackBar(context, 'پست دوباره منتشر شد و به بالای فید رفت.');
+          _loadFirstPage();
+        }
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
       }
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
-    }
+    });
   }
 
   Future<void> _delete(FamilyPostModel post) async {
+    if (_busyActions.containsKey(post.id) || _batchDeleting) return;
+
     final isPublished = post.isPublished;
     final isArchived = post.isArchived;
     final confirmed = await showGlassDialog<bool>(
@@ -283,19 +333,21 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
     );
     if (confirmed != true) return;
 
-    try {
-      await context.read<AppState>().manager.deletePost(post.id);
-      if (mounted) {
-        showAppSnackBar(context, 'پست حذف شد.');
-        _loadFirstPage();
+    await _withBusy(post.id, PostBusyAction.delete, () async {
+      try {
+        await context.read<AppState>().manager.deletePost(post.id);
+        if (mounted) {
+          showAppSnackBar(context, 'پست حذف شد.');
+          _loadFirstPage();
+        }
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
       }
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
-    }
+    });
   }
 
   Future<void> _deleteSelectedArchived() async {
-    if (_selectedArchivedIds.isEmpty) return;
+    if (_selectedArchivedIds.isEmpty || _batchDeleting) return;
 
     final count = _selectedArchivedIds.length;
     final confirmed = await showGlassDialog<bool>(
@@ -315,17 +367,22 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
     );
     if (confirmed != true) return;
 
+    setState(() => _batchDeleting = true);
     final manager = context.read<AppState>().manager;
     var deleted = 0;
     var failed = 0;
 
-    for (final id in _selectedArchivedIds.toList()) {
-      try {
-        await manager.deletePost(id);
-        deleted++;
-      } catch (_) {
-        failed++;
+    try {
+      for (final id in _selectedArchivedIds.toList()) {
+        try {
+          await manager.deletePost(id);
+          deleted++;
+        } catch (_) {
+          failed++;
+        }
       }
+    } finally {
+      if (mounted) setState(() => _batchDeleting = false);
     }
 
     if (!mounted) return;
@@ -344,6 +401,8 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
   }
 
   Future<void> _recover(FamilyPostModel post) async {
+    if (_busyActions.containsKey(post.id) || _batchDeleting) return;
+
     final wasPublished = post.publishedAt != null;
     final confirmed = await showGlassDialog<bool>(
       context: context,
@@ -360,18 +419,20 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
     );
     if (confirmed != true) return;
 
-    try {
-      final recovered = await context.read<AppState>().manager.recoverPost(post.id);
-      if (mounted) {
-        showAppSnackBar(
-          context,
-          recovered.isPublished ? 'پست بازیابی و دوباره منتشر شد.' : 'پست به پیش‌نویس‌ها برگشت.',
-        );
-        _loadFirstPage();
+    await _withBusy(post.id, PostBusyAction.recover, () async {
+      try {
+        final recovered = await context.read<AppState>().manager.recoverPost(post.id);
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            recovered.isPublished ? 'پست بازیابی و دوباره منتشر شد.' : 'پست به پیش‌نویس‌ها برگشت.',
+          );
+          _loadFirstPage();
+        }
+      } catch (e) {
+        if (mounted) showAppSnackBar(context, messageOf(e));
       }
-    } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
-    }
+    });
   }
 
   @override
@@ -484,6 +545,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
         final post = posts[postIndex];
         return PostListTile(
           post: post,
+          busyAction: _busyActions[post.id],
           onTap: _archivedSelectionMode && isArchivedTab
               ? () {}
               : () => _openEditor(post),
@@ -500,6 +562,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
           onEdit: isDraftTab || isPublishedTab || isArchivedTab ? () => _openEditor(post) : null,
           onPublish: isDraftTab ? () => _publish(post) : null,
           onRepublish: isPublishedTab || isArchivedTab ? () => _republish(post) : null,
+          onToggleComments: isPublishedTab || isArchivedTab ? () => _toggleComments(post) : null,
           onDelete: isDraftTab || isPublishedTab || isArchivedTab ? () => _delete(post) : null,
           onRecover: isArchivedTab ? () => _recover(post) : null,
         );
@@ -536,9 +599,19 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
                 child: FilledButton.icon(
-                  onPressed: _deleteSelectedArchived,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: Text('حذف ${toFaDigits(_selectedArchivedIds.length.toString())} پست'),
+                  onPressed: _batchDeleting ? null : _deleteSelectedArchived,
+                  icon: _batchDeleting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.delete_outline_rounded),
+                  label: Text(
+                    _batchDeleting
+                        ? 'در حال حذف…'
+                        : 'حذف ${toFaDigits(_selectedArchivedIds.length.toString())} پست',
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,

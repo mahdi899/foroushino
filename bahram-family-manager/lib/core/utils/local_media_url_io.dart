@@ -14,9 +14,11 @@ Future<String> createLocalMediaUrlImpl(Uint8List bytes, String mimeType, {String
           'audio/mp4' => 'm4a',
           'audio/wav' => 'wav',
           'audio/ogg' => 'ogg',
+          'audio/opus' => 'opus',
+          'audio/webm' => 'webm',
           _ when mimeType.startsWith('image/') => 'jpg',
           _ when mimeType.startsWith('video/') => 'mp4',
-          _ when mimeType.startsWith('audio/') => 'mp3',
+          _ when mimeType.startsWith('audio/') => 'ogg',
           _ => 'bin',
         };
 

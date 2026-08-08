@@ -98,7 +98,7 @@ export function formatPostTime(iso: string | null | undefined): string {
 }
 
 /**
- * تاریخ و ساعت — برای نظرات و جاهایی که تاریخ لازم است
+ * تاریخ و ساعت — برای جاهایی که هر دو لازم است (نه نظرات فید)
  */
 export function formatPostDateTime(iso: string | null | undefined): string {
   if (!iso) return '';

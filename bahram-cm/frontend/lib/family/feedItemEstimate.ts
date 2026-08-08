@@ -112,7 +112,8 @@ function estimateImageHeight(media: FamilyPostBlock['media']): number {
   return 220;
 }
 
-function estimateVideoHeight(media: FamilyPostBlock['media']): number {
+function estimateVideoHeight(media: FamilyPostBlock['media'], circle = false): number {
+  if (circle) return Math.min(VIDEO_MAX_H, 224);
   if (media?.width && media?.height && media.width > 0) {
     return aspectHeight(media.width, media.height, VIDEO_MAX_H);
   }
@@ -201,7 +202,10 @@ function estimatePostBlocksHeight(blocks: FamilyPostBlock[]): number {
         height += estimateTextHeight(block.text);
         break;
       case 'video':
-        height += estimateVideoHeight(block.media);
+        height += estimateVideoHeight(
+          block.media,
+          block.data?.presentation === 'circle' || block.data?.video_note === true,
+        );
         break;
       case 'audio':
         height += 72;

@@ -152,13 +152,13 @@ class VoiceLocalStore {
 
   static String _sanitizeFilename(String filename) {
     final base = p.basename(filename.trim());
-    if (base.isEmpty) return 'voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+    if (base.isEmpty) return 'voice_${DateTime.now().millisecondsSinceEpoch}.ogg';
     // Keep letters (incl. Persian), digits, dot, dash, underscore; strip path separators & control chars.
     final cleaned = base
         .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), '_')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
-    return cleaned.isEmpty ? 'voice_${DateTime.now().millisecondsSinceEpoch}.wav' : cleaned;
+    return cleaned.isEmpty ? 'voice_${DateTime.now().millisecondsSinceEpoch}.ogg' : cleaned;
   }
 
   static String _uniqueFilename(Directory dir, String filename) {

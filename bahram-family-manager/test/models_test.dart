@@ -53,12 +53,44 @@ void main() {
       expect(post.id, 10);
       expect(post.isDraft, isTrue);
       expect(post.isImportant, isTrue);
+      expect(post.notifyMembers, isFalse);
       expect(post.authorName, 'بهرام');
       expect(post.preview, 'سلام خانواده');
       expect(post.actions.single.type, 'commitment');
       expect(post.targetFamilyIds, [3]);
       expect(post.channelLabel, 'نور');
       expect(post.targetFamilies.single.familyName, 'نور');
+      expect(post.stats, isNull);
+    });
+
+    test('parses aggregated reaction stats on the post card payload', () {
+      final json = {
+        'id': 20,
+        'type': 'text',
+        'status': 'published',
+        'audience_mode': 'all',
+        'is_important': false,
+        'blocks': [
+          {'id': 1, 'type': 'text', 'position': 0, 'text_content': 'با واکنش'},
+        ],
+        'stats': {
+          'views': 10,
+          'comments': 2,
+          'reactions': 7,
+          'fire': 3,
+          'heart': 2,
+          'clap': 2,
+          'thumbs_up': 0,
+        },
+      };
+
+      final post = FamilyPostModel.fromJson(json);
+      expect(post.stats, isNotNull);
+      expect(post.stats!.views, 10);
+      expect(post.stats!.totalReactions, 7);
+      expect(post.stats!.fire, 3);
+      expect(post.stats!.countFor('heart'), 2);
+      expect(post.stats!.countFor('clap'), 2);
     });
 
     test('preview falls back to a media label when there is no text block', () {
@@ -76,6 +108,22 @@ void main() {
       final post = FamilyPostModel.fromJson(json);
       expect(post.preview, contains('صوتی'));
       expect(post.isPublished, isTrue);
+    });
+
+    test('video_note preview uses circular label', () {
+      final json = {
+        'id': 12,
+        'type': 'video_note',
+        'status': 'draft',
+        'audience_mode': 'all',
+        'is_important': false,
+        'blocks': [
+          {'id': 3, 'type': 'video', 'position': 0, 'media_id': 9},
+        ],
+      };
+
+      final post = FamilyPostModel.fromJson(json);
+      expect(post.preview, contains('دایره‌ای'));
     });
   });
 
@@ -122,6 +170,7 @@ void main() {
         'post_preview': 'سلام',
         'matching_count': 4,
         'pending_count': 2,
+        'unread_count': 3,
         'latest_comment_at': '2026-08-06T10:00:00+00:00',
         'latest_comment_preview': 'عالی',
       });
@@ -130,6 +179,7 @@ void main() {
       expect(thread.familyId, 3);
       expect(thread.matchingCount, 4);
       expect(thread.pendingCount, 2);
+      expect(thread.unreadCount, 3);
       expect(thread.familyInternalName, 'نور');
     });
   });

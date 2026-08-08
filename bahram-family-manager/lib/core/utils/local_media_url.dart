@@ -19,7 +19,9 @@ String guessMediaMimeType(String? filename, String mediaType) {
         'webp' => 'image/webp',
         'gif' => 'image/gif',
         'mp4' => 'video/mp4',
-        'webm' => 'video/webm',
+        'webm' => (mediaType == 'voice' || mediaType == 'audio')
+            ? 'audio/webm'
+            : 'video/webm',
         'mov' => 'video/quicktime',
         'mp3' => 'audio/mpeg',
         'm4a' => 'audio/mp4',
@@ -32,7 +34,7 @@ String guessMediaMimeType(String? filename, String mediaType) {
       switch (mediaType) {
         'image' => 'image/jpeg',
         'video' => 'video/mp4',
-        'voice' || 'audio' => 'audio/mpeg',
+        'voice' || 'audio' => 'audio/ogg',
         _ => 'application/octet-stream',
       };
 }

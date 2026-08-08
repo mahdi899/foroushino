@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
+import { useOverlayHistoryBack } from '@/lib/family/hooks/useOverlayHistoryBack';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
   inferFamilyMediaMimeType,
@@ -27,6 +28,7 @@ export function FamilyVideoModal({
   postId,
   durationHint,
   portrait = false,
+  circle = false,
   onClose,
 }: {
   open: boolean;
@@ -37,6 +39,8 @@ export function FamilyVideoModal({
   postId: number;
   durationHint?: number | null;
   portrait?: boolean;
+  /** Telegram-style circular video message player. */
+  circle?: boolean;
   onClose: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -62,13 +66,13 @@ export function FamilyVideoModal({
     if (open) {
       setSrcIndex(0);
       setIsPortrait(portrait);
-      setVideoAspect(null);
+      setVideoAspect(circle ? '1 / 1' : null);
       setIsBuffering(true);
       hasStartedRef.current = false;
       userPausedRef.current = false;
       setPlaybackError(false);
     }
-  }, [open, portrait, url]);
+  }, [open, portrait, circle, url]);
 
   useEffect(() => {
     const media = window.matchMedia('(pointer: coarse)');
@@ -108,6 +112,9 @@ export function FamilyVideoModal({
     dismissNowPlaying();
     onClose();
   }, [dismissNowPlaying, onClose, stopPlayback]);
+
+  // Phone/browser Back exits the video player first (stay on family feed).
+  useOverlayHistoryBack(open ? 'video' : null, handleClose);
 
   const retryPlayback = useCallback(() => {
     setSrcIndex(0);
@@ -240,10 +247,14 @@ export function FamilyVideoModal({
       <div
         role="dialog"
         aria-modal
-        aria-label="پخش ویدیو"
+        aria-label={circle ? 'پخش پیام ویدیویی' : 'پخش ویدیو'}
         className={cn(
           'family-video-modal',
-          isPortrait ? 'family-video-modal--portrait' : 'family-video-modal--landscape',
+          circle
+            ? 'family-video-modal--circle'
+            : isPortrait
+              ? 'family-video-modal--portrait'
+              : 'family-video-modal--landscape',
         )}
         onClick={handleClose}
       >
@@ -302,15 +313,33 @@ export function FamilyVideoModal({
               ref={videoRef}
               key={activeSrc}
               playsInline
-              controls
+              controls={!circle}
               preload="metadata"
               poster={posterUrl || undefined}
               controlsList={coarsePointer ? 'nofullscreen' : undefined}
               disablePictureInPicture
               className="family-video-modal__player"
               style={playerStyle}
+              onClick={
+                circle
+                  ? (e) => {
+                      e.stopPropagation();
+                      const el = e.currentTarget;
+                      if (el.paused) {
+                        userPausedRef.current = false;
+                        void el.play().catch(() => setPlaybackError(true));
+                      } else {
+                        el.pause();
+                      }
+                    }
+                  : undefined
+              }
               onLoadedMetadata={(e) => {
                 const video = e.currentTarget;
+                if (circle) {
+                  setVideoAspect('1 / 1');
+                  return;
+                }
                 if (video.videoWidth > 0 && video.videoHeight > 0) {
                   setIsPortrait(video.videoHeight > video.videoWidth);
                   setVideoAspect(`${video.videoWidth} / ${video.videoHeight}`);
@@ -343,6 +372,10 @@ export function FamilyVideoModal({
                   e.currentTarget.duration || 0,
                   e.currentTarget.duration || durationHint || 0,
                 );
+                if (circle) {
+                  e.currentTarget.currentTime = 0;
+                  void e.currentTarget.play().catch(() => {});
+                }
               }}
             >
               <source src={activeSrc} type={activeMime} />

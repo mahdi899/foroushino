@@ -21,6 +21,7 @@ class FamilyMediaView extends StatelessWidget {
     this.borderRadius,
     this.compact = false,
     this.previewOnly = false,
+    this.circular = false,
     this.localBytes,
     this.localUrl,
   });
@@ -31,6 +32,8 @@ class FamilyMediaView extends StatelessWidget {
   final bool compact;
   /// List/feed previews — thumbnail only, no video decoder.
   final bool previewOnly;
+  /// Telegram-style circular video note presentation (1:1 circle crop).
+  final bool circular;
   /// Immediate preview from the just-picked file (before CDN URL exists).
   final Uint8List? localBytes;
   /// Blob URL (web) or temp file path (IO) for video/audio local preview.
@@ -38,16 +41,26 @@ class FamilyMediaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = borderRadius ?? BorderRadius.circular(18);
+    final radius = circular
+        ? BorderRadius.circular(height / 2)
+        : (borderRadius ?? BorderRadius.circular(18));
     final networkUrl = media.playableUrl;
     final localPlaybackUrl = localUrl;
 
     if (previewOnly) {
-      return MediaThumbnail(
+      final thumb = MediaThumbnail(
         media: media,
         height: height,
         borderRadius: radius,
         localBytes: localBytes,
+      );
+      if (!circular) return thumb;
+      return Align(
+        child: SizedBox(
+          width: height,
+          height: height,
+          child: ClipOval(child: thumb),
+        ),
       );
     }
 
@@ -69,37 +82,52 @@ class FamilyMediaView extends StatelessWidget {
     }
 
     if (media.isVideo) {
-      final source = networkUrl ?? localPlaybackUrl;
+      // Prefer local file/blob while present — avoids ExoPlayer hitting a
+      // broken localhost CDN URL from local Laravel during/after upload.
+      final local = localPlaybackUrl;
+      final preferLocal = local != null && local.isNotEmpty;
+      final source = preferLocal ? local : networkUrl;
       if (source != null) {
         return _VideoView(
-          key: ValueKey('video-$source'),
+          key: ValueKey('video-$source-c$circular'),
           source: source,
-          isFilePath: networkUrl == null && !kIsWeb,
+          isFilePath: preferLocal && !kIsWeb,
           height: height,
           radius: radius,
+          circular: circular,
         );
       }
     }
 
     if (media.isAudio) {
-      final source = networkUrl ?? localPlaybackUrl;
+      final local = localPlaybackUrl;
+      final preferLocal = local != null && local.isNotEmpty;
+      final source = preferLocal ? local : networkUrl;
       if (source != null) {
         return _AudioView(
           key: ValueKey('audio-$source'),
           media: media,
           url: source,
-          isFilePath: networkUrl == null && !kIsWeb,
+          isFilePath: preferLocal && !kIsWeb,
           compact: compact,
           localBytes: localBytes,
         );
       }
     }
 
-    return MediaThumbnail(
+    final fallback = MediaThumbnail(
       media: media,
       height: height,
       borderRadius: radius,
       localBytes: localBytes,
+    );
+    if (!circular) return fallback;
+    return Align(
+      child: SizedBox(
+        width: height,
+        height: height,
+        child: ClipOval(child: fallback),
+      ),
     );
   }
 }
@@ -185,12 +213,14 @@ class _VideoView extends StatefulWidget {
     required this.height,
     required this.radius,
     this.isFilePath = false,
+    this.circular = false,
   });
 
   final String source;
   final double height;
   final BorderRadius radius;
   final bool isFilePath;
+  final bool circular;
 
   @override
   State<_VideoView> createState() => _VideoViewState();
@@ -200,6 +230,7 @@ class _VideoViewState extends State<_VideoView> {
   VideoPlayerController? _controller;
   var _ready = false;
   var _failed = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -211,76 +242,183 @@ class _VideoViewState extends State<_VideoView> {
   void didUpdateWidget(covariant _VideoView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.source != widget.source || oldWidget.isFilePath != widget.isFilePath) {
-      _controller?.dispose();
-      _controller = null;
+      _detachController();
       _ready = false;
       _failed = false;
+      _errorMessage = null;
       _init();
     }
   }
 
+  void _onControllerUpdate() {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+    final err = controller.value.errorDescription;
+    if (err != null && err.isNotEmpty && !_failed) {
+      setState(() {
+        _failed = true;
+        _ready = false;
+        _errorMessage = _friendlyPlaybackError(err, isFilePath: widget.isFilePath);
+      });
+    }
+  }
+
   Future<void> _init() async {
+    VideoPlayerController? controller;
     try {
-      final controller = createVideoPlayerController(
+      controller = createVideoPlayerController(
         widget.source,
         isLocalFile: widget.isFilePath,
       );
       _controller = controller;
+      controller.addListener(_onControllerUpdate);
       await controller.initialize();
-      if (mounted) setState(() => _ready = true);
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (!mounted) return;
+      if (controller.value.hasError) {
+        setState(() {
+          _failed = true;
+          _errorMessage = _friendlyPlaybackError(
+            controller!.value.errorDescription,
+            isFilePath: widget.isFilePath,
+          );
+        });
+        return;
+      }
+      setState(() => _ready = true);
+    } catch (e) {
+      if (controller != null) {
+        controller.removeListener(_onControllerUpdate);
+        if (identical(_controller, controller)) {
+          _controller = null;
+        }
+        await controller.dispose();
+      }
+      if (mounted) {
+        setState(() {
+          _failed = true;
+          _errorMessage = _friendlyPlaybackError(
+            e.toString(),
+            isFilePath: widget.isFilePath,
+          );
+        });
+      }
     }
+  }
+
+  void _detachController() {
+    final controller = _controller;
+    _controller = null;
+    if (controller == null) return;
+    controller.removeListener(_onControllerUpdate);
+    controller.dispose();
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _detachController();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final videoChild = Stack(
+      alignment: Alignment.center,
+      fit: widget.circular ? StackFit.expand : StackFit.loose,
+      children: [
+        if (_ready && controller != null && !_failed)
+          widget.circular
+              ? FittedBox(
+                  fit: BoxFit.cover,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: controller.value.size.width,
+                    height: controller.value.size.height,
+                    child: VideoPlayer(controller),
+                  ),
+                )
+              : AspectRatio(
+                  aspectRatio: controller.value.aspectRatio,
+                  child: VideoPlayer(controller),
+                )
+        else if (_failed)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.videocam_off_rounded, color: Colors.white70, size: 36),
+                const SizedBox(height: 8),
+                Text(
+                  _errorMessage ?? 'پخش ویدیو ممکن نشد.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          )
+        else
+          const CircularProgressIndicator(color: Colors.white),
+        if (_ready && controller != null && !_failed)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.25),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              iconSize: 52,
+              color: Colors.white,
+              icon: Icon(controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+              onPressed: () {
+                setState(() {
+                  controller.value.isPlaying ? controller.pause() : controller.play();
+                });
+              },
+            ),
+          ),
+      ],
+    );
+
+    if (widget.circular) {
+      return Align(
+        child: SizedBox(
+          width: widget.height,
+          height: widget.height,
+          child: ClipOval(
+            child: ColoredBox(
+              color: Colors.black,
+              child: videoChild,
+            ),
+          ),
+        ),
+      );
+    }
+
     return ClipRRect(
       borderRadius: widget.radius,
       child: Container(
         color: Colors.black,
         height: widget.height,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (_ready && controller != null)
-              AspectRatio(
-                aspectRatio: controller.value.aspectRatio,
-                child: VideoPlayer(controller),
-              )
-            else if (_failed)
-              const Icon(Icons.broken_image_rounded, color: Colors.white70, size: 40)
-            else
-              const CircularProgressIndicator(color: Colors.white),
-            if (_ready && controller != null)
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  iconSize: 52,
-                  color: Colors.white,
-                  icon: Icon(controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                  onPressed: () {
-                    setState(() {
-                      controller.value.isPlaying ? controller.pause() : controller.play();
-                    });
-                  },
-                ),
-              ),
-          ],
-        ),
+        child: videoChild,
       ),
     );
   }
+}
+
+String _friendlyPlaybackError(String? raw, {required bool isFilePath}) {
+  final text = (raw ?? '').toLowerCase();
+  if (text.contains('localhost') ||
+      text.contains('127.0.0.1') ||
+      text.contains('failed to connect') ||
+      text.contains('httpdatasource') ||
+      text.contains('source error')) {
+    return isFilePath
+        ? 'باز کردن فایل محلی ناموفق بود. دوباره ضبط یا انتخاب کنید.'
+        : 'اتصال به آدرس پخش برقرار نشد. اینترنت یا تنظیمات سرور را بررسی کنید.';
+  }
+  return isFilePath
+      ? 'پخش فایل محلی ممکن نشد.'
+      : 'پخش ویدیو از سرور ممکن نشد.';
 }
 
 class _AudioView extends StatefulWidget {

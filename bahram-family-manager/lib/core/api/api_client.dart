@@ -13,6 +13,11 @@ class ApiClient {
   /// dio_web_adapter rejects sendTimeout on body-less requests (GET/DELETE).
   static const _bodySendTimeout = Duration(minutes: 5);
 
+  /// Large video uploads over a slow/unstable connection can take longer
+  /// than the default body timeout above, especially when the background
+  /// keep-alive lets an upload run for many minutes uninterrupted.
+  static const _uploadSendTimeout = Duration(minutes: 10);
+
   ApiClient({SecureStorage? storage}) : _storage = storage ?? SecureStorage() {
     _dio = Dio(
       BaseOptions(
@@ -60,12 +65,15 @@ class ApiClient {
           if (kDebugMode) {
             final started = error.requestOptions.extra['__started'] as int?;
             final elapsed = started == null ? null : DateTime.now().millisecondsSinceEpoch - started;
+            final resolved = ApiException.fromDio(error);
             ApiDebugLog.record(
               method: error.requestOptions.method,
               path: error.requestOptions.uri.path,
-              statusCode: error.response?.statusCode,
+              statusCode: error.response?.statusCode ?? resolved.statusCode,
               durationMs: elapsed,
-              error: error.message,
+              error: resolved.code != null
+                  ? '[${resolved.code}] ${resolved.message}'
+                  : resolved.message,
             );
           }
           if (error.response?.statusCode == 401) {
@@ -101,12 +109,25 @@ class ApiClient {
   Options? get _webBodySendTimeout =>
       kIsWeb ? Options(sendTimeout: _bodySendTimeout) : null;
 
-  Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) {
-    return _send(() => _dio.get(path, queryParameters: query));
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, dynamic>? query,
+    CancelToken? cancelToken,
+  }) {
+    return _send(() => _dio.get(path, queryParameters: query, cancelToken: cancelToken));
   }
 
-  Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? data}) {
-    return _send(() => _dio.post(path, data: data, options: _webBodySendTimeout));
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, dynamic>? data,
+    CancelToken? cancelToken,
+  }) {
+    return _send(() => _dio.post(
+          path,
+          data: data,
+          options: _webBodySendTimeout,
+          cancelToken: cancelToken,
+        ));
   }
 
   Future<Map<String, dynamic>> patch(String path, {Map<String, dynamic>? data}) {
@@ -117,16 +138,22 @@ class ApiClient {
     return _send(() => _dio.delete(path));
   }
 
+  /// Uploads a [form] body. Uses a longer send timeout than plain JSON
+  /// requests (large video/voice files on slow connections) and accepts an
+  /// optional [cancelToken] so an in-flight upload can be aborted, e.g. when
+  /// the user cancels from the notification or the app logs out.
   Future<Map<String, dynamic>> postForm(
     String path,
     FormData form, {
     void Function(int sent, int total)? onSendProgress,
+    CancelToken? cancelToken,
   }) {
     return _send(() => _dio.post(
           path,
           data: form,
           onSendProgress: onSendProgress,
-          options: _webBodySendTimeout,
+          cancelToken: cancelToken,
+          options: Options(sendTimeout: _uploadSendTimeout),
         ));
   }
 
