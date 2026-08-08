@@ -92,6 +92,7 @@ import {
 } from '@/lib/family/feedMediaWarmup';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 import { parseFamilyPostId } from '@/lib/family/postLink';
+import { FAMILY_REFRESH_INTERVAL_MS } from '@/lib/family/swr';
 
 const FAMILY_FEED_USER_SCROLL_GUARD_MS = 600;
 
@@ -394,8 +395,7 @@ function FeedViewInner({
   const syncTipIfServerAhead = useCallback(async () => {
     if (isPreview || isJumpedAwayRef.current || tipSyncInFlightRef.current) return;
 
-    const realtime = isRealtimeConfigured();
-    const minGapMs = realtime ? 90_000 : 45_000;
+    const minGapMs = FAMILY_REFRESH_INTERVAL_MS;
     const now = Date.now();
     if (now - lastTipSyncAtRef.current < minGapMs) return;
 
@@ -518,10 +518,9 @@ function FeedViewInner({
 
     void syncTipIfServerAhead();
 
-    const intervalMs = isRealtimeConfigured() ? 180_000 : 90_000;
     const id = window.setInterval(() => {
       void syncTipIfServerAhead();
-    }, intervalMs);
+    }, FAMILY_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(id);
   }, [

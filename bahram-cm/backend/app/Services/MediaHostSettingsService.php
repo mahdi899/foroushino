@@ -210,11 +210,17 @@ class MediaHostSettingsService
         return $trimmed !== '' ? rtrim($trimmed, '/') : null;
     }
 
-    /** rostami.club/media/family proxy breaks video Range — never use as CDN base. */
+    /** Club apex /media/family proxy breaks video Range — never use as CDN base. */
     private function isClubMediaProxyUrl(string $url): bool
     {
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $entryHost = strtolower((string) parse_url((string) config('family.entry.base_url', ''), PHP_URL_HOST));
+        $blocked = ['rostami.club', 'www.rostami.club'];
+        if ($entryHost !== '') {
+            $blocked[] = $entryHost;
+            $blocked[] = 'www.'.$entryHost;
+        }
 
-        return in_array($host, ['rostami.club', 'www.rostami.club'], true);
+        return in_array($host, $blocked, true);
     }
 }

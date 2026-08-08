@@ -67,7 +67,7 @@ $listing = & $Keytool -list -v -keystore $KeystorePath -alias $Alias -storepass 
 if ($listing -notmatch 'SHA256:\s*([0-9A-F:]+)') {
   throw "Could not parse SHA-256 fingerprint from keytool output."
 }
-$fingerprint = $Matches[1].Trim().ToUpperCase()
+$fingerprint = $Matches[1].Trim().ToUpper()
 Write-Host "SHA-256 fingerprint: $fingerprint" -ForegroundColor Green
 
 $manifestPath = Join-Path $Root 'twa-manifest.json'
@@ -87,7 +87,7 @@ if ($existing -notcontains $fingerprint) {
   $existing += $fingerprint
 }
 $manifest.fingerprints = $existing
-$manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding UTF8
+$manifest | ConvertTo-Json -Depth 10 | Set-Content -Path $manifestPath -Encoding utf8NoBOM
 
 node (Join-Path $PSScriptRoot 'sync-assetlinks.mjs') --fingerprint $fingerprint
 

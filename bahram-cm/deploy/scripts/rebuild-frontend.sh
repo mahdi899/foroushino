@@ -38,8 +38,9 @@ if [[ -f .env.local ]]; then
     && sed -i 's|^NEXT_PUBLIC_APP_DOMAIN=.*|NEXT_PUBLIC_APP_DOMAIN=rostami.app|' .env.local \
     || echo 'NEXT_PUBLIC_APP_DOMAIN=rostami.app' >> .env.local
   grep -q '^NEXT_PUBLIC_FAMILY_DOMAIN=' .env.local \
-    && sed -i 's|^NEXT_PUBLIC_FAMILY_DOMAIN=.*|NEXT_PUBLIC_FAMILY_DOMAIN=rostami.club|' .env.local \
     || echo 'NEXT_PUBLIC_FAMILY_DOMAIN=rostami.club' >> .env.local
+  grep -q '^NEXT_PUBLIC_FAMILY_SITE_URL=' .env.local \
+    || echo 'NEXT_PUBLIC_FAMILY_SITE_URL=https://rostami.club' >> .env.local
   grep -q '^NEXT_PUBLIC_SITE_URL=' .env.local \
     && sed -i 's|^NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=https://rostami.app|' .env.local \
     || echo 'NEXT_PUBLIC_SITE_URL=https://rostami.app' >> .env.local
