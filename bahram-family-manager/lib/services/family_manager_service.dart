@@ -10,7 +10,6 @@ import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/core/utils/media_failure_messages.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/models/upload_progress.dart';
-import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 
 /// All calls under `/api/v1/family-manager/*` — the Bahram + authorized-admin
 /// surface. Every route is additionally guarded server-side by the
@@ -624,6 +623,8 @@ class FamilyManagerService {
         phase: MediaUploadPhase.processing,
         sentBytes: totalBytes,
         totalBytes: totalBytes,
+        hostStatus: media.status,
+        pollAttempt: 1,
       ));
     }
   }
@@ -826,6 +827,28 @@ class FamilyManagerService {
     return const Duration(minutes: 3);
   }
 
+  static const _hostPrepTransientRetries = 4;
+  static const _hostPrepPollSlice = Duration(milliseconds: 200);
+
+  /// Interruptible delay so cancel during host-prep polling wakes promptly.
+  Future<void> _delayCancellable(Duration duration, CancelToken? cancelToken) async {
+    var remaining = duration;
+    while (remaining > Duration.zero) {
+      if (cancelToken?.isCancelled ?? false) {
+        throw ApiException.fromDio(cancelToken!.cancelError!);
+      }
+      final slice = remaining < _hostPrepPollSlice ? remaining : _hostPrepPollSlice;
+      await Future<void>.delayed(slice);
+      remaining -= slice;
+    }
+  }
+
+  void _throwIfCancelled(CancelToken? cancelToken) {
+    if (cancelToken?.isCancelled ?? false) {
+      throw ApiException.fromDio(cancelToken!.cancelError!);
+    }
+  }
+
   /// Poll until backend pipeline marks media `ready` (optimize → storage → CDN/local).
   Future<FamilyMediaRef> waitForMediaReady(
     int id, {
@@ -840,9 +863,47 @@ class FamilyManagerService {
     Duration effectiveTimeout = timeout ?? readyTimeoutFor(type);
     final started = DateTime.now();
     var deadline = started.add(effectiveTimeout);
+    var pollAttempt = 0;
+    var consecutiveNetworkFailures = 0;
+
     while (DateTime.now().isBefore(deadline)) {
-      if (cancelToken?.isCancelled ?? false) throw ApiException.fromDio(cancelToken!.cancelError!);
-      final media = await showMedia(id, cancelToken: cancelToken);
+      _throwIfCancelled(cancelToken);
+      pollAttempt++;
+
+      FamilyMediaRef media;
+      try {
+        media = await showMedia(id, cancelToken: cancelToken);
+        consecutiveNetworkFailures = 0;
+      } catch (e) {
+        if (e is DioException && CancelToken.isCancel(e)) rethrow;
+        if (e is ApiException && e.code == 'cancelled') rethrow;
+        if (MediaFailureMessages.looksLikeNetworkFailure(e) &&
+            consecutiveNetworkFailures < _hostPrepTransientRetries) {
+          consecutiveNetworkFailures++;
+          onUploadState?.call(UploadProgress(
+            phase: MediaUploadPhase.processing,
+            sentBytes: totalBytes,
+            totalBytes: totalBytes,
+            pollAttempt: consecutiveNetworkFailures,
+            statusDetail: MediaFailureMessages.hostPrepReconnect(consecutiveNetworkFailures),
+          ));
+          await _delayCancellable(interval, cancelToken);
+          continue;
+        }
+        onUploadState?.call(UploadProgress(
+          phase: MediaUploadPhase.failed,
+          sentBytes: 0,
+          totalBytes: totalBytes,
+        ));
+        if (MediaFailureMessages.looksLikeNetworkFailure(e)) {
+          throw ApiException(
+            message: MediaFailureMessages.hostPrepConnectionFailed(),
+            code: e is ApiException ? (e.code ?? 'host_prep_connection') : 'host_prep_connection',
+          );
+        }
+        rethrow;
+      }
+
       onUpdate?.call(media);
       if (timeout == null && type == null && media.type.isNotEmpty) {
         effectiveTimeout = readyTimeoutFor(media.type);
@@ -872,8 +933,10 @@ class FamilyManagerService {
         phase: MediaUploadPhase.processing,
         sentBytes: bytes,
         totalBytes: bytes,
+        hostStatus: media.status,
+        pollAttempt: pollAttempt,
       ));
-      await Future<void>.delayed(interval);
+      await _delayCancellable(interval, cancelToken);
     }
     onUploadState?.call(UploadProgress(
       phase: MediaUploadPhase.failed,

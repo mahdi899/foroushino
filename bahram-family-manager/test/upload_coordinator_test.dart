@@ -1,3 +1,4 @@
+import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/models/upload_progress.dart';
 import 'package:bahram_family_manager/services/background_upload_keep_alive.dart';
@@ -81,6 +82,47 @@ void main() {
       expect(uploads.pendingPostDraft?['type'], 'video');
       uploads.cancelAll();
       expect(uploads.pendingPostDraft, isNull);
+    });
+    test('forget from progress listener does not throw during notify', () async {
+      final task = uploads.start(
+        slot: 'post:main',
+        filename: 'clip.mp4',
+        type: 'video',
+        job: (task) async {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+          // Mimic waitForMediaReady timeout: failed progress then throw.
+          task.reportProgress(const UploadProgress(
+            phase: MediaUploadPhase.failed,
+            sentBytes: 0,
+            totalBytes: 100,
+          ));
+          throw ApiException(
+            message: 'آماده‌سازی هاست دانلود تمام نشد (زمان انتظار به پایان رسید).',
+            code: 'media_timeout',
+          );
+        },
+      );
+
+      Object? listenerError;
+      task.progress.addListener(() {
+        if (!task.isDone) return;
+        try {
+          uploads.forget(task.slot);
+        } catch (e) {
+          listenerError = e;
+        }
+      });
+
+      await expectLater(
+        task.whenDone,
+        throwsA(isA<ApiException>().having((e) => e.code, 'code', 'media_timeout')),
+      );
+      // Allow deferred dispose microtask to run.
+      await Future<void>.delayed(Duration.zero);
+
+      expect(listenerError, isNull);
+      expect(uploads.taskFor('post:main'), isNull);
+      expect(task.error, isA<ApiException>());
     });
   });
 }

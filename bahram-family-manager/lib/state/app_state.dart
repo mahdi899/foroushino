@@ -21,6 +21,7 @@ class AppState extends ChangeNotifier {
     _auth = AuthService(api: _api, storage: _storage);
     manager = FamilyManagerService(api: _api);
     uploads = UploadCoordinator();
+    uploads.addListener(notifyListeners);
     _api.onUnauthorized = _handleUnauthorized;
   }
 
@@ -106,6 +107,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    uploads.removeListener(notifyListeners);
     uploads.dispose();
     super.dispose();
   }

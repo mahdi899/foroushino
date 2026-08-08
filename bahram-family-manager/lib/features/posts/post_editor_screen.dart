@@ -10,6 +10,7 @@ import 'package:bahram_family_manager/core/debug/upload_failure_log.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/core/utils/media_failure_messages.dart';
 import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/core/utils/local_media_url.dart';
 import 'package:bahram_family_manager/core/utils/picked_media.dart';
@@ -30,7 +31,6 @@ import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
-import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_progress_overlay.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/media/voice_library_sheet.dart';
@@ -88,6 +88,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   double _uploadProgress = 0;
   int _uploadSentBytes = 0;
   int _uploadTotalBytes = 0;
+  String? _hostStatus;
+  int? _pollAttempt;
+  String? _statusDetail;
   UploadTask? _mainTask;
   VoidCallback? _detachMainTaskListener;
   bool _optimizeImages = true;
@@ -191,6 +194,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   void _bindMainTask(UploadTask task) {
     _detachMainTaskListener?.call();
     _mainTask = task;
+    task.uiBound = true;
     void listener() {
       if (!mounted) return;
       final upload = task.progress.value;
@@ -199,12 +203,18 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         if (task.media != null) _mediaRef = task.media;
       });
       if (task.isDone) {
-        _onMainTaskFinished(task);
+        // Defer finish/forget past notifyListeners so ValueNotifier.dispose
+        // is never called mid-notification (host-prep timeout path).
+        scheduleMicrotask(() {
+          if (!mounted || _mainTask != task) return;
+          _onMainTaskFinished(task);
+        });
       }
     }
 
     task.progress.addListener(listener);
     _detachMainTaskListener = () {
+      task.uiBound = false;
       task.progress.removeListener(listener);
       _detachMainTaskListener = null;
     };
@@ -215,27 +225,31 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   void _onMainTaskFinished(UploadTask task) {
     final uploads = context.read<AppState>().uploads;
-    if (task.error != null) {
-      final err = task.error!;
+    final phase = task.progress.value.phase;
+    final failed = task.error != null || phase == MediaUploadPhase.failed;
+
+    if (failed) {
+      final err = task.error;
       final cancelled = task.isCancelled;
       _detachMainTaskListener?.call();
       _mainTask = null;
       uploads.forget(task.slot);
       // Cancellation from leave-guard / logout — don't snackbar-spam.
       if (cancelled) {
-        setState(() {
-          _mediaRef = null;
-          _mediaPhase = MediaUploadPhase.idle;
-          _uploadProgress = 0;
-          _uploadSentBytes = 0;
-          _uploadTotalBytes = 0;
-        });
+        setState(_resetMainUploadUi);
         return;
       }
-      unawaited(_abortFailedMainMedia(err, filename: task.filename));
+      if (err != null) {
+        unawaited(_abortFailedMainMedia(err, filename: task.filename));
+      } else {
+        // Defensive: failed phase without error (should be rare after microtask).
+        setState(_resetMainUploadUi);
+        showAppSnackBar(context, MediaFailureMessages.timeoutWaitingReady());
+      }
       return;
     }
-    if (task.media != null) {
+
+    if (phase == MediaUploadPhase.ready && task.media != null) {
       setState(() {
         _mediaRef = task.media;
         _applyMainUploadState(task.progress.value);
@@ -323,7 +337,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'ویدیو/رسانه هنوز در حال آپلود است. می‌خواهید در پس‌زمینه ادامه دهد یا لغو شود؟',
+            'آپلود یا آماده‌سازی هاست دانلود هنوز تمام نشده. می‌خواهید در پس‌زمینه ادامه دهد یا لغو شود؟',
           ),
           const SizedBox(height: AppSpacing.lg),
           PrimaryButton(
@@ -348,7 +362,15 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       for (final image in _images) {
         image.detach();
       }
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'آپلود در پس‌زمینه ادامه دارد. پیشرفت را در اعلان ببینید؛ پایان کار به شما اعلام می‌شود.',
+          ),
+        ),
+      );
       return;
     }
     if (choice == 'cancel') {
@@ -455,6 +477,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _uploadProgress = 0;
       _uploadSentBytes = 0;
       _uploadTotalBytes = 0;
+      _hostStatus = null;
+      _pollAttempt = null;
+      _statusDetail = null;
     });
   }
 
@@ -463,13 +488,46 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     _uploadProgress = upload.fraction;
     _uploadSentBytes = upload.sentBytes;
     _uploadTotalBytes = upload.totalBytes;
+    _hostStatus = upload.hostStatus;
+    _pollAttempt = upload.pollAttempt;
+    _statusDetail = upload.statusDetail;
+  }
+
+  void _resetMainUploadUi() {
+    _mediaRef = null;
+    _mediaPhase = MediaUploadPhase.idle;
+    _uploadProgress = 0;
+    _uploadSentBytes = 0;
+    _uploadTotalBytes = 0;
+    _hostStatus = null;
+    _pollAttempt = null;
+    _statusDetail = null;
   }
 
   bool get _mediaBusy => _mediaPhase.isActive || _images.any((img) => img.phase.isActive);
 
   String? get _mediaStatusLabel {
     if (!_mediaPhase.isActive) return null;
-    return _mediaPhase.statusLabel((_uploadProgress * 100).clamp(0, 100));
+    return _mediaPhase.statusLabel(
+      _mediaPhase.overallPercent(_uploadProgress),
+      hostStatus: _hostStatus,
+      pollAttempt: _pollAttempt,
+      statusDetail: _statusDetail,
+    );
+  }
+
+  /// Cancels in-flight upload / host-prep polling and unlocks the editor.
+  Future<void> _cancelMainMediaUpload({bool clearPreview = true}) async {
+    final uploads = context.read<AppState>().uploads;
+    if (_mainTask != null) {
+      uploads.cancel(_mainUploadSlot);
+      uploads.forget(_mainUploadSlot);
+      _detachMainTaskListener?.call();
+      _mainTask = null;
+    }
+    if (clearPreview) await _clearLocalPreview();
+    if (!mounted) return;
+    setState(_resetMainUploadUi);
   }
 
   bool get _isImagePost => _type == 'image' || _type == 'image_album';
@@ -529,13 +587,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     );
     await _clearLocalPreview();
     if (!mounted) return;
-    setState(() {
-      _mediaRef = null;
-      _mediaPhase = MediaUploadPhase.idle;
-      _uploadProgress = 0;
-      _uploadSentBytes = 0;
-      _uploadTotalBytes = 0;
-    });
+    setState(_resetMainUploadUi);
     showAppSnackBar(context, messageOf(error));
   }
 
@@ -597,8 +649,14 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       progress: _uploadProgress,
       sentBytes: _uploadSentBytes,
       totalBytes: _uploadTotalBytes,
+      hostStatus: _hostStatus,
+      pollAttempt: _pollAttempt,
+      statusDetail: _statusDetail,
       borderRadius: previewRadius,
       onRetry: _mediaPhase == MediaUploadPhase.failed ? _retryMedia : null,
+      onCancel: _mediaPhase.isActive && !_saving
+          ? () => unawaited(_cancelMainMediaUpload())
+          : null,
       child: FamilyMediaView(
         media: _mediaRef ??
             FamilyMediaRef(
@@ -640,29 +698,14 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: (_mediaBusy || _saving)
+            onPressed: _saving
                 ? null
-                : () async {
-                    final uploads = context.read<AppState>().uploads;
-                    if (_mainTask != null) {
-                      uploads.cancel(_mainUploadSlot);
-                      uploads.forget(_mainUploadSlot);
-                      _detachMainTaskListener?.call();
-                      _mainTask = null;
-                    }
-                    await _clearLocalPreview();
-                    if (mounted) {
-                      setState(() {
-                        _mediaRef = null;
-                        _mediaPhase = MediaUploadPhase.idle;
-                        _uploadProgress = 0;
-                        _uploadSentBytes = 0;
-                        _uploadTotalBytes = 0;
-                      });
-                    }
-                  },
+                : () => unawaited(_cancelMainMediaUpload()),
             icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
-            label: const Text('حذف رسانه', style: TextStyle(color: AppColors.error)),
+            label: Text(
+              _mediaPhase.isActive ? 'لغو و حذف رسانه' : 'حذف رسانه',
+              style: const TextStyle(color: AppColors.error),
+            ),
           ),
         ),
       ],
@@ -891,24 +934,34 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         draft.applyUpload(task.progress.value);
       });
       if (task.isDone) {
-        draft.detach();
-        if (task.error != null) {
-          uploads.forget(slot);
-          if (!task.isCancelled) {
-            _abortFailedImage(draft, task.error!, filename: filename);
-          } else if (mounted) {
-            setState(() => _images.remove(draft));
+        scheduleMicrotask(() {
+          if (!mounted || draft.task != task) return;
+          draft.detach();
+          final phase = task.progress.value.phase;
+          if (task.error != null || phase == MediaUploadPhase.failed) {
+            uploads.forget(slot);
+            if (!task.isCancelled) {
+              final err = task.error;
+              if (err != null) {
+                _abortFailedImage(draft, err, filename: filename);
+              } else if (mounted) {
+                setState(() => _images.remove(draft));
+                showAppSnackBar(context, MediaFailureMessages.timeoutWaitingReady());
+              }
+            } else if (mounted) {
+              setState(() => _images.remove(draft));
+            }
+          } else if (phase == MediaUploadPhase.ready) {
+            uploads.forget(slot);
+            if (mounted) {
+              setState(() {
+                draft.media = task.media;
+                draft.phase = MediaUploadPhase.ready;
+                draft.progress = 1;
+              });
+            }
           }
-        } else {
-          uploads.forget(slot);
-          if (mounted) {
-            setState(() {
-              draft.media = task.media;
-              draft.phase = MediaUploadPhase.ready;
-              draft.progress = 1;
-            });
-          }
-        }
+        });
       }
     });
   }
@@ -2169,7 +2222,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             for (var i = 0; i < _images.length; i++)
               _ImageThumb(
                 image: _images[i],
-                enabled: !_mediaBusy && !_saving,
+                enabled: !_saving,
                 onRemove: () {
                   final image = _images[i];
                   if (image.slot != null) {
@@ -2182,7 +2235,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 },
                 onRetry: () => _retryImageMedia(_images[i]),
               ),
-            if (!_mediaBusy && !_saving)
+            if (!_saving)
               InkWell(
                 onTap: _pickAndUploadMedia,
                 borderRadius: BorderRadius.circular(14),
@@ -2219,7 +2272,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: (_mediaBusy || _saving)
+            onPressed: _saving
                 ? null
                 : () {
                     final uploads = context.read<AppState>().uploads;
@@ -2233,7 +2286,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                     setState(() => _images.clear());
                   },
             icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
-            label: const Text('حذف همه عکس‌ها', style: TextStyle(color: AppColors.error)),
+            label: Text(
+              _mediaBusy ? 'لغو و حذف همه عکس‌ها' : 'حذف همه عکس‌ها',
+              style: const TextStyle(color: AppColors.error),
+            ),
           ),
         ),
       ],
@@ -2250,6 +2306,9 @@ class _AttachedImage {
   double progress = 0;
   int sentBytes = 0;
   int totalBytes = 0;
+  String? hostStatus;
+  int? pollAttempt;
+  String? statusDetail;
   String? slot;
   UploadTask? task;
   VoidCallback? _listener;
@@ -2259,11 +2318,15 @@ class _AttachedImage {
     progress = upload.fraction;
     sentBytes = upload.sentBytes;
     totalBytes = upload.totalBytes;
+    hostStatus = upload.hostStatus;
+    pollAttempt = upload.pollAttempt;
+    statusDetail = upload.statusDetail;
   }
 
   void bind(UploadTask uploadTask, {required VoidCallback onChanged}) {
     detach();
     task = uploadTask;
+    uploadTask.uiBound = true;
     _listener = onChanged;
     uploadTask.progress.addListener(onChanged);
     onChanged();
@@ -2271,6 +2334,7 @@ class _AttachedImage {
 
   void detach() {
     if (task != null && _listener != null) {
+      task!.uiBound = false;
       task!.progress.removeListener(_listener!);
     }
     _listener = null;
@@ -2315,8 +2379,12 @@ class _ImageThumb extends StatelessWidget {
             progress: image.progress,
             sentBytes: image.sentBytes,
             totalBytes: image.totalBytes,
+            hostStatus: image.hostStatus,
+            pollAttempt: image.pollAttempt,
+            statusDetail: image.statusDetail,
             borderRadius: BorderRadius.circular(14),
             onRetry: phase == MediaUploadPhase.failed ? onRetry : null,
+            onCancel: phase.isActive && enabled ? onRemove : null,
             child: FamilyMediaView(
               media: media,
               height: 104,

@@ -415,7 +415,8 @@ class _VideoNoteRecorderPanelState extends State<VideoNoteRecorderPanel>
           mime,
           extension: p.extension(filename).replaceFirst('.', ''),
         );
-        player = createVideoPlayerController(url, isLocalFile: false);
+        // On IO, [createLocalMediaUrl] returns a temp file path — not a network URL.
+        player = createVideoPlayerController(url, isLocalFile: true);
       }
       await player.initialize();
       await player.setLooping(true);

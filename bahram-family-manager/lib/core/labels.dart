@@ -35,9 +35,9 @@ const Map<String, String> mediaTypeLabels = {
 
 const Map<String, String> mediaStatusLabels = {
   'uploading': 'در حال آپلود',
-  'queued': 'در صف انتقال',
-  'transferring': 'در حال انتقال به CDN',
-  'processing': 'در حال پردازش',
+  'queued': 'در صف آماده‌سازی هاست',
+  'transferring': 'در حال انتقال به هاست دانلود',
+  'processing': 'در حال آماده‌سازی هاست',
   'ready': 'آماده',
   'failed': 'خطا',
 };

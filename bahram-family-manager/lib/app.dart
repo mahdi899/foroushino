@@ -7,6 +7,7 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/features/auth/login_screen.dart';
 import 'package:bahram_family_manager/features/shell/root_shell.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 
 class FamilyManagerApp extends StatelessWidget {
   const FamilyManagerApp({super.key});
@@ -75,6 +76,15 @@ class _RootGate extends StatelessWidget {
         final messenger = ScaffoldMessenger.maybeOf(context);
         messenger?.showSnackBar(SnackBar(content: Text(state.sessionError!)));
         state.clearSessionError();
+      });
+    }
+
+    // Background upload ("ادامه در پس‌زمینه") completion / failure snackbar.
+    if (state.uploads.pendingUserMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final msg = state.uploads.consumeUserMessage();
+        if (msg == null || !context.mounted) return;
+        showAppSnackBar(context, msg);
       });
     }
 

@@ -14,31 +14,41 @@ Future<T?> showGlassDialog<T>({
     barrierColor: Theme.of(context).brightness == Brightness.dark
         ? const Color(0xCC000000)
         : const Color(0x8C050A0B),
-    builder: (context) => Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-      child: GlassPanel(
-        borderRadius: AppRadius.card,
-        blur: AppGlass.sheetBlur,
-        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.md),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.md),
-            content,
-            if (actions != null && actions.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: actions,
-              ),
-            ],
-          ],
+    builder: (context) {
+      final maxHeight = MediaQuery.sizeOf(context).height * 0.75;
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+        child: GlassPanel(
+          borderRadius: AppRadius.card,
+          blur: AppGlass.sheetBlur,
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.md),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.md),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: content,
+                  ),
+                ),
+                if (actions != null && actions.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: actions,
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }

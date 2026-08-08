@@ -1,3 +1,6 @@
+import 'package:bahram_family_manager/core/api/api_exception.dart';
+import 'package:bahram_family_manager/core/utils/formatters.dart';
+
 /// Maps backend / transport failure text into precise Persian reasons for the UI and logs.
 class MediaFailureMessages {
   MediaFailureMessages._();
@@ -24,11 +27,14 @@ class MediaFailureMessages {
         lower.contains('does not match declared total_size')) {
       return 'حجم فایل آپلود‌شده با اندازه اعلام‌شده یکی نیست (احتمالاً آپلود ناقص). دوباره آپلود کنید.';
     }
-    if (lower.contains('ftp') || lower.contains('remote upload')) {
-      return 'انتقال فایل به هاست دانلود/FTP ناموفق بود: $raw';
+    if (lower.contains('ftp') || lower.contains('remote upload') || lower.contains('download host')) {
+      return 'انتقال فایل به هاست دانلود ناموفق بود: $raw';
     }
     if (lower.contains('timeout') || lower.contains('timed out')) {
       return 'زمان انتقال فایل تمام شد. اینترنت یا VPN را بررسی کنید و دوباره تلاش کنید.';
+    }
+    if (lower.contains('connection') || lower.contains('could not connect')) {
+      return hostPrepConnectionFailed();
     }
     if (lower.contains('chunks must be uploaded in order') ||
         lower.contains('upload incomplete')) {
@@ -47,5 +53,35 @@ class MediaFailureMessages {
   }
 
   static String timeoutWaitingReady() =>
-      'فایل روی هاست هنوز آماده نیست (زمان انتظار تمام شد). اینترنت/VPN را چک کنید؛ اگر حجم ویدیو خیلی بالاست صبر بیشتری لازم است یا دوباره آپلود کنید.';
+      'آماده‌سازی هاست دانلود تمام نشد (زمان انتظار به پایان رسید). '
+      'اینترنت/VPN را چک کنید؛ در لوکال ممکن است هاست دانلود خاموش یا پیکربندی‌نشده باشد. '
+      'روی سرور production معمولاً کار می‌کند — دوباره آپلود کنید یا کمی بعد تلاش کنید.';
+
+  static String hostPrepConnectionFailed() =>
+      'اتصال برای آماده‌سازی هاست دانلود برقرار نشد. '
+      'اینترنت یا VPN را بررسی کنید؛ در محیط لوکال ممکن است هاست دانلود/CDN در دسترس نباشد.';
+
+  static String hostPrepReconnect(int attempt) =>
+      'قطع ارتباط با سرور؛ تلاش مجدد برای آماده‌سازی هاست… (${toFaDigits(attempt.toString())})';
+
+  static bool looksLikeNetworkFailure(Object error) {
+    if (error is ApiException) {
+      const networkCodes = {
+        'connection_timeout',
+        'connection_error',
+        'network_error',
+        'receive_timeout',
+        'send_timeout',
+        'bad_certificate',
+      };
+      if (error.code != null && networkCodes.contains(error.code)) return true;
+    }
+    final msg = error.toString().toLowerCase();
+    return msg.contains('socket') ||
+        msg.contains('connection') ||
+        msg.contains('network') ||
+        msg.contains('timed out') ||
+        msg.contains('timeout') ||
+        msg.contains('failed host lookup');
+  }
 }

@@ -433,6 +433,9 @@ export function CommentsPanel({
       }
       historyPinFrameRef.current = null;
       historyPinActiveRef.current = false;
+      // Sentinel may still be in view after the pin — nudge the scroll listener so
+      // the next older page can start (IO alone won't re-fire while intersecting).
+      listRef.current?.dispatchEvent(new Event('scroll'));
     };
     historyPinFrameRef.current = requestAnimationFrame(step);
   }, [cancelHistoryPin, scrollListTo]);
@@ -488,7 +491,11 @@ export function CommentsPanel({
     }
   }, [commentsEnabled]);
 
-  useEffect(() => {
+  // Must be useLayoutEffect and run *before* the initial-pin layout pass.
+  // A passive useEffect ran after paint and cleared `initialPinnedForPostRef`
+  // on reopen (SWR cache → pin in layout → reset wiped the flag), so the
+  // older-page loader stayed blocked forever until the panel remounted cold.
+  useLayoutEffect(() => {
     setValue('');
     setError(null);
     setReviewNotice(null);
@@ -497,6 +504,7 @@ export function CommentsPanel({
     setReplyTarget(null);
     initialPinnedForPostRef.current = null;
     historyPinPendingRef.current = false;
+    loadingMoreRef.current = false;
     cancelHistoryPin();
     distanceFromBottomRef.current = 0;
     focusHandledRef.current = null;
@@ -581,35 +589,63 @@ export function CommentsPanel({
     scrollListTo,
   ]);
 
-  // Auto-load older comments when scrolling up (Telegram-style — no button tap).
+  // Auto-load older comments when the reader is near the top (Telegram-style).
+  // IntersectionObserver alone is not enough: with rootMargin it often fires once
+  // while we are still pinned at the tip (blocked by the atBottom guard). The
+  // sentinel then stays intersecting as the user scrolls up, so IO never re-fires
+  // and the spinner never appears — common after close → reopen.
   useEffect(() => {
     const root = listRef.current;
-    const sentinel = topSentinelRef.current;
-    if (!root || !sentinel || !hasMore || isLoading) return;
+    if (!root || !hasMore || isLoading) return;
+
+    const tryLoadOlder = () => {
+      if (loadingMoreRef.current || focusLoadingRef.current) return;
+      if (historyPinActiveRef.current || historyPinPendingRef.current) return;
+
+      const list = listRef.current;
+      const sentinel = topSentinelRef.current;
+      if (!list || !sentinel) return;
+
+      const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 12;
+      const contentOverflows = list.scrollHeight > list.clientHeight + 8;
+      // Pinned on latest in a long thread — wait until the user scrolls up.
+      if (contentOverflows && atBottom && !focusCommentId) return;
+      // Let initial pin / focus scroll settle before fetching history.
+      if (initialPinnedForPostRef.current !== postId && !focusCommentId) return;
+
+      // Near the top of the scroller, or the sentinel is on screen / in the
+      // prefetch band — either is enough to start the next older page.
+      const listTop = list.getBoundingClientRect().top;
+      const sentinelTop = sentinel.getBoundingClientRect().top;
+      const nearTop = list.scrollTop <= 96;
+      const sentinelInBand = sentinelTop <= listTop + 120;
+      if (!nearTop && !sentinelInBand) return;
+
+      void handleLoadOlder();
+    };
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
-        if (loadingMoreRef.current || focusLoadingRef.current) return;
-        if (historyPinActiveRef.current || historyPinPendingRef.current) return;
-
-        const list = listRef.current;
-        if (!list) return;
-
-        const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 12;
-        const contentOverflows = list.scrollHeight > list.clientHeight + 8;
-        // Pinned on latest in a long thread — wait until the user scrolls up.
-        if (contentOverflows && atBottom && !focusCommentId) return;
-        // Let initial pin / focus scroll settle before fetching history.
-        if (initialPinnedForPostRef.current !== postId && !focusCommentId) return;
-
-        void handleLoadOlder();
+        tryLoadOlder();
       },
       { root, rootMargin: '96px 0px 0px 0px', threshold: 0 },
     );
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    const sentinel = topSentinelRef.current;
+    if (sentinel) observer.observe(sentinel);
+
+    root.addEventListener('scroll', tryLoadOlder, { passive: true });
+    // Re-check after layout/pin — covers reopen when the sentinel is already in view.
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(tryLoadOlder);
+    });
+
+    return () => {
+      observer.disconnect();
+      root.removeEventListener('scroll', tryLoadOlder);
+      cancelAnimationFrame(frame);
+    };
   }, [focusCommentId, handleLoadOlder, hasMore, isLoading, orderedComments.length, postId]);
 
   useLayoutEffect(() => {
@@ -794,7 +830,7 @@ export function CommentsPanel({
         {isLoading ? (
           <div className={cn('flex items-center justify-center', isPage ? 'min-h-full' : 'py-16')} aria-busy>
             <span
-              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
+              className="family-inline-spinner family-inline-spinner--md animate-spin"
               aria-label="در حال بارگذاری"
             />
           </div>
@@ -815,12 +851,12 @@ export function CommentsPanel({
               {hasMore ? (
                 <li
                   ref={topSentinelRef}
-                  className="flex h-8 shrink-0 items-center justify-center"
+                  className="flex h-10 shrink-0 items-center justify-center"
                   aria-hidden={!loadingMore}
                 >
                   {loadingMore ? (
                     <span
-                      className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
+                      className="family-inline-spinner family-inline-spinner--sm animate-spin"
                       aria-label="در حال بارگذاری نظرات قدیمی‌تر"
                     />
                   ) : null}

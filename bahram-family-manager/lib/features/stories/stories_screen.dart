@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -5,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/debug/upload_failure_log.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
@@ -58,6 +60,10 @@ class _StoriesScreenState extends State<StoriesScreen> {
   int _uploadSentBytes = 0;
   int _uploadTotalBytes = 0;
   MediaUploadPhase _uploadPhase = MediaUploadPhase.idle;
+  String? _hostStatus;
+  int? _pollAttempt;
+  String? _statusDetail;
+  static const _storyUploadSlot = 'story:main';
 
   @override
   void initState() {
@@ -186,7 +192,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
     final appState = context.read<AppState>();
     final manager = appState.manager;
     final uploads = appState.uploads;
-    const slot = 'story:main';
+    const slot = _storyUploadSlot;
 
     try {
       final task = uploads.start(
@@ -224,11 +230,15 @@ class _StoriesScreenState extends State<StoriesScreen> {
           _uploadProgress = upload.fraction;
           _uploadSentBytes = upload.sentBytes;
           _uploadTotalBytes = upload.totalBytes;
+          _hostStatus = upload.hostStatus;
+          _pollAttempt = upload.pollAttempt;
+          _statusDetail = upload.statusDetail;
           if (task.media != null) _storyMedia = task.media;
         });
       }
 
       task.progress.addListener(onProgress);
+      task.uiBound = true;
       try {
         final ready = await task.whenDone;
         if (mounted) {
@@ -239,6 +249,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
           });
         }
       } finally {
+        task.uiBound = false;
         task.progress.removeListener(onProgress);
         uploads.forget(slot);
       }
@@ -256,12 +267,38 @@ class _StoriesScreenState extends State<StoriesScreen> {
           _uploadProgress = 0;
           _uploadSentBytes = 0;
           _uploadTotalBytes = 0;
+          _hostStatus = null;
+          _pollAttempt = null;
+          _statusDetail = null;
         });
-        showAppSnackBar(context, messageOf(e));
+        // Benign cancel — no snackbar spam.
+        final cancelled = e is ApiException && e.code == 'cancelled';
+        if (!cancelled) {
+          showAppSnackBar(context, messageOf(e));
+        }
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  Future<void> _cancelStoryUpload() async {
+    final uploads = context.read<AppState>().uploads;
+    uploads.cancel(_storyUploadSlot);
+    uploads.forget(_storyUploadSlot);
+    await _clearLocalPreview();
+    if (!mounted) return;
+    setState(() {
+      _storyMedia = null;
+      _uploading = false;
+      _uploadPhase = MediaUploadPhase.idle;
+      _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = 0;
+      _hostStatus = null;
+      _pollAttempt = null;
+      _statusDetail = null;
+    });
   }
 
   int? get _previewWidth => _localWidth ?? _storyMedia?.width;
@@ -360,7 +397,13 @@ class _StoriesScreenState extends State<StoriesScreen> {
                         sentBytes: _uploadSentBytes,
                         totalBytes: _uploadTotalBytes,
                         phase: _uploadPhase,
+                        hostStatus: _hostStatus,
+                        pollAttempt: _pollAttempt,
+                        statusDetail: _statusDetail,
                         onTap: _pickStoryMedia,
+                        onCancel: _uploading
+                            ? () => unawaited(_cancelStoryUpload())
+                            : null,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(

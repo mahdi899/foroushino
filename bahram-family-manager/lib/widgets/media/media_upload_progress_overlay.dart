@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
-import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
 
@@ -14,8 +13,12 @@ class MediaUploadProgressOverlay extends StatefulWidget {
     required this.child,
     this.sentBytes = 0,
     this.totalBytes = 0,
+    this.hostStatus,
+    this.pollAttempt,
+    this.statusDetail,
     this.borderRadius = const BorderRadius.all(Radius.circular(14)),
     this.onRetry,
+    this.onCancel,
   });
 
   final MediaUploadPhase phase;
@@ -23,9 +26,14 @@ class MediaUploadProgressOverlay extends StatefulWidget {
   final double progress;
   final int sentBytes;
   final int totalBytes;
+  final String? hostStatus;
+  final int? pollAttempt;
+  final String? statusDetail;
   final Widget child;
   final BorderRadius borderRadius;
   final VoidCallback? onRetry;
+  /// Always available while the pipeline is active — cancels upload / host prep.
+  final VoidCallback? onCancel;
 
   @override
   State<MediaUploadProgressOverlay> createState() => _MediaUploadProgressOverlayState();
@@ -67,6 +75,9 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
     super.dispose();
   }
 
+  double get _overallPercent =>
+      widget.phase.overallPercent(widget.progress.clamp(0.0, 1.0));
+
   double _overlayFillHeight() {
     switch (widget.phase) {
       case MediaUploadPhase.idle:
@@ -74,29 +85,31 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
       case MediaUploadPhase.failed:
         return 0;
       case MediaUploadPhase.uploading:
-        return widget.progress.clamp(0, 1);
       case MediaUploadPhase.finalizing:
-        return 1;
       case MediaUploadPhase.processing:
-        return 0.98;
+        return (_overallPercent / 100).clamp(0.02, 1.0);
     }
   }
 
   String? _progressLabel() {
-    final total = widget.totalBytes;
-    if (total <= 0) {
-      if (widget.phase == MediaUploadPhase.uploading && widget.progress > 0) {
-        return '${toFaDigits((widget.progress * 100).round().toString())}٪';
-      }
-      return null;
+    if (!widget.phase.isActive) return null;
+
+    final detail = widget.statusDetail?.trim();
+    if (detail != null && detail.isNotEmpty) return detail;
+
+    final pct = toFaDigits(_overallPercent.round().clamp(0, 100).toString());
+    final stage = widget.phase.statusLabel(
+      _overallPercent,
+      hostStatus: widget.hostStatus,
+      pollAttempt: widget.pollAttempt,
+    );
+
+    if (widget.phase == MediaUploadPhase.uploading && widget.totalBytes > 0) {
+      final sent = widget.sentBytes.clamp(0, widget.totalBytes);
+      return '${widget.phase.stageLabel} $pct٪ · ${formatBytes(sent)} / ${formatBytes(widget.totalBytes)}';
     }
 
-    final sent = widget.sentBytes.clamp(0, total);
-    final percent = widget.phase == MediaUploadPhase.finalizing
-        ? 100
-        : (widget.progress * 100).round().clamp(0, 100);
-
-    return '${toFaDigits(percent.toString())}٪ · ${formatBytes(sent)} / ${formatBytes(total)}';
+    return stage;
   }
 
   @override
@@ -106,6 +119,7 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
     final showOverlay = phase.showsProgressOverlay;
     final isReady = phase == MediaUploadPhase.ready;
     final isFailed = phase == MediaUploadPhase.failed;
+    final isProcessing = phase == MediaUploadPhase.processing;
     final progressLabel = _progressLabel();
 
     return AnimatedContainer(
@@ -143,7 +157,7 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
                   builder: (context, constraints) {
                     final h = constraints.maxHeight;
                     final overlayHeight = h * fill;
-                    final pulseAlpha = phase == MediaUploadPhase.processing
+                    final pulseAlpha = isProcessing
                         ? 0.35 + (_pulseCtrl.value * 0.15)
                         : 0.45;
 
@@ -162,11 +176,26 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
                             ),
                           ),
                         ),
+                        if (isProcessing)
+                          const Center(
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.6,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         if (progressLabel != null && fill > 0.02)
                           Align(
                             alignment: Alignment.bottomCenter,
                             child: Padding(
-                              padding: const EdgeInsets.only(bottom: 8, left: 8, right: 8),
+                              padding: EdgeInsets.only(
+                                bottom: widget.onCancel != null ? 40 : 8,
+                                left: 8,
+                                right: 8,
+                              ),
                               child: Text(
                                 progressLabel,
                                 textAlign: TextAlign.center,
@@ -175,6 +204,27 @@ class _MediaUploadProgressOverlayState extends State<MediaUploadProgressOverlay>
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                   shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (widget.onCancel != null)
+                          Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.black54,
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                ),
+                                onPressed: widget.onCancel,
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                                label: const Text(
+                                  'لغو',
+                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
                                 ),
                               ),
                             ),

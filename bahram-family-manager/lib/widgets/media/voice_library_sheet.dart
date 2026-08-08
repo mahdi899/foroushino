@@ -113,27 +113,23 @@ class _VoiceLibrarySheetState extends State<VoiceLibrarySheet> {
     final stem = recording.filename.contains('.')
         ? recording.filename.substring(0, recording.filename.lastIndexOf('.'))
         : recording.filename;
-    final ctrl = TextEditingController(text: stem);
+    // Keep draft in a local so we never dispose a TextEditingController while the
+    // dialog route is still animating closed (showDialog completes before dispose).
+    var draft = stem;
     final confirmed = await showGlassDialog<bool>(
       context: context,
       title: 'تغییر نام ویس',
-      content: TextField(
-        controller: ctrl,
-        autofocus: true,
-        textInputAction: TextInputAction.done,
-        decoration: const InputDecoration(
-          labelText: 'نام جدید',
-          hintText: 'مثلاً معرفی خانواده',
-        ),
-        onSubmitted: (_) => Navigator.pop(context, true),
+      content: _VoiceRenameField(
+        initialText: stem,
+        onChanged: (value) => draft = value,
+        onSubmitted: () => Navigator.pop(context, true),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
         TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('ذخیره')),
       ],
     );
-    final nextName = ctrl.text.trim();
-    ctrl.dispose();
+    final nextName = draft.trim();
     if (confirmed != true || nextName.isEmpty) return;
 
     if (_playingPath == recording.absolutePath) {
@@ -341,4 +337,55 @@ Future<VoiceRecordingResult?> showVoiceLibrarySheet(BuildContext context) {
     initialChildSize: 0.72,
     child: const VoiceLibrarySheet(),
   );
+}
+
+/// Owns [TextEditingController] for the rename dialog so dispose runs only when
+/// the dialog route is removed after its close animation — not right after pop.
+class _VoiceRenameField extends StatefulWidget {
+  const _VoiceRenameField({
+    required this.initialText,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
+
+  final String initialText;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmitted;
+
+  @override
+  State<_VoiceRenameField> createState() => _VoiceRenameFieldState();
+}
+
+class _VoiceRenameFieldState extends State<_VoiceRenameField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+    _controller.addListener(_emitChanged);
+  }
+
+  void _emitChanged() => widget.onChanged(_controller.text);
+
+  @override
+  void dispose() {
+    _controller.removeListener(_emitChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      autofocus: true,
+      textInputAction: TextInputAction.done,
+      decoration: const InputDecoration(
+        labelText: 'نام جدید',
+        hintText: 'مثلاً معرفی خانواده',
+      ),
+      onSubmitted: (_) => widget.onSubmitted(),
+    );
+  }
 }

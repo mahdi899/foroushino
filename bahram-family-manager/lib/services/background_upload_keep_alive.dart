@@ -22,6 +22,9 @@ class BackgroundUploadKeepAlive {
 
   bool _initialized = false;
   bool _running = false;
+  /// Prevents [onActiveUploadsChanged] from tearing down the notification
+  /// while [announceCompletion] is still showing the final status.
+  bool _holdingForAnnouncement = false;
   String? _lastText;
   DateTime? _lastUpdateAt;
 
@@ -66,6 +69,7 @@ class BackgroundUploadKeepAlive {
     _ensureInitialized();
 
     if (activeCount <= 0) {
+      if (_holdingForAnnouncement) return;
       await _stop();
       return;
     }
@@ -123,6 +127,38 @@ class BackgroundUploadKeepAlive {
       await FlutterForegroundTask.stopService();
     } catch (_) {
       // Ignore — nothing to clean up if it was never actually running.
+    }
+  }
+
+  /// Shows a brief completion/failure line in the upload notification, then
+  /// stops the foreground service so the user knows background work finished.
+  Future<void> announceCompletion(String text, {required bool success}) async {
+    if (!_supported) return;
+    _holdingForAnnouncement = true;
+    _ensureInitialized();
+    try {
+      await _requestNotificationPermission();
+      if (_running) {
+        await FlutterForegroundTask.updateService(
+          notificationTitle: success ? 'آپلود تمام شد' : 'آپلود ناموفق',
+          notificationText: text,
+        );
+      } else {
+        final result = await FlutterForegroundTask.startService(
+          serviceId: _serviceId,
+          serviceTypes: const [ForegroundServiceTypes.dataSync],
+          notificationTitle: success ? 'آپلود تمام شد' : 'آپلود ناموفق',
+          notificationText: text,
+        );
+        if (result is ServiceRequestFailure) return;
+        _running = true;
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
+    } catch (_) {
+      // Best-effort notification only.
+    } finally {
+      _holdingForAnnouncement = false;
+      await _stop();
     }
   }
 

@@ -82,12 +82,16 @@ class FamilyMediaView extends StatelessWidget {
     }
 
     if (media.isVideo) {
-      final source = networkUrl ?? localPlaybackUrl;
+      // Prefer local file/blob while present — avoids ExoPlayer hitting a
+      // broken localhost CDN URL from local Laravel during/after upload.
+      final local = localPlaybackUrl;
+      final preferLocal = local != null && local.isNotEmpty;
+      final source = preferLocal ? local : networkUrl;
       if (source != null) {
         return _VideoView(
           key: ValueKey('video-$source-c$circular'),
           source: source,
-          isFilePath: networkUrl == null && !kIsWeb,
+          isFilePath: preferLocal && !kIsWeb,
           height: height,
           radius: radius,
           circular: circular,
@@ -96,13 +100,15 @@ class FamilyMediaView extends StatelessWidget {
     }
 
     if (media.isAudio) {
-      final source = networkUrl ?? localPlaybackUrl;
+      final local = localPlaybackUrl;
+      final preferLocal = local != null && local.isNotEmpty;
+      final source = preferLocal ? local : networkUrl;
       if (source != null) {
         return _AudioView(
           key: ValueKey('audio-$source'),
           media: media,
           url: source,
-          isFilePath: networkUrl == null && !kIsWeb,
+          isFilePath: preferLocal && !kIsWeb,
           compact: compact,
           localBytes: localBytes,
         );
@@ -224,6 +230,7 @@ class _VideoViewState extends State<_VideoView> {
   VideoPlayerController? _controller;
   var _ready = false;
   var _failed = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -235,31 +242,80 @@ class _VideoViewState extends State<_VideoView> {
   void didUpdateWidget(covariant _VideoView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.source != widget.source || oldWidget.isFilePath != widget.isFilePath) {
-      _controller?.dispose();
-      _controller = null;
+      _detachController();
       _ready = false;
       _failed = false;
+      _errorMessage = null;
       _init();
     }
   }
 
+  void _onControllerUpdate() {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+    final err = controller.value.errorDescription;
+    if (err != null && err.isNotEmpty && !_failed) {
+      setState(() {
+        _failed = true;
+        _ready = false;
+        _errorMessage = _friendlyPlaybackError(err, isFilePath: widget.isFilePath);
+      });
+    }
+  }
+
   Future<void> _init() async {
+    VideoPlayerController? controller;
     try {
-      final controller = createVideoPlayerController(
+      controller = createVideoPlayerController(
         widget.source,
         isLocalFile: widget.isFilePath,
       );
       _controller = controller;
+      controller.addListener(_onControllerUpdate);
       await controller.initialize();
-      if (mounted) setState(() => _ready = true);
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (!mounted) return;
+      if (controller.value.hasError) {
+        setState(() {
+          _failed = true;
+          _errorMessage = _friendlyPlaybackError(
+            controller!.value.errorDescription,
+            isFilePath: widget.isFilePath,
+          );
+        });
+        return;
+      }
+      setState(() => _ready = true);
+    } catch (e) {
+      if (controller != null) {
+        controller.removeListener(_onControllerUpdate);
+        if (identical(_controller, controller)) {
+          _controller = null;
+        }
+        await controller.dispose();
+      }
+      if (mounted) {
+        setState(() {
+          _failed = true;
+          _errorMessage = _friendlyPlaybackError(
+            e.toString(),
+            isFilePath: widget.isFilePath,
+          );
+        });
+      }
     }
+  }
+
+  void _detachController() {
+    final controller = _controller;
+    _controller = null;
+    if (controller == null) return;
+    controller.removeListener(_onControllerUpdate);
+    controller.dispose();
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _detachController();
     super.dispose();
   }
 
@@ -270,7 +326,7 @@ class _VideoViewState extends State<_VideoView> {
       alignment: Alignment.center,
       fit: widget.circular ? StackFit.expand : StackFit.loose,
       children: [
-        if (_ready && controller != null)
+        if (_ready && controller != null && !_failed)
           widget.circular
               ? FittedBox(
                   fit: BoxFit.cover,
@@ -286,10 +342,24 @@ class _VideoViewState extends State<_VideoView> {
                   child: VideoPlayer(controller),
                 )
         else if (_failed)
-          const Icon(Icons.broken_image_rounded, color: Colors.white70, size: 40)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.videocam_off_rounded, color: Colors.white70, size: 36),
+                const SizedBox(height: 8),
+                Text(
+                  _errorMessage ?? 'پخش ویدیو ممکن نشد.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          )
         else
           const CircularProgressIndicator(color: Colors.white),
-        if (_ready && controller != null)
+        if (_ready && controller != null && !_failed)
           DecoratedBox(
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.25),
@@ -333,6 +403,22 @@ class _VideoViewState extends State<_VideoView> {
       ),
     );
   }
+}
+
+String _friendlyPlaybackError(String? raw, {required bool isFilePath}) {
+  final text = (raw ?? '').toLowerCase();
+  if (text.contains('localhost') ||
+      text.contains('127.0.0.1') ||
+      text.contains('failed to connect') ||
+      text.contains('httpdatasource') ||
+      text.contains('source error')) {
+    return isFilePath
+        ? 'باز کردن فایل محلی ناموفق بود. دوباره ضبط یا انتخاب کنید.'
+        : 'اتصال به آدرس پخش برقرار نشد. اینترنت یا تنظیمات سرور را بررسی کنید.';
+  }
+  return isFilePath
+      ? 'پخش فایل محلی ممکن نشد.'
+      : 'پخش ویدیو از سرور ممکن نشد.';
 }
 
 class _AudioView extends StatefulWidget {

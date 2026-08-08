@@ -50,6 +50,14 @@ class PostListTile extends StatelessWidget {
 
   bool get _isBusy => busyAction != null;
 
+  /// Menu/overflow actions show a spinner on the ⋮ slot; pin uses the pin icon only.
+  bool get _isMenuBusy =>
+      busyAction == PostBusyAction.toggleComments ||
+      busyAction == PostBusyAction.publish ||
+      busyAction == PostBusyAction.republish ||
+      busyAction == PostBusyAction.delete ||
+      busyAction == PostBusyAction.recover;
+
   bool get _hasMenu =>
       onEdit != null ||
       onDelete != null ||
@@ -147,7 +155,7 @@ class PostListTile extends StatelessWidget {
                       ),
                     ],
                     if (_hasMenu && !selectable)
-                      _isBusy
+                      _isMenuBusy
                           ? Padding(
                               padding: const EdgeInsets.all(12),
                               child: SizedBox(
@@ -161,6 +169,7 @@ class PostListTile extends StatelessWidget {
                             )
                           : PopupMenuButton<_PostMenuAction>(
                               tooltip: 'عملیات پست',
+                              enabled: !_isBusy,
                               icon: Icon(Icons.more_vert_rounded, color: muted, size: 22),
                               onSelected: (action) => switch (action) {
                                 _PostMenuAction.edit => onEdit?.call(),
