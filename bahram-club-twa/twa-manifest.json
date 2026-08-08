@@ -1,0 +1,51 @@
+{
+  "packageId": "club.rostami.family",
+  "host": "rostami.club",
+  "name": "خانواده داداش بهرام",
+  "launcherName": "خانواده",
+  "display": "standalone",
+  "themeColor": "#0B1419",
+  "themeColorDark": "#0B1419",
+  "navigationColor": "#0B1419",
+  "navigationColorDark": "#0B1419",
+  "navigationDividerColor": "#0B1419",
+  "navigationDividerColorDark": "#0B1419",
+  "backgroundColor": "#0B1419",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://rostami.club/pwa/icon/512",
+  "maskableIconUrl": "https://rostami.club/pwa/icon/512",
+  "monochromeIconUrl": "https://rostami.club/pwa/icon/512",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "family-twa"
+  },
+  "appVersionName": "1",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://rostami.club/family-manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": {
+      "enabled": false
+    },
+    "locationDelegation": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "orientation": "portrait-primary",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

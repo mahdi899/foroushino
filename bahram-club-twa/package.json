@@ -1,0 +1,18 @@
+{
+  "name": "bahram-club-twa",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Trusted Web Activity (Android APK) for rostami.club Family PWA",
+  "scripts": {
+    "update": "bubblewrap update",
+    "build": "bubblewrap build",
+    "build:unsigned": "bubblewrap build --skipSigning",
+    "validate": "bubblewrap validate --url=https://rostami.club/",
+    "fingerprint:list": "bubblewrap fingerprint list",
+    "assetlinks": "bubblewrap fingerprint generateAssetLinks --output=../bahram-cm/frontend/data/twa-asset-links.json",
+    "sync:assetlinks": "node scripts/sync-assetlinks.mjs"
+  },
+  "devDependencies": {
+    "@bubblewrap/cli": "^1.23.0"
+  }
+}

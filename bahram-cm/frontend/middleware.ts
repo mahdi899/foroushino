@@ -55,6 +55,7 @@ function isFamilyRewriteExempt(pathname: string): boolean {
   if (pathname.startsWith("/_next") || pathname.includes(".")) return true;
   if (pathname === "/icon" || pathname === "/apple-icon") return true;
   if (pathname.startsWith("/pwa/")) return true;
+  if (pathname.startsWith("/.well-known/")) return true;
   return false;
 }
 
