@@ -10,6 +10,7 @@ import {
   type FamilyCommentsPage,
 } from '@/lib/family/commentRealtimeMerge';
 import { useFamilyCommentsRealtime } from '@/lib/family/hooks/useFamilyCommentsRealtime';
+import { patchCommentsCountInFeedCaches } from '@/lib/family/hooks/useFamilyRealtime';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { setViewerFamilyId } from '@/lib/family/viewerFamilyId';
 import { getFamilyRealtimeConnectionState, isRealtimeConfigured } from '@/lib/realtime/echo';
@@ -57,6 +58,11 @@ export function useFamilyComments(postId: number, enabled: boolean) {
         { revalidate: false },
       );
       setExtraComments((prev) => applyCommentRealtimeEventToList(prev, payload));
+      // Same payload already carries the approved count — keep post cards in sync
+      // even if the public feed ping is delayed or missed while the panel is open.
+      if (typeof payload.approved_comments_count === 'number') {
+        void patchCommentsCountInFeedCaches(payload.post_id, payload.approved_comments_count);
+      }
     },
     [mutate],
   );

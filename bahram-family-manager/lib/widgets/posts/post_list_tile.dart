@@ -205,7 +205,7 @@ class PostListTile extends StatelessWidget {
                   ),
                 ),
               ],
-              if (isImportant || post.actions.isNotEmpty || post.isPinned || post.isScheduled) ...[
+              if (isImportant || post.notifyMembers || post.actions.isNotEmpty || post.isPinned || post.isScheduled) ...[
                 const SizedBox(height: AppSpacing.md),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
@@ -226,6 +226,8 @@ class PostListTile extends StatelessWidget {
                         ),
                       if (isImportant)
                         const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
+                      if (post.notifyMembers)
+                        const StatusChip(label: 'اعلان', color: AppColors.accent, icon: Icons.notifications_active_rounded),
                       if (post.isPinned)
                         const StatusChip(label: 'سنجاق', color: AppColors.primary, icon: Icons.push_pin_rounded),
                       if (post.actions.isNotEmpty)
@@ -396,6 +398,7 @@ class StatCardGrid extends StatelessWidget {
 IconData postTypeIcon(String type) => switch (type) {
       'text' => Icons.article_rounded,
       'voice' => Icons.mic_rounded,
+      'video_note' => Icons.radio_button_checked_rounded,
       'video' => Icons.videocam_rounded,
       'image' => Icons.image_rounded,
       _ => Icons.campaign_rounded,

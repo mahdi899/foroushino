@@ -60,12 +60,15 @@ class ApiClient {
           if (kDebugMode) {
             final started = error.requestOptions.extra['__started'] as int?;
             final elapsed = started == null ? null : DateTime.now().millisecondsSinceEpoch - started;
+            final resolved = ApiException.fromDio(error);
             ApiDebugLog.record(
               method: error.requestOptions.method,
               path: error.requestOptions.uri.path,
-              statusCode: error.response?.statusCode,
+              statusCode: error.response?.statusCode ?? resolved.statusCode,
               durationMs: elapsed,
-              error: error.message,
+              error: resolved.code != null
+                  ? '[${resolved.code}] ${resolved.message}'
+                  : resolved.message,
             );
           }
           if (error.response?.statusCode == 401) {

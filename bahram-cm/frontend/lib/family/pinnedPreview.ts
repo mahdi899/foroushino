@@ -23,9 +23,14 @@ export function getPinnedPreview(post: FamilyPost): { label: string; thumbnail: 
 
   if (blocks.some((b) => b.type === 'video')) {
     const text = blocks.find((b) => b.type === 'text' && b.text)?.text;
-    const video = blocks.find((b) => b.type === 'video')?.media;
+    const videoBlock = blocks.find((b) => b.type === 'video');
+    const video = videoBlock?.media;
+    const isCircle =
+      post.type === 'video_note' ||
+      videoBlock?.data?.presentation === 'circle' ||
+      videoBlock?.data?.video_note === true;
     return {
-      label: text?.trim() || 'ویدیو',
+      label: text?.trim() || (isCircle ? 'پیام ویدیویی' : 'ویدیو'),
       thumbnail: resolveFamilyMediaUrl(video?.poster_url ?? video?.url ?? null),
     };
   }

@@ -6,6 +6,7 @@ import {
   type FamilyCommentsPage,
 } from '@/lib/family/commentRealtimeMerge';
 import { patchCommentsCountInFeedPages } from '@/lib/family/feedMerge';
+import { mutateFamilyFeedPages, registerFamilyFeedPagesMutator } from '@/lib/family/feedPagesMutate';
 import type { FeedCachePage } from '@/lib/family/feedCache';
 import type { FamilyComment, FamilyPost } from '@/lib/family/types';
 
@@ -157,5 +158,44 @@ describe('patchCommentsCountInFeedPages', () => {
     const next = patchCommentsCountInFeedPages(pages, 55, 5)!;
     expect(next[0]?.data[0]?.stats.comments).toBe(5);
     expect(pages[0]?.data[0]?.stats.comments).toBe(2);
+  });
+
+  it('is a no-op when count is unchanged', () => {
+    const pages: FeedCachePage[] = [
+      {
+        data: [
+          {
+            id: 1,
+            stats: { comments: 4 },
+          } as FamilyPost,
+        ],
+        meta: {} as FeedCachePage['meta'],
+      },
+    ];
+    const next = patchCommentsCountInFeedPages(pages, 1, 4);
+    expect(next).toBe(pages);
+  });
+});
+
+describe('mutateFamilyFeedPages', () => {
+  it('applies updater through registered bound mutators', async () => {
+    let pages: FeedCachePage[] = [
+      {
+        data: [{ id: 9, stats: { comments: 1 } } as FamilyPost],
+        meta: {} as FeedCachePage['meta'],
+      },
+    ];
+
+    const unregister = registerFamilyFeedPagesMutator(async (updater) => {
+      pages = (await updater(pages)) ?? pages;
+    });
+
+    const changed = await mutateFamilyFeedPages(
+      (current) => patchCommentsCountInFeedPages(current, 9, 7) ?? current,
+    );
+
+    expect(changed).toBe(true);
+    expect(pages[0]?.data[0]?.stats.comments).toBe(7);
+    unregister();
   });
 });

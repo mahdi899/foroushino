@@ -53,6 +53,7 @@ void main() {
       expect(post.id, 10);
       expect(post.isDraft, isTrue);
       expect(post.isImportant, isTrue);
+      expect(post.notifyMembers, isFalse);
       expect(post.authorName, 'بهرام');
       expect(post.preview, 'سلام خانواده');
       expect(post.actions.single.type, 'commitment');
@@ -76,6 +77,22 @@ void main() {
       final post = FamilyPostModel.fromJson(json);
       expect(post.preview, contains('صوتی'));
       expect(post.isPublished, isTrue);
+    });
+
+    test('video_note preview uses circular label', () {
+      final json = {
+        'id': 12,
+        'type': 'video_note',
+        'status': 'draft',
+        'audience_mode': 'all',
+        'is_important': false,
+        'blocks': [
+          {'id': 3, 'type': 'video', 'position': 0, 'media_id': 9},
+        ],
+      };
+
+      final post = FamilyPostModel.fromJson(json);
+      expect(post.preview, contains('دایره‌ای'));
     });
   });
 

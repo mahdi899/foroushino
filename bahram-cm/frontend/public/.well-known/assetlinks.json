@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "club.rostami.family",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_RELEASE_SHA256"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "club.rostami.family.debug",
+        "sha256_cert_fingerprints": [
+        "87:CA:02:F9:6A:78:BB:FC:28:AA:1C:06:E7:83:F8:7A:60:2D:78:47:E6:F5:2C:9A:4D:E6:BD:3A:4B:72:54:D0"
+      ]
+    }
+  }
+]

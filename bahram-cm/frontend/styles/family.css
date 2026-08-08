@@ -1346,6 +1346,23 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
   max-height: var(--family-media-landscape-h);
 }
 
+/* Telegram-style circular video message in the feed */
+.family-feed-video--circle {
+  width: min(14rem, 72vw);
+  max-width: min(14rem, 100%);
+  max-height: min(14rem, 72vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.12),
+    0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.family-feed-video--circle video,
+.family-feed-video--circle img {
+  border-radius: 9999px;
+}
+
 .family-video-progress-ring {
   background:
     radial-gradient(farthest-side, rgba(255, 255, 255, 0.12) 72%, transparent 73%) top/100% 100% no-repeat,
@@ -1514,6 +1531,40 @@ html[data-theme='dark'] .family-app .family-app__canvas::before {
     top: auto;
     inset-inline-end: auto;
   }
+}
+
+/* Circular video note — centered round player (Telegram-like) */
+.family-video-modal--circle {
+  padding:
+    max(1.25rem, env(safe-area-inset-top))
+    max(1.25rem, env(safe-area-inset-right, 0px))
+    max(1.25rem, env(safe-area-inset-bottom))
+    max(1.25rem, env(safe-area-inset-left, 0px));
+  background: rgba(0, 0, 0, 0.92);
+}
+
+.family-video-modal--circle .family-video-modal__stage {
+  width: min(22rem, 86vw);
+  height: min(22rem, 86vw);
+  max-width: 86vw;
+  max-height: 86dvh;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.16),
+    0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.family-video-modal--circle .family-video-modal__player {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  object-fit: cover;
+  box-shadow: none;
 }
 
 .family-voice {

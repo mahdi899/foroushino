@@ -67,6 +67,7 @@ class FamilySeeder extends Seeder
             'type' => FamilyPostType::Text->value,
             'audience_mode' => FamilyPostAudienceMode::All->value,
             'is_important' => true,
+            'notify_members' => true,
             'blocks' => [
                 $this->textBlock(
                     'سلام خانواده! من بهرام هستم. خوشحالم که اینجا هستید — از امروز هر هفته اینجا با هم حرف می‌زنیم و مسیر رشد را جلو می‌بریم.',
@@ -88,6 +89,7 @@ class FamilySeeder extends Seeder
         $this->publishDemoPost($publisher, $author, 'voice-podcast', [
             'type' => FamilyPostType::Voice->value,
             'is_important' => true,
+            'notify_members' => true,
             'blocks' => [
                 $this->textBlock('🎙️ پادکست این هفته: دربارهٔ تمرکز عمیق و حذف حواس‌پرتی — گوش کن و نظرت رو بنویس.', 'voice-podcast', 0),
                 $this->audioBlock($assets['voice'], 1),

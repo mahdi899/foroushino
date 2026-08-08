@@ -7,6 +7,7 @@ import 'package:bahram_family_manager/core/utils/read_file_chunk.dart';
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/core/api/api_exception.dart';
+import 'package:bahram_family_manager/core/utils/media_failure_messages.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/models/upload_progress.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
@@ -636,7 +637,11 @@ class FamilyManagerService {
       }
     }
     throw lastError ??
-        ApiException(message: 'آپلود تکه‌ای ناموفق بود.', code: 'chunk_upload_failed');
+        ApiException(
+          message:
+              'آپلود تکه‌ای پس از چند تلاش ناموفق بود. اینترنت یا VPN را بررسی کنید؛ اگر حجم فایل بالاست اتصال پایدارتری لازم است.',
+          code: 'chunk_upload_failed',
+        );
   }
 
   Future<FamilyMediaRef> _uploadSimple(
@@ -772,7 +777,7 @@ class FamilyManagerService {
   }
 
   static Duration readyTimeoutFor(String? type) {
-    if (type == 'video') return const Duration(minutes: 10);
+    if (type == 'video' || type == 'video_note') return const Duration(minutes: 10);
     return const Duration(minutes: 3);
   }
 
@@ -812,7 +817,7 @@ class FamilyManagerService {
           totalBytes: bytes,
         ));
         throw ApiException(
-          message: media.failureReason ?? 'پردازش رسانه ناموفق بود.',
+          message: MediaFailureMessages.pipeline(media.failureReason),
           code: 'media_failed',
         );
       }
@@ -829,7 +834,7 @@ class FamilyManagerService {
       totalBytes: totalBytes,
     ));
     throw ApiException(
-      message: 'فایل روی هاست هنوز آماده نیست. چند لحظه صبر کنید و دوباره تلاش کنید.',
+      message: MediaFailureMessages.timeoutWaitingReady(),
       code: 'media_timeout',
     );
   }

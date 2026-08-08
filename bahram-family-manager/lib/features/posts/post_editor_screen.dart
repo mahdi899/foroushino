@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/labels.dart';
+import 'package:bahram_family_manager/core/debug/upload_failure_log.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
@@ -32,6 +33,7 @@ import 'package:bahram_family_manager/widgets/media/media_upload_progress_overla
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/media/voice_library_sheet.dart';
 import 'package:bahram_family_manager/widgets/media/voice_recorder_panel.dart';
+import 'package:bahram_family_manager/widgets/media/video_note_recorder_panel.dart';
 import 'package:bahram_family_manager/services/voice_local_store.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
@@ -60,6 +62,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   late String _type;
   late String _audienceMode;
   late bool _isImportant;
+  late bool _notifyMembers;
   bool _commentsEnabled = false;
   final Set<int> _selectedFamilyIds = {};
   final _actionDaysCtrl = TextEditingController(text: '7');
@@ -101,6 +104,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     _type = _post?.type ?? 'text';
     _audienceMode = _post?.audienceMode ?? 'all';
     _isImportant = _post?.isImportant ?? false;
+    _notifyMembers = _post?.notifyMembers ?? false;
     _commentsEnabled = _post?.commentsEnabled ?? false;
     _selectedFamilyIds.addAll(_post?.targetFamilyIds ?? []);
 
@@ -263,14 +267,55 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     if (_type == 'voice') {
       return _mediaPhase.isActive ? 160 : 88;
     }
+    if (_type == 'video_note') {
+      return _mediaPhase.isActive ? 240 : 220;
+    }
     return (_mediaRef?.isAudio ?? _type == 'voice') ? 88 : 220;
   }
 
-  bool _rejectOversizeMedia(int bytes, {required String type}) {
+  bool _rejectOversizeMedia(int bytes, {required String type, String? filename}) {
     final message = MediaSizeGuard.oversizeMessage(bytes, type: type);
     if (message == null) return false;
+    UploadFailureLog.record(
+      context: 'post/$type',
+      reason: message,
+      filename: filename,
+      code: 'file_too_large',
+    );
     if (mounted) showAppSnackBar(context, message);
     return true;
+  }
+
+  /// Drop failed video/voice from the editor so it does not stay stuck as an upload.
+  Future<void> _abortFailedMainMedia(Object error, {String? filename}) async {
+    UploadFailureLog.recordError(
+      context: 'post/$_type',
+      error: error,
+      filename: filename,
+    );
+    await _clearLocalPreview();
+    if (!mounted) return;
+    setState(() {
+      _mediaRef = null;
+      _mediaPhase = MediaUploadPhase.idle;
+      _uploadProgress = 0;
+      _uploadSentBytes = 0;
+      _uploadTotalBytes = 0;
+    });
+    showAppSnackBar(context, messageOf(error));
+  }
+
+  void _abortFailedImage(_AttachedImage draft, Object error, {String? filename}) {
+    UploadFailureLog.recordError(
+      context: 'post/image',
+      error: error,
+      filename: filename,
+    );
+    if (!mounted) return;
+    setState(() {
+      _images.remove(draft);
+    });
+    showAppSnackBar(context, messageOf(error));
   }
 
   Future<void> _prepareLocalPreview(
@@ -331,7 +376,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             media: _mediaRef ??
                 FamilyMediaRef(
                   id: 0,
-                  type: _type == 'voice' ? 'voice' : _type,
+                  type: _type == 'voice' ? 'voice' : _mediaIngestType,
                   status: 'uploading',
                   originalFilename: null,
                 ),
@@ -389,9 +434,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   String get _blockTypeForPostType => switch (_type) {
         'voice' => 'audio',
-        'video' => 'video',
+        'video' || 'video_note' => 'video',
         'image' || 'image_album' => 'image',
         _ => 'text',
+      };
+
+  /// Media ingest type — video notes reuse the video pipeline.
+  String get _mediaIngestType => switch (_type) {
+        'video_note' => 'video',
+        'image' || 'image_album' => 'image',
+        _ => _type,
       };
 
   Future<void> _refreshPendingMedia() async {
@@ -430,11 +482,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       } catch (e) {
         if (mounted) {
           showAppSnackBar(context, messageOf(e));
-          for (var i = 0; i < _images.length; i++) {
-            if (_images[i].media != null && !_images[i].media!.isReady) {
-              _images[i].phase = MediaUploadPhase.failed;
-            }
-          }
+          UploadFailureLog.recordError(context: 'post/image_refresh', error: e);
+          setState(() {
+            _images.removeWhere((img) => img.media != null && !img.media!.isReady);
+          });
         }
       }
       return;
@@ -449,7 +500,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     try {
       final ready = await context.read<AppState>().manager.waitForMediaReady(
             media.id,
-            type: _type,
+            type: _mediaIngestType,
             onUpdate: (updated) {
               if (!mounted) return;
               setState(() => _mediaRef = updated);
@@ -467,16 +518,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _mediaPhase = MediaUploadPhase.failed);
-        showAppSnackBar(context, messageOf(e));
-      }
+      await _abortFailedMainMedia(e, filename: media.originalFilename);
     }
   }
 
   Future<void> _uploadPickedMedia(PickedMediaFile file, {String? typeOverride}) async {
-    final mediaType = typeOverride ?? (_isImagePost ? 'image' : _type);
-    if (_rejectOversizeMedia(file.size, type: mediaType)) return;
+    final mediaType = typeOverride ?? (_isImagePost ? 'image' : _mediaIngestType);
+    if (_rejectOversizeMedia(file.size, type: mediaType, filename: file.filename)) return;
 
     if (_isImagePost || mediaType == 'image') {
       final bytes = file.bytes;
@@ -558,15 +606,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _mediaPhase = MediaUploadPhase.failed);
-        showAppSnackBar(context, messageOf(e));
-      }
+      await _abortFailedMainMedia(e, filename: file.filename);
     }
   }
 
   Future<void> _uploadImageBytes(Uint8List bytes, String filename) async {
-    if (_rejectOversizeMedia(bytes.length, type: 'image')) return;
+    if (_rejectOversizeMedia(bytes.length, type: 'image', filename: filename)) return;
 
     final draft = _AttachedImage(localBytes: bytes);
     draft.phase = MediaUploadPhase.uploading;
@@ -619,12 +664,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          draft.phase = MediaUploadPhase.failed;
-        });
-        showAppSnackBar(context, messageOf(e));
-      }
+      _abortFailedImage(draft, e, filename: filename);
     }
   }
 
@@ -632,6 +672,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     return _uploadPickedMedia(
       PickedMediaFile(filename: filename, size: bytes.length, bytes: bytes),
       typeOverride: 'voice',
+    );
+  }
+
+  Future<void> _uploadVideoNoteBytes(Uint8List bytes, String filename, {String? path}) {
+    return _uploadPickedMedia(
+      PickedMediaFile(filename: filename, size: bytes.length, bytes: bytes, path: path),
+      typeOverride: 'video',
     );
   }
 
@@ -694,7 +741,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
     final fileType = switch (_type) {
       'voice' => FileType.audio,
-      'video' => FileType.video,
+      'video' || 'video_note' => FileType.video,
       _ => FileType.any,
     };
 
@@ -705,7 +752,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     final picked = result?.files.singleOrNull;
     if (picked == null) return;
 
-    final resolved = await resolvePlatformFile(picked, mediaType: _type);
+    final resolved = await resolvePlatformFile(picked, mediaType: _mediaIngestType);
     if (!mounted) return;
     if (resolved is ResolvePickedMediaError) {
       showAppSnackBar(context, resolved.message);
@@ -766,7 +813,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     });
     final ready = await context.read<AppState>().manager.waitForMediaReady(
           media.id,
-          type: _type,
+          type: _mediaIngestType,
           onUpdate: (updated) {
             if (!mounted) return;
             setState(() => _mediaRef = updated);
@@ -807,7 +854,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       }
       final ready = await manager.waitForMediaReady(
         retried.id,
-        type: _type,
+        type: _mediaIngestType,
         onUpdate: (updated) {
           if (!mounted) return;
           setState(() => _mediaRef = updated);
@@ -825,10 +872,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _mediaPhase = MediaUploadPhase.failed);
-        showAppSnackBar(context, messageOf(e));
-      }
+      await _abortFailedMainMedia(e, filename: media.originalFilename);
     }
   }
 
@@ -871,10 +915,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => image.phase = MediaUploadPhase.failed);
-        showAppSnackBar(context, messageOf(e));
-      }
+      _abortFailedImage(image, e, filename: media.originalFilename);
     }
   }
 
@@ -895,7 +936,15 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       }
     } else {
       if (_mediaRef != null) {
-        blocks.add({'type': _blockTypeForPostType, 'position': 0, 'media_id': _mediaRef!.id});
+        final mediaBlock = <String, dynamic>{
+          'type': _blockTypeForPostType,
+          'position': 0,
+          'media_id': _mediaRef!.id,
+        };
+        if (_type == 'video_note') {
+          mediaBlock['data'] = {'presentation': 'circle'};
+        }
+        blocks.add(mediaBlock);
       }
       if (_textCtrl.text.trim().isNotEmpty) {
         blocks.add({'type': 'text', 'position': 1, 'text': _textCtrl.text.trim()});
@@ -906,6 +955,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       'type': _payloadType,
       'audience_mode': _audienceMode,
       'is_important': _isImportant,
+      'notify_members': _notifyMembers,
       'comments_enabled': _commentsEnabled,
       'blocks': blocks,
       'family_ids': _audienceMode == 'all' ? <int>[] : _selectedFamilyIds.toList(),
@@ -1429,6 +1479,34 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                         ),
                       ],
                     )
+                  else if (_type == 'video_note')
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        VideoNoteRecorderPanel(
+                          enabled: !_saving && !_mediaBusy,
+                          onRecorded: (result) async {
+                            await _uploadVideoNoteBytes(
+                              result.bytes,
+                              result.filename,
+                              path: result.localPath,
+                            );
+                          },
+                          onError: (message) => showAppSnackBar(context, message),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextButton.icon(
+                          onPressed: (_saving || _mediaBusy)
+                              ? null
+                              : () async => await _pickAndUploadMedia(),
+                          icon: Icon(Icons.video_file_outlined, size: 18, color: scheme.primary),
+                          label: Text(
+                            'انتخاب ویدیو از فایل',
+                            style: TextStyle(color: scheme.primary),
+                          ),
+                        ),
+                      ],
+                    )
                   else
                     UploadZone(
                       label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
@@ -1486,11 +1564,25 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                     children: [
                       Icon(Icons.star_rounded, size: 20, color: AppColors.gold),
                       SizedBox(width: AppSpacing.sm),
-                      Text('پست مهم (اعلان فوری)'),
+                      Text('پست مهم'),
                     ],
                   ),
+                  subtitle: const Text('فقط نشان «مهم» در فید — بدون اعلان خودکار'),
                   value: _isImportant,
                   onChanged: (v) => setState(() => _isImportant = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Row(
+                    children: [
+                      Icon(Icons.notifications_active_rounded, size: 20, color: AppColors.accent),
+                      SizedBox(width: AppSpacing.sm),
+                      Text('ارسال اعلان'),
+                    ],
+                  ),
+                  subtitle: const Text('اعلان درون‌برنامه و پوش به اعضا هنگام انتشار'),
+                  value: _notifyMembers,
+                  onChanged: (v) => setState(() => _notifyMembers = v),
                 ),
               ],
             ),

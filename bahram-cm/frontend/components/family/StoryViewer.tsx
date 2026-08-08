@@ -15,6 +15,7 @@ import {
 } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 import { familyHaptic } from '@/lib/family/haptics';
+import { useOverlayHistoryBack } from '@/lib/family/hooks/useOverlayHistoryBack';
 
 const IMAGE_STORY_MS = 7000;
 const STORY_HOLD_PAUSE_MS = 200;
@@ -146,6 +147,9 @@ export function StoryViewer({
     }
     onClose();
   }, [onClose, onFinished, stories]);
+
+  // Phone/browser Back closes stories first (stay on family), like video/lightbox.
+  useOverlayHistoryBack(open ? 'stories' : null, finish);
 
   const goNext = useCallback(() => {
     if (index >= stories.length - 1) {

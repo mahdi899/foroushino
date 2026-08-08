@@ -11,6 +11,8 @@ enum FamilyPostType: string
     case Text = 'text';
     case Voice = 'voice';
     case Video = 'video';
+    /** Telegram-style circular video message — media/block remain `video`. */
+    case VideoNote = 'video_note';
     case Image = 'image';
     case ImageAlbum = 'image_album';
     case Article = 'article';

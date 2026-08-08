@@ -18,7 +18,6 @@ use App\Support\FamilyCommentBodyGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class CommentController extends Controller
 {
@@ -89,11 +88,9 @@ class CommentController extends Controller
             'parent_id' => ['nullable', 'integer', 'exists:family_comments,id'],
         ]);
 
-        if (! $request->user()->is_admin && FamilyCommentBodyGuard::containsPhoneNumber($data['body'])) {
-            throw ValidationException::withMessages([
-                'body' => ['لطفاً شماره تلفن در نظر قرار ندهید. فقط ادمین می‌تواند شماره منتشر کند.'],
-            ]);
-        }
+        $body = trim($data['body']);
+        $screening = FamilyCommentBodyGuard::analyze($body);
+        $needsManualReview = ! $request->user()->is_admin && $screening['requires_manual_review'];
 
         $parentId = null;
         if (! empty($data['parent_id'])) {
@@ -116,7 +113,8 @@ class CommentController extends Controller
 
         $aiSettings = app(FamilyAiSettingsService::class);
         $requireApproval = (bool) config('family.comment.require_approval', false)
-            || ($aiSettings->isActive() && $aiSettings->autoApproveComments());
+            || ($aiSettings->isActive() && $aiSettings->autoApproveComments())
+            || $needsManualReview;
         $status = $requireApproval ? FamilyCommentStatus::Pending : FamilyCommentStatus::Approved;
 
         $comment = FamilyComment::query()->create([
@@ -124,9 +122,11 @@ class CommentController extends Controller
             'family_id' => $membership->family_id,
             'user_id' => $request->user()->id,
             'parent_id' => $parentId,
-            'body' => trim($data['body']),
+            'body' => $body,
             'status' => $status,
             'approved_at' => $requireApproval ? null : now(),
+            'ai_risk_score' => $needsManualReview ? $screening['min_risk'] : null,
+            'ai_signals' => $needsManualReview ? $screening['signals'] : null,
         ]);
 
         if (! $requireApproval) {
@@ -136,6 +136,7 @@ class CommentController extends Controller
 
         $comment->load(['user:id,name,is_admin', 'user.profile']);
 
+        // Still analyze (enrich AI fields) even when already held for review.
         AnalyzeFamilyCommentJob::dispatch($comment->id)
             ->onQueue(config('family.queues.ai', 'family-ai'));
 

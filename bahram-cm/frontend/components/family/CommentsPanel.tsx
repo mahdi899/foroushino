@@ -12,7 +12,7 @@ import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import { encodeReplyBody, parseReplyBody } from '@/lib/family/replyTag';
-import { commentContainsPhoneNumber, COMMENT_PHONE_WARNING } from '@/lib/family/commentPhoneGuard';
+import { commentNeedsManualReview, COMMENT_REVIEW_NOTICE } from '@/lib/family/commentPhoneGuard';
 import { cn } from '@/lib/cn';
 
 type CommentsPanelProps = {
@@ -295,6 +295,7 @@ export function CommentsPanel({
     useFamilyComments(postId, true);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [reviewNotice, setReviewNotice] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
   const [justSentWasReply, setJustSentWasReply] = useState(false);
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
@@ -385,6 +386,7 @@ export function CommentsPanel({
     // Keep only the user's typed text — name is shown as a chip, not @ in the input.
     setValue((prev) => parseReplyBody(prev).body);
     setError(null);
+    setReviewNotice(null);
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
     });
@@ -397,6 +399,7 @@ export function CommentsPanel({
   useEffect(() => {
     setValue('');
     setError(null);
+    setReviewNotice(null);
     setJustSent(false);
     setJustSentWasReply(false);
     setReplyTarget(null);
@@ -528,17 +531,14 @@ export function CommentsPanel({
     const typed = value.trim();
     if (!typed || submitting) return;
     const body = encodeReplyBody(replyTarget?.userName, typed);
-    if (!allowPhoneNumbers && commentContainsPhoneNumber(body)) {
-      familyHaptic('warning');
-      setError(COMMENT_PHONE_WARNING);
-      return;
-    }
     setError(null);
+    setReviewNotice(null);
     familyFeedDebug.mark(`comment:${postId}`);
     familyFeedDebug.info('comment', 'submit start', {
       postId,
       len: body.length,
       parentId: replyTarget?.rootId ?? null,
+      needsReview: !allowPhoneNumbers && commentNeedsManualReview(body),
     });
     try {
       const wasReply = Boolean(replyTarget);
@@ -548,6 +548,9 @@ export function CommentsPanel({
       setJustSentWasReply(wasReply);
       setJustSent(true);
       familyHaptic('success');
+      if (!allowPhoneNumbers && (created?.is_pending_mine || commentNeedsManualReview(body))) {
+        setReviewNotice(COMMENT_REVIEW_NOTICE);
+      }
       familyFeedDebug.measure(`comment:${postId}`, 'comment', {
         postId,
         id: created?.id,
@@ -557,7 +560,10 @@ export function CommentsPanel({
       if (created && !created.is_pending_mine && !created.parent_id) {
         onCommentAdded?.(created);
       }
-      setTimeout(() => setJustSent(false), 3000);
+      setTimeout(() => {
+        setJustSent(false);
+        setReviewNotice(null);
+      }, 4500);
     } catch (e) {
       const message = e instanceof FamilyApiError ? e.message : 'ارسال نظر ناموفق بود.';
       familyFeedDebug.error('comment', 'submit failed', { postId, error: message });
@@ -569,7 +575,10 @@ export function CommentsPanel({
   const composerBody = (
     <>
       {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
-      {justSent && !error && (
+      {reviewNotice && !error && (
+        <p className="mb-2 text-xs text-amber-300/90">{reviewNotice}</p>
+      )}
+      {justSent && !error && !reviewNotice && (
         <p className="mb-2 text-xs text-gold/80">
           {justSentWasReply ? 'پاسخ شما ثبت شد.' : 'نظر شما ثبت شد.'}
         </p>

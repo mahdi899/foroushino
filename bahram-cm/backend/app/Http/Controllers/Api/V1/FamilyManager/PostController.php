@@ -91,6 +91,7 @@ class PostController extends Controller
             'type' => [$requireType ? 'required' : 'nullable', Rule::enum(FamilyPostType::class)],
             'audience_mode' => ['nullable', Rule::enum(FamilyPostAudienceMode::class)],
             'is_important' => ['nullable', 'boolean'],
+            'notify_members' => ['nullable', 'boolean'],
             'comments_enabled' => ['nullable', 'boolean'],
             'family_ids' => ['nullable', 'array'],
             'family_ids.*' => ['integer', 'exists:families,id'],
@@ -189,8 +190,8 @@ class PostController extends Controller
             return ApiResponse::error('media_not_ready', $e->getMessage(), 422);
         }
 
-        // Important-post fan-out (in-app + real device push, ~20k members) is
-        // dispatched from FamilyPostPublisher::publish() on the queue — see
+        // Member fan-out (in-app + real device push) is dispatched from
+        // FamilyPostPublisher::publish() when notify_members is set — see
         // DispatchFamilyPostPushJob — so it never blocks this request.
 
         return ApiResponse::success(FamilyManagerPostPresenter::present($published));

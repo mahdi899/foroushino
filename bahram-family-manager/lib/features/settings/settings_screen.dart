@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/core/debug/upload_failure_log.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
+import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/models/upload_progress.dart';
 import 'package:bahram_family_manager/widgets/media/media_upload_phase.dart';
@@ -84,6 +86,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final bytes = picked?.bytes;
     if (picked == null || bytes == null) return;
 
+    final oversize = MediaSizeGuard.oversizeMessage(bytes.length, type: 'image');
+    if (oversize != null) {
+      UploadFailureLog.record(
+        context: 'settings/avatar',
+        reason: oversize,
+        filename: picked.name,
+        code: 'file_too_large',
+      );
+      showAppSnackBar(context, oversize);
+      return;
+    }
+
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
@@ -119,7 +133,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       });
     } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      if (mounted) {
+        UploadFailureLog.recordError(
+          context: 'settings/avatar',
+          error: e,
+          filename: picked.name,
+        );
+        setState(() {
+          _uploadPhase = MediaUploadPhase.idle;
+          _uploadProgress = 0;
+          _uploadSentBytes = 0;
+          _uploadTotalBytes = 0;
+        });
+        showAppSnackBar(context, messageOf(e));
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }

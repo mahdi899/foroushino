@@ -7,6 +7,7 @@ use App\Enums\Family\FamilyCommentStatus;
 use App\Models\FamilyComment;
 use App\Models\User;
 use App\Services\AdminAuditLogger;
+use App\Support\FamilyCommentBodyGuard;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -36,21 +37,22 @@ class FamilyCommentModerationService
         $risk = (float) ($comment->ai_risk_score ?? 0);
         $signals = array_values((array) ($comment->ai_signals ?? []));
 
+        // Phone / link / insult / ads: never auto-approve or auto-reject — admin must review.
+        if (FamilyCommentBodyGuard::requiresManualReview($signals)) {
+            Log::channel('ai')->info('Family comment held for manual review', [
+                'comment_id' => $comment->id,
+                'ai_risk_score' => $risk,
+                'signals' => $signals,
+            ]);
+
+            return;
+        }
+
         if ($this->aiSettings->autoRejectHighRisk() && $risk >= $this->aiSettings->riskRejectThreshold()) {
             $this->reject(
                 $comment,
                 FamilyCommentRejectionReason::Advertisement,
                 'رد خودکار توسط AI — ریسک بالا',
-            );
-
-            return;
-        }
-
-        if ($this->hasBlockingSignal($signals)) {
-            $this->reject(
-                $comment,
-                FamilyCommentRejectionReason::Advertisement,
-                'رد خودکار توسط AI — سیگنال مشکوک',
             );
 
             return;
@@ -194,13 +196,5 @@ class FamilyCommentModerationService
         }
 
         $this->realtime->visibleCreated($comment->loadMissing(['user:id,name,is_admin', 'user.profile']));
-    }
-
-    /** @param  list<string>  $signals */
-    private function hasBlockingSignal(array $signals): bool
-    {
-        $blocked = ['spam', 'advertising', 'phone_number'];
-
-        return array_intersect($blocked, $signals) !== [];
     }
 }

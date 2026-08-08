@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-type OverlayKey = 'comments' | 'notifications' | 'stories' | 'lightbox' | 'menu';
+type OverlayKey = 'comments' | 'notifications' | 'stories' | 'lightbox' | 'menu' | 'video';
 
 type OverlayHistoryState = {
   familyOverlay: OverlayKey;
@@ -35,7 +35,8 @@ function isOverlayState(
 
 /**
  * Sync overlay open/close with browser history + Telegram Mini App BackButton
- * so the phone system Back closes the overlay instead of doing nothing.
+ * so the phone system Back closes the overlay first (stay in Family) instead of
+ * leaving the Family section / host.
  *
  * Cleanup uses a nonce + microtask so React Strict Mode remount does not
  * immediately pop the fresh history entry (which would close the sheet).

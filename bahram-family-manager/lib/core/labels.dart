@@ -6,6 +6,7 @@ const Map<String, String> postTypeLabels = {
   'text': 'متنی',
   'voice': 'صوتی',
   'video': 'ویدیویی',
+  'video_note': 'ویدیو دایره‌ای',
   'image': 'تصویری',
   'image_album': 'آلبوم تصویر',
   'article': 'مقاله',
@@ -28,6 +29,7 @@ const Map<String, String> audienceModeLabels = {
 const Map<String, String> mediaTypeLabels = {
   'voice': 'صوت',
   'video': 'ویدیو',
+  'video_note': 'ویدیو دایره‌ای',
   'image': 'تصویر',
 };
 

@@ -2,11 +2,17 @@ export type FamilyPostType =
   | 'text'
   | 'voice'
   | 'video'
+  | 'video_note'
   | 'image'
   | 'image_album'
   | 'article'
   | 'mixed'
   | 'reply';
+
+/** Block `data.presentation` for Telegram-style circular video messages. */
+export function isFamilyCircleVideo(data: Record<string, unknown> | null | undefined): boolean {
+  return data?.presentation === 'circle' || data?.video_note === true;
+}
 
 export type FamilyPostBlockType =
   | 'text'

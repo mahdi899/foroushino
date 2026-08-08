@@ -40,6 +40,7 @@ class FamilyPostPublisher
                 'status' => FamilyPostStatus::Draft,
                 'audience_mode' => $payload['audience_mode'] ?? FamilyPostAudienceMode::All->value,
                 'is_important' => (bool) ($payload['is_important'] ?? false),
+                'notify_members' => (bool) ($payload['notify_members'] ?? false),
                 'comments_enabled' => array_key_exists('comments_enabled', $payload)
                     ? (bool) $payload['comments_enabled']
                     : false,
@@ -68,6 +69,7 @@ class FamilyPostPublisher
                 'type' => $payload['type'] ?? null,
                 'audience_mode' => $payload['audience_mode'] ?? null,
                 'is_important' => array_key_exists('is_important', $payload) ? (bool) $payload['is_important'] : null,
+                'notify_members' => array_key_exists('notify_members', $payload) ? (bool) $payload['notify_members'] : null,
                 'comments_enabled' => array_key_exists('comments_enabled', $payload)
                     ? (bool) $payload['comments_enabled']
                     : null,
@@ -140,11 +142,9 @@ class FamilyPostPublisher
                 fn () => broadcast(new FamilyFeedUpdated($fresh)),
             );
 
-            // Important posts fan out to every member they're visible to — kept
-            // entirely on the queue (in-app + real device push) so publishing
-            // stays instant regardless of family size. See
-            // DispatchFamilyPostPushJob for the chunked/parallel fan-out.
-            if ($fresh->is_important) {
+            // Optional member fan-out (in-app + device push) — independent of the
+            // "important" badge. See DispatchFamilyPostPushJob.
+            if ($fresh->notify_members) {
                 DispatchFamilyPostPushJob::dispatch($fresh->id);
             }
         }

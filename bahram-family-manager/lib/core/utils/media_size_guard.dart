@@ -13,7 +13,7 @@ class MediaSizeGuard {
 
   static int maxBytesFor(String type) {
     return switch (type) {
-      'video' => maxVideoBytes,
+      'video' || 'video_note' => maxVideoBytes,
       'voice' || 'audio' => maxVoiceBytes,
       'image' || 'image_album' => maxImageBytes,
       _ => maxVideoBytes,

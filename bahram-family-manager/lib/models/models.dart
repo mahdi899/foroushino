@@ -249,6 +249,7 @@ class FamilyPostModel {
     required this.status,
     required this.audienceMode,
     required this.isImportant,
+    this.notifyMembers = false,
     this.commentsEnabled = false,
     this.audienceSummary,
     this.isPinned = false,
@@ -268,6 +269,7 @@ class FamilyPostModel {
   final String audienceMode;
   final String? audienceSummary;
   final bool isImportant;
+  final bool notifyMembers;
   final bool commentsEnabled;
   final bool isPinned;
   final String? publishedAt;
@@ -315,6 +317,7 @@ class FamilyPostModel {
         audienceMode: json['audience_mode']?.toString() ?? 'all',
         audienceSummary: json['audience_summary']?.toString(),
         isImportant: json['is_important'] == true,
+        notifyMembers: json['notify_members'] == true,
         commentsEnabled: json['comments_enabled'] == true,
         isPinned: json['is_pinned'] == true,
         publishedAt: json['published_at']?.toString(),
@@ -341,7 +344,7 @@ class FamilyPostModel {
     if (blocks.isEmpty) return '(بدون محتوا)';
     return switch (blocks.first.type) {
       'audio' => 'پیام صوتی',
-      'video' => 'ویدیو',
+      'video' => type == 'video_note' ? 'پیام ویدیویی دایره‌ای' : 'ویدیو',
       'image' => 'تصویر',
       'article_reference' => 'اشاره به مقاله',
       _ => '(بدون متن)',

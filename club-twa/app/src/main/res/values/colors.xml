@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches family PWA theme_color / background_color -->
+    <color name="colorPrimary">#0b1419</color>
+    <color name="backgroundColor">#0b1419</color>
+</resources>

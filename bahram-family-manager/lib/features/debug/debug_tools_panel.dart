@@ -28,7 +28,7 @@ class _DebugToolsPanelState extends State<DebugToolsPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'لاگ API و پاک‌سازی کش — فقط در حالت debug',
+            'لاگ API / آپلود و پاک‌سازی کش — فقط در حالت debug',
             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -39,6 +39,10 @@ class _DebugToolsPanelState extends State<DebugToolsPanel> {
             title: const Text('ثبت درخواست‌های API'),
             value: ApiDebugLog.enabled,
             onChanged: (v) => setState(() => ApiDebugLog.enabled = v),
+          ),
+          Text(
+            'خطاهای آپلود همیشه با دلیل دقیق (حجم، VPN، سرور، …) در لیست پایین ثبت می‌شوند.',
+            style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55)),
           ),
           Wrap(
             spacing: AppSpacing.sm,

@@ -324,7 +324,7 @@ class FamilyReactionAndCommentTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_member_cannot_post_phone_number_in_comment(): void
+    public function test_member_phone_or_link_comment_stays_pending_for_review(): void
     {
         Queue::fake();
 
@@ -333,9 +333,24 @@ class FamilyReactionAndCommentTest extends TestCase
 
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'تماس بگیرید 09123456789'])
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'validation_error')
-            ->assertJsonPath('error.details.body.0', 'لطفاً شماره تلفن در نظر قرار ندهید. فقط ادمین می‌تواند شماره منتشر کند.');
+            ->assertCreated()
+            ->assertJsonPath('data.status', FamilyCommentStatus::Pending->value);
+
+        $this->assertDatabaseHas('family_comments', [
+            'post_id' => $post->id,
+            'user_id' => $user->id,
+            'status' => FamilyCommentStatus::Pending->value,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'ببین https://example.com/scam'])
+            ->assertCreated()
+            ->assertJsonPath('data.status', FamilyCommentStatus::Pending->value);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'این کلاهبرداره'])
+            ->assertCreated()
+            ->assertJsonPath('data.status', FamilyCommentStatus::Pending->value);
     }
 
     public function test_admin_can_post_phone_number_in_comment(): void

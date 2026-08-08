@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/labels.dart';
+import 'package:bahram_family_manager/core/debug/upload_failure_log.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/local_media_url.dart';
+import 'package:bahram_family_manager/core/utils/media_size_guard.dart';
 import 'package:bahram_family_manager/core/utils/picked_media.dart';
 import 'package:bahram_family_manager/core/utils/story_aspect.dart';
 import 'package:bahram_family_manager/core/utils/story_media_dimensions.dart';
@@ -130,6 +132,18 @@ class _StoriesScreenState extends State<StoriesScreen> {
     }
     final file = (resolved as ResolvePickedMediaOk).file;
 
+    final oversize = MediaSizeGuard.oversizeMessage(file.size, type: mediaType);
+    if (oversize != null) {
+      UploadFailureLog.record(
+        context: 'story/$mediaType',
+        reason: oversize,
+        filename: file.filename,
+        code: 'file_too_large',
+      );
+      showAppSnackBar(context, oversize);
+      return;
+    }
+
     await _clearLocalPreview();
     if (isVideo) {
       if (file.path != null && file.path!.isNotEmpty) {
@@ -215,8 +229,22 @@ class _StoriesScreenState extends State<StoriesScreen> {
         });
       }
     } catch (e) {
+      UploadFailureLog.recordError(
+        context: 'story/$mediaType',
+        error: e,
+        filename: file.filename,
+      );
       await _clearLocalPreview();
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      if (mounted) {
+        setState(() {
+          _storyMedia = null;
+          _uploadPhase = MediaUploadPhase.idle;
+          _uploadProgress = 0;
+          _uploadSentBytes = 0;
+          _uploadTotalBytes = 0;
+        });
+        showAppSnackBar(context, messageOf(e));
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
